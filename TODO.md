@@ -9,37 +9,52 @@
 
 ---
 
-## Phase F: 基盤整備（Phase 1 の前提）
+## Phase F: 基盤整備（Phase 1 の前提）✅ 完了
 
 `SplitTree<GroupRef>` を成立させるための事前リファクタ。
 ここが完了するまで Phase 1 以降には着手しない。
 
-### F.1 SplitTree のジェネリック制約一般化
-- [ ] `SplitTree<ViewType: NSView & Codable & Identifiable>` の制約を
-      `Element: Codable & Identifiable & Equatable` 系へ緩める（`SplitTree.swift:5`）
-- [ ] NSView 依存メソッドを `extension SplitTree where Element: NSView` へ分離
-  - [ ] `viewBounds()` / `calculateViewBounds(in:)` / `dimensions()` / `spatialSlots(in:)`
-  - [ ] `valuesPublisher(...)`（KVO 依存）
-- [ ] 描画用 `spatial(within:)` 系が bounds を外部注入で動くよう整理
-      （グループ層は実 NSView を持たないため）
-- [ ] 既存 `SplitTree<Ghostty.SurfaceView>` 利用箇所が無改修〜最小改修で通ることを確認
-      （`BaseTerminalController.swift:44` ほか SplitTree 利用全箇所）
+### F.1 SplitTree のジェネリック制約一般化 ✅
+- [x] `SplitTree<ViewType: NSView & Codable & Identifiable>` の制約を
+      `SplitTree<Element: Codable & Identifiable & Equatable>` へ緩める（`SplitTree.swift:5`）
+      ※ 型パラメータも `ViewType` → `Element` へ改名
+- [x] leaf 等価性を `===`（参照同一性）→ `==`（値等価）へ一般化
+      （`SurfaceView` は `isEqual` 未 override のため挙動は完全同一）
+- [x] `structuralIdentity` の `ObjectIdentifier(view)` / `view1 === view2` を
+      `view.id` ベースへ（NSView は一意 UUID のため等価）
+- [x] NSView 依存メソッドを `extension ... where Element: NSView` へ分離
+  - [x] `SplitTree.viewBounds()` / `Node.viewBounds()`（`view.bounds.size` 依存）
+  - [x] `valuesPublisher(...)`（KVO/Combine 依存）
+  - 注: `calculateViewBounds(in:)` / `dimensions()` / `spatialSlots()` / `spatial(within:)`
+    は NSView API を使わず**グループ層のナビゲーションに必須**のため、当初計画と異なり
+    ジェネリックのまま残置（`TerminalWindow.swift:521` でも `spatial()` を利用中）
+- [x] `spatial(within:)` は既に bounds 外部注入対応（引数 nil 時はグリッド次元で代替）
+- [x] 既存 `SplitTree<Ghostty.SurfaceView>` 利用箇所が無改修で通ることを確認
+      （`xcodebuild build` 成功 + 既存 `SplitTreeTests` 全パス）
 
-### F.2 グループ層が必要とするヘルパーの汎用実装
-SPEC が前提とするが既存に無いメソッドを、汎用 `SplitTree` extension として追加する。
-- [ ] `spatialNeighbor(from:direction:)`（既存 `slots(in:from:)`/`doesBorder` を利用）
-- [ ] `lowestCommonSplitPath(between:and:matchingResizeDirection:)`
-- [ ] `adjustRatio(at:direction:amount:)`（既存 `resizing(to:)` を利用）
-- [ ] `pruningLeaves(_ shouldPrune:)`（hidden 除外用）
-- [ ] `treeContainingOnly(_:)` / `subtreeContainingOnly(_:)`（zoom 用）
-- [ ] `nearestVisibleGroup(to:)`
-- [ ] `firstLeaf`
-- [ ] 各ヘルパーの単体テスト（`SplitTreeTests` に追加）
+### F.2 グループ層が必要とするヘルパーの汎用実装 ✅
+要素非依存のプリミティブとして汎用 `SplitTree` extension に追加
+（グループ固有ラッパーは Phase 4/5 の `WorkspaceModel` 側で id/predicate を渡して表現）。
+- [x] `spatialNeighbor(from:direction:)`（`slots(in:from:)` を利用）
+- [x] `lowestCommonSplitPath(between:and:matchingResizeDirection:)`
+      （2 leaf の path の最長共通接頭辞 = LCA split、方向一致時のみ返す）
+- [x] `adjustRatio(at:direction:amount:)`（amount は正規化比率デルタ。px→比率変換は呼び出し側）
+- [x] `pruningLeaves(_ shouldPrune:)`（hidden 除外用、空 split は畳む、zoomed も整合）
+- [x] `treeContainingOnly(_:)` / `subtreeContainingOnly(_:)`（zoom 用、単一 leaf 木を返す）
+- [x] `nearestVisibleGroup(to:)` → 汎用 `nearestLeaf(to:matching:)` として実装
+      （グループ層は canonical tree に対し `matching: { !hidden.contains($0.id) }` で呼ぶ想定）
+- [x] `firstLeaf`
+- [x] `Path.Component` に `Equatable` 追加（LCA 比較で必要）
+- [x] 各ヘルパーの単体テスト（`SplitTreeTests` に F.2 セクション追加、値型 `MockRef` で実証）
 
-### F.3 回帰確認
-- [ ] `zig build -Demit-macos-app=false` でビルド通過
-- [ ] 既存 split 操作（Cmd+D / Cmd+Shift+D / goto / resize / equalize / zoom / close）に
-      挙動変化がないことを確認
+### F.3 回帰確認 ✅
+- [x] `zig build -Demit-macos-app=false` でビルド通過（exit 0）
+- [x] `xcodebuild ... test`（macOS Swift ユニットテスト）全パス（`** TEST SUCCEEDED **`）
+      ※ 既存 `SplitTreeTests`（insert/remove/focus/resize/equalize/structuralIdentity/
+        viewBounds/spatial）が全パス = SplitTree 挙動の回帰なしを担保
+- [x] `swiftlint --strict`（変更 2 ファイル）0 violations
+- [ ] 実機での対話的 split 操作（Cmd+D 等）の目視回帰確認は未実施
+      （自動テストで論理的回帰なしを担保済み。アプリ起動確認は Phase 1 着手時に併せて実施推奨）
 
 ---
 

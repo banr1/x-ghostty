@@ -26,6 +26,13 @@ class MockView: NSView, Codable, Identifiable {
     }
 }
 
+/// A value-type leaf element used to verify `SplitTree` works for non-NSView
+/// elements (the F.1 generalization goal). This mirrors the future `GroupRef`.
+struct MockRef: Codable, Identifiable, Equatable {
+    let id: UUID
+    init(id: UUID = UUID()) { self.id = id }
+}
+
 struct SplitTreeTests {
     /// Creates a two-view horizontal split tree (view1 | view2).
     static func makeHorizontalSplit() throws -> (SplitTree<MockView>, MockView, MockView) {
@@ -667,5 +674,249 @@ struct SplitTreeTests {
         nodeIds.insert(s.left.structuralIdentity)
         nodeIds.insert(s.right.structuralIdentity)
         #expect(nodeIds.count == 2)
+    }
+
+    // MARK: - Group-Layer Helpers (F.2)
+
+    /// Builds a horizontal split of value-type refs: (a | b).
+    static func makeRefSplit() throws -> (SplitTree<MockRef>, MockRef, MockRef) {
+        let a = MockRef()
+        let b = MockRef()
+        var tree = SplitTree<MockRef>(view: a)
+        tree = try tree.inserting(view: b, at: a, direction: .right)
+        return (tree, a, b)
+    }
+
+    /// Builds a horizontal row of three value-type refs: (a | b | c).
+    /// Returns the tree and its leftmost-to-rightmost refs `[a, b, c]`.
+    static func makeRefRow() throws -> (tree: SplitTree<MockRef>, refs: [MockRef]) {
+        let a = MockRef()
+        let b = MockRef()
+        let c = MockRef()
+        var tree = SplitTree<MockRef>(view: a)
+        tree = try tree.inserting(view: b, at: a, direction: .right)
+        tree = try tree.inserting(view: c, at: b, direction: .right)
+        return (tree, [a, b, c])
+    }
+
+    // --- Value-type element support (F.1 generalization goal) ---
+
+    @Test func valueTypeElementBuildsAndFinds() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        #expect(tree.isSplit)
+        #expect(tree.find(id: a.id) != nil)
+        #expect(tree.find(id: b.id) != nil)
+        #expect(tree.find(id: MockRef().id) == nil)
+    }
+
+    @Test func valueTypeLeafEqualityIsByValue() {
+        let id = UUID()
+        let leftLeaf = SplitTree<MockRef>.Node.leaf(view: MockRef(id: id))
+        let rightLeaf = SplitTree<MockRef>.Node.leaf(view: MockRef(id: id))
+        // Distinct instances, same id -> equal by value (unlike NSView identity).
+        #expect(leftLeaf == rightLeaf)
+        #expect(leftLeaf.structuralIdentity == rightLeaf.structuralIdentity)
+    }
+
+    @Test func valueTypeCodableRoundTrips() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        let data = try JSONEncoder().encode(tree)
+        let decoded = try JSONDecoder().decode(SplitTree<MockRef>.self, from: data)
+        #expect(decoded.find(id: a.id) != nil)
+        #expect(decoded.find(id: b.id) != nil)
+        #expect(decoded.isSplit)
+    }
+
+    // --- firstLeaf ---
+
+    @Test func firstLeafReturnsLeftmost() throws {
+        let (tree, refs) = try Self.makeRefRow()
+        #expect(tree.firstLeaf?.id == refs[0].id)
+    }
+
+    @Test func firstLeafIsNilForEmptyTree() {
+        let tree = SplitTree<MockRef>()
+        #expect(tree.firstLeaf == nil)
+    }
+
+    // --- spatialNeighbor ---
+
+    @Test(arguments: [
+        (SplitTree<MockRef>.Spatial.Direction.right, SplitTree<MockRef>.NewDirection.right),
+        (.left, .right),
+        (.up, .down),
+        (.down, .down),
+    ])
+    func spatialNeighborFindsAdjacent(
+        direction: SplitTree<MockRef>.Spatial.Direction,
+        insertDirection: SplitTree<MockRef>.NewDirection
+    ) throws {
+        let a = MockRef()
+        let b = MockRef()
+        var tree = SplitTree<MockRef>(view: a)
+        tree = try tree.inserting(view: b, at: a, direction: insertDirection)
+
+        let (from, expected): (MockRef, MockRef) =
+            (direction == .right || direction == .down) ? (a, b) : (b, a)
+        #expect(tree.spatialNeighbor(from: from, direction: direction)?.id == expected.id)
+    }
+
+    @Test func spatialNeighborReturnsNilWhenNone() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        #expect(tree.spatialNeighbor(from: a, direction: .left) == nil)
+        #expect(tree.spatialNeighbor(from: b, direction: .right) == nil)
+        #expect(tree.spatialNeighbor(from: a, direction: .up) == nil)
+    }
+
+    // --- lowestCommonSplitPath ---
+
+    @Test func lowestCommonSplitPathReturnsRootForSiblings() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        let path = tree.lowestCommonSplitPath(between: a, and: b, matchingResizeDirection: .right)
+        #expect(path != nil)
+        #expect(path?.isEmpty == true) // the root split separates the siblings
+    }
+
+    @Test func lowestCommonSplitPathNilWhenDirectionMismatches() throws {
+        let (tree, a, b) = try Self.makeRefSplit() // horizontal split
+        // Resizing vertically across a horizontal boundary has no matching split.
+        #expect(tree.lowestCommonSplitPath(between: a, and: b, matchingResizeDirection: .up) == nil)
+        #expect(tree.lowestCommonSplitPath(between: a, and: b, matchingResizeDirection: .down) == nil)
+    }
+
+    @Test func lowestCommonSplitPathFindsNestedBoundary() throws {
+        // Layout: a | (b / c) -- a on the left, b stacked over c on the right.
+        let a = MockRef()
+        let b = MockRef()
+        let c = MockRef()
+        var tree = SplitTree<MockRef>(view: a)
+        tree = try tree.inserting(view: b, at: a, direction: .right)
+        tree = try tree.inserting(view: c, at: b, direction: .down)
+
+        // a and b are separated by the root horizontal split.
+        let ab = tree.lowestCommonSplitPath(between: a, and: b, matchingResizeDirection: .right)
+        #expect(ab?.isEmpty == true)
+        // b and c are separated by the nested vertical split (not the root).
+        let bc = tree.lowestCommonSplitPath(between: b, and: c, matchingResizeDirection: .down)
+        #expect(bc != nil)
+        #expect(bc?.isEmpty == false)
+        // b and c are not separated along the horizontal axis.
+        #expect(tree.lowestCommonSplitPath(between: b, and: c, matchingResizeDirection: .right) == nil)
+    }
+
+    // --- adjustRatio ---
+
+    @Test func adjustRatioGrowsAndShrinksLeadingChild() throws {
+        let (tree, _, _) = try Self.makeRefSplit()
+        let rootPath = SplitTree<MockRef>.Path(path: [])
+
+        let grown = tree.adjustRatio(at: rootPath, direction: .right, amount: 0.1)
+        guard case .split(let g) = grown.root else { Issue.record("expected split"); return }
+        #expect(abs(g.ratio - 0.6) < 0.001)
+
+        let shrunk = tree.adjustRatio(at: rootPath, direction: .left, amount: 0.1)
+        guard case .split(let s) = shrunk.root else { Issue.record("expected split"); return }
+        #expect(abs(s.ratio - 0.4) < 0.001)
+    }
+
+    @Test func adjustRatioClampsToBounds() throws {
+        let (tree, _, _) = try Self.makeRefSplit()
+        let rootPath = SplitTree<MockRef>.Path(path: [])
+
+        let maxed = tree.adjustRatio(at: rootPath, direction: .right, amount: 1.0)
+        guard case .split(let m) = maxed.root else { Issue.record("expected split"); return }
+        #expect(abs(m.ratio - 0.9) < 0.001)
+    }
+
+    @Test func adjustRatioIsNoopForLeafPath() {
+        let leaf = MockRef()
+        let tree = SplitTree<MockRef>(view: leaf)
+        let result = tree.adjustRatio(at: SplitTree<MockRef>.Path(path: []), direction: .right, amount: 0.1)
+        // The root is a leaf; there is nothing to resize.
+        #expect(result.find(id: leaf.id) != nil)
+        if case .split = result.root { Issue.record("leaf root must not become a split") }
+    }
+
+    // --- pruningLeaves ---
+
+    @Test func pruningLeavesRemovesMatchingAndCollapses() throws {
+        let (tree, refs) = try Self.makeRefRow()
+        let (a, b, c) = (refs[0], refs[1], refs[2])
+        let pruned = tree.pruningLeaves { $0.id == b.id }
+
+        #expect(pruned.find(id: a.id) != nil)
+        #expect(pruned.find(id: c.id) != nil)
+        #expect(pruned.find(id: b.id) == nil)
+        // a and c survive; the collapsed tree is a single split of the two.
+        #expect(pruned.count == 2)
+    }
+
+    @Test func pruningAllLeavesYieldsEmptyTree() throws {
+        let (tree, _, _) = try Self.makeRefSplit()
+        let pruned = tree.pruningLeaves { _ in true }
+        #expect(pruned.isEmpty)
+    }
+
+    @Test func pruningNoLeavesIsUnchanged() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        let pruned = tree.pruningLeaves { _ in false }
+        #expect(pruned.find(id: a.id) != nil)
+        #expect(pruned.find(id: b.id) != nil)
+        #expect(pruned.isSplit)
+    }
+
+    @Test func pruningLeavesClearsZoomedWhenPruned() throws {
+        let (tree, _, b) = try Self.makeRefSplit()
+        let zoomed = SplitTree<MockRef>(root: tree.root, zoomed: .leaf(view: b))
+        let pruned = zoomed.pruningLeaves { $0.id == b.id }
+        #expect(pruned.zoomed == nil)
+    }
+
+    // --- subtreeContainingOnly / treeContainingOnly ---
+
+    @Test func subtreeContainingOnlyReturnsSingleLeaf() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        let only = tree.subtreeContainingOnly(a)
+        #expect(only.find(id: a.id) != nil)
+        #expect(only.find(id: b.id) == nil)
+        #expect(!only.isSplit)
+        #expect(only.zoomed == nil)
+    }
+
+    @Test func treeContainingOnlyMatchesSubtreeContainingOnly() throws {
+        let (tree, a, _) = try Self.makeRefSplit()
+        let viaSubtree = tree.subtreeContainingOnly(a)
+        let viaTree = tree.treeContainingOnly(a)
+        #expect(viaTree.structuralIdentity == viaSubtree.structuralIdentity)
+    }
+
+    @Test func containingOnlyAbsentElementIsEmpty() throws {
+        let (tree, _, _) = try Self.makeRefSplit()
+        let only = tree.subtreeContainingOnly(MockRef())
+        #expect(only.isEmpty)
+    }
+
+    // --- nearestLeaf ---
+
+    @Test func nearestLeafFindsClosestExcludingSelf() throws {
+        let (tree, refs) = try Self.makeRefRow() // a | b | c, a is leftmost
+        let (a, b) = (refs[0], refs[1])
+        // The nearest leaf to a (excluding a) is its immediate neighbor b.
+        #expect(tree.nearestLeaf(to: a, matching: { _ in true })?.id == b.id)
+    }
+
+    @Test func nearestLeafRespectsPredicate() throws {
+        let (tree, refs) = try Self.makeRefRow()
+        let (a, b, c) = (refs[0], refs[1], refs[2])
+        // Excluding the nearest (b) yields the next nearest (c).
+        let next = tree.nearestLeaf(to: a, matching: { $0.id != b.id })
+        #expect(next?.id == c.id)
+    }
+
+    @Test func nearestLeafReturnsNilWhenNoneMatch() throws {
+        let (tree, refs) = try Self.makeRefRow()
+        let a = refs[0]
+        // No leaf other than a satisfies the predicate.
+        #expect(tree.nearestLeaf(to: a, matching: { $0.id == a.id }) == nil)
     }
 }
