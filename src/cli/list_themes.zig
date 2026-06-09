@@ -127,8 +127,8 @@ pub fn run(gpa_alloc: std.mem.Allocator) !u8 {
 
     const resources_dir = global_state.resources_dir.app();
     if (resources_dir == null)
-        try stderr.print("Could not find the Ghostty resources directory. Please ensure " ++
-            "that Ghostty is installed correctly.\n", .{});
+        try stderr.print("Could not find the XGhostty resources directory. Please ensure " ++
+            "that XGhostty is installed correctly.\n", .{});
 
     var count: usize = 0;
 
@@ -300,7 +300,7 @@ const Preview = struct {
         const writer = self.tty.writer();
 
         try self.vx.enterAltScreen(writer);
-        try self.vx.setTitle(writer, "👻 Ghostty Theme Preview 👻");
+        try self.vx.setTitle(writer, "👻 XGhostty Theme Preview 👻");
         try self.vx.queryTerminal(writer, 1 * std.time.ns_per_s);
         try self.vx.setMouseMode(writer, true);
         if (self.vx.caps.color_scheme_updates)
