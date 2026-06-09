@@ -10,6 +10,8 @@
 zig-cache/
 .zig-cache/
 zig-out/
+# Custom Zig package cache dir (e.g. `zig build --global-cache-dir zig-pkg`)
+zig-pkg/
 build-cmake/
 CMakeCache.txt
 CMakeFiles/
