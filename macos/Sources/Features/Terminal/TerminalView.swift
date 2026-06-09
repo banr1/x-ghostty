@@ -30,6 +30,13 @@ protocol TerminalViewModel: ObservableObject {
     /// and children. This should be @Published.
     var surfaceTree: SplitTree<Ghostty.SurfaceView> { get set }
 
+    /// The group layer wrapping `surfaceTree`, used to drive the group-aware
+    /// render path (`TerminalWorkspaceView`). In Phase 0/1 this mirrors the
+    /// focused group's pane tree, so it is updated synchronously whenever
+    /// `surfaceTree` changes and re-rendering is driven by the same
+    /// `@Published surfaceTree` change. See `SPEC.md` §6.2.
+    var workspace: WorkspaceModel { get }
+
     /// The command palette state.
     var commandPaletteIsShowing: Bool { get set }
 
@@ -79,9 +86,9 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         DebugBuildWarningView()
                     }
 
-                    TerminalSplitTreeView(
-                        tree: viewModel.surfaceTree,
-                        action: { delegate?.performSplitAction($0) })
+                    TerminalWorkspaceView(
+                        workspace: viewModel.workspace,
+                        paneAction: { delegate?.performSplitAction($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)
