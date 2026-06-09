@@ -58,27 +58,56 @@
 
 ---
 
-## Phase 0: 既存挙動を 1 グループに包む（§15 Phase 0）
+## Phase 0: 既存挙動を 1 グループに包む（§15 Phase 0）✅ 完了
 
 見た目・操作を変えず内部だけ二層化する。
 
-### 0.1 データモデル（§5, ファイル構成 §16）
-- [ ] `Features/Groups/` を新設
-- [ ] `GroupID.swift` / `SurfaceID` / `GroupRef` / `SurfaceRef`（§5.1）
-- [ ] `GroupState.swift`（§5.3: name, paneTree, focusedSurface, createdAt, lastFocusedAt）
-- [ ] `WorkspaceState.swift`（§5.2: canonicalGroupTree, groups, hiddenGroupIDs,
-      focusedGroup, zoomedGroup, version）
-- [ ] `SurfaceRestoreSpec`（§5.4, MVP は nil 許容）
+### 0.1 データモデル（§5, ファイル構成 §16）✅
+- [x] `Features/Groups/` を新設
+- [x] `GroupID.swift`: `GroupID` / `SurfaceID` / `GroupRef` / `SurfaceRef`（§5.1）
+- [x] `GroupState.swift`（§5.3: name, paneTree, focusedSurface, createdAt, lastFocusedAt）
+      ※ `paneTree` は確定判断により `SplitTree<Ghostty.SurfaceView>` を維持（後述）
+- [x] `WorkspaceState.swift`（§5.2: canonicalGroupTree, groups, hiddenGroupIDs,
+      focusedGroup, zoomedGroup, version）+ `effectiveVisibleGroupTree`（§13）+ custom Codable
+- [ ] `SurfaceRestoreSpec`（§5.4）は **Phase 6 へ先送り**
+      （paneTree が `SurfaceView` を保持し既存 `SurfaceView` の Codable で復元できるため、
+       現状は consumer ゼロの投機的型になる。restore 統合設計と併せて Phase 6 で導入）
 
-### 0.2 二層化
-- [ ] `WorkspaceModel`（`ObservableObject`）を新設し、`BaseTerminalController` の
+### 0.2 二層化 ✅
+- [x] `WorkspaceModel`（Phase 0 は `struct`）を新設し、`BaseTerminalController` の
       `surfaceTree` を `canonicalGroupTree = leaf(defaultGroup)` /
-      `groups[defaultGroup].paneTree = 旧 surfaceTree` で包む
-- [ ] `effectiveVisibleGroupTree` 派生プロパティ（§13）
-- [ ] 既存 Cmd+D / Cmd+Shift+D / goto_split / resize_split / toggle_split_zoom /
-      close_surface が **focused group の paneTree に委譲**されて従来通り動く
+      `groups[defaultGroup].paneTree = surfaceTree` で包む（`init(wrapping:)`）
+- [x] `effectiveVisibleGroupTree` 派生プロパティ（§13, `WorkspaceState` 側に実装）
+- [x] 既存 Cmd+D / Cmd+Shift+D / goto_split / resize_split / toggle_split_zoom /
+      close_surface が従来通り動く（**案A**: surfaceTree が source of truth のまま、
+      `surfaceTreeDidChange` で focused group の paneTree をミラー同期。操作経路は無改修）
 
-**成功条件（§15 Phase 0）**: 上記 6 操作すべてが従来通り。
+**成功条件（§15 Phase 0）**: 上記 6 操作すべてが従来通り
+→ `SplitTreeTests` 169 件 + `TerminalRestorableTests` 6 件が全パス（回帰なし）、
+  新規 `WorkspaceStateTests` 7 件 / `WorkspaceModelTests` 6 件パス、
+  `swiftlint --strict` 0 violations、`zig build -Demit-macos-app=false` exit 0。
+- [ ] 実機での 6 操作の目視回帰確認は未実施（操作経路は無改修・追加ミラーのみのため論理回帰なしを
+      自動テストで担保。アプリ起動確認は Phase 1 着手時に併せて実施推奨）
+
+### Phase 0 実装メモ（レビュー観点）
+- **採用設計（案A: surfaceTree が source of truth）**: `surfaceTree`（30+ 箇所が依存・
+  `$surfaceTree` publisher・restore・undo が絡む）を一切再解釈せず stored `@Published` のまま残し、
+  `WorkspaceModel` は focused group の paneTree を**ミラー**する。同期は `surfaceTreeDidChange`
+  （paneTree）と `focusedSurface.didSet`（focus）に一本化。Combine/描画/restore/undo は無改修。
+- **SPEC §5.3 からの逸脱**: `GroupState.paneTree` を `SplitTree<SurfaceRef>` ではなく
+  `SplitTree<Ghostty.SurfaceView>` に。SurfaceID は `view.id`(UUID) で表現。理由は既存の
+  描画/action/restore/drag&drop が全て `SplitTree<Ghostty.SurfaceView>` 依存で、SurfaceRef+registry
+  移行が Phase 0 の非破壊要件と衝突するため（ユーザー合意済み）。
+- **WorkspaceState の Codable**: runtime-only の `hiddenGroupIDs`/`zoomedGroup` は非永続・decode 時
+  クリア。`groups` は非 String キー dictionary が JSON 配列化するのを避けるため `uuidString` キーの
+  object へ手動変換。
+- **WorkspaceModel は struct**: Phase 0 では描画に使わないため `ObservableObject` 化しない。
+
+### Phase 1 への申し送り
+- [ ] `WorkspaceModel` を `ObservableObject`（class）へ昇格（GroupSplitTreeView が観測する時点）
+- [ ] group 切替は「旧 surfaceTree を groups へ保存 → focusedGroup 更新 → 新 group paneTree を
+      surfaceTree へ差替」を**専用メソッド1箇所**に閉じる（順序を誤ると旧 tree を新 group へ誤同期する）
+- [ ] inactive group の paneTree は surfaceTree とミラーされない（focused のみ）点に留意
 
 ---
 

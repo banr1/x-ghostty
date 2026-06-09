@@ -37,13 +37,21 @@ class BaseTerminalController: NSWindowController,
 
     /// The currently focused surface.
     var focusedSurface: Ghostty.SurfaceView? {
-        didSet { syncFocusToSurfaceTree() }
+        didSet {
+            syncFocusToSurfaceTree()
+            workspace.setFocusedSurface(focusedSurface.map { SurfaceID(rawValue: $0.id) })
+        }
     }
 
     /// The tree of splits within this terminal window.
     @Published var surfaceTree: SplitTree<Ghostty.SurfaceView> = .init() {
         didSet { surfaceTreeDidChange(from: oldValue, to: surfaceTree) }
     }
+
+    /// The group layer wrapping `surfaceTree`. In Phase 0 this mirrors the
+    /// focused group's pane tree; `surfaceTree` remains the source of truth for
+    /// rendering, actions and Combine observation. See `SPEC.md` §15 Phase 0.
+    private(set) var workspace = WorkspaceModel()
 
     /// This can be set to show/hide the command palette.
     @Published var commandPaletteIsShowing: Bool = false
@@ -140,6 +148,10 @@ class BaseTerminalController: NSWindowController,
         // Initialize our initial surface.
         guard let ghostty_app = ghostty.app else { preconditionFailure("app must be loaded") }
         self.surfaceTree = tree ?? .init(view: Ghostty.SurfaceView(ghostty_app, baseConfig: base))
+
+        // Wrap the initial pane tree into the group layer. Phase 0 keeps a
+        // single default group whose pane tree mirrors `surfaceTree`.
+        self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
 
         // Setup our bell state for the window
         setupBellNotificationPublisher()
@@ -288,6 +300,10 @@ class BaseTerminalController: NSWindowController,
     ///
     /// Subclasses should call super first.
     func surfaceTreeDidChange(from: SplitTree<Ghostty.SurfaceView>, to: SplitTree<Ghostty.SurfaceView>) {
+        // Mirror the focused group's pane tree into the group layer (Phase 0).
+        // `surfaceTree` is the source of truth; the workspace follows it.
+        workspace.replaceFocusedPaneTree(to, focusedSurface: focusedSurface)
+
         // If our surface tree becomes empty then we have no focused surface.
         if to.isEmpty {
             focusedSurface = nil
