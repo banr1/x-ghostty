@@ -1,17 +1,17 @@
 {
-    "language": "ja",
-    "plansDirectory": ".claude/plans",
-    "permissions": {
-      "allow": [
-        "Bash",
-        "Read",
-        "Edit",
-        "Write",
-        "WebFetch",
-        "WebSearch",
-        "Glob",
-        "Grep",
-        "mcp__claude-in-chrome"
-      ]
-    }
+  "language": "ja",
+  "plansDirectory": ".claude/plans",
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "WebSearch",
+      "Glob",
+      "Grep",
+      "mcp__claude-in-chrome"
+    ]
   }
+}
