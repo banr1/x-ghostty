@@ -61,11 +61,8 @@ See the [documentation](https://ghostty.org/docs) on the Ghostty website.
 
 ## Contributing and Developing
 
-If you have any ideas, issues, etc. regarding Ghostty, or would like to
-contribute to Ghostty through pull requests, please check out our
-["Contributing to Ghostty"](CONTRIBUTING.md) document. Those who would like
-to get involved with Ghostty's development as well should also read the
-["Developing Ghostty"](HACKING.md) document for more technical details.
+See the ["Developing Ghostty"](HACKING.md) document for technical details
+on building and working on Ghostty.
 
 ## Roadmap and Status
 
