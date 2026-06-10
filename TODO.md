@@ -169,30 +169,78 @@ identity 破綻なし
 
 ## Phase 2: new_group_split（§9, §11.1, §15 Phase 2）
 
-### 2.1 Zig core 統合（ギャップ3 対応）
+### 2.1 Zig core 統合（ギャップ3 対応）✅ 完了（コア語彙のみ）
 
-- [ ] `src/input/Binding.zig:629〜` に group action を union 追加
-  - [ ] `new_group_split: SplitDirection`
-  - [ ] `goto_group: SplitFocusDirection`
-  - [ ] `resize_group: SplitResizeParameter`
-  - [ ] `equalize_groups` / `toggle_group_zoom` / `hide_group`
-  - [ ] `show_group: []const u8` / `rename_group` / `set_group_title: []const u8`
-  - [ ] `close_group`
-- [ ] keybind パーサのテスト追加（`Binding.zig` 内、既存 split test に倣う）
-- [ ] apprt action 経由で Swift `WorkspaceModel` までプラミング
+グループ action の語彙を Zig core → apprt → C API まで一括追加。Swift 層は
+`Ghostty.App.action()` の `default:` が吸収するため、この時点ではキーバインドとして
+**認識・パース可能だが Swift 層では no-op**（挙動配線は 2.3）。
 
-### 2.2 GroupNameGenerator（§8）
+- [x] `src/input/Binding.zig` の Action union に group action 10 種を追加
+  - [x] `new_group_split: SplitDirection`
+  - [x] `goto_group: SplitFocusDirection`
+  - [x] `resize_group: SplitResizeParameter`
+  - [x] `equalize_groups` / `toggle_group_zoom` / `hide_group`
+  - [x] `show_group: []const u8` / `rename_group` / `set_group_title: []const u8`
+  - [x] `close_group`
+- [x] `Action.scope()` の `.surface` 群に 10 種を登録（網羅 switch）
+- [x] keybind パーサのテスト追加（`Binding.zig` "parse: group split actions"、
+      enum/tuple/void/string を既存 split test に倣って実証）
+- [x] `command.zig` の網羅 switch に追加（コマンドパレット登録は挙動実装フェーズへ
+      先送り＝no-op コマンド露出回避のため空 `&.{}`）
+- [x] `Surface.zig` performBindingAction に apprt ディスパッチ追加
+      （`new_split`/`goto_split`/`resize_split` の変換を踏襲、文字列は `dupeZ`）
+- [x] `apprt/action.zig` の Action union + Key enum 末尾に追加（ABI 互換、引数型は
+      `SplitDirection`/`GotoSplit`/`ResizeSplit`/`SetTitle` を再利用）
+- [x] `include/ghostty.h` の手書き enum/union を同期（`checkGhosttyHEnum` テスト通過）
+- [x] `apprt/gtk/.../application.zig` の Unimplemented リストに追加（macOS では非
+      コンパイルだがクロスプラットフォーム整合のため）
+- [ ] apprt action → Swift `WorkspaceModel` のプラミング（`Ghostty.App.action()` の
+      case 追加 → notification → `BaseTerminalController` ハンドラ）は **2.3 へ**
 
-- [ ] `GroupNameGenerator.swift`（adjective-noun, 既存名衝突回避, 作成時のみ生成）
+### 2.2 GroupNameGenerator（§8）✅ 完了
 
-### 2.3 new_group_split 実装（§11.1, エッジ §18.4）
+- [x] `GroupNameGenerator.swift`（adjective-noun, 既存名衝突回避, 作成時のみ生成）
+  - RNG 注入シーム（`make(existing:using:)`）でテストを決定論化、本番は
+    `SystemRandomNumberGenerator`
+  - フォールバックは SPEC §8 の `group-N` を**衝突回避まで上方探索**するよう堅牢化
+  - [x] 単体テスト 4 件（format / 累積一意性 / 全組合せ枯渇時フォールバック / 番号上方探索）
+- [ ] `WorkspaceModel` への配線（新 group 作成時の名前採番）は 2.3 で実施
 
-- [ ] focusedGroup 基準で新 GroupState 作成 → 初期 pane 1 つ → canonicalGroupTree へ挿入
+### 2.3 new_group_split 実装（§11.1, エッジ §18.4）— 未着手
+
+Swift 側の挙動。`WorkspaceModel` のアーキテクチャ変更を伴うため独立フェーズとして分離。
+
+- [ ] `WorkspaceModel` を `ObservableObject`（class）へ昇格（Phase 0 申し送り参照）
+- [ ] apprt action → Swift プラミング（`GHOSTTY_ACTION_NEW_GROUP_SPLIT` の case →
+      notification → `BaseTerminalController`）
+- [ ] focusedGroup 基準で新 GroupState 作成（名前は `GroupNameGenerator.make`）→
+      初期 pane 1 つ → canonicalGroupTree へ挿入
+- [ ] group 切替を専用メソッド1箇所に閉じる（旧 surfaceTree 保存 → focusedGroup 更新 →
+      新 group paneTree を surfaceTree へ差替。Phase 0 申し送り参照）
 - [ ] zoom 中は zoom 解除してから隣に作成し、新 group の初期 pane へ focus
-- [ ] デフォルト keybind: Cmd+Opt+D / Cmd+Opt+Shift+D（§10.2, §17）
+- [ ] デフォルト keybind: Cmd+Opt+D / Cmd+Opt+Shift+D（§10.2, §17, `src/config/Config.zig`）
 
 **成功条件**: 新 group がランダム名で作成 / 初期 pane 1 つ / focus 移動 /
 Cmd+D は新 group 内のみ分割。
+
+### Phase 2.1 実装メモ（レビュー観点）
+
+- **語彙レイヤーのみ（Phase F 同様の基盤）**: Zig core の Action union に group action を
+  足すと `scope()` / `command.zig` / `Surface.zig`（surface-scoped 網羅 switch）/
+  `apprt/action.zig` / `ghostty.h`（手書き・`checkGhosttyHEnum` で同期検証）/ GTK switch が
+  芋づる式にコンパイル要求される。一方 Swift `Ghostty.App.action()` は `default:` を持つため、
+  ここで止めればビルドは緑のまま。挙動配線（2.3）と分離してレビューしやすくする狙い。
+- **引数型は既存 apprt 型を再利用**: `new_group_split`→`SplitDirection`、`goto_group`→
+  `GotoSplit`、`resize_group`→`ResizeSplit`、`show_group`/`set_group_title`→`SetTitle`。
+  新規 C enum を増やさず、`CValue` サイズ assert も不変。
+- **コマンドパレット非登録 / キーバインド未配線**: 挙動が無い段階で no-op コマンドや
+  「bind されるが何もしない」キーを露出しないよう、`command.zig` は空コマンド、既定 keybind も
+  2.3 まで保留。config に明示すればパース・bind は可能だが Swift 層で no-op。
+
+**検証**: `zig build -Demit-macos-app=false` exit 0、`zig build test`（"group split"
+パーサ / "ghostty.h Action.Key" 同期）パス、`swiftlint --strict` 0 violations、
+`xcodebuild test`（`GroupNameGeneratorTests` 4 件 + 既存 `WorkspaceModel`/`WorkspaceState`
+テスト全パス、回帰なし）、`zig fmt --check` exit 0。
 
 ---
 

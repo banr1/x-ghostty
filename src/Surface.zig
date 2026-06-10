@@ -5361,6 +5361,100 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        // Group-layer actions. These mirror the split actions above but
+        // target the window's group tree. Group state lives in the apprt, so
+        // they are forwarded to the apprt action layer like `new_split`.
+
+        .new_group_split => |direction| return try self.rt_app.performAction(
+            .{ .surface = self },
+            .new_group_split,
+            switch (direction) {
+                .right => .right,
+                .left => .left,
+                .down => .down,
+                .up => .up,
+                .auto => if (self.size.screen.width > self.size.screen.height)
+                    .right
+                else
+                    .down,
+            },
+        ),
+
+        .goto_group => |direction| return try self.rt_app.performAction(
+            .{ .surface = self },
+            .goto_group,
+            switch (direction) {
+                inline else => |tag| @field(
+                    apprt.action.GotoSplit,
+                    @tagName(tag),
+                ),
+            },
+        ),
+
+        .resize_group => |value| return try self.rt_app.performAction(
+            .{ .surface = self },
+            .resize_group,
+            .{
+                .amount = value[1],
+                .direction = switch (value[0]) {
+                    inline else => |tag| @field(
+                        apprt.action.ResizeSplit.Direction,
+                        @tagName(tag),
+                    ),
+                },
+            },
+        ),
+
+        .equalize_groups => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .equalize_groups,
+            {},
+        ),
+
+        .toggle_group_zoom => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .toggle_group_zoom,
+            {},
+        ),
+
+        .hide_group => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .hide_group,
+            {},
+        ),
+
+        .rename_group => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .rename_group,
+            {},
+        ),
+
+        .close_group => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .close_group,
+            {},
+        ),
+
+        .show_group => |v| {
+            const name = try self.alloc.dupeZ(u8, v);
+            defer self.alloc.free(name);
+            return try self.rt_app.performAction(
+                .{ .surface = self },
+                .show_group,
+                .{ .title = name },
+            );
+        },
+
+        .set_group_title => |v| {
+            const name = try self.alloc.dupeZ(u8, v);
+            defer self.alloc.free(name);
+            return try self.rt_app.performAction(
+                .{ .surface = self },
+                .set_group_title,
+                .{ .title = name },
+            );
+        },
+
         .toggle_readonly => {
             self.readonly = !self.readonly;
             _ = try self.rt_app.performAction(
