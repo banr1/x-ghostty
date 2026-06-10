@@ -503,6 +503,9 @@ extension Ghostty {
             case GHOSTTY_ACTION_NEW_SPLIT:
                 newSplit(app, target: target, direction: action.action.new_split)
 
+            case GHOSTTY_ACTION_NEW_GROUP_SPLIT:
+                newGroupSplit(app, target: target, direction: action.action.new_group_split)
+
             case GHOSTTY_ACTION_CLOSE_TAB:
                 closeTab(app, target: target, mode: action.action.close_tab_mode)
 
@@ -867,6 +870,34 @@ extension Ghostty {
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyNewSplit,
+                    object: surfaceView,
+                    userInfo: [
+                        "direction": direction,
+                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: ghostty_surface_inherited_config(surface, GHOSTTY_SURFACE_CONTEXT_SPLIT)),
+                    ]
+                )
+
+            default:
+                assertionFailure()
+            }
+        }
+
+        private static func newGroupSplit(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s,
+            direction: ghostty_action_split_direction_e) {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                // A new group split does nothing with an app target.
+                Ghostty.logger.warning("new group split does nothing with an app target")
+                return
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return }
+                guard let surfaceView = self.surfaceView(from: surface) else { return }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyNewGroupSplit,
                     object: surfaceView,
                     userInfo: [
                         "direction": direction,

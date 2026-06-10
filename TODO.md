@@ -113,11 +113,11 @@
 
 ### Phase 2 への申し送り（Phase 1 で未着手のまま意図的に先送り）
 
-- [ ] `WorkspaceModel` を `ObservableObject`（class）へ昇格
-      （Phase 1 では struct を値渡し。`focusedGroup` 変更が `surfaceTree` 変更を伴わず
-      再描画を要する Phase 2 で昇格する。下記 Phase 1 実装メモ参照）
-- [ ] group 切替は「旧 surfaceTree を groups へ保存 → focusedGroup 更新 → 新 group paneTree を
-      surfaceTree へ差替」を**専用メソッド1箇所**に閉じる（順序を誤ると旧 tree を新 group へ誤同期する）
+- [x] `WorkspaceModel` を `ObservableObject`（class）へ昇格（Phase 2.3 で実施。
+      `@Published private(set) var state` + `TerminalWorkspaceView` を `@ObservedObject` 化）
+- [x] group 切替は「旧 surfaceTree を groups へ保存 → focusedGroup 更新 → 新 group paneTree を
+      surfaceTree へ差替」を**専用メソッド1箇所**に閉じる（`WorkspaceModel.openNewGroup` に集約。
+      Phase 2.3 で実施。zoom 解除も同メソッド内で先行実施）
 - [ ] inactive group の paneTree は surfaceTree とミラーされない（focused のみ）点に留意
 
 ---
@@ -206,22 +206,57 @@ identity 破綻なし
   - [x] 単体テスト 4 件（format / 累積一意性 / 全組合せ枯渇時フォールバック / 番号上方探索）
 - [ ] `WorkspaceModel` への配線（新 group 作成時の名前採番）は 2.3 で実施
 
-### 2.3 new_group_split 実装（§11.1, エッジ §18.4）— 未着手
+### 2.3 new_group_split 実装（§11.1, エッジ §18.4）✅ 完了
 
 Swift 側の挙動。`WorkspaceModel` のアーキテクチャ変更を伴うため独立フェーズとして分離。
 
-- [ ] `WorkspaceModel` を `ObservableObject`（class）へ昇格（Phase 0 申し送り参照）
-- [ ] apprt action → Swift プラミング（`GHOSTTY_ACTION_NEW_GROUP_SPLIT` の case →
-      notification → `BaseTerminalController`）
-- [ ] focusedGroup 基準で新 GroupState 作成（名前は `GroupNameGenerator.make`）→
-      初期 pane 1 つ → canonicalGroupTree へ挿入
-- [ ] group 切替を専用メソッド1箇所に閉じる（旧 surfaceTree 保存 → focusedGroup 更新 →
-      新 group paneTree を surfaceTree へ差替。Phase 0 申し送り参照）
-- [ ] zoom 中は zoom 解除してから隣に作成し、新 group の初期 pane へ focus
-- [ ] デフォルト keybind: Cmd+Opt+D / Cmd+Opt+Shift+D（§10.2, §17, `src/config/Config.zig`）
+- [x] `WorkspaceModel` を `ObservableObject`（class）へ昇格（`@Published private(set) var state`）
+- [x] apprt action → Swift プラミング（`Ghostty.App.action()` に `GHOSTTY_ACTION_NEW_GROUP_SPLIT`
+      の case 追加 → `ghosttyNewGroupSplit` notification → `BaseTerminalController` ハンドラ）
+- [x] focusedGroup 基準で新 GroupState 作成（名前は `GroupNameGenerator.make(existing:)`）→
+      初期 pane 1 つ（新 `SurfaceView`）→ canonicalGroupTree へ隣接挿入
+- [x] group 切替を専用メソッド1箇所に閉じる（`WorkspaceModel.openNewGroup`: 旧 surfaceTree 保存 →
+      canonical 挿入 → focusedGroup 更新。throw 時はローカルコピーで no-op）
+- [x] zoom 中は zoom 解除してから隣に作成し（`openNewGroup` 内で `zoomedGroup = nil` 先行）、
+      新 group の初期 pane へ focus
+- [x] デフォルト keybind: Cmd+Opt+D / Cmd+Opt+Shift+D（§10.2, §17, `src/config/Config.zig` macOS 既定）
 
 **成功条件**: 新 group がランダム名で作成 / 初期 pane 1 つ / focus 移動 /
 Cmd+D は新 group 内のみ分割。
+→ `zig build -Demit-macos-app=false` exit 0、`GhosttyTests` 全パス（`WorkspaceModelTests` に
+`openNewGroup` 3 件追加: 兄弟挿入+focus 切替 / canonical·groups 整合 / focusedGroup 無時 throw）、
+`swiftlint --strict` 0 violations、`zig build test`（"group split" パーサ / "ghostty.h" 同期）パス、
+`zig fmt --check` exit 0。Cmd+D が「focused group 内のみ分割」（不変条件 §14.9）はデータ層で担保。
+
+- [ ] 実機での 2 group 作成・focus 移動・各 group 独立分割の目視確認は未実施
+      （ロジックは自動テストで担保。Phase 3 のラベル目視と併せて実施推奨）
+
+### Phase 2.3 実装メモ（レビュー観点）
+
+- **採用設計（surfaceTree が source of truth のまま class 化）**: `WorkspaceModel` を
+  `ObservableObject` 化し `TerminalWorkspaceView` を `@ObservedObject` に。これにより
+  「focusedGroup 変更が `surfaceTree` 変更を伴わず再描画を要する」将来の操作（Phase 3 rename 等）に
+  備える。Phase 2.3 自体は new_group_split が `surfaceTree` を差替えるため struct でも描画は成立するが、
+  計画通り本フェーズで昇格して以後を簡潔化。
+- **group 切替の単一化と順序**: `openNewGroup` 1 メソッドに集約。
+  ① zoom 解除 → ② 旧 focused group へ現 surfaceTree を保存 → ③ canonical へ隣接挿入 →
+  ④ focusedGroup を新 group へ。全てローカル `var next = state` に対して行い、`inserting` の throw 時は
+  `state` 無変更（原子性）。`focusedGroup` を先に新 group へ移してから controller 側で
+  `surfaceTree = newPaneTree` するため、続く `surfaceTreeDidChange` のミラーは新 group への no-op。
+- **group 操作の undo は意図的に未実装（要申し送り）**: 既存 `replaceSurfaceTree` の undo は
+  `surfaceTree` のみ復元するため、focusedGroup 切替後に再生すると旧 pane tree を**新 group へ**
+  誤ミラーして層を破壊する。よって new_group_split は `replaceSurfaceTree` を使わず `surfaceTree` を
+  直接差替え（undo 非登録）。group 層を含む undo は独立設計が必要なため横断タスクへ（下記）。
+- **direction 変換**: 通知ハンドラが C enum `ghostty_action_split_direction_e` を
+  `SplitTree<GroupRef>.NewDirection` へ変換（`ghosttyDidNewSplit` を踏襲、`auto` は既存同様 no-op）。
+  既定 keybind は right/down のみ割当。
+- **既知の制約（focused group のみ surfaceTree に乗る）**: new_group_split 後、`surfaceTree` は新
+  group の pane のみを保持する。両 group の描画は各 `group.paneTree`（workspace.state）から行われ
+  維持されるが、controller が `surfaceTree` を走査する処理（occlusion / color scheme / bell 集約 /
+  flagsChanged / focus sync）は **focused group の surface にしか及ばない**。非 focused group の
+  surface は process 生存・描画は継続するが、これらの window 横断同期からは外れる。Phase 0 の
+  「focused のみミラー」設計の帰結で、group 間移動が常用化する Phase 4（goto_group）で
+  controller の surface 走査を「全 group の全 surface」へ広げる際に併せて解消する想定。
 
 ### Phase 2.1 実装メモ（レビュー観点）
 
@@ -310,6 +345,14 @@ shelf 表示 / pill click で即復帰。
       zoom 対象なら解除 → nearest visible group へ focus
 - [ ] 最後の pane で Cmd+W は close_group confirmation に昇格（§11.10, 不変条件 18）
 - [ ] 最後の group の close は tab/window close に委譲（§18.5）
+
+## 横断: group 操作の undo（Phase 2.3 申し送り）
+
+- [ ] group 層を含む undo/redo の設計と実装。現状 `new_group_split` は undo 非登録
+      （既存 `replaceSurfaceTree` の surfaceTree-only undo は focusedGroup 切替後に旧 tree を
+      新 group へ誤ミラーするため流用不可）。`WorkspaceState` + `surfaceTree` のスナップショットを
+      まとめて復元する group-aware undo を別途用意し、new_group_split / close_group / hide·show /
+      group resize へ横断適用する。
 
 ---
 

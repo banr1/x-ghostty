@@ -5,15 +5,12 @@ import SwiftUI
 /// Renders the effective visible group tree and (from Phase 5) overlays the
 /// hidden-group shelf.
 ///
-/// Phase 1 note: `workspace` is passed by value rather than observed. The
-/// controller's `@Published surfaceTree` remains the single source of truth and
-/// the focused group's pane tree is mirrored from it synchronously, so every
-/// render-relevant change already flows through a `surfaceTree` change that
-/// re-renders this view. Promoting `WorkspaceModel` to an `ObservableObject`
-/// is deferred to Phase 2, where changing `focusedGroup` must re-render the
-/// group tree without a `surfaceTree` change.
+/// `workspace` is observed (Phase 2): a `surfaceTree` change still re-renders
+/// this view via the focused group's mirrored pane tree, but switching the
+/// focused group (and, later, renaming) mutates `WorkspaceModel.state` without
+/// a `surfaceTree` change, so direct observation is required for those.
 struct TerminalWorkspaceView: View {
-    let workspace: WorkspaceModel
+    @ObservedObject var workspace: WorkspaceModel
 
     /// Pane-level operations, forwarded to each rendered group. In Phase 1 only
     /// the focused group exists, so this routes to the controller's

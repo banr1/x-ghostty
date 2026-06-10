@@ -197,6 +197,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidNewGroupSplit(_:)),
+            name: Ghostty.Notification.ghosttyNewGroupSplit,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidEqualizeSplits(_:)),
             name: Ghostty.Notification.didEqualizeSplits,
             object: nil)
@@ -277,6 +282,65 @@ class BaseTerminalController: NSWindowController,
             moveFocusTo: newView,
             moveFocusFrom: oldView,
             undoAction: "New Split")
+
+        return newView
+    }
+
+    /// Create a new group as a sibling of the focused group, with a single
+    /// initial pane, and move focus into it (`SPEC.md` §11.1).
+    ///
+    /// Unlike `newSplit`, this does not register an undo action. The group
+    /// transition lives in the group layer, but `replaceSurfaceTree`'s undo only
+    /// restores `surfaceTree`; replaying it after the focused group has switched
+    /// would mirror the old pane tree into the *new* group and corrupt the
+    /// layer. Group-aware undo is a deferred follow-up (see `TODO.md`), so for
+    /// now `surfaceTree` is swapped directly with no undo registration.
+    @discardableResult
+    func newGroupSplit(
+        at oldView: Ghostty.SurfaceView,
+        direction: SplitTree<GroupRef>.NewDirection,
+        baseConfig config: Ghostty.SurfaceConfiguration? = nil
+    ) -> Ghostty.SurfaceView? {
+        // The anchor surface must be in our (the focused group's) tree, and we
+        // need a focused group to anchor the new sibling against.
+        guard surfaceTree.root?.node(view: oldView) != nil else { return nil }
+        guard workspace.state.focusedGroup != nil else { return nil }
+        guard let ghostty_app = ghostty.app else { return nil }
+
+        // Build the new group's single initial pane.
+        let newView = Ghostty.SurfaceView(ghostty_app, baseConfig: config)
+        let newPaneTree = SplitTree<Ghostty.SurfaceView>(view: newView)
+
+        // Name and assemble the new group, focused on its initial pane.
+        let now = Date()
+        let existingNames = Set(workspace.state.groups.values.map(\.name))
+        let newGroup = GroupState(
+            id: GroupID(),
+            name: GroupNameGenerator.make(existing: existingNames),
+            paneTree: newPaneTree,
+            focusedSurface: SurfaceID(rawValue: newView.id),
+            createdAt: now,
+            lastFocusedAt: now)
+
+        // Single group-switch point: persist the outgoing pane tree, insert the
+        // new group next to the focused one, and switch focus (un-zooms first).
+        do {
+            try workspace.openNewGroup(
+                newGroup,
+                direction: direction,
+                savingOutgoingPaneTree: surfaceTree)
+        } catch {
+            Ghostty.logger.warning("failed to open new group split: \(error, privacy: .public)")
+            return nil
+        }
+
+        // Swap the source-of-truth pane tree to the new group's tree. The
+        // resulting `surfaceTreeDidChange` mirrors it back into the now-focused
+        // new group (a no-op) and re-renders the workspace.
+        surfaceTree = newPaneTree
+        DispatchQueue.main.async {
+            Ghostty.moveFocus(to: newView, from: oldView)
+        }
 
         return newView
     }
@@ -645,6 +709,30 @@ class BaseTerminalController: NSWindowController,
         }
 
         newSplit(at: oldView, direction: splitDirection, baseConfig: config)
+    }
+
+    @objc private func ghosttyDidNewGroupSplit(_ notification: Notification) {
+        // The anchor surface must be within our tree.
+        guard let oldView = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.root?.node(view: oldView) != nil else { return }
+
+        // Notification must contain our base config.
+        let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
+        let config = configAny as? Ghostty.SurfaceConfiguration
+
+        // Determine the direction the new group should be placed in.
+        guard let directionAny = notification.userInfo?["direction"] else { return }
+        guard let direction = directionAny as? ghostty_action_split_direction_e else { return }
+        let splitDirection: SplitTree<GroupRef>.NewDirection
+        switch direction {
+        case GHOSTTY_SPLIT_DIRECTION_RIGHT: splitDirection = .right
+        case GHOSTTY_SPLIT_DIRECTION_LEFT: splitDirection = .left
+        case GHOSTTY_SPLIT_DIRECTION_DOWN: splitDirection = .down
+        case GHOSTTY_SPLIT_DIRECTION_UP: splitDirection = .up
+        default: return
+        }
+
+        newGroupSplit(at: oldView, direction: splitDirection, baseConfig: config)
     }
 
     @objc private func ghosttyDidEqualizeSplits(_ notification: Notification) {

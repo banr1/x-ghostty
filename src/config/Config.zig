@@ -7041,6 +7041,16 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
+                .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true } },
+                .{ .new_group_split = .right },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true, .shift = true } },
+                .{ .new_group_split = .down },
+            );
+            try self.set.put(
+                alloc,
                 .{ .key = .{ .unicode = '[' }, .mods = .{ .super = true } },
                 .{ .goto_split = .previous },
             );

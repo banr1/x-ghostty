@@ -389,6 +389,11 @@ extension Ghostty.Notification {
     /// userdata has one key "direction" with the direction to split to.
     static let ghosttyNewSplit = Notification.Name("com.mitchellh.ghostty.newSplit")
 
+    /// Posted when a new group split is requested. Like `ghosttyNewSplit`, the sending object is the
+    /// surface that had focus and the userinfo carries a "direction" key, but this creates a sibling
+    /// group in the workspace's group tree rather than a split within the focused group (`SPEC.md` §11.1).
+    static let ghosttyNewGroupSplit = Notification.Name("com.mitchellh.ghostty.newGroupSplit")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.ghostty.closeSurface")
 
