@@ -9,14 +9,24 @@ import Testing
 /// integration checks.
 struct WorkspaceModelTests {
     @Test func wrappingCreatesSingleDefaultFocusedGroup() {
-        let model = WorkspaceModel(wrapping: .init())
+        // Inject a fixed name so the assertion is deterministic; production draws
+        // a random `adjective-noun` name from `GroupNameGenerator`.
+        let model = WorkspaceModel(wrapping: .init(), name: "amber-owl")
 
         #expect(model.state.groups.count == 1)
         let focused = model.state.focusedGroup
         #expect(focused != nil)
         #expect(model.state.canonicalGroupTree.find(id: focused!) != nil)
         #expect(model.focusedGroupState != nil)
-        #expect(model.focusedGroupState?.name == WorkspaceModel.defaultGroupName)
+        #expect(model.focusedGroupState?.name == "amber-owl")
+    }
+
+    @Test func wrappingWithoutNameDrawsARandomGroupName() {
+        // No injected name: a random `adjective-noun` (or `group-N` fallback) is
+        // generated, so the group is always named (never empty).
+        let model = WorkspaceModel(wrapping: .init())
+        let name = model.focusedGroupState?.name
+        #expect(name?.isEmpty == false)
     }
 
     @Test func wrappingEmptyPaneTreeHasNoFocusedSurface() {

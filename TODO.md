@@ -653,50 +653,66 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
 
 ---
 
-## 横断: UI 洗練 & rebrand 仕上げ（2026-06 追加）
+## 横断: UI 洗練 & rebrand 仕上げ（2026-06 追加）✅ 完了
 
 全 Phase 完了後のフィードバック。① グループ名ラベルの「ダサさ」解消（安っぽいスタイル+
 悪い配置）、② 最初のグループ名もランダム化、③ メニューバーのアプリ名を XGhostty に。
 
-### A. グループ名ヘッダーの再設計（overlay 廃止 → ヘッダー帯）
+### A. グループ名ヘッダーの再設計（overlay 廃止 → ヘッダー帯）✅ 完了
 
 要件: 「左上のまま・オーバーレイしない・常時表示・Ghostty のターミナルに馴染む見た目」。
 
-- [ ] overlay（`GroupView` の ZStack, 不変条件 §14.13）を廃止し、各グループ上部に
+- [x] overlay（`GroupView` の ZStack, 不変条件 §14.13）を廃止し、各グループ上部に
       **専用ヘッダー帯**を導入。ターミナルはその下に配置（レイアウトを押し下げる）
-  - [ ] `GroupView` を `ZStack(terminal + label overlay)` → `VStack(header + terminal)` へ
-  - [ ] SPEC §6.3 / §7.1 / 不変条件 §14.13（「overlay は layout を押し下げない」）を
-        ヘッダー帯前提に改訂
-- [ ] スタイルを Ghostty のターミナルに馴染ませる（「安っぽさ」解消の本丸）
-  - [ ] `.caption` システムフォント → 設定中の**ターミナルフォント**に寄せる（config 参照）
-  - [ ] material ピル背景を廃止 → ターミナル配色に馴染むフラットな地組み
-  - [ ] focused / unfocused の区別は色・太さ・不透明度で維持（accent border は再検討）
-- [ ] 既存インタラクションを維持: single-click focus / double-click rename /
-      `rename_group` action / inline TextField の commit・cancel 挙動
-- [ ] 常時表示を維持（単一グループでもヘッダーを表示）
-- [ ] レイアウト押し下げ後もターミナル描画領域が正しく再計算される
-      （split / resize_group / zoom / hide·show と整合、ヘッダー高さぶん縮む）
+  - [x] `GroupView` を `ZStack(terminal + label overlay)` → `VStack(header + terminal)` へ
+  - [x] SPEC §6.1 / §6.3 / §7.1 / 不変条件 §14.13（「overlay は layout を押し下げない」→
+        「ヘッダー帯は自身の高さぶん押し下げる」）+ Phase 3 成功条件を改訂
+- [x] スタイルを Ghostty のターミナルに馴染ませる（「安っぽさ」解消の本丸）
+  - [x] `.caption` システムフォント → **monospace システムフォント**でターミナルに寄せる
+        （設定中の `font-family` は C API 非公開のため直接参照不可。monospace で「寄せる」
+        方針をユーザー合意。weight は focused=medium / unfocused=regular）
+  - [x] material ピル背景を廃止 → **ターミナル背景色フィル + split-divider 色のヘアライン**の
+        フラットな地組み（`ghostty.config.backgroundColor` / `splitDividerColor` を参照）
+  - [x] focused / unfocused の区別は太さ（medium/regular）+ **text のみ不透明度**（1.0 / 0.4）で
+        維持。帯背景は両状態とも不透明。accent border は撤去（ユーザー選択「フラット帯+下罫線」）
+- [x] 既存インタラクションを維持: single-click focus / double-click rename /
+      `rename_group` action / inline TextField の commit・cancel 挙動（`GroupLabel` ロジック不変）
+- [x] 常時表示を維持（単一グループでもヘッダーを表示）
+- [x] レイアウト押し下げ後もターミナル描画領域が正しく再計算される
+      （`VStack(spacing: 0)` で TerminalSplitTreeView が残り領域を占有。split / resize_group /
+      zoom / hide·show は paneTree 側の責務で不変）
 - [ ] 目視: overlay 由来の重なりが消える / ヘッダー帯がターミナルに被らない /
-      フォント・配色がターミナルと統一感がある
+      フォント・配色がターミナルと統一感がある（自動ビルド成功で論理担保。実機目視は未実施）
 
-### B. 最初のグループ名もランダム生成
+### B. 最初のグループ名もランダム生成 ✅ 完了
 
-- [ ] `WorkspaceModel.defaultGroupName = "Group 1"` を廃止し、`init(wrapping:)` で
-      `GroupNameGenerator.make(existing: [])` を使用（最初のグループも adjective-noun に）
-- [ ] 影響範囲の更新: "Group 1" を前提にした `WorkspaceModelTests` /
-      restore 系アサーションを修正（テストは決定論のため RNG 注入版を使用）
-- [ ] restore 時は名前を再生成しない原則を維持（生成は新規作成時のみ）
+- [x] `WorkspaceModel.defaultGroupName = "Group 1"` を廃止し、`init(wrapping:)` で
+      `GroupNameGenerator.make(existing: [])` を使用（最初のグループも adjective-noun に）。
+      `name: String? = nil` 注入シームを追加（本番は nil で乱数、テストは固定名を注入）
+- [x] 影響範囲の更新: `WorkspaceModelTests.wrappingCreatesSingleDefaultFocusedGroup` を
+      固定名注入（"amber-owl"）に修正 + 新規 `wrappingWithoutNameDrawsARandomGroupName`
+      （無注入時も非空名が付くことを検証）。"Group 1" 前提のアサーションは他に無し
+- [x] restore 時は名前を再生成しない原則を維持（restore は `init(_:)` / `init(workspace:)`
+      経由で `init(wrapping:)` を通らないため、stored name がそのまま使われる）
 
-### C. メニューバーのアプリ名を XGhostty に
+### C. メニューバーのアプリ名を XGhostty に ✅ 完了
 
-- [ ] 根本原因: `CFBundleName` 未設定 → `PRODUCT_NAME`(=Ghostty) にフォールバック。
+- [x] 根本原因: `CFBundleName` 未設定 → `PRODUCT_NAME`(=Ghostty) にフォールバック。
       macOS アプリメニューの太字名は `CFBundleName` を使うため Ghostty のまま
       （`MainMenu.xib` の "XGhostty" は AppKit が実行時に上書き）
-- [ ] 主要アプリターゲットの全 build config に
-      `INFOPLIST_KEY_CFBundleName = XGhostty`（DEBUG は `XGhostty[DEBUG]`）を追加
+- [x] 主要アプリ「Ghostty」ターゲットの全 build config（Debug / Release / ReleaseLocal）に
+      `INFOPLIST_KEY_CFBundleName = XGhostty`（Debug は `XGhostty[DEBUG]`）を追加。
+      config UUID 指定で `INFOPLIST_KEY_CFBundleDisplayName` 直後にアルファベット順挿入、
+      `plutil -lint` で pbxproj の妥当性確認済み
 - [ ] クリーンビルド + 旧 .app 削除でメニューバー左上が XGhostty になることを確認
-      （LaunchServices キャッシュ更新のため要再ビルド/再インストール）
-- [ ] bundle ID / TERM / 実行ファイル名は従来どおり Ghostty 維持（rebrand 方針）
+      （LaunchServices キャッシュ更新のため要再ビルド/再インストール。未実施）
+- [x] bundle ID / TERM / 実行ファイル名は従来どおり Ghostty 維持（rebrand 方針）
+
+**検証**: `swiftlint --strict`（変更 4 Swift ファイル）0 violations、
+`zig build -Demit-macos-app=false` exit 0、`zig fmt --check src/` exit 0、
+`xcodebuild -only-testing:GhosttyTests test`（C の pbxproj 変更込みでアプリビルド +
+全 `GhosttyTests` `** TEST SUCCEEDED **`、`WorkspaceModelTests` の更新 1 件 + 新規 1 件パス、
+`WorkspaceState`/`TerminalRestorable`/`SplitTree` 回帰なし）、`plutil -lint` OK。
 
 ---
 

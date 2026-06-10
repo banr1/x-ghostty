@@ -1,11 +1,17 @@
 import SwiftUI
 
-/// The name label drawn at a group's top-left corner (`SPEC.md` §7.1).
+/// The name-header band drawn across a group's top edge (`SPEC.md` §7.1).
 ///
-/// `GroupView` renders this as an overlay, so it never displaces the terminal
-/// layout (invariant §14.13). Focused groups are emphasized (full opacity,
-/// stronger material, accent border); unfocused groups recede to ~0.4 opacity
-/// but stay legible.
+/// `GroupView` stacks this above the terminal in a `VStack`, so the band takes
+/// its own height and pushes the terminal layout down (invariant §14.13) — it
+/// is not an overlay. The band blends with the terminal: it fills with the
+/// configured terminal background color and is separated from the panes by a
+/// hairline in the split-divider color, so it reads as part of the terminal
+/// rather than a floating chip.
+///
+/// Focused groups are emphasized (full-opacity text, medium weight); unfocused
+/// groups recede (text dimmed to ~0.4) but stay legible. The band background is
+/// drawn at full opacity in both states so only the text dims.
 ///
 /// Interaction (§7.1):
 /// - single click  → focus that group
@@ -17,6 +23,8 @@ import SwiftUI
 /// cancels on Escape. To keep Escape unambiguous, Escape reverts the draft to
 /// the current title first, so the trailing focus-loss commit becomes a no-op.
 struct GroupLabel: View {
+    @EnvironmentObject private var ghostty: Ghostty.App
+
     let title: String
     let isFocused: Bool
     let isRenaming: Bool
@@ -31,28 +39,31 @@ struct GroupLabel: View {
 
     var body: some View {
         content
-            .font(.caption)
+            .font(headerFont)
             .lineLimit(1)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background {
-                let shape = RoundedRectangle(cornerRadius: 4)
-                if isFocused || isRenaming {
-                    shape.fill(.regularMaterial)
-                } else {
-                    shape.fill(.thinMaterial)
-                }
-            }
-            .overlay {
-                // A subtle accent border further emphasizes the focused group.
-                if isFocused && !isRenaming {
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(Color.accentColor.opacity(0.6), lineWidth: 1)
-                }
-            }
+            .foregroundStyle(.primary)
             // Focused groups are emphasized; unfocused groups stay visible but
-            // recede (`SPEC.md` §7.1). The editor is always full opacity.
+            // recede (`SPEC.md` §7.1). The editor is always full opacity. This
+            // dims only the text — the band background below stays opaque.
             .opacity(isRenaming ? 1.0 : (isFocused ? 1.0 : 0.4))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            // Blend with the terminal: fill with the terminal background and
+            // separate from the panes with a divider-colored hairline.
+            .background(ghostty.config.backgroundColor)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(ghostty.config.splitDividerColor)
+                    .frame(height: 1)
+            }
+    }
+
+    /// A monospaced system font so the header rhymes with the terminal text
+    /// without threading the (C-API-private) terminal `font-family` through.
+    /// Focused groups use a slightly heavier weight for emphasis.
+    private var headerFont: Font {
+        .system(size: 11, weight: isFocused ? .medium : .regular, design: .monospaced)
     }
 
     @ViewBuilder

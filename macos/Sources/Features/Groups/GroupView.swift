@@ -13,18 +13,19 @@ struct GroupLabelActions {
     var cancelRename: () -> Void
 }
 
-/// Renders a single group: its pane split tree with a name-label overlay
+/// Renders a single group: a name-header band stacked above its pane split tree
 /// (`SPEC.md` §6.3).
 ///
-/// The label is an overlay (`ZStack`) so it never pushes the terminal layout
-/// down (invariant §14.13). It is always shown (one label per group, §7.1),
-/// emphasized when focused and dimmed otherwise. Single-click focuses the
-/// group; double-click begins an inline rename (`GroupLabel`).
+/// The header is a `VStack` band (not an overlay), so it pushes the terminal
+/// layout down by its own height (invariant §14.13). It is always shown (one
+/// header per group, §7.1), emphasized when focused and dimmed otherwise.
+/// Single-click focuses the group; double-click begins an inline rename
+/// (`GroupLabel`).
 struct GroupView: View {
     let group: GroupState
     let isFocused: Bool
 
-    /// Whether this group's label is currently in inline-rename mode.
+    /// Whether this group's header is currently in inline-rename mode.
     let isRenaming: Bool
 
     /// Pane-level operations within this group's terminal split tree. Only the
@@ -32,15 +33,11 @@ struct GroupView: View {
     /// this routes there.
     let paneAction: (TerminalSplitOperation) -> Void
 
-    /// Focus / rename callbacks for the label.
+    /// Focus / rename callbacks for the header.
     let labelActions: GroupLabelActions
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            TerminalSplitTreeView(
-                tree: group.paneTree,
-                action: paneAction)
-
+        VStack(spacing: 0) {
             GroupLabel(
                 title: group.name,
                 isFocused: isFocused,
@@ -49,7 +46,10 @@ struct GroupView: View {
                 onBeginRename: { labelActions.beginRename(group.id) },
                 onCommitRename: { labelActions.commitRename(group.id, $0) },
                 onCancelRename: labelActions.cancelRename)
-                .padding(6)
+
+            TerminalSplitTreeView(
+                tree: group.paneTree,
+                action: paneAction)
         }
     }
 }

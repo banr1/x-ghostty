@@ -10,11 +10,6 @@ import Foundation
 /// flow through a `surfaceTree` change (e.g. switching the focused group, and —
 /// later — rename). See `SPEC.md` §6.2.
 final class WorkspaceModel: ObservableObject {
-    /// The default group name used while the group layer is single-group. New
-    /// groups created via `new_group_split` get random `adjective-noun` names
-    /// from `GroupNameGenerator` (`SPEC.md` §8).
-    static let defaultGroupName = "Group 1"
-
     enum WorkspaceError: Error {
         /// There is no focused group to anchor a new group split against.
         case noFocusedGroup
@@ -52,13 +47,23 @@ final class WorkspaceModel: ObservableObject {
     }
 
     /// Wrap an existing single pane tree into one default group (Phase 0).
-    init(wrapping paneTree: SplitTree<Ghostty.SurfaceView>, now: Date = Date()) {
+    ///
+    /// The first group also gets a random `adjective-noun` name from
+    /// `GroupNameGenerator` (there are no existing names to avoid). Names are
+    /// generated only at creation; restore reuses the stored name and never
+    /// regenerates (`SPEC.md` §8). `name` is injectable so tests stay
+    /// deterministic; production passes `nil` to draw a random name.
+    init(
+        wrapping paneTree: SplitTree<Ghostty.SurfaceView>,
+        now: Date = Date(),
+        name: String? = nil
+    ) {
         let groupID = GroupID()
         let focused = paneTree.firstLeaf.map { SurfaceID(rawValue: $0.id) }
 
         let group = GroupState(
             id: groupID,
-            name: WorkspaceModel.defaultGroupName,
+            name: name ?? GroupNameGenerator.make(existing: []),
             paneTree: paneTree,
             focusedSurface: focused,
             createdAt: now,
