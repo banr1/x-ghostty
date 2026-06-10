@@ -483,4 +483,27 @@ final class WorkspaceModel: ObservableObject {
         group.name = trimmed
         state.groups[id] = group
     }
+
+    // MARK: Undo (group-aware undo cross-cutting task)
+
+    /// Restore an entire captured `WorkspaceState` wholesale. Used by the
+    /// controller's group-aware undo/redo to atomically reinstate a snapshot
+    /// taken before a structural group mutation (`new_group_split` / `hide` /
+    /// `show` / `close`).
+    ///
+    /// Unlike `replaceFocusedPaneTree` (which only updates the *focused* group's
+    /// panes), this swaps `focusedGroup`, `canonicalGroupTree`, `groups`, and the
+    /// runtime visibility/zoom fields together, so the restore stays correct even
+    /// across a focused-group switch. The caller is responsible for re-syncing
+    /// `surfaceTree` to `focusedPaneTree` and moving keyboard focus afterwards.
+    ///
+    /// Any in-progress inline rename whose target no longer exists in the
+    /// restored state is cancelled, so the transient editing UI can't outlive its
+    /// group.
+    func restoreState(_ snapshot: WorkspaceState) {
+        state = snapshot
+        if let renamingGroup, state.groups[renamingGroup] == nil {
+            self.renamingGroup = nil
+        }
+    }
 }

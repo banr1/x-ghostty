@@ -593,14 +593,63 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
   focusedGroup 切替後に旧 tree を誤 group へミラーするため流用不可。`.switched` 経路は undo 非登録、
   `.closedLast` 経路のみ既存 tab/window close の undo を流用。group-aware undo 横断タスクで統合予定（下記）。
 
-## 横断: group 操作の undo（Phase 2.3 申し送り）
+## 横断: group 操作の undo（Phase 2.3 申し送り）✅ 完了
 
-- [ ] group 層を含む undo/redo の設計と実装。現状 `new_group_split` と
-      `focusGroup`（label single-click の group 切替）は undo 非登録
-      （既存 `replaceSurfaceTree` の surfaceTree-only undo は focusedGroup 切替後に旧 tree を
-      新 group へ誤ミラーするため流用不可）。`WorkspaceState` + `surfaceTree` のスナップショットを
-      まとめて復元する group-aware undo を別途用意し、new_group_split / focusGroup(goto_group) /
-      close_group / hide·show / group resize へ横断適用する。
+- [x] group 層を含む undo/redo の設計と実装。`WorkspaceState` 全体のスナップショットを
+      まとめて復元する group-aware undo を新設し、**構造的** group 操作
+      （`new_group_split` / `hide_group` / `show_group` / `close_group` の `.switched`）へ適用。
+      合わせて既存 pane undo（`replaceSurfaceTree`）に **focusedGroup ガード**を追加し、
+      別 group 切替後に旧 surfaceTree を誤ミラーする層破壊を根絶。
+  - [x] `WorkspaceModel.restoreState(_:)`: `WorkspaceState` を丸ごと差替える復元 API
+        （focusedGroup / canonical / groups / hidden / zoom を原子的に。消えた group を指す
+        `renamingGroup` は併せてクリア）+ 単体テスト 4 件
+        （`restoreStateSwapsEntireState` / `restoreStateRoundTripsAfterHide` /
+        `restoreStateCancelsRenameForMissingGroup` / `restoreStateKeepsRenameForSurvivingGroup`）
+  - [x] `BaseTerminalController.registerWorkspaceUndo` / `restoreWorkspaceState`:
+        before/after の `WorkspaceState` を捕捉する対称 ping-pong。スナップショットが
+        live `SurfaceView` を保持するため close_group の undo は `undoExpiration` 窓内で
+        process を生かす（既存 close_surface undo と同セマンティクス）
+  - [x] pane undo（`replaceSurfaceTree`）に `groupID` ガード: 別 group で再生時は no-op
+        （同 group へ戻れば再び有効。期限切れ非依存で堅牢）
+
+### group-aware undo 実装メモ（レビュー観点）
+
+- **採用設計（天機 /abyss と協議の上、refined Option B を簡素化）**: 当初案 Option A
+  「全 group 切替を undo スタックに載せてバリアにする」は `ExpiringUndoManager` の**個別期限切れ**で
+  バリア不変条件が崩れ corruption が再発しうるため却下。代わりに ①構造的 group 操作のみ
+  whole-state スナップショット undo、②pane undo に focusedGroup ガード、を採用。**②のガード単独で
+  corruption は完全に防げる**（別 group での pane undo は no-op、同 group 復帰で再有効、期限切れ非依存）
+  ため、天機が補助的に提案した token-target による pane undo の選択的クリアは**意図的に省略**し
+  差分を最小化した（共有 pane undo 経路への手術リスク回避）。
+- **undo 登録するもの / しないもの（pane 層との parity を基準に判断）**:
+  - 登録: `new_group_split`("New Group") / `hide_group`("Hide Group") / `show_group`("Show Group") /
+    `close_group`.switched("Close Group")。いずれも focusedGroup を切替える構造的変更。
+  - 非登録（parity）: `focusGroup`/`goto_group`（純ナビ＝`goto_split`・タブ切替と同様）、
+    `resize_group`（divider drag resize）、`equalize_groups`（`equalize_splits`）、
+    `toggle_group_zoom`（`toggle_split_zoom`・runtime-only）、`rename_group`
+    （`prompt_tab_title`・インラインエディタ内 text undo はローカル）。
+  - `close_group`.closedLast は model 非変更で既存 tab/window close（自前 undo 持ち）へ委譲するため
+    **二重登録しない**。
+- **復元順序が load-bearing**: `restoreWorkspaceState` は ①`workspace.restoreState` で state を先に復元
+  → ②`surfaceTree = focusedPaneTree` → ③`moveKeyboardFocus`。②の `surfaceTreeDidChange` ミラーが
+  読む `self.focusedSurface` が古くても、`replaceFocusedPaneTree` が「復元木に無い surface は無視し
+  stored focus を保持」するため無害。
+- **既知の制約 / 残課題（follow-up）**:
+  - **pane undo メニュー表示**: 別 group へ切替後も "Undo New Split" 等がメニューに残り、押下すると
+    ガードで no-op になる（cosmetic）。完全解消には token-target での選択的クリアが必要。
+  - **state-only 変更の restorable-state 非無効化**: `resize_group`/`equalize_groups`/`rename_group` は
+    `surfaceTree` を変えないため `surfaceTreeDidChange`→`invalidateRestorableState` を経由せず、
+    canonical 比率 / name の変更が再起動保存に乗らない**既存の潜在バグ**（本タスク範囲外。別途
+    明示 `invalidateRestorableState()` フックが必要）。
+  - undo の実機目視（Cmd+Z で new_group/hide/show/close が反転・process 生存）は未実施。
+
+### group undo 由来の follow-up（任意・低優先）
+
+- [ ] state-only group 変更（`resize_group` / `equalize_groups` / `rename_group`）が
+      `surfaceTree` を変えないため restorable-state が無効化されない既存バグの修正
+      （各ハンドラで明示 `invalidateRestorableState()` を呼ぶ。本タスクで顕在化）
+- [ ] pane undo のメニュー残留（別 group 切替後に no-op になる項目）を消すための
+      token-target ベース選択的クリア（cosmetic。現状はガードで安全だが UX 改善余地）
 
 ---
 

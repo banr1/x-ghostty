@@ -348,12 +348,11 @@ class BaseTerminalController: NSWindowController,
     /// Create a new group as a sibling of the focused group, with a single
     /// initial pane, and move focus into it (`SPEC.md` §11.1).
     ///
-    /// Unlike `newSplit`, this does not register an undo action. The group
-    /// transition lives in the group layer, but `replaceSurfaceTree`'s undo only
-    /// restores `surfaceTree`; replaying it after the focused group has switched
-    /// would mirror the old pane tree into the *new* group and corrupt the
-    /// layer. Group-aware undo is a deferred follow-up (see `TODO.md`), so for
-    /// now `surfaceTree` is swapped directly with no undo registration.
+    /// Registers a group-aware undo ("New Group"): because the focused group
+    /// switches here, `replaceSurfaceTree`'s `surfaceTree`-only undo can't be
+    /// reused (it would mirror the old panes into the new group). Instead we
+    /// snapshot the whole `WorkspaceState` before/after and register a
+    /// `registerWorkspaceUndo` that restores them atomically.
     @discardableResult
     func newGroupSplit(
         at oldView: Ghostty.SurfaceView,
@@ -381,6 +380,9 @@ class BaseTerminalController: NSWindowController,
             createdAt: now,
             lastFocusedAt: now)
 
+        // Snapshot before the switch so the undo can restore the outgoing group.
+        let before = workspace.state
+
         // Single group-switch point: persist the outgoing pane tree, insert the
         // new group next to the focused one, and switch focus (un-zooms first).
         do {
@@ -400,6 +402,9 @@ class BaseTerminalController: NSWindowController,
         DispatchQueue.main.async {
             Ghostty.moveFocus(to: newView, from: oldView)
         }
+
+        // The post-mirror state is the redo target; it retains the new pane.
+        registerWorkspaceUndo("New Group", undo: before, redo: workspace.state)
 
         return newView
     }
@@ -641,10 +646,22 @@ class BaseTerminalController: NSWindowController,
             undoManager.setActionName(undoAction)
         }
 
+        // The group this pane edit belongs to. A pane undo only ever restores
+        // `surfaceTree`, which `surfaceTreeDidChange` mirrors into whatever group
+        // is focused *at replay time*. If the focused group has since changed,
+        // replaying would mirror this group's panes into the wrong group and
+        // corrupt the layer (the group-aware undo cross-cutting task). Capturing
+        // the group here and skipping when it differs is the corruption guard —
+        // pane undos stay valid across round-trip group switches (the guard
+        // passes again once we return) but no-op while focused elsewhere.
+        let groupID = workspace.state.focusedGroup
+
         undoManager.registerUndo(
             withTarget: self,
             expiresAfter: undoExpiration
         ) { target in
+            guard target.workspace.state.focusedGroup == groupID else { return }
+
             target.surfaceTree = oldTree
             if let oldView {
                 DispatchQueue.main.async {
@@ -656,12 +673,58 @@ class BaseTerminalController: NSWindowController,
                 withTarget: target,
                 expiresAfter: target.undoExpiration
             ) { target in
+                guard target.workspace.state.focusedGroup == groupID else { return }
+
                 target.replaceSurfaceTree(
                     newTree,
                     moveFocusTo: newView,
                     moveFocusFrom: target.focusedSurface,
                     undoAction: undoAction)
             }
+        }
+    }
+
+    // MARK: Group-aware undo (cross-cutting task)
+
+    /// Restore a captured `WorkspaceState` snapshot and re-sync the
+    /// source-of-truth `surfaceTree` to the restored focused group.
+    ///
+    /// Order is load-bearing: the model is restored *first* so `focusedGroup` is
+    /// correct before `surfaceTree` is assigned — its `surfaceTreeDidChange`
+    /// mirror then writes into the restored group, not a stale one. The mirror
+    /// reads the possibly-stale `self.focusedSurface`, but `replaceFocusedPaneTree`
+    /// ignores a surface that isn't in the restored tree and keeps the snapshot's
+    /// stored focus, so the stale value is harmless.
+    private func restoreWorkspaceState(_ snapshot: WorkspaceState) {
+        workspace.restoreState(snapshot)
+        let focus = workspace.focusedGroupState?.focusedSurface
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: focus)
+    }
+
+    /// Register a group-aware undo that swaps between two whole-`WorkspaceState`
+    /// snapshots. Unlike `replaceSurfaceTree`'s undo (which restores only
+    /// `surfaceTree`), this restores `focusedGroup` / `canonicalGroupTree` /
+    /// `groups` together, so it stays correct across focused-group switches.
+    ///
+    /// The snapshots are value-type copies that retain the live `SurfaceView`s,
+    /// so an undo of `close_group` keeps the closed group's processes alive for
+    /// the `undoExpiration` window (mirroring `close_surface` undo), and a redo of
+    /// `new_group_split` can restore the new pane the post-mutation snapshot
+    /// retains. Symmetric ping-pong: each direction re-registers its inverse.
+    private func registerWorkspaceUndo(
+        _ actionName: String,
+        undo undoState: WorkspaceState,
+        redo redoState: WorkspaceState
+    ) {
+        guard let undoManager else { return }
+        undoManager.setActionName(actionName)
+        undoManager.registerUndo(
+            withTarget: self,
+            expiresAfter: undoExpiration
+        ) { target in
+            target.restoreWorkspaceState(undoState)
+            target.registerWorkspaceUndo(actionName, undo: redoState, redo: undoState)
         }
     }
 
@@ -1225,27 +1288,33 @@ class BaseTerminalController: NSWindowController,
     /// Hide the focused group in response to `hide_group` (`SPEC.md` §11.7). The
     /// model moves focus to a visible neighbor and keeps the hidden group's
     /// processes alive; here we swap `surfaceTree` to the neighbor's panes and
-    /// move keyboard focus, mirroring `focusGroup`. No-op (and not undo-able,
-    /// like the other group switches) when the focused group is the last visible
-    /// one (§18.2).
+    /// move keyboard focus, mirroring `focusGroup`. No-op when the focused group
+    /// is the last visible one (§18.2). Registers a group-aware undo ("Hide
+    /// Group") so the hide can be reversed; the snapshot keeps the hidden group's
+    /// panes (its processes already stay alive via `groups`, §14.7).
     func hideFocusedGroup() {
+        let before = workspace.state
         guard let result = workspace.hideFocusedGroup(
             savingOutgoingPaneTree: surfaceTree) else { return }
 
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toGroupSurface: result.focus)
+        registerWorkspaceUndo("Hide Group", undo: before, redo: workspace.state)
     }
 
     /// Show the hidden group `id` in response to a shelf pill click or the
     /// `show_group` action (`SPEC.md` §11.8). The model un-hides it, clears any
     /// zoom, and focuses it; here we swap `surfaceTree` to its panes and move
-    /// keyboard focus into its last-focused pane.
+    /// keyboard focus into its last-focused pane. Registers a group-aware undo
+    /// ("Show Group") so the reveal can be reversed.
     func showGroup(_ id: GroupID) {
         guard workspace.state.hiddenGroupIDs.contains(id) else { return }
+        let before = workspace.state
         let targetFocus = workspace.showGroup(id, savingOutgoingPaneTree: surfaceTree)
 
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toGroupSurface: targetFocus)
+        registerWorkspaceUndo("Show Group", undo: before, redo: workspace.state)
     }
 
     /// Close the focused group in response to `close_group` or a last-pane
@@ -1254,9 +1323,11 @@ class BaseTerminalController: NSWindowController,
     /// live process (mirroring close_surface / window-close UX; the dialog text
     /// only makes sense when there is something to terminate).
     ///
-    /// Like the other group switches this registers no undo (group-aware undo is
-    /// a deferred follow-up, see `TODO.md`); the §18.5 last-group case delegates
-    /// to the existing tab/window close, which carries its own undo.
+    /// The `.switched` close registers a group-aware undo ("Close Group"); the
+    /// pre-close snapshot retains the closed group's `SurfaceView`s, so its
+    /// processes stay alive for the `undoExpiration` window (mirroring
+    /// `close_surface` undo). The §18.5 last-group case delegates to the existing
+    /// tab/window close, which carries its own undo, so it is not double-wrapped.
     func closeFocusedGroup() {
         guard let group = workspace.focusedGroupState else { return }
 
@@ -1282,10 +1353,12 @@ class BaseTerminalController: NSWindowController,
     /// (terminating the closed group's surfaces as they fall out of scope, §14.8)
     /// or, when it was the only group, delegate to tab/window close (§18.5).
     private func performCloseFocusedGroup() {
+        let before = workspace.state
         switch workspace.closeFocusedGroup() {
         case .switched(_, let focus):
             surfaceTree = workspace.focusedPaneTree
             moveKeyboardFocus(toGroupSurface: focus)
+            registerWorkspaceUndo("Close Group", undo: before, redo: workspace.state)
 
         case .closedLast:
             // §18.5: emptying the tree routes through `replaceSurfaceTree`, whose

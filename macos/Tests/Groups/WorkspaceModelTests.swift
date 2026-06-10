@@ -602,4 +602,72 @@ struct WorkspaceModelTests {
         #expect(staged.state.groups[right.id] == nil)
         #expect(Set(staged.state.canonicalGroupTree.map(\.id)) == Set([left, middle.id]))
     }
+
+    // MARK: restoreState (group-aware undo)
+
+    @Test func restoreStateSwapsEntireState() throws {
+        // A snapshot captured from one model fully replaces another model's
+        // state — focusedGroup, canonical tree, groups, hidden, and zoom.
+        let (source, left, right) = try Self.makeTwoGroupHorizontal()
+        var snapshot = source.state
+        snapshot.focusedGroup = left
+        snapshot.hiddenGroupIDs = [right]
+        snapshot.zoomedGroup = left
+
+        let model = WorkspaceModel(wrapping: .init())
+        model.restoreState(snapshot)
+
+        #expect(model.state.focusedGroup == left)
+        #expect(model.state.hiddenGroupIDs == [right])
+        #expect(model.state.zoomedGroup == left)
+        #expect(Set(model.state.groups.keys) == Set([left, right]))
+        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
+    }
+
+    @Test func restoreStateRoundTripsAfterHide() throws {
+        // Capture, hide the focused group (which switches focus + flips hidden),
+        // then restore the snapshot — the pre-hide state comes back intact. This
+        // is exactly the undo path the controller wraps.
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        let before = model.state
+        #expect(before.focusedGroup == right)
+
+        let hidden = model.hideFocusedGroup(savingOutgoingPaneTree: .init())
+        #expect(hidden?.target == left)
+        #expect(model.state.hiddenGroupIDs == [right])
+        #expect(model.state.focusedGroup == left)
+
+        model.restoreState(before)
+
+        #expect(model.state.focusedGroup == right)
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(Set(model.state.groups.keys) == Set([left, right]))
+        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
+    }
+
+    @Test func restoreStateCancelsRenameForMissingGroup() throws {
+        // Restoring to a state that no longer contains the group being renamed
+        // clears the transient rename mode so it can't outlive its group.
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        let snapshotWithoutRight = WorkspaceModel(wrapping: .init()).state
+
+        model.beginRenaming(right)
+        #expect(model.renamingGroup == right)
+
+        model.restoreState(snapshotWithoutRight)
+        #expect(model.renamingGroup == nil)
+    }
+
+    @Test func restoreStateKeepsRenameForSurvivingGroup() throws {
+        // Restoring to a state that still contains the renamed group keeps the
+        // rename mode active.
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        let snapshot = model.state
+
+        model.beginRenaming(right)
+        #expect(model.renamingGroup == right)
+
+        model.restoreState(snapshot)
+        #expect(model.renamingGroup == right)
+    }
 }
