@@ -34,6 +34,13 @@ final class WorkspaceModel: ObservableObject {
         state = WorkspaceState(canonicalGroupTree: .init(), groups: [:])
     }
 
+    /// Construct a model around an existing `WorkspaceState`. Used to rehydrate a
+    /// decoded state on restore (`SPEC.md` §12.3) and by tests that need to set
+    /// up multi-group / zoomed / hidden states directly.
+    init(_ state: WorkspaceState) {
+        self.state = state
+    }
+
     /// Wrap an existing single pane tree into one default group (Phase 0).
     init(wrapping paneTree: SplitTree<Ghostty.SurfaceView>, now: Date = Date()) {
         let groupID = GroupID()
@@ -187,6 +194,83 @@ final class WorkspaceModel: ObservableObject {
         state = next
 
         return state.groups[id]?.focusedSurface
+    }
+
+    // MARK: Group navigation & layout (Phase 4)
+
+    /// Resolve the group that `goto_group` in `direction` should focus, using the
+    /// visible group tree (`SPEC.md` §11.3). Hidden groups are excluded because
+    /// the tree is already pruned to visible leaves.
+    ///
+    /// - Returns: the target group, or `nil` when the move is a no-op: a group is
+    ///   zoomed (§11.3 says no-op while zoomed), there is no focused group, there
+    ///   is no neighbor in that direction, or the resolved target is the focused
+    ///   group itself (e.g. `next`/`previous` wrapping with a single group).
+    func gotoGroupTarget(_ direction: SplitTree<GroupRef>.FocusDirection) -> GroupID? {
+        guard state.zoomedGroup == nil else { return nil }
+        guard let focusedID = state.focusedGroup else { return nil }
+        guard let visibleTree = state.effectiveVisibleGroupTree,
+              let node = visibleTree.find(id: focusedID) else { return nil }
+
+        guard let target = visibleTree.focusTarget(for: direction, from: node),
+              target.id != focusedID else { return nil }
+        return target.id
+    }
+
+    /// Resize the canonical split between the focused group and its visible
+    /// neighbor in `direction` by `ratioDelta` (`SPEC.md` §11.4).
+    ///
+    /// The neighbor is found in the *visible* tree (what the user sees), but the
+    /// ratio change is applied to the *canonical* tree's lowest common split, so
+    /// it stays correct even with hidden groups present. Pixel→ratio conversion
+    /// is the caller's responsibility (`SplitTree.adjustRatio`).
+    ///
+    /// No-op when zoomed, when there is no focused group, when there is no
+    /// neighbor that way, or when the lowest common split's orientation does not
+    /// match the resize direction.
+    func resizeFocusedGroup(
+        _ direction: SplitTree<GroupRef>.Spatial.Direction,
+        ratioDelta: Double
+    ) {
+        guard state.zoomedGroup == nil else { return }
+        guard let focusedID = state.focusedGroup else { return }
+        guard let visibleTree = state.effectiveVisibleGroupTree else { return }
+
+        let focusedRef = GroupRef(id: focusedID)
+        guard let neighbor = visibleTree.spatialNeighbor(
+            from: focusedRef,
+            direction: direction) else { return }
+
+        guard let splitPath = state.canonicalGroupTree.lowestCommonSplitPath(
+            between: focusedRef,
+            and: neighbor,
+            matchingResizeDirection: direction) else { return }
+
+        state.canonicalGroupTree = state.canonicalGroupTree.adjustRatio(
+            at: splitPath,
+            direction: direction,
+            amount: ratioDelta)
+    }
+
+    /// Equalize the visible group layout (`SPEC.md` §11.5).
+    ///
+    /// MVP scope: only runs when no groups are hidden, in which case the visible
+    /// tree is the canonical tree and equalizing the whole canonical tree is
+    /// exactly right. With hidden groups present this would also rebalance their
+    /// (invisible) splits, so it declines and logs instead. The recommended
+    /// per-visible-split approach arrives with Phase 5, when hidden groups become
+    /// reachable (`SPEC.md` §11.5).
+    ///
+    /// - Returns: `true` if the layout was equalized, `false` if it declined.
+    @discardableResult
+    func equalizeGroups() -> Bool {
+        guard state.hiddenGroupIDs.isEmpty else {
+            Ghostty.logger.warning("equalize_groups skipped: hidden groups present (Phase 5)")
+            return false
+        }
+
+        state.canonicalGroupTree = state.canonicalGroupTree.equalized()
+        return true
     }
 
     // MARK: Rename (Phase 3)

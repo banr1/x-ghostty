@@ -212,6 +212,21 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidGotoGroup(_:)),
+            name: Ghostty.Notification.ghosttyGotoGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidResizeGroup(_:)),
+            name: Ghostty.Notification.ghosttyResizeGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidEqualizeGroups(_:)),
+            name: Ghostty.Notification.ghosttyEqualizeGroups,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidEqualizeSplits(_:)),
             name: Ghostty.Notification.didEqualizeSplits,
             object: nil)
@@ -762,6 +777,65 @@ class BaseTerminalController: NSWindowController,
 
         // `set_group_title:<name>` sets the focused group's name directly.
         workspace.renameGroup(id, to: title)
+    }
+
+    @objc private func ghosttyDidGotoGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        guard let direction = notification.userInfo?[
+            Ghostty.Notification.GroupDirectionKey] as? Ghostty.SplitFocusDirection else { return }
+
+        // Resolve the visible neighbor group in that direction (`SPEC.md` §11.3)
+        // and reuse the label-click focus switch, which restores the target
+        // group's last-focused pane.
+        let treeDirection: SplitTree<GroupRef>.FocusDirection = direction.toSplitTreeFocusDirection()
+        guard let target = workspace.gotoGroupTarget(treeDirection) else { return }
+        focusGroup(target)
+    }
+
+    @objc private func ghosttyDidResizeGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        guard let direction = notification.userInfo?[
+            Ghostty.Notification.ResizeGroupDirectionKey] as? Ghostty.SplitResizeDirection else { return }
+        guard let amount = notification.userInfo?[
+            Ghostty.Notification.ResizeGroupAmountKey] as? UInt16 else { return }
+
+        let spatialDirection: SplitTree<GroupRef>.Spatial.Direction
+        switch direction {
+        case .up: spatialDirection = .up
+        case .down: spatialDirection = .down
+        case .left: spatialDirection = .left
+        case .right: spatialDirection = .right
+        }
+
+        // Convert the pixel amount to a normalized ratio delta against the
+        // workspace's content area (the region all visible groups divide). This
+        // is exact for a single top-level group split (the common 2-group case)
+        // and a graceful approximation for nested group splits, where the LCA
+        // split's container is smaller — the divider simply moves a little less
+        // than `amount`px. `adjustRatio` clamps the result to [0.1, 0.9].
+        let size = window?.contentView?.bounds.size ?? surfaceTree.viewBounds()
+        let dimension: CGFloat = switch spatialDirection {
+        case .left, .right: size.width
+        case .up, .down: size.height
+        }
+        guard dimension > 0 else { return }
+        let ratioDelta = Double(amount) / Double(dimension)
+
+        workspace.resizeFocusedGroup(spatialDirection, ratioDelta: ratioDelta)
+    }
+
+    @objc private func ghosttyDidEqualizeGroups(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        workspace.equalizeGroups()
     }
 
     @objc private func ghosttyDidEqualizeSplits(_ notification: Notification) {

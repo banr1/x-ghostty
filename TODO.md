@@ -337,16 +337,60 @@ overlay 不変条件（§14.13）は `GroupView` の ZStack 構造で担保。na
 
 ---
 
-## Phase 4: goto_group / resize_group / equalize_groups（§11.3–§11.5, §15 Phase 4）
+## Phase 4: goto_group / resize_group / equalize_groups（§11.3–§11.5, §15 Phase 4）✅ 完了
 
-- [ ] `goto_group`（§11.3）: effectiveVisibleGroupTree で方向/next/prev 移動、
+- [x] `goto_group`（§11.3）: effectiveVisibleGroupTree で方向/next/prev 移動、
       移動先の last focused pane へ復元、hidden は対象外、zoom 中 no-op
-- [ ] `resize_group`（§11.4）: visible で隣接探索 → canonical の LCA split ratio を変更
-- [ ] `equalize_groups`（§11.5, 推奨案）: visible group に対応する canonical split ratio のみ均等化
-  - [ ] 難しければ暫定: hidden が空のときのみ実行、ある場合は no-op + warning（log）
-- [ ] デフォルト keybind: Cmd+Ctrl+Opt+方向 / Cmd+Ctrl+Opt+Shift+方向（§10.3, §10.4）
+      （`WorkspaceModel.gotoGroupTarget` で対象解決 → 既存 `focusGroup` で surfaceTree 差替+last pane focus）
+- [x] `resize_group`（§11.4）: visible で隣接探索 → canonical の LCA split ratio を変更
+      （`WorkspaceModel.resizeFocusedGroup`。px→比率は controller が window content size 基準で変換）
+- [x] `equalize_groups`（§11.5）: **暫定案を採用** — hidden が空のときのみ実行、
+      ある場合は no-op + warning（log）。hidden は Phase 5 まで常に空のため現状は常時実行と等価。
+      推奨案（visible 対応 canonical split のみ均等化）は hidden が実体化する Phase 5 で対応
+  - [x] `WorkspaceModel.equalizeGroups`（hidden 空ガード → `canonicalGroupTree.equalized()`）
+- [x] デフォルト keybind: Cmd+Ctrl+Opt+方向 = goto_group / Cmd+Ctrl+Opt+Shift+方向 = resize_group:dir,10
+      （§10.3, §10.4, `src/config/Config.zig` macOS 既定）。equalize_groups は SPEC に既定割当なし＝未配線
 
 **成功条件**: 方向移動 / last focused pane 復帰 / group 境界 resize / equalize 動作。
+→ `zig build -Demit-macos-app=false` exit 0、`zig build test`（"group split" パーサ）パス、
+`zig fmt --check src/config/Config.zig` exit 0、`swiftlint --strict`（変更 5 ファイル）0 violations、
+`xcodebuild test`（`WorkspaceModelTests` に Phase 4 10 件追加 = goto 4 / resize 4 / equalize 2、
+全 `GhosttyTests` `** TEST SUCCEEDED **` 回帰なし）。方向移動・LCA resize・equalize の論理は
+データ層（`WorkspaceModelTests`）で担保。
+
+- [ ] 実機での目視確認（goto_group 方向移動・last focused pane 復帰・resize_group divider 移動・
+      equalize_groups）は未実施（ロジックは自動テストで担保。Phase 5 zoom/hide の目視と併せて実施推奨）
+
+### Phase 4 実装メモ（レビュー観点）
+
+- **配線は Phase 2.3/3 と同一経路**: Zig core 語彙は Phase 2.1 で整備済みのため Swift 層のみ追加。
+  `Ghostty.App.action()` に `GOTO_GROUP`/`RESIZE_GROUP`/`EQUALIZE_GROUPS` の case →
+  3 notification（`ghosttyGotoGroup`/`ghosttyResizeGroup`/`ghosttyEqualizeGroups`）→
+  `BaseTerminalController` ハンドラ → `WorkspaceModel`。
+- **goto_group は label-click 機構を再利用**: `gotoGroupTarget` が visible tree の `focusTarget` で
+  対象 group を解決（zoom 中 / 無 focused / 隣接なし / 対象==focused は nil）。controller は
+  Phase 3 の `focusGroup` をそのまま呼び、surfaceTree 差替 + 移動先 last focused pane への
+  キーボード focus（§14.12）を流用。next/prev の単一 group 自己ラップは `target != focused` で弾く。
+- **resize_group の px→比率変換（要レビュー注目点）**: `adjustRatio` は正規化比率デルタを取るため、
+  controller が `amount`(px) を `window.contentView.bounds` の軸方向サイズで割って比率化する。
+  **トップレベル単一 group split（2 group の一般ケース）では厳密**、ネスト group split では LCA split の
+  コンテナが小さいぶん divider 移動量が `amount`px をやや下回る近似（clamp [0.1,0.9] 済み）。
+  隣接探索は visible tree、ratio 適用は canonical tree の LCA split（`lowestCommonSplitPath`）で、
+  hidden があっても canonical を正しく更新する設計を維持。
+- **resize divider ドラッグは意図的に先送り**: `GroupSplitTreeView.groupAction` は nil のまま。
+  divider が返すノードは visible tree のもので、Phase 5 で hidden により visible≠canonical になると
+  canonical への対応付けが必要になり複雑化する。keybind 経路が §11.4 を完全に満たすため、
+  divider ドラッグ resize は Phase 5（hidden 実装）と併せて対応する横断課題とする。
+- **equalize_groups の暫定採用**: hidden が空のときのみ `canonicalGroupTree.equalized()`。hidden が
+  ある場合は warning ログを出し no-op。hidden は Phase 5 まで生成されないため現状は常時実行と等価で、
+  SPEC §11.5 の MVP フォールバックに準拠。推奨案（visible 対応 split のみ均等化）は hidden が実体化する
+  Phase 5 で本対応。
+- **`WorkspaceModel.init(_ state:)` 追加**: 任意の `WorkspaceState`（multi-group / zoomed / hidden）を
+  直接包む initializer。zoom/hidden を立てる API は Phase 5 まで無いため、テストで zoom 中 no-op /
+  hidden 時 equalize 拒否を検証するために導入。Phase 6 restore の rehydrate でも再利用予定。
+- **performability**: `goto_group` は対象解決可能時のみ true（`gotoSplit` 同様、移動先が無ければ
+  キーイベント非消費）。`resize_group` は visible が split のときのみ true（`resizeSplit` の `isSplit`
+  ゲート同様、方向ごとの隣接有無はハンドラが解決）。`equalize_groups` は void（`equalizeSplits` 同様）。
 
 ---
 

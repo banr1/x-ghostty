@@ -402,6 +402,24 @@ extension Ghostty.Notification {
     /// had focus; the userinfo carries a "title" key with the new name (`SPEC.md` §9.1).
     static let ghosttySetGroupTitle = Notification.Name("com.mitchellh.ghostty.setGroupTitle")
 
+    /// Posted when `goto_group` is requested. The sending object is the surface that had focus;
+    /// the userinfo carries a `GroupDirectionKey` (a `SplitFocusDirection`). Focus moves to the
+    /// visible neighbor group in that direction (`SPEC.md` §11.3).
+    static let ghosttyGotoGroup = Notification.Name("com.mitchellh.ghostty.gotoGroup")
+    static let GroupDirectionKey = ghosttyGotoGroup.rawValue + ".direction"
+
+    /// Posted when `resize_group` is requested. The sending object is the surface that had focus;
+    /// the userinfo carries a `ResizeGroupDirectionKey` (a `SplitResizeDirection`) and a
+    /// `ResizeGroupAmountKey` (a `UInt16` pixel amount). Resizes the canonical split between the
+    /// focused group and its visible neighbor (`SPEC.md` §11.4).
+    static let ghosttyResizeGroup = Notification.Name("com.mitchellh.ghostty.resizeGroup")
+    static let ResizeGroupDirectionKey = ghosttyResizeGroup.rawValue + ".direction"
+    static let ResizeGroupAmountKey = ghosttyResizeGroup.rawValue + ".amount"
+
+    /// Posted when `equalize_groups` is requested. The sending object is the surface that had
+    /// focus; the visible group layout is equalized (`SPEC.md` §11.5).
+    static let ghosttyEqualizeGroups = Notification.Name("com.mitchellh.ghostty.equalizeGroups")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.ghostty.closeSurface")
 

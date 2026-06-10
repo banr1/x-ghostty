@@ -152,6 +152,132 @@ struct WorkspaceModelTests {
         #expect(model.state.focusedGroup == focused)
     }
 
+    // MARK: gotoGroupTarget (SPEC §11.3)
+
+    /// Build a focused model with two groups split horizontally: the original
+    /// anchor on the left and a new group on the right (which becomes focused).
+    private static func makeTwoGroupHorizontal() throws -> (model: WorkspaceModel, left: GroupID, right: GroupID) {
+        let model = WorkspaceModel(wrapping: .init())
+        let left = try #require(model.state.focusedGroup)
+        let right = makeEmptyGroup(name: "amber-owl")
+        try model.openNewGroup(right, direction: .right, savingOutgoingPaneTree: .init())
+        return (model, left, right.id)
+    }
+
+    /// The ratio of the canonical tree's root split, if it is a split.
+    private static func rootSplitRatio(_ model: WorkspaceModel) -> Double? {
+        guard case .split(let split) = model.state.canonicalGroupTree.root else { return nil }
+        return split.ratio
+    }
+
+    @Test func gotoGroupTargetMovesToVisibleNeighbor() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        #expect(model.state.focusedGroup == right)
+
+        // From the right group, the left neighbor exists; the right/up do not.
+        #expect(model.gotoGroupTarget(.spatial(.left)) == left)
+        #expect(model.gotoGroupTarget(.spatial(.right)) == nil)
+        #expect(model.gotoGroupTarget(.spatial(.up)) == nil)
+    }
+
+    @Test func gotoGroupTargetIsNilForSingleGroup() {
+        let model = WorkspaceModel(wrapping: .init())
+        // A single group has no neighbor, and next/previous would wrap to itself.
+        #expect(model.gotoGroupTarget(.spatial(.left)) == nil)
+        #expect(model.gotoGroupTarget(.next) == nil)
+        #expect(model.gotoGroupTarget(.previous) == nil)
+    }
+
+    @Test func gotoGroupTargetIsNilWithoutFocusedGroup() {
+        let model = WorkspaceModel()
+        #expect(model.gotoGroupTarget(.spatial(.left)) == nil)
+    }
+
+    @Test func gotoGroupTargetIsNilWhenZoomed() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+
+        // Zoom is Phase 5; construct the zoomed state directly to exercise the
+        // §11.3 "no-op while zoomed" guard.
+        var zoomed = model.state
+        zoomed.zoomedGroup = right
+        let zoomedModel = WorkspaceModel(zoomed)
+
+        #expect(zoomedModel.gotoGroupTarget(.spatial(.left)) == nil)
+    }
+
+    // MARK: resizeFocusedGroup (SPEC §11.4)
+
+    @Test func resizeFocusedGroupAdjustsCanonicalSplitRatio() throws {
+        let (model, _, _) = try Self.makeTwoGroupHorizontal()
+        let before = try #require(Self.rootSplitRatio(model))
+
+        // Focused is the right group; resizing left shrinks the leading (left)
+        // child, decreasing the root horizontal split's ratio by the delta.
+        model.resizeFocusedGroup(.left, ratioDelta: 0.1)
+
+        let after = try #require(Self.rootSplitRatio(model))
+        #expect(abs(after - (before - 0.1)) < 1e-9)
+    }
+
+    @Test func resizeFocusedGroupNoNeighborIsNoOp() throws {
+        let (model, _, _) = try Self.makeTwoGroupHorizontal()
+        let before = try #require(Self.rootSplitRatio(model))
+
+        // No vertical neighbor in a horizontal split → the LCA orientation does
+        // not match → no change.
+        model.resizeFocusedGroup(.up, ratioDelta: 0.1)
+
+        #expect(Self.rootSplitRatio(model) == before)
+    }
+
+    @Test func resizeFocusedGroupSingleGroupIsNoOp() {
+        let model = WorkspaceModel(wrapping: .init())
+        // No split exists; nothing to resize, and no crash.
+        model.resizeFocusedGroup(.left, ratioDelta: 0.1)
+        #expect(model.state.canonicalGroupTree.root != nil)
+    }
+
+    @Test func resizeFocusedGroupIsNoOpWhenZoomed() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+
+        var zoomed = model.state
+        zoomed.zoomedGroup = right
+        let zoomedModel = WorkspaceModel(zoomed)
+        let before = try #require(Self.rootSplitRatio(zoomedModel))
+
+        zoomedModel.resizeFocusedGroup(.left, ratioDelta: 0.1)
+
+        #expect(Self.rootSplitRatio(zoomedModel) == before)
+    }
+
+    // MARK: equalizeGroups (SPEC §11.5)
+
+    @Test func equalizeGroupsRebalancesWhenNoHidden() throws {
+        let (model, _, _) = try Self.makeTwoGroupHorizontal()
+        // Skew the split, then equalize: two equally-weighted leaves → 0.5.
+        model.resizeFocusedGroup(.left, ratioDelta: 0.2)
+        #expect(Self.rootSplitRatio(model) != 0.5)
+
+        #expect(model.equalizeGroups() == true)
+        let ratio = try #require(Self.rootSplitRatio(model))
+        #expect(abs(ratio - 0.5) < 1e-9)
+    }
+
+    @Test func equalizeGroupsDeclinesWithHiddenGroups() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        model.resizeFocusedGroup(.left, ratioDelta: 0.2)
+        let skewed = try #require(Self.rootSplitRatio(model))
+
+        // Hidden groups are Phase 5; construct the state directly to exercise the
+        // MVP guard (§11.5): equalize declines and leaves the tree untouched.
+        var hidden = model.state
+        hidden.hiddenGroupIDs = [right]
+        let hiddenModel = WorkspaceModel(hidden)
+
+        #expect(hiddenModel.equalizeGroups() == false)
+        #expect(Self.rootSplitRatio(hiddenModel) == skewed)
+    }
+
     // MARK: Rename (SPEC §7.1, §9.1)
 
     @Test func renameGroupTrimsAndSetsName() {

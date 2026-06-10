@@ -512,6 +512,15 @@ extension Ghostty {
             case GHOSTTY_ACTION_SET_GROUP_TITLE:
                 setGroupTitle(app, target: target, v: action.action.set_group_title)
 
+            case GHOSTTY_ACTION_GOTO_GROUP:
+                return gotoGroup(app, target: target, direction: action.action.goto_group)
+
+            case GHOSTTY_ACTION_RESIZE_GROUP:
+                return resizeGroup(app, target: target, resize: action.action.resize_group)
+
+            case GHOSTTY_ACTION_EQUALIZE_GROUPS:
+                equalizeGroups(app, target: target)
+
             case GHOSTTY_ACTION_CLOSE_TAB:
                 closeTab(app, target: target, mode: action.action.close_tab_mode)
 
@@ -955,6 +964,97 @@ extension Ghostty {
                     name: Notification.ghosttySetGroupTitle,
                     object: surfaceView,
                     userInfo: ["title": title])
+
+            default:
+                assertionFailure()
+            }
+        }
+
+        private static func gotoGroup(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s,
+            direction: ghostty_action_goto_split_e) -> Bool {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("goto group does nothing with an app target")
+                return false
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Convert the C API direction to our Swift type.
+                guard let focusDirection = SplitFocusDirection.from(direction: direction) else { return false }
+
+                // Only performable when there is actually a visible neighbor group
+                // to move to; this keeps the keybind from consuming the key event
+                // when nothing would happen.
+                let treeDirection: SplitTree<GroupRef>.FocusDirection =
+                    focusDirection.toSplitTreeFocusDirection()
+                guard controller.workspace.gotoGroupTarget(treeDirection) != nil else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyGotoGroup,
+                    object: surfaceView,
+                    userInfo: [Notification.GroupDirectionKey: focusDirection])
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
+        private static func resizeGroup(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s,
+            resize: ghostty_action_resize_split_s) -> Bool {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("resize group does nothing with an app target")
+                return false
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable when more than one group is visible (mirrors
+                // resize_split's `isSplit` gate). Whether a neighbor exists in the
+                // specific direction is resolved by the handler.
+                guard controller.workspace.state.effectiveVisibleGroupTree?.isSplit ?? false else { return false }
+
+                guard let resizeDirection = SplitResizeDirection.from(direction: resize.direction) else { return false }
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyResizeGroup,
+                    object: surfaceView,
+                    userInfo: [
+                        Notification.ResizeGroupDirectionKey: resizeDirection,
+                        Notification.ResizeGroupAmountKey: resize.amount,
+                    ])
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
+        private static func equalizeGroups(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("equalize groups does nothing with an app target")
+                return
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return }
+                guard let surfaceView = self.surfaceView(from: surface) else { return }
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyEqualizeGroups,
+                    object: surfaceView)
 
             default:
                 assertionFailure()
