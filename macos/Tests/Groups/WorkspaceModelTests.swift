@@ -507,4 +507,99 @@ struct WorkspaceModelTests {
         #expect(model.hiddenGroupID(named: rightName) == right)
         #expect(model.hiddenGroupID(named: "no-such-group") == nil)
     }
+
+    // MARK: close_group (SPEC §11.9, §18.5)
+
+    @Test func closeFocusedGroupSwitchesToNeighborAndPrunes() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        #expect(model.state.focusedGroup == right)
+
+        // Closing the focused (right) group moves focus to the left neighbor and
+        // removes the closed group from the canonical tree and `groups`.
+        let outcome = model.closeFocusedGroup()
+
+        #expect(outcome == .switched(target: left, focus: nil))
+        #expect(model.state.focusedGroup == left)
+        #expect(model.state.groups.count == 1)
+        #expect(model.state.groups[left] != nil)
+        #expect(model.state.groups[right] == nil)
+        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left]))
+    }
+
+    @Test func closeFocusedGroupReturnsClosedLastForOnlyGroup() {
+        // §18.5: the only group's close is delegated to tab/window close, and the
+        // model is left untouched so the close can be undone.
+        let model = WorkspaceModel(wrapping: .init())
+        let focused = model.state.focusedGroup
+
+        let outcome = model.closeFocusedGroup()
+
+        #expect(outcome == .closedLast)
+        #expect(model.state.focusedGroup == focused)
+        #expect(model.state.groups.count == 1)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [focused].compactMap { $0 })
+    }
+
+    @Test func closeFocusedGroupReturnsNilWithoutFocusedGroup() {
+        let model = WorkspaceModel()
+        #expect(model.closeFocusedGroup() == nil)
+    }
+
+    @Test func closeFocusedGroupClearsZoomOnClosedGroup() throws {
+        // The focused (right) group is also zoomed; closing it clears the zoom.
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        var state = model.state
+        state.zoomedGroup = right
+        let zoomedModel = WorkspaceModel(state)
+
+        let outcome = zoomedModel.closeFocusedGroup()
+
+        #expect(outcome == .switched(target: left, focus: nil))
+        #expect(zoomedModel.state.zoomedGroup == nil)
+        #expect(zoomedModel.state.focusedGroup == left)
+    }
+
+    @Test func closeFocusedGroupRevealsHiddenGroupWhenNoVisibleNeighbor() throws {
+        // The left group is hidden and the right is focused. Closing the right
+        // leaves no visible neighbor, so the hidden left is revealed and focused
+        // — the focused group must always be visible (invariant §14.6).
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        var state = model.state
+        state.hiddenGroupIDs = [left]
+        state.focusedGroup = right
+        let staged = WorkspaceModel(state)
+
+        let outcome = staged.closeFocusedGroup()
+
+        #expect(outcome == .switched(target: left, focus: nil))
+        #expect(staged.state.focusedGroup == left)
+        #expect(staged.state.hiddenGroupIDs.isEmpty)
+        #expect(staged.state.groups[right] == nil)
+        #expect(Set(staged.state.canonicalGroupTree.map(\.id)) == Set([left]))
+    }
+
+    @Test func closeFocusedGroupKeepsOtherHiddenGroupHidden() throws {
+        // Three groups, the middle hidden, the rightmost focused. Closing the
+        // focused group moves focus to the nearest *visible* group (the left),
+        // never to the hidden middle, which stays hidden.
+        let model = WorkspaceModel(wrapping: .init())
+        let left = try #require(model.state.focusedGroup)
+        let middle = Self.makeEmptyGroup(name: "amber-owl")
+        try model.openNewGroup(middle, direction: .right, savingOutgoingPaneTree: .init())
+        let right = Self.makeEmptyGroup(name: "coral-fox")
+        try model.openNewGroup(right, direction: .right, savingOutgoingPaneTree: .init())
+
+        var state = model.state
+        state.hiddenGroupIDs = [middle.id]
+        state.focusedGroup = right.id
+        let staged = WorkspaceModel(state)
+
+        let outcome = staged.closeFocusedGroup()
+
+        #expect(outcome == .switched(target: left, focus: nil))
+        #expect(staged.state.focusedGroup == left)
+        #expect(staged.state.hiddenGroupIDs == [middle.id])
+        #expect(staged.state.groups[right.id] == nil)
+        #expect(Set(staged.state.canonicalGroupTree.map(\.id)) == Set([left, middle.id]))
+    }
 }

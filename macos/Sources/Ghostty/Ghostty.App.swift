@@ -530,6 +530,9 @@ extension Ghostty {
             case GHOSTTY_ACTION_SHOW_GROUP:
                 return showGroup(app, target: target, v: action.action.show_group)
 
+            case GHOSTTY_ACTION_CLOSE_GROUP:
+                closeGroup(app, target: target)
+
             case GHOSTTY_ACTION_CLOSE_TAB:
                 closeTab(app, target: target, mode: action.action.close_tab_mode)
 
@@ -1154,6 +1157,30 @@ extension Ghostty {
             default:
                 assertionFailure()
                 return false
+            }
+        }
+
+        private static func closeGroup(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("close group does nothing with an app target")
+                return
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return }
+                guard let surfaceView = self.surfaceView(from: surface) else { return }
+
+                // Always meaningful: there is always a focused group to close.
+                // The controller shows the destructive-action confirmation and
+                // handles the §18.5 last-group → tab/window close delegation.
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyCloseGroup,
+                    object: surfaceView)
+
+            default:
+                assertionFailure()
             }
         }
 

@@ -20,6 +20,16 @@ final class WorkspaceModel: ObservableObject {
         case noFocusedGroup
     }
 
+    /// The result of closing the focused group (`SPEC.md` §11.9).
+    enum CloseGroupOutcome: Equatable {
+        /// Focus moved to `target` (its stored last-focused surface in `focus`).
+        case switched(target: GroupID, focus: SurfaceID?)
+        /// The focused group was the only group; the caller delegates to
+        /// tab/window close (`SPEC.md` §18.5). The model is left unchanged so the
+        /// close can be undone via the existing tab/window-close path.
+        case closedLast
+    }
+
     @Published private(set) var state: WorkspaceState
 
     /// The group currently in inline-rename mode, or `nil`. Transient UI state:
@@ -393,6 +403,53 @@ final class WorkspaceModel: ObservableObject {
         state = next
 
         return state.groups[id]?.focusedSurface
+    }
+
+    // MARK: Close (SPEC §11.9)
+
+    /// Close the focused group (`SPEC.md` §11.9, §18.1, §18.5). Removes it from
+    /// the canonical tree, `groups`, and `hiddenGroupIDs`, clears any zoom on it,
+    /// and moves focus to the nearest remaining group.
+    ///
+    /// Confirmation and terminating the group's surfaces are the caller's
+    /// responsibility; this only mutates the group structure. The focus target
+    /// is resolved on the pre-mutation canonical tree, preferring a visible
+    /// neighbor and falling back to any remaining group — which is then revealed
+    /// (un-hidden) so the focused group stays visible (invariant §14.6). This
+    /// fallback only matters in the unusual case where the focused group is the
+    /// last *visible* one but hidden groups remain.
+    ///
+    /// - Returns: `.switched` after a successful close, `.closedLast` when the
+    ///   focused group was the only group (the model is left unchanged so the
+    ///   caller can delegate to tab/window close, §18.5), or `nil` if there is no
+    ///   focused group.
+    @discardableResult
+    func closeFocusedGroup() -> CloseGroupOutcome? {
+        guard let closeID = state.focusedGroup else { return nil }
+        let closeRef = GroupRef(id: closeID)
+
+        // Resolve the next focus target before mutating. `nearestLeaf` already
+        // excludes `closeRef` itself; prefer a still-visible group, otherwise
+        // take any remaining group.
+        let target = state.canonicalGroupTree.nearestLeaf(
+            to: closeRef,
+            matching: { !state.hiddenGroupIDs.contains($0.id) })
+            ?? state.canonicalGroupTree.nearestLeaf(to: closeRef, matching: { _ in true })
+
+        // §18.5: the only group's close is delegated to tab/window close.
+        guard let target else { return .closedLast }
+
+        var next = state
+        next.canonicalGroupTree = state.canonicalGroupTree.pruningLeaves { $0.id == closeID }
+        next.groups.removeValue(forKey: closeID)
+        next.hiddenGroupIDs.remove(closeID)
+        if next.zoomedGroup == closeID { next.zoomedGroup = nil }
+        // Reveal the target if it was hidden (no visible group remained).
+        next.hiddenGroupIDs.remove(target.id)
+        next.focusedGroup = target.id
+        state = next
+
+        return .switched(target: target.id, focus: state.groups[target.id]?.focusedSurface)
     }
 
     // MARK: Rename (Phase 3)

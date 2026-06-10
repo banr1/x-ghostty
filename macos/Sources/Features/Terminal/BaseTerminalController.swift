@@ -138,7 +138,8 @@ class BaseTerminalController: NSWindowController,
 
     init(_ ghostty: Ghostty.App,
          baseConfig base: Ghostty.SurfaceConfiguration? = nil,
-         surfaceTree tree: SplitTree<Ghostty.SurfaceView>? = nil
+         surfaceTree tree: SplitTree<Ghostty.SurfaceView>? = nil,
+         workspace restoredWorkspace: WorkspaceState? = nil
     ) {
         self.ghostty = ghostty
         self.derivedConfig = DerivedConfig(ghostty.config)
@@ -147,11 +148,24 @@ class BaseTerminalController: NSWindowController,
 
         // Initialize our initial surface.
         guard let ghostty_app = ghostty.app else { preconditionFailure("app must be loaded") }
-        self.surfaceTree = tree ?? .init(view: Ghostty.SurfaceView(ghostty_app, baseConfig: base))
 
-        // Wrap the initial pane tree into the group layer. Phase 0 keeps a
-        // single default group whose pane tree mirrors `surfaceTree`.
-        self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
+        if let restoredWorkspace {
+            // Restore the full group layer (Phase 6 / `SPEC.md` §12). Each pane
+            // was decoded as a fresh shell; the focused group's pane tree becomes
+            // the `surfaceTree` source of truth and the rest of the groups render
+            // from the workspace. Setting `surfaceTree` first is a no-op mirror
+            // (the default empty model has no focused group) before we install
+            // the restored model whose focused group already holds this tree.
+            let model = WorkspaceModel(restoredWorkspace)
+            self.surfaceTree = model.focusedPaneTree
+            self.workspace = model
+        } else {
+            self.surfaceTree = tree ?? .init(view: Ghostty.SurfaceView(ghostty_app, baseConfig: base))
+
+            // Wrap the initial pane tree into the group layer. Phase 0 keeps a
+            // single default group whose pane tree mirrors `surfaceTree`.
+            self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
+        }
 
         // Setup our bell state for the window
         setupBellNotificationPublisher()
@@ -239,6 +253,11 @@ class BaseTerminalController: NSWindowController,
             self,
             selector: #selector(ghosttyDidShowGroup(_:)),
             name: Ghostty.Notification.ghosttyShowGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidCloseGroup(_:)),
+            name: Ghostty.Notification.ghosttyCloseGroup,
             object: nil)
         center.addObserver(
             self,
@@ -722,6 +741,18 @@ class BaseTerminalController: NSWindowController,
     @objc private func ghosttyDidCloseSurface(_ notification: Notification) {
         guard let target = notification.object as? Ghostty.SurfaceView else { return }
         guard let node = surfaceTree.root?.node(view: target) else { return }
+
+        // §11.10: closing the last pane of a group is really closing the group.
+        // When this close would empty the focused group's pane tree *and* there
+        // are sibling groups, escalate to `close_group` (which switches focus to
+        // a sibling). With only one group we fall through to the existing
+        // close_surface path, which already handles last-pane → tab/window close
+        // with the familiar "Close Terminal?" confirmation (§18.5).
+        if workspace.state.groups.count > 1, surfaceTree.removing(node).isEmpty {
+            closeFocusedGroup()
+            return
+        }
+
         closeSurface(
             node,
             withConfirmation: (notification.userInfo?["process_alive"] as? Bool) ?? false)
@@ -887,6 +918,14 @@ class BaseTerminalController: NSWindowController,
             Ghostty.Notification.ShowGroupNameKey] as? String else { return }
         guard let id = workspace.hiddenGroupID(named: name) else { return }
         showGroup(id)
+    }
+
+    @objc private func ghosttyDidCloseGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        closeFocusedGroup()
     }
 
     @objc private func ghosttyDidEqualizeSplits(_ notification: Notification) {
@@ -1207,6 +1246,56 @@ class BaseTerminalController: NSWindowController,
 
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toGroupSurface: targetFocus)
+    }
+
+    /// Close the focused group in response to `close_group` or a last-pane
+    /// `Cmd+W` (`SPEC.md` §11.9, §11.10). This is destructive — it terminates
+    /// the group's processes — so it confirms first whenever any pane still has a
+    /// live process (mirroring close_surface / window-close UX; the dialog text
+    /// only makes sense when there is something to terminate).
+    ///
+    /// Like the other group switches this registers no undo (group-aware undo is
+    /// a deferred follow-up, see `TODO.md`); the §18.5 last-group case delegates
+    /// to the existing tab/window close, which carries its own undo.
+    func closeFocusedGroup() {
+        guard let group = workspace.focusedGroupState else { return }
+
+        // The focused group's panes are exactly `surfaceTree`.
+        guard surfaceTree.contains(where: { $0.needsConfirmQuit }) else {
+            performCloseFocusedGroup()
+            return
+        }
+
+        let paneCount = surfaceTree.reduce(into: 0) { count, _ in count += 1 }
+        let pane = paneCount == 1 ? "pane" : "panes"
+        confirmClose(
+            messageText: "Close Group “\(group.name)”?",
+            informativeText: "This will close \(paneCount) \(pane) and terminate their processes.",
+            confirmButtonTitle: "Close Group"
+        ) { [weak self] in
+            self?.performCloseFocusedGroup()
+        }
+    }
+
+    /// Apply a confirmed `close_group`: prune the focused group from the group
+    /// structure and either swap `surfaceTree` to the nearest remaining group
+    /// (terminating the closed group's surfaces as they fall out of scope, §14.8)
+    /// or, when it was the only group, delegate to tab/window close (§18.5).
+    private func performCloseFocusedGroup() {
+        switch workspace.closeFocusedGroup() {
+        case .switched(_, let focus):
+            surfaceTree = workspace.focusedPaneTree
+            moveKeyboardFocus(toGroupSurface: focus)
+
+        case .closedLast:
+            // §18.5: emptying the tree routes through `replaceSurfaceTree`, whose
+            // `TerminalController` override turns it into `closeTabImmediately()`
+            // (closing the window if it is the last tab).
+            replaceSurfaceTree(.init())
+
+        case nil:
+            break
+        }
     }
 
     /// Move keyboard focus to `surfaceID` within the (now current) `surfaceTree`,

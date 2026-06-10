@@ -434,6 +434,11 @@ extension Ghostty.Notification {
     static let ghosttyShowGroup = Notification.Name("com.mitchellh.ghostty.showGroup")
     static let ShowGroupNameKey = ghosttyShowGroup.rawValue + ".name"
 
+    /// Posted when `close_group` is requested. The sending object is the surface that had focus;
+    /// the focused group is closed after confirmation and focus moves to the nearest remaining
+    /// group, or the tab/window closes when it was the only group (`SPEC.md` §11.9, §18.5).
+    static let ghosttyCloseGroup = Notification.Name("com.mitchellh.ghostty.closeGroup")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.ghostty.closeSurface")
 
