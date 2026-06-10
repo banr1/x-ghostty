@@ -22,6 +22,12 @@ final class WorkspaceModel: ObservableObject {
 
     @Published private(set) var state: WorkspaceState
 
+    /// The group currently in inline-rename mode, or `nil`. Transient UI state:
+    /// it lives on the model (not in `WorkspaceState`) so it is never persisted.
+    /// Both the double-click gesture and the `rename_group` action set this, so
+    /// they share one editing path (`SPEC.md` §7.1).
+    @Published var renamingGroup: GroupID?
+
     /// An empty workspace with no groups. Used as the controller's initial
     /// value before `init(wrapping:)` wraps the real pane tree.
     init() {
@@ -151,5 +157,67 @@ final class WorkspaceModel: ObservableObject {
         next.focusedGroup = newGroup.id
 
         state = next
+    }
+
+    /// Switch the focused group to `id`, persisting the outgoing focused group's
+    /// live pane tree first (captured by the caller from `surfaceTree`). This is
+    /// the click-to-focus counterpart of `openNewGroup` and the machinery
+    /// `goto_group` (Phase 4) builds on.
+    ///
+    /// - Returns: the target group's stored last-focused surface so the caller
+    ///   can move keyboard focus into it (`SPEC.md` §14.12), or `nil` when the
+    ///   switch is a no-op (already focused, or `id` is not a known group).
+    @discardableResult
+    func switchFocusedGroup(
+        to id: GroupID,
+        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+    ) -> SurfaceID? {
+        guard id != state.focusedGroup else { return nil }
+        guard state.groups[id] != nil else { return nil }
+
+        var next = state
+
+        // Persist the outgoing focused group's panes before switching away.
+        if let outgoingID = next.focusedGroup, var outgoingGroup = next.groups[outgoingID] {
+            outgoingGroup.paneTree = outgoing
+            next.groups[outgoingID] = outgoingGroup
+        }
+
+        next.focusedGroup = id
+        state = next
+
+        return state.groups[id]?.focusedSurface
+    }
+
+    // MARK: Rename (Phase 3)
+
+    /// Enter inline-rename mode for `id`. No-op if the group is unknown.
+    func beginRenaming(_ id: GroupID) {
+        guard state.groups[id] != nil else { return }
+        renamingGroup = id
+    }
+
+    /// Enter inline-rename mode for the focused group (`rename_group`, §7.1).
+    func beginRenamingFocusedGroup() {
+        guard let id = state.focusedGroup else { return }
+        beginRenaming(id)
+    }
+
+    /// Leave inline-rename mode without changing any name.
+    func cancelRenaming() {
+        renamingGroup = nil
+    }
+
+    /// Rename `id` to `newName` and leave rename mode. Whitespace is trimmed and
+    /// an empty result is rejected (the existing name is kept). Shared by the
+    /// inline editor's commit and the `set_group_title` action (`SPEC.md` §9.1).
+    func renameGroup(_ id: GroupID, to newName: String) {
+        defer { if renamingGroup == id { renamingGroup = nil } }
+
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, var group = state.groups[id], group.name != trimmed else { return }
+
+        group.name = trimmed
+        state.groups[id] = group
     }
 }

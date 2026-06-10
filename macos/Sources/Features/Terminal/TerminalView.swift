@@ -20,6 +20,9 @@ protocol TerminalViewDelegate: AnyObject {
 
     /// A split tree operation
     func performSplitAction(_ action: TerminalSplitOperation)
+
+    /// Switch the focused group (a group-label single-click, `SPEC.md` §7.1).
+    func focusGroup(_ id: GroupID)
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -88,7 +91,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
 
                     TerminalWorkspaceView(
                         workspace: viewModel.workspace,
-                        paneAction: { delegate?.performSplitAction($0) })
+                        paneAction: { delegate?.performSplitAction($0) },
+                        onFocusGroup: { delegate?.focusGroup($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

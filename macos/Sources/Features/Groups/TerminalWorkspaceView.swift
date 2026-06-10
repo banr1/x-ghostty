@@ -17,6 +17,19 @@ struct TerminalWorkspaceView: View {
     /// `surfaceTree`-based handler.
     let paneAction: (TerminalSplitOperation) -> Void
 
+    /// Switch the focused group (a label single-click). This needs the
+    /// controller to swap `surfaceTree`, so it is injected rather than handled
+    /// in the model. Rename callbacks are model-only and built below.
+    let onFocusGroup: (GroupID) -> Void
+
+    private var labelActions: GroupLabelActions {
+        GroupLabelActions(
+            focus: onFocusGroup,
+            beginRename: { workspace.beginRenaming($0) },
+            commitRename: { workspace.renameGroup($0, to: $1) },
+            cancelRename: { workspace.cancelRenaming() })
+    }
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             if let tree = workspace.state.effectiveVisibleGroupTree {
@@ -24,7 +37,9 @@ struct TerminalWorkspaceView: View {
                     tree: tree,
                     groups: workspace.state.groups,
                     focusedGroup: workspace.state.focusedGroup,
-                    paneAction: paneAction)
+                    renamingGroup: workspace.renamingGroup,
+                    paneAction: paneAction,
+                    labelActions: labelActions)
             }
 
             // The hidden-group shelf overlay is added in Phase 5. Until then

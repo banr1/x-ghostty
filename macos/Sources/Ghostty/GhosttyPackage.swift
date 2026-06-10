@@ -394,6 +394,14 @@ extension Ghostty.Notification {
     /// group in the workspace's group tree rather than a split within the focused group (`SPEC.md` §11.1).
     static let ghosttyNewGroupSplit = Notification.Name("com.mitchellh.ghostty.newGroupSplit")
 
+    /// Posted when `rename_group` is requested. The sending object is the surface that had focus;
+    /// the focused group enters inline-rename mode (`SPEC.md` §7.1).
+    static let ghosttyRenameGroup = Notification.Name("com.mitchellh.ghostty.renameGroup")
+
+    /// Posted when `set_group_title:<name>` is requested. The sending object is the surface that
+    /// had focus; the userinfo carries a "title" key with the new name (`SPEC.md` §9.1).
+    static let ghosttySetGroupTitle = Notification.Name("com.mitchellh.ghostty.setGroupTitle")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.ghostty.closeSurface")
 

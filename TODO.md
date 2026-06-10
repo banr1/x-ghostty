@@ -279,17 +279,61 @@ Cmd+D は新 group 内のみ分割。
 
 ---
 
-## Phase 3: label / rename（§7.1, §15 Phase 3）
+## Phase 3: label / rename（§7.1, §15 Phase 3）✅ 完了
 
-- [ ] `GroupLabel.swift`（左上 overlay, focused は opacity 1.0・強調 /
-      unfocused は opacity 0.35〜0.5）
-- [ ] single click でその group に focus
-- [ ] double click で inline rename
-- [ ] `rename_group`（prompt）/ `set_group_title:<name>` action
-- [ ] Cmd+Opt+R = rename_group（§10.5）
+- [x] `GroupLabel.swift`（左上 overlay, focused は opacity 1.0・強調〔regularMaterial +
+      accent border〕/ unfocused は opacity 0.4・thinMaterial）
+- [x] single click でその group に focus（`focusGroup` delegate → `WorkspaceModel.switchFocusedGroup`
+      → surfaceTree 差替 + last focused pane へキーボード focus 移動）
+- [x] double click で inline rename（`GroupLabel` の TextField。Return/blur で commit、
+      Escape で cancel〔draft を title へ戻してから blur-commit を無害化〕）
+- [x] `rename_group`（focused group を inline rename モードへ）/ `set_group_title:<name>`
+      （focused group 名を直接設定）action の Swift プラミング
+      （`Ghostty.App.action()` に case 追加 → `ghosttyRenameGroup`/`ghosttySetGroupTitle`
+      notification → `BaseTerminalController` ハンドラ → `WorkspaceModel`）
+- [x] Cmd+Opt+R = rename_group（§10.5, `src/config/Config.zig` macOS 既定）
+- [x] ラベル常時表示へ変更（ユーザー合意。SPEC §6.3/§7.1 準拠で各 group に必ず表示。
+      Phase 1 の `groups.count > 1` ゲートを撤去）
 
 **成功条件**: label が terminal layout を押し下げない（overlay）/ rename 保存 /
 復元後も名前が残る。
+→ `zig build -Demit-macos-app=false` exit 0、`zig build test`（"group split" / "ghostty.h" /
+"rename_group" パーサ）パス、`zig fmt --check` exit 0、`swiftlint --strict`（変更 10 ファイル）
+0 violations、`xcodebuild test`（`WorkspaceModelTests` に switchFocusedGroup 3 件 + rename 7 件追加で
+全パス、`SplitTreeTests`/`TerminalRestorableTests` 回帰なし `** TEST SUCCEEDED **`）。
+overlay 不変条件（§14.13）は `GroupView` の ZStack 構造で担保。name の永続は `GroupState.name`
+（既存 Codable）+ `WorkspaceState.encode` で保存済み（restore 統合は Phase 6）。
+
+- [ ] 実機での目視確認（ラベル focused/unfocused 表示・single-click focus 切替・
+      double-click/Cmd+Opt+R rename・set_group_title）は未実施
+      （ロジックは自動テストで担保。Phase 4 の goto_group 目視と併せて実施推奨）
+
+### Phase 3 実装メモ（レビュー観点）
+
+- **single-click focus は group 切替機構を新設し Phase 4 と共有**: `WorkspaceModel.switchFocusedGroup`
+  は `openNewGroup` から「新 group 作成・canonical 挿入」を除いた focus 切替のみ版
+  （① outgoing focused group へ現 surfaceTree 保存 → ② focusedGroup 差替 → ③ 対象の
+  focusedSurface を返す）。controller 側 `focusGroup` が `surfaceTree = focusedPaneTree` で
+  差替え、続く `surfaceTreeDidChange` のミラーは新 focused group への no-op。返った
+  focusedSurface（無ければ firstLeaf）へ `Ghostty.moveFocus`。Phase 4 goto_group はこの
+  機構の上に方向/next/prev 解決を載せる。
+- **rename は inline edit に一本化（modal prompt 不採用）**: `rename_group` action と double-click は
+  どちらも `WorkspaceModel.renamingGroup`（`@Published`・transient・非永続）を立てて同じ
+  `GroupLabel` の TextField を編集モードにする。`set_group_title:<name>` のみ非対話で直接設定。
+  rename の commit/cancel/trim/空名拒否は `WorkspaceModel.renameGroup` に集約しテスト可能化。
+- **Escape と blur の競合回避**: TextField は Return と blur で commit、Escape で cancel。Escape は
+  draft を現在の title へ戻してから cancel するため、直後の teardown で発火する blur-commit は
+  「title→title」の no-op（`renameGroup` の `name != trimmed` ガードで弾かれる）。これにより
+  「Escape したのに blur が draft を保存してしまう」事故を防ぐ。
+- **action プラミングは既存 apprt 型を再利用**: `rename_group` は void、`set_group_title` は
+  既存 `ghostty_action_set_title_s`。Phase 2.1 で Zig core 語彙は整備済みのため Swift 層の
+  case 追加のみ。notification object は trigger surface で、focused group を対象にする
+  （controller が `surfaceTree.contains(view)` で自 tree 内であることを確認）。
+- **ラベル常時表示の帰結**: 単一 group でも `defaultGroupName`（"Group 1"）ラベルが左上に出る
+  （従来はピクセル同等のため非表示だった）。SPEC §6.3 準拠とユーザー合意による意図的変更。
+- **group focus 切替の undo は未登録（既存 new_group_split と同様）**: `focusGroup` も
+  `replaceSurfaceTree` の surfaceTree-only undo を流用できない（focus 切替後に旧 tree を
+  誤った group へミラーする）ため undo 非登録。group-aware undo 横断タスクの対象（下記）。
 
 ---
 
@@ -348,11 +392,12 @@ shelf 表示 / pill click で即復帰。
 
 ## 横断: group 操作の undo（Phase 2.3 申し送り）
 
-- [ ] group 層を含む undo/redo の設計と実装。現状 `new_group_split` は undo 非登録
+- [ ] group 層を含む undo/redo の設計と実装。現状 `new_group_split` と
+      `focusGroup`（label single-click の group 切替）は undo 非登録
       （既存 `replaceSurfaceTree` の surfaceTree-only undo は focusedGroup 切替後に旧 tree を
       新 group へ誤ミラーするため流用不可）。`WorkspaceState` + `surfaceTree` のスナップショットを
-      まとめて復元する group-aware undo を別途用意し、new_group_split / close_group / hide·show /
-      group resize へ横断適用する。
+      まとめて復元する group-aware undo を別途用意し、new_group_split / focusGroup(goto_group) /
+      close_group / hide·show / group resize へ横断適用する。
 
 ---
 

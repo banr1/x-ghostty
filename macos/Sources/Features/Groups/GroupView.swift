@@ -1,27 +1,39 @@
 import SwiftUI
 
-/// Renders a single group: its pane split tree with an optional name-label
-/// overlay (`SPEC.md` §6.3).
+/// The label interactions for a group, bundled so they thread cleanly through
+/// the group-tree view hierarchy without a parameter explosion.
+///
+/// `focus` needs the controller (it swaps `surfaceTree`); the rename callbacks
+/// are model-only. `TerminalWorkspaceView` builds this from a controller-
+/// provided focus closure plus `WorkspaceModel`'s rename methods.
+struct GroupLabelActions {
+    var focus: (GroupID) -> Void
+    var beginRename: (GroupID) -> Void
+    var commitRename: (GroupID, String) -> Void
+    var cancelRename: () -> Void
+}
+
+/// Renders a single group: its pane split tree with a name-label overlay
+/// (`SPEC.md` §6.3).
 ///
 /// The label is an overlay (`ZStack`) so it never pushes the terminal layout
-/// down (invariant §14.13). Phase 1 keeps the label intentionally minimal —
-/// just the name, full opacity when focused and dimmed otherwise (§7.1) — and
-/// only shows it when more than one group exists, so a single-group workspace
-/// stays visually identical to the pre-group-layer view. Full label styling and
-/// interaction (single-click focus, double-click rename) arrive in Phase 3
-/// (`GroupLabel.swift`).
+/// down (invariant §14.13). It is always shown (one label per group, §7.1),
+/// emphasized when focused and dimmed otherwise. Single-click focuses the
+/// group; double-click begins an inline rename (`GroupLabel`).
 struct GroupView: View {
     let group: GroupState
     let isFocused: Bool
 
-    /// Whether to draw the name label. Driven by group count so single-group
-    /// layouts remain pixel-identical to the previous rendering.
-    var showsLabel: Bool = true
+    /// Whether this group's label is currently in inline-rename mode.
+    let isRenaming: Bool
 
-    /// Pane-level operations within this group's terminal split tree. In Phase 1
-    /// only the focused group exists, so this routes to the controller's
-    /// `surfaceTree`-based handler.
+    /// Pane-level operations within this group's terminal split tree. Only the
+    /// focused group's tree is mirrored to the controller's `surfaceTree`, so
+    /// this routes there.
     let paneAction: (TerminalSplitOperation) -> Void
+
+    /// Focus / rename callbacks for the label.
+    let labelActions: GroupLabelActions
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -29,22 +41,15 @@ struct GroupView: View {
                 tree: group.paneTree,
                 action: paneAction)
 
-            if showsLabel {
-                Text(group.name)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
-                    // Focused groups are emphasized; unfocused groups stay
-                    // visible but recede (`SPEC.md` §7.1).
-                    .opacity(isFocused ? 1.0 : 0.4)
-                    .padding(6)
-                    // Phase 1 label is decorative only; focus/rename hit-testing
-                    // is added in Phase 3.
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
+            GroupLabel(
+                title: group.name,
+                isFocused: isFocused,
+                isRenaming: isRenaming,
+                onFocus: { labelActions.focus(group.id) },
+                onBeginRename: { labelActions.beginRename(group.id) },
+                onCommitRename: { labelActions.commitRename(group.id, $0) },
+                onCancelRename: labelActions.cancelRename)
+                .padding(6)
         }
     }
 }

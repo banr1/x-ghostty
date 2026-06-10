@@ -112,4 +112,113 @@ struct WorkspaceModelTests {
         #expect(model.state.groups.isEmpty)
         #expect(model.state.focusedGroup == nil)
     }
+
+    // MARK: switchFocusedGroup (SPEC §7.1, invariant §14.12)
+
+    @Test func switchFocusedGroupFlipsFocusToTarget() throws {
+        let model = WorkspaceModel(wrapping: .init())
+        let anchor = try #require(model.state.focusedGroup)
+        let other = Self.makeEmptyGroup(name: "amber-owl")
+        try model.openNewGroup(other, direction: .right, savingOutgoingPaneTree: .init())
+        #expect(model.state.focusedGroup == other.id)
+
+        // Switching back to the original anchor flips focus without changing
+        // the group set or canonical tree.
+        model.switchFocusedGroup(to: anchor, savingOutgoingPaneTree: .init())
+
+        #expect(model.state.focusedGroup == anchor)
+        #expect(Set(model.state.groups.keys) == Set([anchor, other.id]))
+        let leafIDs = Set(model.state.canonicalGroupTree.map(\.id))
+        #expect(leafIDs == Set([anchor, other.id]))
+    }
+
+    @Test func switchFocusedGroupIsNoOpWhenAlreadyFocused() {
+        let model = WorkspaceModel(wrapping: .init())
+        let focused = model.state.focusedGroup
+
+        let result = model.switchFocusedGroup(to: focused!, savingOutgoingPaneTree: .init())
+
+        #expect(result == nil)
+        #expect(model.state.focusedGroup == focused)
+    }
+
+    @Test func switchFocusedGroupIsNoOpForUnknownGroup() {
+        let model = WorkspaceModel(wrapping: .init())
+        let focused = model.state.focusedGroup
+
+        let result = model.switchFocusedGroup(to: GroupID(), savingOutgoingPaneTree: .init())
+
+        #expect(result == nil)
+        #expect(model.state.focusedGroup == focused)
+    }
+
+    // MARK: Rename (SPEC §7.1, §9.1)
+
+    @Test func renameGroupTrimsAndSetsName() {
+        let model = WorkspaceModel(wrapping: .init())
+        let id = model.state.focusedGroup!
+
+        model.renameGroup(id, to: "  calm-river  ")
+
+        #expect(model.state.groups[id]?.name == "calm-river")
+    }
+
+    @Test func renameGroupRejectsEmpty() {
+        let model = WorkspaceModel(wrapping: .init())
+        let id = model.state.focusedGroup!
+        let original = model.state.groups[id]?.name
+
+        model.renameGroup(id, to: "   ")
+
+        #expect(model.state.groups[id]?.name == original)
+    }
+
+    @Test func renameGroupUnknownIdIsNoOp() {
+        let model = WorkspaceModel(wrapping: .init())
+        let id = model.state.focusedGroup!
+        let original = model.state.groups[id]?.name
+
+        model.renameGroup(GroupID(), to: "ghost")
+
+        #expect(model.state.groups[id]?.name == original)
+        #expect(model.state.groups.count == 1)
+    }
+
+    @Test func renameGroupClearsRenameModeForThatGroup() {
+        let model = WorkspaceModel(wrapping: .init())
+        let id = model.state.focusedGroup!
+        model.beginRenaming(id)
+        #expect(model.renamingGroup == id)
+
+        model.renameGroup(id, to: "lucky-spark")
+
+        #expect(model.renamingGroup == nil)
+    }
+
+    @Test func beginRenamingFocusedGroupTargetsFocused() {
+        let model = WorkspaceModel(wrapping: .init())
+        let focused = model.state.focusedGroup
+
+        model.beginRenamingFocusedGroup()
+
+        #expect(model.renamingGroup == focused)
+    }
+
+    @Test func beginRenamingUnknownGroupIsNoOp() {
+        let model = WorkspaceModel(wrapping: .init())
+
+        model.beginRenaming(GroupID())
+
+        #expect(model.renamingGroup == nil)
+    }
+
+    @Test func cancelRenamingClearsRenameMode() {
+        let model = WorkspaceModel(wrapping: .init())
+        model.beginRenamingFocusedGroup()
+        #expect(model.renamingGroup != nil)
+
+        model.cancelRenaming()
+
+        #expect(model.renamingGroup == nil)
+    }
 }

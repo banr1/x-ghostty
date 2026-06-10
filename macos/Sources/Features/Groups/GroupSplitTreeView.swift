@@ -22,14 +22,17 @@ struct GroupSplitTreeView: View {
     let tree: SplitTree<GroupRef>
     let groups: [GroupID: GroupState]
     let focusedGroup: GroupID?
+
+    /// The group currently in inline-rename mode, if any (`WorkspaceModel`).
+    let renamingGroup: GroupID?
+
     let paneAction: (TerminalSplitOperation) -> Void
+
+    /// Label focus / rename callbacks.
+    let labelActions: GroupLabelActions
 
     /// Group-boundary resize. Wired up in Phase 4; `nil` until then.
     var groupAction: ((GroupSplitOperation) -> Void)?
-
-    /// Group labels only appear once more than one group exists so a single
-    /// group stays visually identical to the previous (group-less) rendering.
-    private var showsGroupLabels: Bool { groups.count > 1 }
 
     var body: some View {
         if let node = tree.zoomed ?? tree.root {
@@ -37,8 +40,9 @@ struct GroupSplitTreeView: View {
                 node: node,
                 groups: groups,
                 focusedGroup: focusedGroup,
-                showsLabels: showsGroupLabels,
+                renamingGroup: renamingGroup,
                 paneAction: paneAction,
+                labelActions: labelActions,
                 groupAction: groupAction)
             // Like `TerminalSplitTreeView`, we can't rely on SwiftUI's implicit
             // structural identity across the split tree. Keying on the group
@@ -56,8 +60,9 @@ private struct GroupSplitSubtreeView: View {
     let node: SplitTree<GroupRef>.Node
     let groups: [GroupID: GroupState]
     let focusedGroup: GroupID?
-    let showsLabels: Bool
+    let renamingGroup: GroupID?
     let paneAction: (TerminalSplitOperation) -> Void
+    let labelActions: GroupLabelActions
     let groupAction: ((GroupSplitOperation) -> Void)?
 
     var body: some View {
@@ -69,8 +74,9 @@ private struct GroupSplitSubtreeView: View {
                 GroupView(
                     group: group,
                     isFocused: ref.id == focusedGroup,
-                    showsLabel: showsLabels,
-                    paneAction: paneAction)
+                    isRenaming: ref.id == renamingGroup,
+                    paneAction: paneAction,
+                    labelActions: labelActions)
             }
 
         case .split(let split):
@@ -93,8 +99,9 @@ private struct GroupSplitSubtreeView: View {
                         node: split.left,
                         groups: groups,
                         focusedGroup: focusedGroup,
-                        showsLabels: showsLabels,
+                        renamingGroup: renamingGroup,
                         paneAction: paneAction,
+                        labelActions: labelActions,
                         groupAction: groupAction)
                 },
                 right: {
@@ -102,8 +109,9 @@ private struct GroupSplitSubtreeView: View {
                         node: split.right,
                         groups: groups,
                         focusedGroup: focusedGroup,
-                        showsLabels: showsLabels,
+                        renamingGroup: renamingGroup,
                         paneAction: paneAction,
+                        labelActions: labelActions,
                         groupAction: groupAction)
                 },
                 onEqualize: {
