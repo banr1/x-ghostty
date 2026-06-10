@@ -7096,6 +7096,16 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
+                .{ .key = .{ .physical = .enter }, .mods = .{ .super = true, .alt = true } },
+                .{ .toggle_group_zoom = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'h' }, .mods = .{ .super = true, .alt = true } },
+                .{ .hide_group = {} },
+            );
+            try self.set.put(
+                alloc,
                 .{ .key = .{ .unicode = '[' }, .mods = .{ .super = true } },
                 .{ .goto_split = .previous },
             );

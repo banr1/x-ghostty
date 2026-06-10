@@ -23,6 +23,9 @@ protocol TerminalViewDelegate: AnyObject {
 
     /// Switch the focused group (a group-label single-click, `SPEC.md` §7.1).
     func focusGroup(_ id: GroupID)
+
+    /// Show a hidden group (a shelf pill click, `SPEC.md` §11.8, §7.2).
+    func showGroup(_ id: GroupID)
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -92,7 +95,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                     TerminalWorkspaceView(
                         workspace: viewModel.workspace,
                         paneAction: { delegate?.performSplitAction($0) },
-                        onFocusGroup: { delegate?.focusGroup($0) })
+                        onFocusGroup: { delegate?.focusGroup($0) },
+                        onShowGroup: { delegate?.showGroup($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

@@ -227,6 +227,21 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidToggleGroupZoom(_:)),
+            name: Ghostty.Notification.ghosttyToggleGroupZoom,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidHideGroup(_:)),
+            name: Ghostty.Notification.ghosttyHideGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidShowGroup(_:)),
+            name: Ghostty.Notification.ghosttyShowGroup,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidEqualizeSplits(_:)),
             name: Ghostty.Notification.didEqualizeSplits,
             object: nil)
@@ -838,6 +853,42 @@ class BaseTerminalController: NSWindowController,
         workspace.equalizeGroups()
     }
 
+    @objc private func ghosttyDidToggleGroupZoom(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        // Toggle group zoom; rendering reacts via `effectiveVisibleGroupTree`
+        // (`SPEC.md` §11.6). The focused group stays focused, so `surfaceTree`
+        // is untouched. Toggling reshapes the group view tree (split↔single
+        // leaf), which re-hosts the same surface views, so re-assert keyboard
+        // focus on the triggering surface (mirrors `ghosttyDidToggleSplitZoom`).
+        workspace.toggleGroupZoom()
+        window?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async {
+            Ghostty.moveFocus(to: view)
+        }
+    }
+
+    @objc private func ghosttyDidHideGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        hideFocusedGroup()
+    }
+
+    @objc private func ghosttyDidShowGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        guard let name = notification.userInfo?[
+            Ghostty.Notification.ShowGroupNameKey] as? String else { return }
+        guard let id = workspace.hiddenGroupID(named: name) else { return }
+        showGroup(id)
+    }
+
     @objc private func ghosttyDidEqualizeSplits(_ notification: Notification) {
         guard let target = notification.object as? Ghostty.SurfaceView else { return }
 
@@ -1129,10 +1180,41 @@ class BaseTerminalController: NSWindowController,
         // re-renders the workspace.
         surfaceTree = workspace.focusedPaneTree
 
-        // Move keyboard focus to the target group's last-focused pane, falling
-        // back to its first leaf.
+        moveKeyboardFocus(toGroupSurface: targetFocus)
+    }
+
+    /// Hide the focused group in response to `hide_group` (`SPEC.md` §11.7). The
+    /// model moves focus to a visible neighbor and keeps the hidden group's
+    /// processes alive; here we swap `surfaceTree` to the neighbor's panes and
+    /// move keyboard focus, mirroring `focusGroup`. No-op (and not undo-able,
+    /// like the other group switches) when the focused group is the last visible
+    /// one (§18.2).
+    func hideFocusedGroup() {
+        guard let result = workspace.hideFocusedGroup(
+            savingOutgoingPaneTree: surfaceTree) else { return }
+
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: result.focus)
+    }
+
+    /// Show the hidden group `id` in response to a shelf pill click or the
+    /// `show_group` action (`SPEC.md` §11.8). The model un-hides it, clears any
+    /// zoom, and focuses it; here we swap `surfaceTree` to its panes and move
+    /// keyboard focus into its last-focused pane.
+    func showGroup(_ id: GroupID) {
+        guard workspace.state.hiddenGroupIDs.contains(id) else { return }
+        let targetFocus = workspace.showGroup(id, savingOutgoingPaneTree: surfaceTree)
+
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: targetFocus)
+    }
+
+    /// Move keyboard focus to `surfaceID` within the (now current) `surfaceTree`,
+    /// falling back to its first leaf. Shared tail of every group focus switch
+    /// (`focusGroup` / `goto_group` / `hide_group` / `show_group`, §14.12).
+    private func moveKeyboardFocus(toGroupSurface surfaceID: SurfaceID?) {
         let target: Ghostty.SurfaceView?
-        if let surfaceID = targetFocus,
+        if let surfaceID,
            let node = surfaceTree.find(id: surfaceID.rawValue),
            case .leaf(let view) = node {
             target = view

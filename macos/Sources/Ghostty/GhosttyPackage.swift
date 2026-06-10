@@ -420,6 +420,20 @@ extension Ghostty.Notification {
     /// focus; the visible group layout is equalized (`SPEC.md` §11.5).
     static let ghosttyEqualizeGroups = Notification.Name("com.mitchellh.ghostty.equalizeGroups")
 
+    /// Posted when `toggle_group_zoom` is requested. The sending object is the surface that had
+    /// focus; the focused group's zoom is toggled (`SPEC.md` §11.6).
+    static let ghosttyToggleGroupZoom = Notification.Name("com.mitchellh.ghostty.toggleGroupZoom")
+
+    /// Posted when `hide_group` is requested. The sending object is the surface that had focus;
+    /// the focused group is hidden and focus moves to a visible neighbor (`SPEC.md` §11.7).
+    static let ghosttyHideGroup = Notification.Name("com.mitchellh.ghostty.hideGroup")
+
+    /// Posted when `show_group:<name>` is requested. The sending object is the surface that had
+    /// focus; the userinfo carries a `ShowGroupNameKey` with the target group's name. The matching
+    /// hidden group is shown and focused (`SPEC.md` §11.8).
+    static let ghosttyShowGroup = Notification.Name("com.mitchellh.ghostty.showGroup")
+    static let ShowGroupNameKey = ghosttyShowGroup.rawValue + ".name"
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.ghostty.closeSurface")
 

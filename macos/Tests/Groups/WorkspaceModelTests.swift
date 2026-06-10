@@ -347,4 +347,164 @@ struct WorkspaceModelTests {
 
         #expect(model.renamingGroup == nil)
     }
+
+    // MARK: toggle_group_zoom (SPEC §11.6, invariants §14.5, §14.15)
+
+    @Test func toggleGroupZoomZoomsAndUnzoomsFocusedGroup() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        #expect(model.state.zoomedGroup == nil)
+
+        // First toggle zooms the focused (right) group; second clears it.
+        model.toggleGroupZoom()
+        #expect(model.state.zoomedGroup == right)
+
+        model.toggleGroupZoom()
+        #expect(model.state.zoomedGroup == nil)
+    }
+
+    @Test func toggleGroupZoomIsNoOpWithoutFocusedGroup() {
+        let model = WorkspaceModel()
+        model.toggleGroupZoom()
+        #expect(model.state.zoomedGroup == nil)
+    }
+
+    @Test func canToggleGroupZoomReflectsVisibleGroupCount() throws {
+        // A single visible group would zoom to itself (a no-op), so it declines.
+        let single = WorkspaceModel(wrapping: .init())
+        #expect(single.canToggleGroupZoom == false)
+
+        // More than one visible group → zoom is meaningful.
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        #expect(model.canToggleGroupZoom == true)
+
+        // A zoom can always be cleared, even when the visible tree is a single
+        // (zoomed) leaf.
+        var zoomed = model.state
+        zoomed.zoomedGroup = right
+        #expect(WorkspaceModel(zoomed).canToggleGroupZoom == true)
+    }
+
+    // MARK: hide_group (SPEC §11.7, §18.2–3, invariants §14.7, §14.16–17)
+
+    @Test func hideFocusedGroupHidesAndMovesFocusToNeighbor() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        #expect(model.state.focusedGroup == right)
+
+        let result = try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+
+        // The hidden group joins `hiddenGroupIDs`; focus moves to the neighbor.
+        #expect(result.target == left)
+        #expect(model.state.hiddenGroupIDs == [right])
+        #expect(model.state.focusedGroup == left)
+        // §14.7 (proxy): the group stays alive — `groups` and the canonical tree
+        // are unchanged, so its processes/panes persist for `show_group`.
+        #expect(model.state.groups.count == 2)
+        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
+    }
+
+    @Test func hideFocusedGroupRejectsLastVisibleGroup() {
+        // §18.2: the last visible group cannot be hidden.
+        let model = WorkspaceModel(wrapping: .init())
+        let focused = model.state.focusedGroup
+
+        let result = model.hideFocusedGroup(savingOutgoingPaneTree: .init())
+
+        #expect(result == nil)
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(model.state.focusedGroup == focused)
+    }
+
+    @Test func hideFocusedGroupRejectsWhenOnlyOtherGroupAlreadyHidden() throws {
+        // Two groups, the left already hidden, the right focused. Hiding the
+        // right would leave nothing visible → rejected (§18.2).
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        var state = model.state
+        state.hiddenGroupIDs = [left]
+        state.focusedGroup = right
+        let hiddenModel = WorkspaceModel(state)
+
+        #expect(hiddenModel.canHideFocusedGroup == false)
+        #expect(hiddenModel.hideFocusedGroup(savingOutgoingPaneTree: .init()) == nil)
+        #expect(hiddenModel.state.hiddenGroupIDs == [left])
+        #expect(hiddenModel.state.focusedGroup == right)
+    }
+
+    @Test func hideFocusedGroupClearsZoom() throws {
+        // §18.3: a zoomed group un-zooms before being hidden.
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        var state = model.state
+        state.zoomedGroup = right
+        let zoomedModel = WorkspaceModel(state)
+
+        let result = try #require(zoomedModel.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+
+        #expect(result.target == left)
+        #expect(zoomedModel.state.zoomedGroup == nil)
+        #expect(zoomedModel.state.hiddenGroupIDs == [right])
+        #expect(zoomedModel.state.focusedGroup == left)
+    }
+
+    @Test func canHideFocusedGroupReflectsVisibleGroupCount() throws {
+        let single = WorkspaceModel(wrapping: .init())
+        #expect(single.canHideFocusedGroup == false)
+
+        let (model, _, _) = try Self.makeTwoGroupHorizontal()
+        #expect(model.canHideFocusedGroup == true)
+    }
+
+    // MARK: show_group (SPEC §11.8, §7.2)
+
+    @Test func showGroupUnhidesAndFocuses() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        // Hide the focused (right) group; focus falls back to the left.
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.focusedGroup == left)
+
+        // Showing it again un-hides and focuses it; canonical/groups unchanged.
+        model.showGroup(right, savingOutgoingPaneTree: .init())
+
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(model.state.focusedGroup == right)
+        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
+    }
+
+    @Test func showGroupClearsZoom() throws {
+        // A group hidden while another is zoomed: showing it clears the zoom.
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        var state = model.state
+        state.hiddenGroupIDs = [right]
+        state.zoomedGroup = left
+        state.focusedGroup = left
+        let staged = WorkspaceModel(state)
+
+        staged.showGroup(right, savingOutgoingPaneTree: .init())
+
+        #expect(staged.state.zoomedGroup == nil)
+        #expect(staged.state.hiddenGroupIDs.isEmpty)
+        #expect(staged.state.focusedGroup == right)
+    }
+
+    @Test func showGroupIsNoOpForNonHiddenGroup() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        // `right` is focused and visible; showing it is a no-op.
+        let result = model.showGroup(right, savingOutgoingPaneTree: .init())
+
+        #expect(result == nil)
+        #expect(model.state.focusedGroup == right)
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+    }
+
+    @Test func hiddenGroupIDNamedResolvesOnlyHiddenGroups() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        let rightName = try #require(model.state.groups[right]?.name)
+
+        // While visible, the name does not resolve to a hidden group.
+        #expect(model.hiddenGroupID(named: rightName) == nil)
+
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+
+        // Once hidden, the name resolves; unknown names still do not.
+        #expect(model.hiddenGroupID(named: rightName) == right)
+        #expect(model.hiddenGroupID(named: "no-such-group") == nil)
+    }
 }

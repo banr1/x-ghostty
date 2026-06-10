@@ -273,6 +273,128 @@ final class WorkspaceModel: ObservableObject {
         return true
     }
 
+    // MARK: Zoom / hide / show (Phase 5)
+
+    /// Whether `toggle_group_zoom` would change anything (`SPEC.md` §11.6).
+    /// Zooming is meaningful only when more than one group is visible (so there
+    /// is something to zoom into), or when a zoom is already active (so it can be
+    /// cleared). A single visible group zooms to itself — a no-op — so the
+    /// keybind should fall through rather than be consumed.
+    var canToggleGroupZoom: Bool {
+        guard state.focusedGroup != nil else { return false }
+        if state.zoomedGroup != nil { return true }
+        return state.effectiveVisibleGroupTree?.isSplit ?? false
+    }
+
+    /// Toggle group-level zoom for the focused group (`SPEC.md` §11.6). Zoom is
+    /// a derived display state: it only flips `zoomedGroup`, and rendering reacts
+    /// via `effectiveVisibleGroupTree`. Group zoom and inner split zoom compose
+    /// (outer→inner, §14.15) because the inner pane tree keeps its own
+    /// `zoomed` node. The focused group is always visible, so the §14.5 "zoom is
+    /// visible-only" invariant holds.
+    func toggleGroupZoom() {
+        guard let focusedID = state.focusedGroup else { return }
+        state.zoomedGroup = (state.zoomedGroup == focusedID) ? nil : focusedID
+    }
+
+    /// The group that would receive focus if `id` were hidden: the nearest
+    /// canonical-tree leaf that stays visible once `id` joins the hidden set, or
+    /// `nil` when `id` is the last visible group (`SPEC.md` §18.2). Computed on
+    /// the canonical tree (ignoring zoom) because a hide un-zooms first (§18.3).
+    private func neighborAfterHiding(_ id: GroupID) -> GroupRef? {
+        var nextHidden = state.hiddenGroupIDs
+        nextHidden.insert(id)
+        return state.canonicalGroupTree.nearestLeaf(
+            to: GroupRef(id: id),
+            matching: { !nextHidden.contains($0.id) })
+    }
+
+    /// Whether `hide_group` would succeed for the focused group (`SPEC.md`
+    /// §18.2): at least one other group must remain visible afterwards.
+    var canHideFocusedGroup: Bool {
+        guard let id = state.focusedGroup else { return false }
+        return neighborAfterHiding(id) != nil
+    }
+
+    /// Hide the focused group (`SPEC.md` §11.7, §18.2–3). The group's processes
+    /// stay alive (invariant §14.7): only `hiddenGroupIDs` changes, plus a focus
+    /// move to a visible neighbor. `canonicalGroupTree` and `groups` are
+    /// unchanged, so `show_group` restores it in place.
+    ///
+    /// The caller passes the outgoing focused group's live panes; they are
+    /// persisted into `groups` (the hidden group keeps its layout) before focus
+    /// moves away. A hidden group cannot stay zoomed, so any zoom is cleared
+    /// (§18.3).
+    ///
+    /// - Returns: the neighbor group to focus next and its last-focused surface
+    ///   so the caller can swap `surfaceTree` and move keyboard focus, or `nil`
+    ///   when the hide is rejected (no focused group, or it is the last visible
+    ///   group, §18.2).
+    @discardableResult
+    func hideFocusedGroup(
+        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+    ) -> (target: GroupID, focus: SurfaceID?)? {
+        guard let hideID = state.focusedGroup else { return nil }
+        guard let neighbor = neighborAfterHiding(hideID) else { return nil }
+
+        var next = state
+
+        // The hidden group keeps its current layout alive in `groups`.
+        if var hidden = next.groups[hideID] {
+            hidden.paneTree = outgoing
+            next.groups[hideID] = hidden
+        }
+
+        next.hiddenGroupIDs.insert(hideID)
+        // §18.3: a hidden group cannot remain zoomed.
+        if next.zoomedGroup == hideID { next.zoomedGroup = nil }
+        next.focusedGroup = neighbor.id
+        state = next
+
+        return (neighbor.id, state.groups[neighbor.id]?.focusedSurface)
+    }
+
+    /// The id of a hidden group named `name`, if any. Resolves the
+    /// `show_group:<name>` action's argument to a concrete group; the shelf
+    /// shows groups by id directly (`SPEC.md` §7.2, §11.8).
+    func hiddenGroupID(named name: String) -> GroupID? {
+        state.groups.first { id, group in
+            state.hiddenGroupIDs.contains(id) && group.name == name
+        }?.key
+    }
+
+    /// Show the hidden group `id` (`SPEC.md` §11.8): remove it from the hidden
+    /// set, clear any zoom, and focus it. The canonical tree is unchanged, so it
+    /// reappears in its original place.
+    ///
+    /// Like `switchFocusedGroup`, the caller passes the outgoing focused group's
+    /// live panes so they are persisted before focus moves away.
+    ///
+    /// - Returns: the shown group's last-focused surface so the caller can move
+    ///   keyboard focus into it, or `nil` when `id` is not currently hidden.
+    @discardableResult
+    func showGroup(
+        _ id: GroupID,
+        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+    ) -> SurfaceID? {
+        guard state.hiddenGroupIDs.contains(id) else { return nil }
+
+        var next = state
+
+        // Persist the outgoing focused group's panes before switching away.
+        if let outgoingID = next.focusedGroup, var outgoingGroup = next.groups[outgoingID] {
+            outgoingGroup.paneTree = outgoing
+            next.groups[outgoingID] = outgoingGroup
+        }
+
+        next.hiddenGroupIDs.remove(id)
+        next.zoomedGroup = nil
+        next.focusedGroup = id
+        state = next
+
+        return state.groups[id]?.focusedSurface
+    }
+
     // MARK: Rename (Phase 3)
 
     /// Enter inline-rename mode for `id`. No-op if the group is unknown.

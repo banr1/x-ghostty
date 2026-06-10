@@ -521,6 +521,15 @@ extension Ghostty {
             case GHOSTTY_ACTION_EQUALIZE_GROUPS:
                 equalizeGroups(app, target: target)
 
+            case GHOSTTY_ACTION_TOGGLE_GROUP_ZOOM:
+                return toggleGroupZoom(app, target: target)
+
+            case GHOSTTY_ACTION_HIDE_GROUP:
+                return hideGroup(app, target: target)
+
+            case GHOSTTY_ACTION_SHOW_GROUP:
+                return showGroup(app, target: target, v: action.action.show_group)
+
             case GHOSTTY_ACTION_CLOSE_TAB:
                 closeTab(app, target: target, mode: action.action.close_tab_mode)
 
@@ -1058,6 +1067,93 @@ extension Ghostty {
 
             default:
                 assertionFailure()
+            }
+        }
+
+        private static func toggleGroupZoom(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) -> Bool {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("toggle group zoom does nothing with an app target")
+                return false
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable when zooming would change something (more than
+                // one visible group, or a zoom to clear); otherwise let the key
+                // fall through (mirrors toggle_split_zoom's `isSplit` gate).
+                guard controller.workspace.canToggleGroupZoom else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyToggleGroupZoom,
+                    object: surfaceView)
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
+        private static func hideGroup(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) -> Bool {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("hide group does nothing with an app target")
+                return false
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable when at least one other group would stay
+                // visible (`SPEC.md` §18.2: the last visible group can't be hidden).
+                guard controller.workspace.canHideFocusedGroup else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyHideGroup,
+                    object: surfaceView)
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
+        private static func showGroup(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s,
+            v: ghostty_action_set_title_s) -> Bool {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("show group does nothing with an app target")
+                return false
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+                guard let name = String(cString: v.title!, encoding: .utf8) else { return false }
+
+                // Only performable when a hidden group with that name exists.
+                guard controller.workspace.hiddenGroupID(named: name) != nil else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyShowGroup,
+                    object: surfaceView,
+                    userInfo: [Notification.ShowGroupNameKey: name])
+                return true
+
+            default:
+                assertionFailure()
+                return false
             }
         }
 

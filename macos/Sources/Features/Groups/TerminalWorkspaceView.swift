@@ -22,6 +22,18 @@ struct TerminalWorkspaceView: View {
     /// in the model. Rename callbacks are model-only and built below.
     let onFocusGroup: (GroupID) -> Void
 
+    /// Show a hidden group (a shelf pill click, `SPEC.md` §11.8). Like
+    /// `onFocusGroup` this swaps `surfaceTree`, so the controller handles it.
+    let onShowGroup: (GroupID) -> Void
+
+    /// Hidden groups in a stable display order for the shelf. Sorted by creation
+    /// time (then id) so the pill order does not jump as visibility changes.
+    private var hiddenGroups: [GroupState] {
+        workspace.state.hiddenGroupIDs
+            .compactMap { workspace.state.groups[$0] }
+            .sorted { ($0.createdAt, $0.id.rawValue.uuidString) < ($1.createdAt, $1.id.rawValue.uuidString) }
+    }
+
     private var labelActions: GroupLabelActions {
         GroupLabelActions(
             focus: onFocusGroup,
@@ -42,8 +54,13 @@ struct TerminalWorkspaceView: View {
                     labelActions: labelActions)
             }
 
-            // The hidden-group shelf overlay is added in Phase 5. Until then
-            // `hiddenGroupIDs` is always empty, so there is nothing to show.
+            // Hidden-group shelf overlay (`SPEC.md` §7.2). Only rendered when
+            // groups are hidden; `HiddenGroupShelf` itself draws nothing for an
+            // empty list, but skipping it entirely keeps the overlay absent.
+            if !hiddenGroups.isEmpty {
+                HiddenGroupShelf(groups: hiddenGroups, onShow: onShowGroup)
+                    .padding(6)
+            }
         }
     }
 }

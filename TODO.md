@@ -394,21 +394,72 @@ overlay 不変条件（§14.13）は `GroupView` の ZStack 構造で担保。na
 
 ---
 
-## Phase 5: zoom / hide / shelf（§11.6–§11.8, §7.2, §15 Phase 5）
+## Phase 5: zoom / hide / shelf（§11.6–§11.8, §7.2, §15 Phase 5）✅ 完了
 
-- [ ] `toggle_group_zoom`（§11.6）: トグル、描画は外→内（group zoom → 内部 split zoom）
-- [ ] Cmd+Opt+Enter = toggle_group_zoom（§10.5, 既存 split zoom と非衝突）
-- [ ] zoom 中 Cmd+D は group 内 split / new_group_split は zoom 解除して隣作成（§11.1, §18.4）
-- [ ] `hide_group`（§11.7）: hiddenGroupIDs 追加、process は生存、canonical/groups 不変、
+- [x] `toggle_group_zoom`（§11.6）: トグル、描画は外→内（group zoom → 内部 split zoom）
+      （`WorkspaceModel.toggleGroupZoom`。描画は `effectiveVisibleGroupTree`〔group 層〕+
+      `paneTree.zoomed`〔pane 層〕が外→内で自然合成され追加実装不要）
+- [x] Cmd+Opt+Enter = toggle_group_zoom（§10.5, 既存 split zoom と非衝突、`src/config/Config.zig`）
+- [x] zoom 中 Cmd+D は group 内 split / new_group_split は zoom 解除して隣作成（§11.1, §18.4）
+      （Cmd+D は `surfaceTree`〔= focused/zoomed group の panes〕を分割＝zoomed group 内 split。
+      new_group_split の zoom 解除は Phase 2.3 の `openNewGroup` で実装済み。いずれもアーキテクチャの帰結）
+- [x] `hide_group`（§11.7）: hiddenGroupIDs 追加、process は生存、canonical/groups 不変、
       focus は visible neighbor へ、**最後の visible group は hide 拒否**（§18.2）
-- [ ] zoomed group の hide は zoom 解除後に hide（§18.3）
-- [ ] `show_group`（§11.8）: hidden から除外、zoom 解除、focus 移動、last pane 復元
-- [ ] `HiddenGroupShelf.swift`（§7.2）: 右上 overlay、0 個非表示 / 1〜4 個 pill /
-      5 個以上は `[+N]` メニュー、pill click で即 show
-- [ ] Cmd+Opt+H = hide_group（§10.5）
+      （`WorkspaceModel.hideFocusedGroup` → controller `hideFocusedGroup` が surfaceTree 差替+focus 移動）
+- [x] zoomed group の hide は zoom 解除後に hide（§18.3）（`hideFocusedGroup` 内で zoom 先行解除）
+- [x] `show_group`（§11.8）: hidden から除外、zoom 解除、focus 移動、last pane 復元
+      （`WorkspaceModel.showGroup` → controller `showGroup`。action は `show_group:<name>`、shelf は id 直指定）
+- [x] `HiddenGroupShelf.swift`（§7.2）: 右上 overlay、0 個非表示 / 1〜4 個 pill /
+      5 個以上は `[+N]` メニュー、pill click で即 show（`TerminalWorkspaceView` の ZStack overlay、§14.14）
+- [x] Cmd+Opt+H = hide_group（§10.5, `src/config/Config.zig`）
 
 **成功条件**: group 単位 zoom / zoom 中 Cmd+D は内部 split / hide は kill しない /
 shelf 表示 / pill click で即復帰。
+→ `zig build -Demit-macos-app=false` exit 0、`zig build test`（"group split" / "ghostty.h" パーサ）パス、
+`zig fmt --check`（Config.zig / Binding.zig）exit 0、`swiftlint --strict`（変更 8 ファイル）0 violations、
+`xcodebuild test`（`WorkspaceModelTests` に Phase 5 13 件追加 = zoom 3 / hide 5 / show 5、
+`SplitTreeTests`/`TerminalRestorableTests` 回帰なし `** TEST SUCCEEDED **`）。group 単位 zoom / hide の
+neighbor focus / 最後の visible group 拒否 / un-zoom on hide·show の論理はデータ層で担保。
+
+- [ ] 実機での目視確認（group zoom トグル・zoom 中 Cmd+D が内部 split・hide で kill されない・
+      shelf 表示〔1〜4 pill / 5+ で `[+N]`〕・pill click で即復帰）は未実施
+      （ロジックは自動テストで担保。Phase 6 restore の目視と併せて実施推奨）
+
+### Phase 5 実装メモ（レビュー観点）
+
+- **zoom は派生表示状態の最小変更**: `toggleGroupZoom` は `state.zoomedGroup` を flip するだけ。
+  `surfaceTree`〔focused group が source of truth〕は不変で、focused group は zoom 後も focused のため
+  group 切替を伴わない。描画は `effectiveVisibleGroupTree`（zoom 時 `treeContainingOnly`）の変化で
+  `@ObservedObject` 経由再描画。group zoom（外）と inner split zoom（`paneTree.zoomed`、内）は SPEC §14.15 の
+  外→内順に自然合成（GroupView が `effectiveVisibleGroupTree` の単一 leaf を描き、その中の
+  `TerminalSplitTreeView` が `tree.zoomed ?? tree.root`）。
+- **zoom トグル時の focus 再付与**: zoom で group 木の構造（split↔単一 leaf）が変わり `.id(structuralIdentity)` が
+  変化 → GroupSplitSubtreeView が再生成され同一 SurfaceView を再ホスト。pane 層 `toggle_split_zoom` と同じく
+  first responder が外れ得るため、ハンドラで `window.makeKeyAndOrderFront` + 起点 surface へ `moveFocus` を再付与
+  （`ghosttyDidToggleSplitZoom` を踏襲）。
+- **hide の neighbor 解決は canonical 基準（zoom 無視）**: `neighborAfterHiding` は hide 対象を加えた
+  hidden 集合で `canonicalGroupTree.nearestLeaf(matching: visible)` を引く。§18.3 で hide は zoom を先行解除する
+  ため zoom を無視して canonical で探索するのが正しい。neighbor が無い＝**最後の visible group**（§18.2）→ 拒否。
+  performability（`canHideFocusedGroup`）も同経路で判定し、拒否時はキー非消費。
+- **hide/show は group 切替機構を再利用**: hide は「outgoing pane 保存 → hidden 追加 → zoom 解除 →
+  neighbor へ focus」、show は「outgoing 保存 → hidden 除外 → zoom 解除 → 対象へ focus」を model で原子的に行い、
+  controller が `surfaceTree = focusedPaneTree` + `moveKeyboardFocus(toGroupSurface:)` で仕上げる。
+  この末尾処理は `focusGroup`/`goto_group`/`hide`/`show` 共通の private ヘルパーへ抽出（§14.12）。
+  **process は kill しない**（§14.7）: hidden group の `paneTree` は `groups` に生存し canonical も不変なので、
+  `show_group` で元位置に自然復帰。
+- **shelf は workspace overlay（§14.14）/ 安定順**: `HiddenGroupShelf` は `TerminalWorkspaceView` の ZStack
+  top-trailing overlay で、個別 GroupView の責務ではない。hidden は Set のため `createdAt`（同値時 id）で
+  ソートし pill 順がちらつかないようにした。0 個は overlay 自体を出さない。5 個以上は先頭 3 pill + `[+N]` Menu
+  （SPEC §7.2 の `[a] [b] [c] [+N]` 例に厳密準拠）。pill/menu クリックは `onShowGroup`→controller `showGroup(id)`。
+- **action 配線は Phase 2.3/3/4 と同一経路**: Zig core 語彙は Phase 2.1 で整備済み。`Ghostty.App.action()` に
+  `TOGGLE_GROUP_ZOOM`/`HIDE_GROUP`/`SHOW_GROUP` の case → 3 notification → `BaseTerminalController` ハンドラ。
+  `show_group` のみ引数あり（既存 `ghostty_action_set_title_s` を再利用、`.title` を name として ShowGroupNameKey で運搬）。
+  performability: zoom は `canToggleGroupZoom`（visible が複数 or 既 zoom）、hide は `canHideFocusedGroup`、
+  show は該当名 hidden group の存在で gate。
+- **group 操作の undo は引き続き未登録**: hide/show/zoom も `surfaceTree`-only undo を流用できない
+  （focusedGroup 切替後に旧 tree を誤 group へミラー）ため undo 非登録。group-aware undo 横断タスクの対象（後述）。
+- **新規ファイルの Xcode 取り込み**: `HiddenGroupShelf.swift` は file-system synchronized group により
+  自動コンパイル対象（`TerminalWorkspaceView` からの参照解決＋テストビルド成功で確認）。
 
 ---
 
