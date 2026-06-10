@@ -653,6 +653,53 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
 
 ---
 
+## 横断: UI 洗練 & rebrand 仕上げ（2026-06 追加）
+
+全 Phase 完了後のフィードバック。① グループ名ラベルの「ダサさ」解消（安っぽいスタイル+
+悪い配置）、② 最初のグループ名もランダム化、③ メニューバーのアプリ名を XGhostty に。
+
+### A. グループ名ヘッダーの再設計（overlay 廃止 → ヘッダー帯）
+
+要件: 「左上のまま・オーバーレイしない・常時表示・Ghostty のターミナルに馴染む見た目」。
+
+- [ ] overlay（`GroupView` の ZStack, 不変条件 §14.13）を廃止し、各グループ上部に
+      **専用ヘッダー帯**を導入。ターミナルはその下に配置（レイアウトを押し下げる）
+  - [ ] `GroupView` を `ZStack(terminal + label overlay)` → `VStack(header + terminal)` へ
+  - [ ] SPEC §6.3 / §7.1 / 不変条件 §14.13（「overlay は layout を押し下げない」）を
+        ヘッダー帯前提に改訂
+- [ ] スタイルを Ghostty のターミナルに馴染ませる（「安っぽさ」解消の本丸）
+  - [ ] `.caption` システムフォント → 設定中の**ターミナルフォント**に寄せる（config 参照）
+  - [ ] material ピル背景を廃止 → ターミナル配色に馴染むフラットな地組み
+  - [ ] focused / unfocused の区別は色・太さ・不透明度で維持（accent border は再検討）
+- [ ] 既存インタラクションを維持: single-click focus / double-click rename /
+      `rename_group` action / inline TextField の commit・cancel 挙動
+- [ ] 常時表示を維持（単一グループでもヘッダーを表示）
+- [ ] レイアウト押し下げ後もターミナル描画領域が正しく再計算される
+      （split / resize_group / zoom / hide·show と整合、ヘッダー高さぶん縮む）
+- [ ] 目視: overlay 由来の重なりが消える / ヘッダー帯がターミナルに被らない /
+      フォント・配色がターミナルと統一感がある
+
+### B. 最初のグループ名もランダム生成
+
+- [ ] `WorkspaceModel.defaultGroupName = "Group 1"` を廃止し、`init(wrapping:)` で
+      `GroupNameGenerator.make(existing: [])` を使用（最初のグループも adjective-noun に）
+- [ ] 影響範囲の更新: "Group 1" を前提にした `WorkspaceModelTests` /
+      restore 系アサーションを修正（テストは決定論のため RNG 注入版を使用）
+- [ ] restore 時は名前を再生成しない原則を維持（生成は新規作成時のみ）
+
+### C. メニューバーのアプリ名を XGhostty に
+
+- [ ] 根本原因: `CFBundleName` 未設定 → `PRODUCT_NAME`(=Ghostty) にフォールバック。
+      macOS アプリメニューの太字名は `CFBundleName` を使うため Ghostty のまま
+      （`MainMenu.xib` の "XGhostty" は AppKit が実行時に上書き）
+- [ ] 主要アプリターゲットの全 build config に
+      `INFOPLIST_KEY_CFBundleName = XGhostty`（DEBUG は `XGhostty[DEBUG]`）を追加
+- [ ] クリーンビルド + 旧 .app 削除でメニューバー左上が XGhostty になることを確認
+      （LaunchServices キャッシュ更新のため要再ビルド/再インストール）
+- [ ] bundle ID / TERM / 実行ファイル名は従来どおり Ghostty 維持（rebrand 方針）
+
+---
+
 ## テスト（§14 不変条件 / §19）
 
 - [ ] Unit（§19.1）: 名前一意性 / hide·show が canonical 不変 / close が canonical·groups 変更 /
