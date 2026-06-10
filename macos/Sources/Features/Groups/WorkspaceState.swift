@@ -55,6 +55,31 @@ struct WorkspaceState {
 
         return canonicalGroupTree.pruningLeaves { hiddenGroupIDs.contains($0.id) }
     }
+
+    // MARK: Restore (SPEC §12.3)
+
+    /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3).
+    ///
+    /// Everything comes back visible and non-zoomed: `hiddenGroupIDs` and
+    /// `zoomedGroup` are cleared (the decoder already does this, but we repeat it
+    /// so the transform is correct for any input, including runtime states in
+    /// tests). `focusedGroup` is validated against the surviving groups and the
+    /// canonical tree; if it no longer points at a real group it falls back to
+    /// the canonical tree's first leaf.
+    static func restoring(_ saved: WorkspaceState) -> WorkspaceState {
+        var restored = saved
+        restored.hiddenGroupIDs = []
+        restored.zoomedGroup = nil
+
+        let focusValid = restored.focusedGroup.map { id in
+            restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
+        } ?? false
+        if !focusValid {
+            restored.focusedGroup = restored.canonicalGroupTree.firstLeaf?.id
+        }
+
+        return restored
+    }
 }
 
 // MARK: Codable

@@ -108,4 +108,46 @@ struct WorkspaceStateTests {
         #expect(groups[ids.1.rawValue.uuidString] != nil)
         #expect(groups.count == 2)
     }
+
+    // MARK: restoring (SPEC §12.3)
+
+    @Test func restoringClearsHiddenAndZoom() throws {
+        var (state, ids) = try Self.makeTwoGroupState()
+        state.hiddenGroupIDs = [ids.1]
+        state.zoomedGroup = ids.0
+
+        let restored = WorkspaceState.restoring(state)
+
+        // Everything comes back visible and non-zoomed.
+        #expect(restored.hiddenGroupIDs.isEmpty)
+        #expect(restored.zoomedGroup == nil)
+        // Canonical layout, groups and names are preserved.
+        #expect(Set(restored.groups.keys) == Set(state.groups.keys))
+        #expect(restored.canonicalGroupTree.structuralIdentity == state.canonicalGroupTree.structuralIdentity)
+    }
+
+    @Test func restoringKeepsValidFocusedGroup() throws {
+        let (state, ids) = try Self.makeTwoGroupState()
+        let restored = WorkspaceState.restoring(state)
+        #expect(restored.focusedGroup == ids.0)
+    }
+
+    @Test func restoringFallsBackToFirstLeafWhenFocusedGroupUnknown() throws {
+        var (state, _) = try Self.makeTwoGroupState()
+        // A focused group that no longer exists falls back to the canonical
+        // tree's first leaf (§12.3).
+        state.focusedGroup = GroupID()
+
+        let restored = WorkspaceState.restoring(state)
+        #expect(restored.focusedGroup != nil)
+        #expect(restored.focusedGroup == state.canonicalGroupTree.firstLeaf?.id)
+    }
+
+    @Test func restoringFallsBackToFirstLeafWhenFocusedGroupNil() throws {
+        var (state, _) = try Self.makeTwoGroupState()
+        state.focusedGroup = nil
+
+        let restored = WorkspaceState.restoring(state)
+        #expect(restored.focusedGroup == state.canonicalGroupTree.firstLeaf?.id)
+    }
 }
