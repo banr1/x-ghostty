@@ -97,6 +97,9 @@ class BaseTerminalController: NSWindowController,
     /// Cancellable for aggregating bell state across all surfaces in this controller.
     private var bellStateCancellable: AnyCancellable?
 
+    /// Cancellable for invalidating restorable state on group-layer changes.
+    private var workspaceStateCancellable: AnyCancellable?
+
     /// An override title for the tab/window set by the user via prompt_tab_title.
     /// When set, this takes precedence over the computed title from the terminal.
     var titleOverride: String? {
@@ -166,6 +169,17 @@ class BaseTerminalController: NSWindowController,
             // single default group whose pane tree mirrors `surfaceTree`.
             self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
         }
+
+        // Persist state-only group-layer mutations. `resize_group` /
+        // `equalize_groups` / `rename_group` (both the inline editor and the
+        // `set_group_title` action) change `workspace.state` without touching
+        // `surfaceTree`, so they never reach `surfaceTreeDidChange`'s
+        // `invalidateRestorableState`. Mirror that hook on the group layer's
+        // source of truth so canonical group ratios and names survive relaunch.
+        // (`dropFirst` skips the initial value emitted on subscription.)
+        workspaceStateCancellable = workspace.$state
+            .dropFirst()
+            .sink { [weak self] _ in self?.invalidateRestorableState() }
 
         // Setup our bell state for the window
         setupBellNotificationPublisher()

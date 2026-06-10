@@ -645,11 +645,37 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
 
 ### group undo 由来の follow-up（任意・低優先）
 
-- [ ] state-only group 変更（`resize_group` / `equalize_groups` / `rename_group`）が
-      `surfaceTree` を変えないため restorable-state が無効化されない既存バグの修正
-      （各ハンドラで明示 `invalidateRestorableState()` を呼ぶ。本タスクで顕在化）
+- [x] state-only group 変更（`resize_group` / `equalize_groups` / `rename_group`）が
+      `surfaceTree` を変えないため restorable-state が無効化されない既存バグの修正。
+      canonical 比率・group 名の変更が再起動保存に乗らなかったのを解消
+      （`BaseTerminalController` で `workspace.$state` を購読し、変更ごとに
+      `invalidateRestorableState()` を呼ぶ中央集約フックを新設）
 - [ ] pane undo のメニュー残留（別 group 切替後に no-op になる項目）を消すための
       token-target ベース選択的クリア（cosmetic。現状はガードで安全だが UX 改善余地）
+
+### state-only restorable-state invalidation 実装メモ（レビュー観点）
+
+- **採用設計（中央集約観測・TODO 当初案「各ハンドラで明示」から変更）**: 既存の永続化フックは
+  `TerminalController.surfaceTreeDidChange` override 内の `invalidateRestorableState()`
+  （`surfaceTree` が変わるたびに発火）。group 層のもう一つの永続 source-of-truth である
+  `workspace.state` にも対称なフックを設け、`BaseTerminalController.init`（workspace 確定後）で
+  `workspace.$state.dropFirst().sink { invalidateRestorableState() }` を購読する。
+- **per-handler 案を採らなかった理由**: 当初案は resize/equalize/set_group_title の controller
+  ハンドラに 1 行ずつ足す方針だが、**inline rename**（`TerminalWorkspaceView.commitRename` →
+  `workspace.renameGroup`）は controller を経由せず SwiftUI 側で完結するため取りこぼす。
+  `$state` 観測なら 4 経路（resize / equalize / set_group_title / inline rename）を一様にカバーし、
+  将来の state-only 変更にも自動追従する。差分も 1 ファイル 14 行と小さい。
+- **冪等性・安全性**: 構造的 group 操作（new_group_split / hide / show / close）や focus 切替は
+  `surfaceTree` も変わるため二重 invalidate になるが `invalidateRestorableState` は dirty フラグを
+  立てるだけで冪等・無害。zoom/hidden の runtime-only トグルでも発火するが両者は Codable 非対象で
+  再エンコード結果は同一。`dropFirst()` で購読時の初期値発火を抑止し、購読は workspace 確定後・
+  init の surfaceTree ミラー後に張るため init 中の誤発火もなし。
+- **再エンコード経路**: invalidate 後 AppKit が次の保存機会に再エンコードし、
+  `InternalState.init(from controller:)` が `controller.workspace.state`（変更後の name/ratio 込み）を
+  捕捉（Phase 6 の v8 `workspace` フィールド）。Codable round-trip 自体は既存 Phase 6 テストで担保済み。
+- **テスト方針**: `invalidateRestorableState` は AppKit 内部の dirty フラグ + 遅延再エンコードという
+  副作用で、unit レベルでの直接検証は非現実的（Codable の正しさは Phase 6 で担保済み）。本修正は
+  ビルド + 全 `GhosttyTests` 回帰なしで論理担保し、再起動跨ぎの実機目視は横断実機回帰と併せて実施推奨。
 
 ---
 
