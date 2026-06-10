@@ -7056,42 +7056,42 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
                 .{ .goto_group = .left },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
                 .{ .goto_group = .right },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
                 .{ .goto_group = .up },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
                 .{ .goto_group = .down },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
                 .{ .resize_group = .{ .left, 10 } },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
                 .{ .resize_group = .{ .right, 10 } },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
                 .{ .resize_group = .{ .up, 10 } },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
                 .{ .resize_group = .{ .down, 10 } },
             );
             try self.set.put(
