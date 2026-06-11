@@ -949,6 +949,16 @@ typedef enum {
   GHOSTTY_ACTION_SEARCH_SELECTED,
   GHOSTTY_ACTION_READONLY,
   GHOSTTY_ACTION_COPY_TITLE_TO_CLIPBOARD,
+  GHOSTTY_ACTION_NEW_GROUP_SPLIT,
+  GHOSTTY_ACTION_GOTO_GROUP,
+  GHOSTTY_ACTION_RESIZE_GROUP,
+  GHOSTTY_ACTION_EQUALIZE_GROUPS,
+  GHOSTTY_ACTION_TOGGLE_GROUP_ZOOM,
+  GHOSTTY_ACTION_HIDE_GROUP,
+  GHOSTTY_ACTION_SHOW_GROUP,
+  GHOSTTY_ACTION_RENAME_GROUP,
+  GHOSTTY_ACTION_SET_GROUP_TITLE,
+  GHOSTTY_ACTION_CLOSE_GROUP,
 } ghostty_action_tag_e;
 
 typedef union {
@@ -990,6 +1000,11 @@ typedef union {
   ghostty_action_search_total_s search_total;
   ghostty_action_search_selected_s search_selected;
   ghostty_action_readonly_e readonly;
+  ghostty_action_split_direction_e new_group_split;
+  ghostty_action_goto_split_e goto_group;
+  ghostty_action_resize_split_s resize_group;
+  ghostty_action_set_title_s show_group;
+  ghostty_action_set_title_s set_group_title;
 } ghostty_action_u;
 
 typedef struct {

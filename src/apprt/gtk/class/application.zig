@@ -787,6 +787,17 @@ pub const Application = extern struct {
             .check_for_updates,
             .undo,
             .redo,
+            // Group-layer actions are macOS-only for now (no GTK group layer).
+            .new_group_split,
+            .goto_group,
+            .resize_group,
+            .equalize_groups,
+            .toggle_group_zoom,
+            .hide_group,
+            .show_group,
+            .rename_group,
+            .set_group_title,
+            .close_group,
             => {
                 log.warn("unimplemented action={}", .{action});
                 return false;

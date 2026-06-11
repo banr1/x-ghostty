@@ -661,6 +661,55 @@ pub const Action = union(enum) {
     /// Equalize the size of all splits in the current window.
     equalize_splits,
 
+    // Group-layer actions. A "group" is the upper layer of the two-level
+    // split model: the window holds a tree of groups, and each group holds
+    // its own tree of terminal panes. These mirror the split actions above
+    // but operate on the group tree rather than the focused group's panes.
+    // The group state lives in the apprt (macOS for now), so these are
+    // dispatched through the apprt action layer like `new_split`.
+
+    /// Create a new group split in the specified direction, creating a new
+    /// group with a single initial pane beside the current group.
+    ///
+    /// Valid arguments are the same as `new_split` (`right`, `down`, `left`,
+    /// `up`, `auto`).
+    new_group_split: SplitDirection,
+
+    /// Focus on a group either in the specified direction (`right`, `down`,
+    /// `left`, `up`), or in the adjacent group in the order of creation
+    /// (`previous` and `next`). Mirrors `goto_split` one layer up.
+    goto_group: SplitFocusDirection,
+
+    /// Resize the current group in the specified direction and amount in
+    /// pixels. The two arguments should be joined with a comma (`,`), like
+    /// `resize_group:up,10`. Mirrors `resize_split`.
+    resize_group: SplitResizeParameter,
+
+    /// Equalize the size of all visible groups in the current window.
+    equalize_groups,
+
+    /// Toggle whether the current group is zoomed. A zoomed group takes up
+    /// the entire window, hiding the other groups. Independent from
+    /// `toggle_split_zoom`, which zooms a pane within a group.
+    toggle_group_zoom,
+
+    /// Hide the current group. The group's panes and their processes keep
+    /// running; the group can be restored with `show_group`.
+    hide_group,
+
+    /// Show a previously hidden group, identified by its id or name.
+    show_group: []const u8,
+
+    /// Change the name of the current group via a pop-up prompt.
+    rename_group,
+
+    /// Set the name of the current group to the given value.
+    set_group_title: []const u8,
+
+    /// Close the current group, terminating the processes of all of its
+    /// panes. This might trigger a close confirmation popup.
+    close_group,
+
     /// Reset the window to the default size. The "default size" is the
     /// size that a new window would be created with. This has no effect
     /// if the window is fullscreen.
@@ -1426,6 +1475,16 @@ pub const Action = union(enum) {
             .toggle_readonly,
             .resize_split,
             .equalize_splits,
+            .new_group_split,
+            .goto_group,
+            .resize_group,
+            .equalize_groups,
+            .toggle_group_zoom,
+            .hide_group,
+            .show_group,
+            .rename_group,
+            .set_group_title,
+            .close_group,
             .inspector,
             => .surface,
         };
@@ -3424,6 +3483,74 @@ test "parse: action with a tuple" {
 
     // invalid type
     try testing.expectError(Error.InvalidFormat, parseSingle("a=resize_split:up,four"));
+}
+
+test "parse: group split actions" {
+    const testing = std.testing;
+
+    // new_group_split: enum parameter, mirrors new_split
+    {
+        const binding = try parseSingle("a=new_group_split:right");
+        try testing.expect(binding.action == .new_group_split);
+        try testing.expectEqual(Action.SplitDirection.right, binding.action.new_group_split);
+    }
+
+    // new_group_split: omitted parameter defaults to auto
+    {
+        const binding = try parseSingle("a=new_group_split");
+        try testing.expect(binding.action == .new_group_split);
+        try testing.expectEqual(Action.SplitDirection.auto, binding.action.new_group_split);
+    }
+
+    // goto_group: focus-direction enum, mirrors goto_split
+    {
+        const binding = try parseSingle("a=goto_group:next");
+        try testing.expect(binding.action == .goto_group);
+        try testing.expectEqual(Action.SplitFocusDirection.next, binding.action.goto_group);
+    }
+
+    // resize_group: tuple, mirrors resize_split
+    {
+        const binding = try parseSingle("a=resize_group:up,10");
+        try testing.expect(binding.action == .resize_group);
+        try testing.expectEqual(Action.SplitResizeDirection.up, binding.action.resize_group[0]);
+        try testing.expectEqual(@as(u16, 10), binding.action.resize_group[1]);
+    }
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=resize_group:up"));
+
+    // void group actions
+    {
+        const binding = try parseSingle("a=equalize_groups");
+        try testing.expect(binding.action == .equalize_groups);
+    }
+    {
+        const binding = try parseSingle("a=toggle_group_zoom");
+        try testing.expect(binding.action == .toggle_group_zoom);
+    }
+    {
+        const binding = try parseSingle("a=hide_group");
+        try testing.expect(binding.action == .hide_group);
+    }
+    {
+        const binding = try parseSingle("a=rename_group");
+        try testing.expect(binding.action == .rename_group);
+    }
+    {
+        const binding = try parseSingle("a=close_group");
+        try testing.expect(binding.action == .close_group);
+    }
+
+    // string group actions
+    {
+        const binding = try parseSingle("a=show_group:calm-river");
+        try testing.expect(binding.action == .show_group);
+        try testing.expectEqualStrings("calm-river", binding.action.show_group);
+    }
+    {
+        const binding = try parseSingle("a=set_group_title:my-group");
+        try testing.expect(binding.action == .set_group_title);
+        try testing.expectEqualStrings("my-group", binding.action.set_group_title);
+    }
 }
 
 test "parse: chain" {

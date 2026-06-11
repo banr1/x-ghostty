@@ -58,7 +58,7 @@ extension TerminalRestorable {
 
 /// The state stored for terminal window restoration.
 final class TerminalRestorableState: TerminalRestorable {
-    static var version: Int { 7 }
+    static var version: Int { 8 }
     static var minimumVersion: Int { 5 }
 
     var focusedSurface: String? {
@@ -66,6 +66,10 @@ final class TerminalRestorableState: TerminalRestorable {
     }
     var surfaceTree: SplitTree<Ghostty.SurfaceView> {
         internalState.surfaceTree
+    }
+    /// The persisted group layer (`SPEC.md` §12.1), or `nil` for pre-v8 saves.
+    var workspace: WorkspaceState? {
+        internalState.workspace
     }
     var effectiveFullscreenMode: FullscreenMode? {
         internalState.effectiveFullscreenMode
@@ -155,9 +159,21 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
         // can be found for events from libghostty. This uses the low-level
         // createWindow so that AppKit can place the window wherever it should
         // be.
-        let c = TerminalController.init(
-            appDelegate.ghostty,
-            withSurfaceTree: state.surfaceTree)
+        //
+        // When the save carries a group layer (v8+), restore the whole workspace
+        // (Phase 6 / `SPEC.md` §12): all groups visible, nothing zoomed, focus
+        // validated. Older saves fall back to the single-tree restore path.
+        let restoredWorkspace = state.workspace.map(WorkspaceState.restoring)
+        let c: TerminalController
+        if let restoredWorkspace, restoredWorkspace.focusedGroup != nil {
+            c = TerminalController(
+                appDelegate.ghostty,
+                withWorkspace: restoredWorkspace)
+        } else {
+            c = TerminalController(
+                appDelegate.ghostty,
+                withSurfaceTree: state.surfaceTree)
+        }
         guard let window = c.window else {
             completionHandler(nil, TerminalRestoreError.windowDidNotLoad)
             return
@@ -171,9 +187,15 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
         // Restore the tab title override
         c.titleOverride = state.titleOverride
 
-        // Setup our restored state on the controller
-        // Find the focused surface in surfaceTree
-        if let focusedStr = state.focusedSurface {
+        // Setup our restored state on the controller. Find the focused surface
+        // in `surfaceTree` (which, on a workspace restore, is the focused
+        // group's pane tree). Prefer the focused group's stored focus so we land
+        // in the right pane even if `focusedGroup` fell back to the first leaf
+        // during restore; otherwise use the legacy top-level focused surface.
+        let focusedStr: String? = restoredWorkspace != nil
+            ? c.workspace.focusedGroupState?.focusedSurface?.rawValue.uuidString
+            : state.focusedSurface
+        if let focusedStr {
             var foundView: Ghostty.SurfaceView?
             for view in c.surfaceTree where view.id.uuidString == focusedStr {
                 foundView = view

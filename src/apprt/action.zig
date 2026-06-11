@@ -347,6 +347,43 @@ pub const Action = union(Key) {
     /// otherwise the terminal-set title.
     copy_title_to_clipboard,
 
+    // Group-layer actions. A group is the upper layer of the two-level split
+    // model; these operate on the window's group tree rather than a single
+    // group's pane tree. The argument types are shared with the corresponding
+    // split actions. New actions must be appended (here and in the Key enum
+    // below) to preserve C ABI compatibility.
+
+    /// Create a new group split in the given direction.
+    new_group_split: SplitDirection,
+
+    /// Focus a group in the given direction or creation order.
+    goto_group: GotoSplit,
+
+    /// Resize the current group in the given direction.
+    resize_group: ResizeSplit,
+
+    /// Equalize the size of all visible groups in the target window.
+    equalize_groups,
+
+    /// Toggle whether the current group is zoomed. A zoomed group is resized
+    /// to take up the entire window.
+    toggle_group_zoom,
+
+    /// Hide the current group without terminating its processes.
+    hide_group,
+
+    /// Show a previously hidden group, identified by its id or name.
+    show_group: SetTitle,
+
+    /// Prompt to rename the current group. It is up to the apprt to prompt.
+    rename_group,
+
+    /// Set the name of the current group to the requested value.
+    set_group_title: SetTitle,
+
+    /// Close the current group, terminating the processes of all its panes.
+    close_group,
+
     /// Sync with: ghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -415,6 +452,20 @@ pub const Action = union(Key) {
         search_selected,
         readonly,
         copy_title_to_clipboard,
+
+        // Group-layer actions, appended for C ABI compatibility. Keep this
+        // order in sync with the union above and with `ghostty_action_tag_e`
+        // in include/ghostty.h.
+        new_group_split,
+        goto_group,
+        resize_group,
+        equalize_groups,
+        toggle_group_zoom,
+        hide_group,
+        show_group,
+        rename_group,
+        set_group_title,
+        close_group,
 
         test "ghostty.h Action.Key" {
             try lib.checkGhosttyHEnum(Key, "GHOSTTY_ACTION_");

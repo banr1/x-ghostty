@@ -7041,6 +7041,71 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
+                .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true } },
+                .{ .new_group_split = .right },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true, .shift = true } },
+                .{ .new_group_split = .down },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'r' }, .mods = .{ .super = true, .alt = true } },
+                .{ .rename_group = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .goto_group = .left },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .goto_group = .right },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .goto_group = .up },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
+                .{ .goto_group = .down },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .resize_group = .{ .left, 10 } },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .resize_group = .{ .right, 10 } },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .resize_group = .{ .up, 10 } },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
+                .{ .resize_group = .{ .down, 10 } },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .enter }, .mods = .{ .super = true, .alt = true } },
+                .{ .toggle_group_zoom = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'h' }, .mods = .{ .super = true, .alt = true } },
+                .{ .hide_group = {} },
+            );
+            try self.set.put(
+                alloc,
                 .{ .key = .{ .unicode = '[' }, .mods = .{ .super = true } },
                 .{ .goto_split = .previous },
             );

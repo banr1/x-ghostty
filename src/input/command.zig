@@ -718,6 +718,22 @@ fn actionCommands(action: Action.Key) []const Command {
         .last_tab,
         => comptime &.{},
 
+        // Group-layer actions are plumbed through the core, but their behavior
+        // is not yet implemented on the apprt side. Command-palette entries are
+        // added together with the behavior in the phases that implement each
+        // group action, so they have no commands for now.
+        .new_group_split,
+        .goto_group,
+        .resize_group,
+        .equalize_groups,
+        .toggle_group_zoom,
+        .hide_group,
+        .show_group,
+        .rename_group,
+        .set_group_title,
+        .close_group,
+        => comptime &.{},
+
         // No commands for obvious reasons
         .ignore,
         .unbind,

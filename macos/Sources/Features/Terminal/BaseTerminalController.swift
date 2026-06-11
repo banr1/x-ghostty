@@ -37,13 +37,21 @@ class BaseTerminalController: NSWindowController,
 
     /// The currently focused surface.
     var focusedSurface: Ghostty.SurfaceView? {
-        didSet { syncFocusToSurfaceTree() }
+        didSet {
+            syncFocusToSurfaceTree()
+            workspace.setFocusedSurface(focusedSurface.map { SurfaceID(rawValue: $0.id) })
+        }
     }
 
     /// The tree of splits within this terminal window.
     @Published var surfaceTree: SplitTree<Ghostty.SurfaceView> = .init() {
         didSet { surfaceTreeDidChange(from: oldValue, to: surfaceTree) }
     }
+
+    /// The group layer wrapping `surfaceTree`. In Phase 0 this mirrors the
+    /// focused group's pane tree; `surfaceTree` remains the source of truth for
+    /// rendering, actions and Combine observation. See `SPEC.md` §15 Phase 0.
+    private(set) var workspace = WorkspaceModel()
 
     /// This can be set to show/hide the command palette.
     @Published var commandPaletteIsShowing: Bool = false
@@ -89,6 +97,9 @@ class BaseTerminalController: NSWindowController,
     /// Cancellable for aggregating bell state across all surfaces in this controller.
     private var bellStateCancellable: AnyCancellable?
 
+    /// Cancellable for invalidating restorable state on group-layer changes.
+    private var workspaceStateCancellable: AnyCancellable?
+
     /// An override title for the tab/window set by the user via prompt_tab_title.
     /// When set, this takes precedence over the computed title from the terminal.
     var titleOverride: String? {
@@ -130,7 +141,8 @@ class BaseTerminalController: NSWindowController,
 
     init(_ ghostty: Ghostty.App,
          baseConfig base: Ghostty.SurfaceConfiguration? = nil,
-         surfaceTree tree: SplitTree<Ghostty.SurfaceView>? = nil
+         surfaceTree tree: SplitTree<Ghostty.SurfaceView>? = nil,
+         workspace restoredWorkspace: WorkspaceState? = nil
     ) {
         self.ghostty = ghostty
         self.derivedConfig = DerivedConfig(ghostty.config)
@@ -139,7 +151,35 @@ class BaseTerminalController: NSWindowController,
 
         // Initialize our initial surface.
         guard let ghostty_app = ghostty.app else { preconditionFailure("app must be loaded") }
-        self.surfaceTree = tree ?? .init(view: Ghostty.SurfaceView(ghostty_app, baseConfig: base))
+
+        if let restoredWorkspace {
+            // Restore the full group layer (Phase 6 / `SPEC.md` §12). Each pane
+            // was decoded as a fresh shell; the focused group's pane tree becomes
+            // the `surfaceTree` source of truth and the rest of the groups render
+            // from the workspace. Setting `surfaceTree` first is a no-op mirror
+            // (the default empty model has no focused group) before we install
+            // the restored model whose focused group already holds this tree.
+            let model = WorkspaceModel(restoredWorkspace)
+            self.surfaceTree = model.focusedPaneTree
+            self.workspace = model
+        } else {
+            self.surfaceTree = tree ?? .init(view: Ghostty.SurfaceView(ghostty_app, baseConfig: base))
+
+            // Wrap the initial pane tree into the group layer. Phase 0 keeps a
+            // single default group whose pane tree mirrors `surfaceTree`.
+            self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
+        }
+
+        // Persist state-only group-layer mutations. `resize_group` /
+        // `equalize_groups` / `rename_group` (both the inline editor and the
+        // `set_group_title` action) change `workspace.state` without touching
+        // `surfaceTree`, so they never reach `surfaceTreeDidChange`'s
+        // `invalidateRestorableState`. Mirror that hook on the group layer's
+        // source of truth so canonical group ratios and names survive relaunch.
+        // (`dropFirst` skips the initial value emitted on subscription.)
+        workspaceStateCancellable = workspace.$state
+            .dropFirst()
+            .sink { [weak self] _ in self?.invalidateRestorableState() }
 
         // Setup our bell state for the window
         setupBellNotificationPublisher()
@@ -182,6 +222,56 @@ class BaseTerminalController: NSWindowController,
             self,
             selector: #selector(ghosttyDidNewSplit(_:)),
             name: Ghostty.Notification.ghosttyNewSplit,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidNewGroupSplit(_:)),
+            name: Ghostty.Notification.ghosttyNewGroupSplit,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidRenameGroup(_:)),
+            name: Ghostty.Notification.ghosttyRenameGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidSetGroupTitle(_:)),
+            name: Ghostty.Notification.ghosttySetGroupTitle,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidGotoGroup(_:)),
+            name: Ghostty.Notification.ghosttyGotoGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidResizeGroup(_:)),
+            name: Ghostty.Notification.ghosttyResizeGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidEqualizeGroups(_:)),
+            name: Ghostty.Notification.ghosttyEqualizeGroups,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidToggleGroupZoom(_:)),
+            name: Ghostty.Notification.ghosttyToggleGroupZoom,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidHideGroup(_:)),
+            name: Ghostty.Notification.ghosttyHideGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidShowGroup(_:)),
+            name: Ghostty.Notification.ghosttyShowGroup,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidCloseGroup(_:)),
+            name: Ghostty.Notification.ghosttyCloseGroup,
             object: nil)
         center.addObserver(
             self,
@@ -269,6 +359,70 @@ class BaseTerminalController: NSWindowController,
         return newView
     }
 
+    /// Create a new group as a sibling of the focused group, with a single
+    /// initial pane, and move focus into it (`SPEC.md` §11.1).
+    ///
+    /// Registers a group-aware undo ("New Group"): because the focused group
+    /// switches here, `replaceSurfaceTree`'s `surfaceTree`-only undo can't be
+    /// reused (it would mirror the old panes into the new group). Instead we
+    /// snapshot the whole `WorkspaceState` before/after and register a
+    /// `registerWorkspaceUndo` that restores them atomically.
+    @discardableResult
+    func newGroupSplit(
+        at oldView: Ghostty.SurfaceView,
+        direction: SplitTree<GroupRef>.NewDirection,
+        baseConfig config: Ghostty.SurfaceConfiguration? = nil
+    ) -> Ghostty.SurfaceView? {
+        // The anchor surface must be in our (the focused group's) tree, and we
+        // need a focused group to anchor the new sibling against.
+        guard surfaceTree.root?.node(view: oldView) != nil else { return nil }
+        guard workspace.state.focusedGroup != nil else { return nil }
+        guard let ghostty_app = ghostty.app else { return nil }
+
+        // Build the new group's single initial pane.
+        let newView = Ghostty.SurfaceView(ghostty_app, baseConfig: config)
+        let newPaneTree = SplitTree<Ghostty.SurfaceView>(view: newView)
+
+        // Name and assemble the new group, focused on its initial pane.
+        let now = Date()
+        let existingNames = Set(workspace.state.groups.values.map(\.name))
+        let newGroup = GroupState(
+            id: GroupID(),
+            name: GroupNameGenerator.make(existing: existingNames),
+            paneTree: newPaneTree,
+            focusedSurface: SurfaceID(rawValue: newView.id),
+            createdAt: now,
+            lastFocusedAt: now)
+
+        // Snapshot before the switch so the undo can restore the outgoing group.
+        let before = workspace.state
+
+        // Single group-switch point: persist the outgoing pane tree, insert the
+        // new group next to the focused one, and switch focus (un-zooms first).
+        do {
+            try workspace.openNewGroup(
+                newGroup,
+                direction: direction,
+                savingOutgoingPaneTree: surfaceTree)
+        } catch {
+            Ghostty.logger.warning("failed to open new group split: \(error, privacy: .public)")
+            return nil
+        }
+
+        // Swap the source-of-truth pane tree to the new group's tree. The
+        // resulting `surfaceTreeDidChange` mirrors it back into the now-focused
+        // new group (a no-op) and re-renders the workspace.
+        surfaceTree = newPaneTree
+        DispatchQueue.main.async {
+            Ghostty.moveFocus(to: newView, from: oldView)
+        }
+
+        // The post-mirror state is the redo target; it retains the new pane.
+        registerWorkspaceUndo("New Group", undo: before, redo: workspace.state)
+
+        return newView
+    }
+
     /// Move focus to a surface view.
     func focusSurface(_ view: Ghostty.SurfaceView) {
         // Check if target surface is in our tree
@@ -288,6 +442,10 @@ class BaseTerminalController: NSWindowController,
     ///
     /// Subclasses should call super first.
     func surfaceTreeDidChange(from: SplitTree<Ghostty.SurfaceView>, to: SplitTree<Ghostty.SurfaceView>) {
+        // Mirror the focused group's pane tree into the group layer (Phase 0).
+        // `surfaceTree` is the source of truth; the workspace follows it.
+        workspace.replaceFocusedPaneTree(to, focusedSurface: focusedSurface)
+
         // If our surface tree becomes empty then we have no focused surface.
         if to.isEmpty {
             focusedSurface = nil
@@ -502,10 +660,22 @@ class BaseTerminalController: NSWindowController,
             undoManager.setActionName(undoAction)
         }
 
+        // The group this pane edit belongs to. A pane undo only ever restores
+        // `surfaceTree`, which `surfaceTreeDidChange` mirrors into whatever group
+        // is focused *at replay time*. If the focused group has since changed,
+        // replaying would mirror this group's panes into the wrong group and
+        // corrupt the layer (the group-aware undo cross-cutting task). Capturing
+        // the group here and skipping when it differs is the corruption guard —
+        // pane undos stay valid across round-trip group switches (the guard
+        // passes again once we return) but no-op while focused elsewhere.
+        let groupID = workspace.state.focusedGroup
+
         undoManager.registerUndo(
             withTarget: self,
             expiresAfter: undoExpiration
         ) { target in
+            guard target.workspace.state.focusedGroup == groupID else { return }
+
             target.surfaceTree = oldTree
             if let oldView {
                 DispatchQueue.main.async {
@@ -517,12 +687,58 @@ class BaseTerminalController: NSWindowController,
                 withTarget: target,
                 expiresAfter: target.undoExpiration
             ) { target in
+                guard target.workspace.state.focusedGroup == groupID else { return }
+
                 target.replaceSurfaceTree(
                     newTree,
                     moveFocusTo: newView,
                     moveFocusFrom: target.focusedSurface,
                     undoAction: undoAction)
             }
+        }
+    }
+
+    // MARK: Group-aware undo (cross-cutting task)
+
+    /// Restore a captured `WorkspaceState` snapshot and re-sync the
+    /// source-of-truth `surfaceTree` to the restored focused group.
+    ///
+    /// Order is load-bearing: the model is restored *first* so `focusedGroup` is
+    /// correct before `surfaceTree` is assigned — its `surfaceTreeDidChange`
+    /// mirror then writes into the restored group, not a stale one. The mirror
+    /// reads the possibly-stale `self.focusedSurface`, but `replaceFocusedPaneTree`
+    /// ignores a surface that isn't in the restored tree and keeps the snapshot's
+    /// stored focus, so the stale value is harmless.
+    private func restoreWorkspaceState(_ snapshot: WorkspaceState) {
+        workspace.restoreState(snapshot)
+        let focus = workspace.focusedGroupState?.focusedSurface
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: focus)
+    }
+
+    /// Register a group-aware undo that swaps between two whole-`WorkspaceState`
+    /// snapshots. Unlike `replaceSurfaceTree`'s undo (which restores only
+    /// `surfaceTree`), this restores `focusedGroup` / `canonicalGroupTree` /
+    /// `groups` together, so it stays correct across focused-group switches.
+    ///
+    /// The snapshots are value-type copies that retain the live `SurfaceView`s,
+    /// so an undo of `close_group` keeps the closed group's processes alive for
+    /// the `undoExpiration` window (mirroring `close_surface` undo), and a redo of
+    /// `new_group_split` can restore the new pane the post-mutation snapshot
+    /// retains. Symmetric ping-pong: each direction re-registers its inverse.
+    private func registerWorkspaceUndo(
+        _ actionName: String,
+        undo undoState: WorkspaceState,
+        redo redoState: WorkspaceState
+    ) {
+        guard let undoManager else { return }
+        undoManager.setActionName(actionName)
+        undoManager.registerUndo(
+            withTarget: self,
+            expiresAfter: undoExpiration
+        ) { target in
+            target.restoreWorkspaceState(undoState)
+            target.registerWorkspaceUndo(actionName, undo: redoState, redo: undoState)
         }
     }
 
@@ -602,6 +818,18 @@ class BaseTerminalController: NSWindowController,
     @objc private func ghosttyDidCloseSurface(_ notification: Notification) {
         guard let target = notification.object as? Ghostty.SurfaceView else { return }
         guard let node = surfaceTree.root?.node(view: target) else { return }
+
+        // §11.10: closing the last pane of a group is really closing the group.
+        // When this close would empty the focused group's pane tree *and* there
+        // are sibling groups, escalate to `close_group` (which switches focus to
+        // a sibling). With only one group we fall through to the existing
+        // close_surface path, which already handles last-pane → tab/window close
+        // with the familiar "Close Terminal?" confirmation (§18.5).
+        if workspace.state.groups.count > 1, surfaceTree.removing(node).isEmpty {
+            closeFocusedGroup()
+            return
+        }
+
         closeSurface(
             node,
             withConfirmation: (notification.userInfo?["process_alive"] as? Bool) ?? false)
@@ -629,6 +857,152 @@ class BaseTerminalController: NSWindowController,
         }
 
         newSplit(at: oldView, direction: splitDirection, baseConfig: config)
+    }
+
+    @objc private func ghosttyDidNewGroupSplit(_ notification: Notification) {
+        // The anchor surface must be within our tree.
+        guard let oldView = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.root?.node(view: oldView) != nil else { return }
+
+        // Notification must contain our base config.
+        let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
+        let config = configAny as? Ghostty.SurfaceConfiguration
+
+        // Determine the direction the new group should be placed in.
+        guard let directionAny = notification.userInfo?["direction"] else { return }
+        guard let direction = directionAny as? ghostty_action_split_direction_e else { return }
+        let splitDirection: SplitTree<GroupRef>.NewDirection
+        switch direction {
+        case GHOSTTY_SPLIT_DIRECTION_RIGHT: splitDirection = .right
+        case GHOSTTY_SPLIT_DIRECTION_LEFT: splitDirection = .left
+        case GHOSTTY_SPLIT_DIRECTION_DOWN: splitDirection = .down
+        case GHOSTTY_SPLIT_DIRECTION_UP: splitDirection = .up
+        default: return
+        }
+
+        newGroupSplit(at: oldView, direction: splitDirection, baseConfig: config)
+    }
+
+    @objc private func ghosttyDidRenameGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        // `rename_group` targets the focused group; enter inline-rename mode.
+        workspace.beginRenamingFocusedGroup()
+    }
+
+    @objc private func ghosttyDidSetGroupTitle(_ notification: Notification) {
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+        guard let title = notification.userInfo?["title"] as? String else { return }
+        guard let id = workspace.state.focusedGroup else { return }
+
+        // `set_group_title:<name>` sets the focused group's name directly.
+        workspace.renameGroup(id, to: title)
+    }
+
+    @objc private func ghosttyDidGotoGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        guard let direction = notification.userInfo?[
+            Ghostty.Notification.GroupDirectionKey] as? Ghostty.SplitFocusDirection else { return }
+
+        // Resolve the visible neighbor group in that direction (`SPEC.md` §11.3)
+        // and reuse the label-click focus switch, which restores the target
+        // group's last-focused pane.
+        let treeDirection: SplitTree<GroupRef>.FocusDirection = direction.toSplitTreeFocusDirection()
+        guard let target = workspace.gotoGroupTarget(treeDirection) else { return }
+        focusGroup(target)
+    }
+
+    @objc private func ghosttyDidResizeGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        guard let direction = notification.userInfo?[
+            Ghostty.Notification.ResizeGroupDirectionKey] as? Ghostty.SplitResizeDirection else { return }
+        guard let amount = notification.userInfo?[
+            Ghostty.Notification.ResizeGroupAmountKey] as? UInt16 else { return }
+
+        let spatialDirection: SplitTree<GroupRef>.Spatial.Direction
+        switch direction {
+        case .up: spatialDirection = .up
+        case .down: spatialDirection = .down
+        case .left: spatialDirection = .left
+        case .right: spatialDirection = .right
+        }
+
+        // Convert the pixel amount to a normalized ratio delta against the
+        // workspace's content area (the region all visible groups divide). This
+        // is exact for a single top-level group split (the common 2-group case)
+        // and a graceful approximation for nested group splits, where the LCA
+        // split's container is smaller — the divider simply moves a little less
+        // than `amount`px. `adjustRatio` clamps the result to [0.1, 0.9].
+        let size = window?.contentView?.bounds.size ?? surfaceTree.viewBounds()
+        let dimension: CGFloat = switch spatialDirection {
+        case .left, .right: size.width
+        case .up, .down: size.height
+        }
+        guard dimension > 0 else { return }
+        let ratioDelta = Double(amount) / Double(dimension)
+
+        workspace.resizeFocusedGroup(spatialDirection, ratioDelta: ratioDelta)
+    }
+
+    @objc private func ghosttyDidEqualizeGroups(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        workspace.equalizeGroups()
+    }
+
+    @objc private func ghosttyDidToggleGroupZoom(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        // Toggle group zoom; rendering reacts via `effectiveVisibleGroupTree`
+        // (`SPEC.md` §11.6). The focused group stays focused, so `surfaceTree`
+        // is untouched. Toggling reshapes the group view tree (split↔single
+        // leaf), which re-hosts the same surface views, so re-assert keyboard
+        // focus on the triggering surface (mirrors `ghosttyDidToggleSplitZoom`).
+        workspace.toggleGroupZoom()
+        window?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async {
+            Ghostty.moveFocus(to: view)
+        }
+    }
+
+    @objc private func ghosttyDidHideGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        hideFocusedGroup()
+    }
+
+    @objc private func ghosttyDidShowGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        guard let name = notification.userInfo?[
+            Ghostty.Notification.ShowGroupNameKey] as? String else { return }
+        guard let id = workspace.hiddenGroupID(named: name) else { return }
+        showGroup(id)
+    }
+
+    @objc private func ghosttyDidCloseGroup(_ notification: Notification) {
+        // The triggering surface must be within our (focused group's) tree.
+        guard let view = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(view) else { return }
+
+        closeFocusedGroup()
     }
 
     @objc private func ghosttyDidEqualizeSplits(_ notification: Notification) {
@@ -896,6 +1270,137 @@ class BaseTerminalController: NSWindowController,
             splitDidResize(node: resize.node, to: resize.ratio)
         case .drop(let drop):
             splitDidDrop(source: drop.payload, destination: drop.destination, zone: drop.zone)
+        }
+    }
+
+    /// Switch the focused group in response to a group-label click
+    /// (`SPEC.md` §7.1). Mirrors `newGroupSplit`'s swap: persist the outgoing
+    /// pane tree, flip the focused group, swap `surfaceTree` to the target's
+    /// panes, and move keyboard focus into its last-focused pane (§14.12).
+    ///
+    /// Like `newGroupSplit`, this registers no undo: `replaceSurfaceTree`'s undo
+    /// only restores `surfaceTree`, which would mirror the wrong pane tree into
+    /// the wrong group after a focus switch. Group-aware undo is a deferred
+    /// follow-up (see `TODO.md`).
+    func focusGroup(_ id: GroupID) {
+        guard workspace.state.focusedGroup != id else { return }
+        guard workspace.state.groups[id] != nil else { return }
+
+        // Persist the current panes into the outgoing group and flip focus.
+        let targetFocus = workspace.switchFocusedGroup(
+            to: id,
+            savingOutgoingPaneTree: surfaceTree)
+
+        // Swap the source-of-truth pane tree to the newly focused group. The
+        // resulting `surfaceTreeDidChange` mirrors it back (a no-op) and
+        // re-renders the workspace.
+        surfaceTree = workspace.focusedPaneTree
+
+        moveKeyboardFocus(toGroupSurface: targetFocus)
+    }
+
+    /// Hide the focused group in response to `hide_group` (`SPEC.md` §11.7). The
+    /// model moves focus to a visible neighbor and keeps the hidden group's
+    /// processes alive; here we swap `surfaceTree` to the neighbor's panes and
+    /// move keyboard focus, mirroring `focusGroup`. No-op when the focused group
+    /// is the last visible one (§18.2). Registers a group-aware undo ("Hide
+    /// Group") so the hide can be reversed; the snapshot keeps the hidden group's
+    /// panes (its processes already stay alive via `groups`, §14.7).
+    func hideFocusedGroup() {
+        let before = workspace.state
+        guard let result = workspace.hideFocusedGroup(
+            savingOutgoingPaneTree: surfaceTree) else { return }
+
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: result.focus)
+        registerWorkspaceUndo("Hide Group", undo: before, redo: workspace.state)
+    }
+
+    /// Show the hidden group `id` in response to a shelf pill click or the
+    /// `show_group` action (`SPEC.md` §11.8). The model un-hides it, clears any
+    /// zoom, and focuses it; here we swap `surfaceTree` to its panes and move
+    /// keyboard focus into its last-focused pane. Registers a group-aware undo
+    /// ("Show Group") so the reveal can be reversed.
+    func showGroup(_ id: GroupID) {
+        guard workspace.state.hiddenGroupIDs.contains(id) else { return }
+        let before = workspace.state
+        let targetFocus = workspace.showGroup(id, savingOutgoingPaneTree: surfaceTree)
+
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: targetFocus)
+        registerWorkspaceUndo("Show Group", undo: before, redo: workspace.state)
+    }
+
+    /// Close the focused group in response to `close_group` or a last-pane
+    /// `Cmd+W` (`SPEC.md` §11.9, §11.10). This is destructive — it terminates
+    /// the group's processes — so it confirms first whenever any pane still has a
+    /// live process (mirroring close_surface / window-close UX; the dialog text
+    /// only makes sense when there is something to terminate).
+    ///
+    /// The `.switched` close registers a group-aware undo ("Close Group"); the
+    /// pre-close snapshot retains the closed group's `SurfaceView`s, so its
+    /// processes stay alive for the `undoExpiration` window (mirroring
+    /// `close_surface` undo). The §18.5 last-group case delegates to the existing
+    /// tab/window close, which carries its own undo, so it is not double-wrapped.
+    func closeFocusedGroup() {
+        guard let group = workspace.focusedGroupState else { return }
+
+        // The focused group's panes are exactly `surfaceTree`.
+        guard surfaceTree.contains(where: { $0.needsConfirmQuit }) else {
+            performCloseFocusedGroup()
+            return
+        }
+
+        let paneCount = surfaceTree.reduce(into: 0) { count, _ in count += 1 }
+        let pane = paneCount == 1 ? "pane" : "panes"
+        confirmClose(
+            messageText: "Close Group “\(group.name)”?",
+            informativeText: "This will close \(paneCount) \(pane) and terminate their processes.",
+            confirmButtonTitle: "Close Group"
+        ) { [weak self] in
+            self?.performCloseFocusedGroup()
+        }
+    }
+
+    /// Apply a confirmed `close_group`: prune the focused group from the group
+    /// structure and either swap `surfaceTree` to the nearest remaining group
+    /// (terminating the closed group's surfaces as they fall out of scope, §14.8)
+    /// or, when it was the only group, delegate to tab/window close (§18.5).
+    private func performCloseFocusedGroup() {
+        let before = workspace.state
+        switch workspace.closeFocusedGroup() {
+        case .switched(_, let focus):
+            surfaceTree = workspace.focusedPaneTree
+            moveKeyboardFocus(toGroupSurface: focus)
+            registerWorkspaceUndo("Close Group", undo: before, redo: workspace.state)
+
+        case .closedLast:
+            // §18.5: emptying the tree routes through `replaceSurfaceTree`, whose
+            // `TerminalController` override turns it into `closeTabImmediately()`
+            // (closing the window if it is the last tab).
+            replaceSurfaceTree(.init())
+
+        case nil:
+            break
+        }
+    }
+
+    /// Move keyboard focus to `surfaceID` within the (now current) `surfaceTree`,
+    /// falling back to its first leaf. Shared tail of every group focus switch
+    /// (`focusGroup` / `goto_group` / `hide_group` / `show_group`, §14.12).
+    private func moveKeyboardFocus(toGroupSurface surfaceID: SurfaceID?) {
+        let target: Ghostty.SurfaceView?
+        if let surfaceID,
+           let node = surfaceTree.find(id: surfaceID.rawValue),
+           case .leaf(let view) = node {
+            target = view
+        } else {
+            target = surfaceTree.firstLeaf
+        }
+        if let target {
+            DispatchQueue.main.async {
+                Ghostty.moveFocus(to: target)
+            }
         }
     }
 

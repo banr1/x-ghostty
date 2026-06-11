@@ -187,9 +187,9 @@ MVPでは `initialWorkingDirectory` と `initialCommand` は nil でもよい。
 ```text
 TerminalWorkspaceView
   ├─ GroupSplitTreeView
-  │   └─ GroupView
-  │       ├─ TerminalSplitTreeView
-  │       └─ GroupLabel overlay
+  │   └─ GroupView (VStack)
+  │       ├─ GroupLabel header band
+  │       └─ TerminalSplitTreeView
   └─ HiddenGroupShelf overlay
 ```
 
@@ -220,7 +220,9 @@ struct TerminalWorkspaceView: View {
 
 ### 6.3 GroupView
 
-Group label は terminal 描画領域を押し下げず、**半透明overlayとして重ねる**。
+Group label は各 group 上部の **ヘッダー帯**（VStack の上段）として表示し、terminal
+描画領域をその高さぶん押し下げる。overlay ではない。帯はターミナル配色に馴染ませる
+（背景色フィル + split-divider 色のヘアライン）。
 
 ```swift
 struct GroupView: View {
@@ -228,17 +230,16 @@ struct GroupView: View {
     let isFocused: Bool
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            TerminalSplitTreeView(
-                tree: group.paneTree,
-                action: handlePaneOperation
-            )
-
+        VStack(spacing: 0) {
             GroupLabel(
                 title: group.name,
                 isFocused: isFocused
             )
-            .padding(6)
+
+            TerminalSplitTreeView(
+                tree: group.paneTree,
+                action: handlePaneOperation
+            )
         }
     }
 }
@@ -248,27 +249,30 @@ struct GroupView: View {
 
 ### 7.1 グループラベル
 
-各groupの左上に表示する。
+各 group 上部のヘッダー帯に、名前を左寄せで表示する。帯はターミナルに馴染ませる
+（ターミナル背景色フィル + 下端に split-divider 色のヘアライン、monospace フォント）。
 
 ```text
-┌─ calm-river ───────────────┐
-│                            │
+┌────────────────────────────┐
+│ calm-river                 │  ← ヘッダー帯（bg 色 + 下罫線）
+├────────────────────────────┤
 │ terminal panes             │
 └────────────────────────────┘
 ```
 
-表示ルール:
+表示ルール（material ピル等の浮いた装飾は用いず、フラットに馴染ませる）:
 
 ```text
 focused group:
-  opacity 1.0
-  背景強め
-  border / accent 強め
+  text opacity 1.0
+  weight やや強め（medium）
 
 unfocused group:
-  opacity 0.35〜0.5
-  背景弱め
+  text opacity 0.35〜0.5（weight regular）
   視認はできるが主張しすぎない
+
+帯の背景:
+  両状態とも不透明（テキストのみ減光する）
 ```
 
 操作:
@@ -795,7 +799,7 @@ var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
 10. new_group_split は canonicalGroupTree を変更し、新group内に初期paneを1つ作る
 11. new_group_split 後は新groupの初期paneにfocusする
 12. goto_group 後は対象groupの last focused pane にfocusする
-13. group label は overlay であり、terminal layout を押し下げない
+13. group label はヘッダー帯であり、terminal layout を自身の高さぶん押し下げる
 14. hidden shelf は workspace overlay であり、group overlay ではない
 15. group zoom と pane zoom は外側から内側へ適用する
 16. hidden group は focus / resize / equalize の直接対象にならない
@@ -867,7 +871,7 @@ Cmd+Opt+Shift+D
 ### Phase 3: label / rename
 
 ```text
-- group label overlay
+- group label ヘッダー帯（§6.3 / §7.1）
 - focused強調 / unfocused薄表示
 - double click inline rename
 - rename_group prompt
@@ -876,7 +880,7 @@ Cmd+Opt+Shift+D
 成功条件:
 
 ```text
-- label が terminal layout を押し下げない
+- label ヘッダー帯が terminal layout を自身の高さぶん押し下げる（§14.13）
 - rename が保存される
 - 復元後も名前が残る
 ```
