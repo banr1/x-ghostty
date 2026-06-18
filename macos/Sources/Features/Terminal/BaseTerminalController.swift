@@ -39,6 +39,23 @@ class BaseTerminalController: NSWindowController,
     var focusedSurface: Ghostty.SurfaceView? {
         didSet {
             syncFocusToSurfaceTree()
+
+            // If the newly focused surface belongs to a different group than the
+            // currently focused one (e.g. the user clicked directly on an unfocused
+            // group's pane), auto-switch the group layer without moving the AppKit
+            // first responder — it is already correct.
+            if let surface = focusedSurface, !surfaceTree.contains(surface) {
+                if let targetGroupID = workspace.state.groups.first(where: {
+                    $0.value.paneTree.find(id: surface.id) != nil
+                })?.key {
+                    workspace.switchFocusedGroup(
+                        to: targetGroupID,
+                        savingOutgoingPaneTree: surfaceTree)
+                    surfaceTree = workspace.focusedPaneTree
+                    syncFocusToSurfaceTree()
+                }
+            }
+
             workspace.setFocusedSurface(focusedSurface.map { SurfaceID(rawValue: $0.id) })
         }
     }
