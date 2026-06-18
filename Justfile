@@ -5,20 +5,29 @@
 # so default to the Homebrew keg-only 0.15 and allow overriding via ZIG.
 zig := env_var_or_default("ZIG", "/opt/homebrew/opt/zig@0.15/bin/zig")
 
-# Path to the prebuilt debug app bundle.
-app := justfile_directory() / "macos/build/Debug/Ghostty.app"
+# Path to the prebuilt app bundles.
+app         := justfile_directory() / "macos/build/Debug/Ghostty.app"
+release-app := justfile_directory() / "macos/build/Release/Ghostty.app"
 
 # List available recipes.
 default:
     @just --list
 
-# Build and launch Ghostty (full build, including the macOS app).
+# Build and launch Ghostty in debug mode (full build, including the macOS app).
 run *args:
     {{zig}} build run {{args}}
+
+# Build and launch Ghostty in release mode (ReleaseFast; optimized, no safety checks).
+run-release *args:
+    {{zig}} build run -Doptimize=ReleaseFast {{args}}
 
 # Build everything without re-running the macOS app build (faster Zig-core iteration).
 build *args:
     {{zig}} build -Demit-macos-app=false {{args}}
+
+# Build in release mode without the macOS app (faster Zig-core iteration).
+build-release *args:
+    {{zig}} build -Demit-macos-app=false -Doptimize=ReleaseFast {{args}}
 
 # Build the full app bundle (slower; needed for Swift/app changes).
 build-app *args:
@@ -27,6 +36,10 @@ build-app *args:
 # Open the already-built debug app without rebuilding.
 app:
     open "{{app}}"
+
+# Open the already-built release app without rebuilding.
+app-release:
+    open "{{release-app}}"
 
 # Run Zig tests. Optionally pass a filter: `just test "my test name"`.
 test filter="":
