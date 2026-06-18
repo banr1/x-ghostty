@@ -40,10 +40,8 @@ class BaseTerminalController: NSWindowController,
         didSet {
             syncFocusToSurfaceTree()
 
-            // If the newly focused surface belongs to a different group than the
-            // currently focused one (e.g. the user clicked directly on an unfocused
-            // group's pane), auto-switch the group layer without moving the AppKit
-            // first responder — it is already correct.
+            // Cross-group click: surface is in a different group's pane tree, so
+            // sync the group layer without moving the AppKit first responder (it's correct already).
             if let surface = focusedSurface, !surfaceTree.contains(surface) {
                 if let targetGroupID = workspace.state.groups.first(where: {
                     $0.value.paneTree.find(id: surface.id) != nil
