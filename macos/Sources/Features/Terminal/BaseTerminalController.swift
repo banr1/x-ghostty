@@ -38,8 +38,6 @@ class BaseTerminalController: NSWindowController,
     /// The currently focused surface.
     var focusedSurface: Ghostty.SurfaceView? {
         didSet {
-            syncFocusToSurfaceTree()
-
             // Cross-group click: surface is in a different group's pane tree, so
             // sync the group layer without moving the AppKit first responder (it's correct already).
             if let surface = focusedSurface, !surfaceTree.contains(surface) {
@@ -50,10 +48,10 @@ class BaseTerminalController: NSWindowController,
                         to: targetGroupID,
                         savingOutgoingPaneTree: surfaceTree)
                     surfaceTree = workspace.focusedPaneTree
-                    syncFocusToSurfaceTree()
                 }
             }
 
+            syncFocusToSurfaceTree()
             workspace.setFocusedSurface(focusedSurface.map { SurfaceID(rawValue: $0.id) })
         }
     }

@@ -1179,6 +1179,26 @@ extension SplitTree {
         return .init(root: newRoot, zoomed: zoomed)
     }
 
+    /// Returns the path to the nearest ancestor split of `element` whose
+    /// orientation matches `axis`, walking up from the leaf. Returns nil when
+    /// `element` is absent or no matching ancestor exists.
+    ///
+    /// Mirrors the path-walk inside `resizing(node:by:in:with:)` but for a
+    /// single element, letting callers find the resize boundary without needing
+    /// a spatial neighbor.
+    func nearestAncestorSplitPath(from element: Element, matchingAxis axis: Direction) -> Path? {
+        guard let root,
+              let path = root.path(to: .leaf(view: element)) else { return nil }
+
+        for i in stride(from: path.path.count - 1, through: 0, by: -1) {
+            let parentPath = Path(path: Array(path.path.prefix(i)))
+            guard let node = root.node(at: parentPath),
+                  case .split(let split) = node else { continue }
+            if split.direction == axis { return parentPath }
+        }
+        return nil
+    }
+
     /// Returns a copy of the tree with every leaf for which `shouldPrune` returns
     /// true removed, collapsing now-empty splits. Used for the hidden-group
     /// filtering that derives `effectiveVisibleGroupTree` (SPEC §13). The zoomed

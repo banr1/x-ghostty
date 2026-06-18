@@ -162,10 +162,7 @@ final class WorkspaceModel: ObservableObject {
         next.zoomedGroup = nil
 
         // Persist the outgoing focused group's panes before switching away.
-        if var anchor = next.groups[anchorID] {
-            anchor.paneTree = outgoing
-            next.groups[anchorID] = anchor
-        }
+        next.saveOutgoingPaneTree(outgoing)
 
         // Insert the new group next to the focused one. Done before mutating
         // `groups`/`focusedGroup` for real so a throw here is a no-op.
@@ -198,13 +195,7 @@ final class WorkspaceModel: ObservableObject {
         guard state.groups[id] != nil else { return nil }
 
         var next = state
-
-        // Persist the outgoing focused group's panes before switching away.
-        if let outgoingID = next.focusedGroup, var outgoingGroup = next.groups[outgoingID] {
-            outgoingGroup.paneTree = outgoing
-            next.groups[outgoingID] = outgoingGroup
-        }
-
+        next.saveOutgoingPaneTree(outgoing)
         next.focusedGroup = id
         state = next
 
@@ -253,28 +244,14 @@ final class WorkspaceModel: ObservableObject {
         guard let focusedID = state.focusedGroup else { return }
         guard state.effectiveVisibleGroupTree?.isSplit ?? false else { return }
 
-        let focusedRef = GroupRef(id: focusedID)
-
-        guard let root = state.canonicalGroupTree.root,
-              let focusedPath = root.path(to: .leaf(view: focusedRef)) else { return }
-
         let targetAxis: SplitTree<GroupRef>.Direction = switch direction {
         case .left, .right: .horizontal
         case .up, .down: .vertical
         }
 
-        var splitPath: SplitTree<GroupRef>.Path?
-        for i in stride(from: focusedPath.path.count - 1, through: 0, by: -1) {
-            let parentPath = SplitTree<GroupRef>.Path(path: Array(focusedPath.path.prefix(i)))
-            guard let node = root.node(at: parentPath),
-                  case .split(let split) = node else { continue }
-            if split.direction == targetAxis {
-                splitPath = parentPath
-                break
-            }
-        }
-
-        guard let splitPath else { return }
+        guard let splitPath = state.canonicalGroupTree.nearestAncestorSplitPath(
+            from: GroupRef(id: focusedID),
+            matchingAxis: targetAxis) else { return }
 
         state.canonicalGroupTree = state.canonicalGroupTree.adjustRatio(
             at: splitPath,
@@ -332,11 +309,9 @@ final class WorkspaceModel: ObservableObject {
     /// `nil` when `id` is the last visible group (`SPEC.md` §18.2). Computed on
     /// the canonical tree (ignoring zoom) because a hide un-zooms first (§18.3).
     private func neighborAfterHiding(_ id: GroupID) -> GroupRef? {
-        var nextHidden = state.hiddenGroupIDs
-        nextHidden.insert(id)
-        return state.canonicalGroupTree.nearestLeaf(
+        state.canonicalGroupTree.nearestLeaf(
             to: GroupRef(id: id),
-            matching: { !nextHidden.contains($0.id) })
+            matching: { $0.id != id && !state.hiddenGroupIDs.contains($0.id) })
     }
 
     /// Whether `hide_group` would succeed for the focused group (`SPEC.md`
@@ -370,10 +345,7 @@ final class WorkspaceModel: ObservableObject {
         var next = state
 
         // The hidden group keeps its current layout alive in `groups`.
-        if var hidden = next.groups[hideID] {
-            hidden.paneTree = outgoing
-            next.groups[hideID] = hidden
-        }
+        next.saveOutgoingPaneTree(outgoing)
 
         next.hiddenGroupIDs.insert(hideID)
         // §18.3: a hidden group cannot remain zoomed.
@@ -410,13 +382,7 @@ final class WorkspaceModel: ObservableObject {
         guard state.hiddenGroupIDs.contains(id) else { return nil }
 
         var next = state
-
-        // Persist the outgoing focused group's panes before switching away.
-        if let outgoingID = next.focusedGroup, var outgoingGroup = next.groups[outgoingID] {
-            outgoingGroup.paneTree = outgoing
-            next.groups[outgoingID] = outgoingGroup
-        }
-
+        next.saveOutgoingPaneTree(outgoing)
         next.hiddenGroupIDs.remove(id)
         next.zoomedGroup = nil
         next.focusedGroup = id
@@ -460,7 +426,7 @@ final class WorkspaceModel: ObservableObject {
         guard let target else { return .closedLast }
 
         var next = state
-        next.canonicalGroupTree = state.canonicalGroupTree.pruningLeaves { $0.id == closeID }
+        next.canonicalGroupTree = state.canonicalGroupTree.removing(.leaf(view: closeRef))
         next.groups.removeValue(forKey: closeID)
         next.hiddenGroupIDs.remove(closeID)
         if next.zoomedGroup == closeID { next.zoomedGroup = nil }

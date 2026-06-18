@@ -20,9 +20,9 @@ struct WorkspaceState {
 
     // MARK: Runtime-only (never persisted; cleared on decode)
 
-    var hiddenGroupIDs: Set<GroupID>
+    var hiddenGroupIDs: Set<GroupID> = []
     var focusedGroup: GroupID?
-    var zoomedGroup: GroupID?
+    var zoomedGroup: GroupID? = nil
 
     init(
         canonicalGroupTree: SplitTree<GroupRef>,
@@ -56,20 +56,35 @@ struct WorkspaceState {
         return canonicalGroupTree.pruningLeaves { hiddenGroupIDs.contains($0.id) }
     }
 
+    // MARK: Mutations
+
+    /// Persist `paneTree` into the focused group. No-op when nothing is focused.
+    /// Called before every focused-group switch so the outgoing group's layout
+    /// is not lost.
+    mutating func saveOutgoingPaneTree(_ paneTree: SplitTree<Ghostty.SurfaceView>) {
+        guard let id = focusedGroup, var group = groups[id] else { return }
+        group.paneTree = paneTree
+        groups[id] = group
+    }
+
     // MARK: Restore (SPEC §12.3)
+
+    /// Zero-out the runtime-only fields that must never be persisted or survive
+    /// a restore (`SPEC.md` §12.2). Called from both the Codable init and
+    /// `restoring(_:)` so the list of reset fields is defined once.
+    private mutating func clearRuntimeState() {
+        hiddenGroupIDs = []
+        zoomedGroup = nil
+    }
 
     /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3).
     ///
-    /// Everything comes back visible and non-zoomed: `hiddenGroupIDs` and
-    /// `zoomedGroup` are cleared (the decoder already does this, but we repeat it
-    /// so the transform is correct for any input, including runtime states in
-    /// tests). `focusedGroup` is validated against the surviving groups and the
-    /// canonical tree; if it no longer points at a real group it falls back to
-    /// the canonical tree's first leaf.
+    /// Everything comes back visible and non-zoomed. `focusedGroup` is validated
+    /// against the surviving groups and the canonical tree; if it no longer
+    /// points at a real group it falls back to the canonical tree's first leaf.
     static func restoring(_ saved: WorkspaceState) -> WorkspaceState {
         var restored = saved
-        restored.hiddenGroupIDs = []
-        restored.zoomedGroup = nil
+        restored.clearRuntimeState()
 
         let focusValid = restored.focusedGroup.map { id in
             restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
@@ -111,8 +126,7 @@ extension WorkspaceState: Codable {
         self.focusedGroup = try c.decodeIfPresent(GroupID.self, forKey: .focusedGroup)
 
         // Runtime-only state is always reset on decode (`SPEC.md` §12.2).
-        self.hiddenGroupIDs = []
-        self.zoomedGroup = nil
+        self.clearRuntimeState()
     }
 
     func encode(to encoder: Encoder) throws {
