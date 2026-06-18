@@ -124,21 +124,36 @@ pub fn init(
         break :xctest step;
     };
 
+    // Disable window-state restoration so each `zig build run` starts fresh.
+    const disable_save_state = RunStep.create(b, "disable save state");
+    disable_save_state.has_side_effects = true;
+    disable_save_state.addArgs(&.{
+        "/usr/libexec/PlistBuddy",
+        "-c",
+        // We'll have to change this to `Set` if we ever put this
+        // into our Info.plist.
+        "Add :NSQuitAlwaysKeepsWindows bool false",
+        b.fmt("{s}/Contents/Info.plist", .{app_path}),
+    });
+    disable_save_state.expectExitCode(0);
+    disable_save_state.step.dependOn(&build.step);
+
+    // xcodebuild derives CFBundleName from PRODUCT_NAME (= TARGET_NAME =
+    // "Ghostty"), ignoring INFOPLIST_KEY_CFBundleName when INFOPLIST_FILE
+    // is also set. Patch the built plist so the menu-bar shows "XGhostty".
+    const fix_bundle_name = RunStep.create(b, "fix CFBundleName");
+    fix_bundle_name.has_side_effects = true;
+    fix_bundle_name.addArgs(&.{
+        "/usr/libexec/PlistBuddy",
+        "-c",
+        "Set :CFBundleName XGhostty",
+        b.fmt("{s}/Contents/Info.plist", .{app_path}),
+    });
+    fix_bundle_name.expectExitCode(0);
+    fix_bundle_name.step.dependOn(&disable_save_state.step);
+
     // Our step to open the resulting Ghostty app.
     const open = open: {
-        const disable_save_state = RunStep.create(b, "disable save state");
-        disable_save_state.has_side_effects = true;
-        disable_save_state.addArgs(&.{
-            "/usr/libexec/PlistBuddy",
-            "-c",
-            // We'll have to change this to `Set` if we ever put this
-            // into our Info.plist.
-            "Add :NSQuitAlwaysKeepsWindows bool false",
-            b.fmt("{s}/Contents/Info.plist", .{app_path}),
-        });
-        disable_save_state.expectExitCode(0);
-        disable_save_state.step.dependOn(&build.step);
-
         const open = RunStep.create(b, "run Ghostty app");
         open.has_side_effects = true;
         open.cwd = b.path("");
@@ -149,7 +164,7 @@ pub fn init(
 
         // Open depends on the app
         open.step.dependOn(&build.step);
-        open.step.dependOn(&disable_save_state.step);
+        open.step.dependOn(&fix_bundle_name.step);
 
         // This overrides our default behavior and forces logs to show
         // up on stderr (in addition to the centralized macOS log).
@@ -173,7 +188,7 @@ pub fn init(
         step.addArgs(&.{ "cp", "-R" });
         step.addFileArg(b.path(app_path));
         step.addArg(b.fmt("{s}", .{b.install_path}));
-        step.step.dependOn(&build.step);
+        step.step.dependOn(&fix_bundle_name.step);
         break :copy step;
     };
 
