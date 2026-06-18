@@ -229,12 +229,27 @@ struct WorkspaceModelTests {
         #expect(abs(after - (before - 0.1)) < 1e-9)
     }
 
-    @Test func resizeFocusedGroupNoNeighborIsNoOp() throws {
+    @Test func resizeFocusedGroupShrinkDirectionWorks() throws {
+        // Regression: pressing the "shrink" direction (no spatial neighbor on
+        // that side) was previously a no-op. The ancestor-based approach must
+        // find the root split even when the focused group is at the wall.
+        let (model, left, _) = try Self.makeTwoGroupHorizontal()
+        // Switch focus to the LEFT group so pressing LEFT has no spatial
+        // neighbor to the left.
+        model.switchFocusedGroup(to: left, savingOutgoingPaneTree: .init())
+        let before = try #require(Self.rootSplitRatio(model))
+
+        model.resizeFocusedGroup(.left, ratioDelta: 0.1)
+
+        let after = try #require(Self.rootSplitRatio(model))
+        #expect(abs(after - (before - 0.1)) < 1e-9)
+    }
+
+    @Test func resizeFocusedGroupNoAxisMatchIsNoOp() throws {
         let (model, _, _) = try Self.makeTwoGroupHorizontal()
         let before = try #require(Self.rootSplitRatio(model))
 
-        // No vertical neighbor in a horizontal split → the LCA orientation does
-        // not match → no change.
+        // No vertical ancestor split in a horizontal-only tree → no change.
         model.resizeFocusedGroup(.up, ratioDelta: 0.1)
 
         #expect(Self.rootSplitRatio(model) == before)

@@ -232,34 +232,49 @@ final class WorkspaceModel: ObservableObject {
         return target.id
     }
 
-    /// Resize the canonical split between the focused group and its visible
-    /// neighbor in `direction` by `ratioDelta` (`SPEC.md` §11.4).
+    /// Resize the canonical split nearest to the focused group along the axis
+    /// matching `direction`, by `ratioDelta` (`SPEC.md` §11.4).
     ///
-    /// The neighbor is found in the *visible* tree (what the user sees), but the
-    /// ratio change is applied to the *canonical* tree's lowest common split, so
-    /// it stays correct even with hidden groups present. Pixel→ratio conversion
-    /// is the caller's responsibility (`SplitTree.adjustRatio`).
+    /// Mirrors `SplitTree.resizing(node:by:in:with:)`: walks up the canonical
+    /// tree from the focused group's leaf and finds the nearest ancestor split
+    /// whose axis matches the resize direction (horizontal for left/right,
+    /// vertical for up/down), then adjusts its ratio. This works regardless of
+    /// whether the focused group has a spatial neighbor in `direction`, fixing
+    /// the bug where pressing the "shrink" direction was a no-op because the
+    /// outermost group has no neighbor on the wall side.
     ///
-    /// No-op when zoomed, when there is no focused group, when there is no
-    /// neighbor that way, or when the lowest common split's orientation does not
-    /// match the resize direction.
+    /// No-op when zoomed, when there is no focused group, when there is only one
+    /// visible group, or when no ancestor split matches the axis.
     func resizeFocusedGroup(
         _ direction: SplitTree<GroupRef>.Spatial.Direction,
         ratioDelta: Double
     ) {
         guard state.zoomedGroup == nil else { return }
         guard let focusedID = state.focusedGroup else { return }
-        guard let visibleTree = state.effectiveVisibleGroupTree else { return }
+        guard state.effectiveVisibleGroupTree?.isSplit ?? false else { return }
 
         let focusedRef = GroupRef(id: focusedID)
-        guard let neighbor = visibleTree.spatialNeighbor(
-            from: focusedRef,
-            direction: direction) else { return }
 
-        guard let splitPath = state.canonicalGroupTree.lowestCommonSplitPath(
-            between: focusedRef,
-            and: neighbor,
-            matchingResizeDirection: direction) else { return }
+        guard let root = state.canonicalGroupTree.root,
+              let focusedPath = root.path(to: .leaf(view: focusedRef)) else { return }
+
+        let targetAxis: SplitTree<GroupRef>.Direction = switch direction {
+        case .left, .right: .horizontal
+        case .up, .down: .vertical
+        }
+
+        var splitPath: SplitTree<GroupRef>.Path?
+        for i in stride(from: focusedPath.path.count - 1, through: 0, by: -1) {
+            let parentPath = SplitTree<GroupRef>.Path(path: Array(focusedPath.path.prefix(i)))
+            guard let node = root.node(at: parentPath),
+                  case .split(let split) = node else { continue }
+            if split.direction == targetAxis {
+                splitPath = parentPath
+                break
+            }
+        }
+
+        guard let splitPath else { return }
 
         state.canonicalGroupTree = state.canonicalGroupTree.adjustRatio(
             at: splitPath,
