@@ -45,12 +45,12 @@ pub fn build(b: *std.Build) !void {
         "Filter for test. Only applies to Zig tests.",
     ) orelse &[0][]const u8{};
 
-    // Ghostty dependencies used by many artifacts.
+    // XGhostty dependencies used by many artifacts.
     const deps = try buildpkg.SharedDeps.init(b, &config);
 
     // The modules exported for Zig consumers of libghostty. If you're
     // writing a Zig program that uses libghostty, read this file.
-    const mod = try buildpkg.GhosttyZig.init(
+    const mod = try buildpkg.XGhosttyZig.init(
         b,
         &config,
         &deps,
@@ -77,15 +77,15 @@ pub fn build(b: *std.Build) !void {
         "Update translation files",
     );
 
-    // Ghostty resources like terminfo, shell integration, themes, etc.
-    const resources = try buildpkg.GhosttyResources.init(b, &config, &deps);
-    const i18n = if (config.i18n) try buildpkg.GhosttyI18n.init(b, &config) else null;
+    // XGhostty resources like terminfo, shell integration, themes, etc.
+    const resources = try buildpkg.XGhosttyResources.init(b, &config, &deps);
+    const i18n = if (config.i18n) try buildpkg.XGhosttyI18n.init(b, &config) else null;
 
-    // Ghostty executable, the actual runnable Ghostty program.
-    const exe = try buildpkg.GhosttyExe.init(b, &config, &deps);
+    // XGhostty executable, the actual runnable Ghostty program.
+    const exe = try buildpkg.XGhosttyExe.init(b, &config, &deps);
 
-    // Ghostty docs
-    const docs = try buildpkg.GhosttyDocs.init(b, &deps);
+    // XGhostty docs
+    const docs = try buildpkg.XGhosttyDocs.init(b, &deps);
     if (config.emit_docs) {
         docs.install();
     } else if (config.target.result.os.tag.isDarwin()) {
@@ -95,16 +95,16 @@ pub fn build(b: *std.Build) !void {
         docs.installDummy(b.getInstallStep());
     }
 
-    // Ghostty webdata
-    const webdata = try buildpkg.GhosttyWebdata.init(b, &deps);
+    // XGhostty webdata
+    const webdata = try buildpkg.XGhosttyWebdata.init(b, &deps);
     if (config.emit_webdata) webdata.install();
 
-    // Ghostty bench tools
-    const bench = try buildpkg.GhosttyBench.init(b, &deps);
+    // XGhostty bench tools
+    const bench = try buildpkg.XGhosttyBench.init(b, &deps);
     if (config.emit_bench) bench.install();
 
-    // Ghostty dist tarball
-    const dist = try buildpkg.GhosttyDist.init(b, &config);
+    // XGhostty dist tarball
+    const dist = try buildpkg.XGhosttyDist.init(b, &config);
     {
         const step = b.step("dist", "Build the dist tarball");
         step.dependOn(dist.install_step);
@@ -114,30 +114,30 @@ pub fn build(b: *std.Build) !void {
     }
 
     // libghostty-vt
-    const libghostty_vt_shared = shared: {
+    const libxghostty_vt_shared = shared: {
         if (config.target.result.cpu.arch.isWasm()) {
-            break :shared try buildpkg.GhosttyLibVt.initWasm(
+            break :shared try buildpkg.XGhosttyLibVt.initWasm(
                 b,
                 &mod,
             );
         }
 
-        break :shared try buildpkg.GhosttyLibVt.initShared(
+        break :shared try buildpkg.XGhosttyLibVt.initShared(
             b,
             &mod,
         );
     };
-    libghostty_vt_shared.install(b.getInstallStep());
+    libxghostty_vt_shared.install(b.getInstallStep());
 
     // libghostty-vt static lib
-    const libghostty_vt_static = try buildpkg.GhosttyLibVt.initStatic(
+    const libxghostty_vt_static = try buildpkg.XGhosttyLibVt.initStatic(
         b,
         &mod,
     );
     if (config.is_dep) {
         // If we're a dependency, we need to install everything as-is
         // so that dep.artifact("ghostty-vt-static") works.
-        libghostty_vt_static.install(b.getInstallStep());
+        libxghostty_vt_static.install(b.getInstallStep());
     } else {
         // If we're not a dependency, we rename the static lib to
         // be idiomatic. On Windows, we use a distinct name to avoid
@@ -147,7 +147,7 @@ pub fn build(b: *std.Build) !void {
         else
             "libghostty-vt.a";
         b.getInstallStep().dependOn(&b.addInstallLibFile(
-            libghostty_vt_static.output,
+            libxghostty_vt_static.output,
             static_lib_name,
         ).step);
     }
@@ -160,13 +160,13 @@ pub fn build(b: *std.Build) !void {
         builtin.os.tag.isDarwin() and
         config.target.result.os.tag.isDarwin())
     {
-        const apple_libs = try buildpkg.GhosttyLibVt.initStaticAppleUniversal(
+        const apple_libs = try buildpkg.XGhosttyLibVt.initStaticAppleUniversal(
             b,
             &config,
             &deps,
             &mod,
         );
-        const xcframework = buildpkg.GhosttyLibVt.xcframework(&apple_libs, b);
+        const xcframework = buildpkg.XGhosttyLibVt.xcframework(&apple_libs, b);
         b.getInstallStep().dependOn(xcframework.step);
     }
 
@@ -181,13 +181,13 @@ pub fn build(b: *std.Build) !void {
             if (i18n) |v| v.install();
         }
     } else if (!config.emit_lib_vt) {
-        // The macOS Ghostty Library
+        // The macOS XGhostty Library
         //
         // This is NOT libghostty (even though its named that for historical
-        // reasons). It is just the glue between Ghostty GUI on macOS and
-        // the full Ghostty GUI core.
-        const lib_shared = try buildpkg.GhosttyLib.initShared(b, &deps);
-        const lib_static = try buildpkg.GhosttyLib.initStatic(b, &deps);
+        // reasons). It is just the glue between XGhostty GUI on macOS and
+        // the full XGhostty GUI core.
+        const lib_shared = try buildpkg.XGhosttyLib.initShared(b, &deps);
+        const lib_static = try buildpkg.XGhosttyLib.initStatic(b, &deps);
 
         // We shouldn't have this guard but we don't currently
         // build on macOS this way ironically so we need to fix that.
@@ -209,8 +209,8 @@ pub fn build(b: *std.Build) !void {
     if (!config.emit_lib_vt and config.target.result.os.tag.isDarwin() and
         (config.emit_xcframework or config.emit_macos_app))
     {
-        // Ghostty xcframework
-        const xcframework = try buildpkg.GhosttyXCFramework.init(
+        // XGhostty xcframework
+        const xcframework = try buildpkg.XGhosttyXCFramework.init(
             b,
             &deps,
             config.xcframework_target,
@@ -224,8 +224,8 @@ pub fn build(b: *std.Build) !void {
             if (i18n) |v| v.install();
         }
 
-        // Ghostty macOS app
-        const macos_app = try buildpkg.GhosttyXcodebuild.init(
+        // XGhostty macOS app
+        const macos_app = try buildpkg.XGhosttyXcodebuild.init(
             b,
             &config,
             .{
@@ -247,11 +247,11 @@ pub fn build(b: *std.Build) !void {
             if (b.args) |args| run_cmd.addArgs(args);
 
             // Set the proper resources dir so things like shell integration
-            // work correctly. If we're running `zig build run` in Ghostty,
+            // work correctly. If we're running `zig build run` in XGhostty,
             // this also ensures it overwrites the release one with our debug
             // build.
             run_cmd.setEnvironmentVariable(
-                "GHOSTTY_RESOURCES_DIR",
+                "XGHOSTTY_RESOURCES_DIR",
                 b.getInstallPath(.prefix, "share/ghostty"),
             );
 
@@ -267,12 +267,12 @@ pub fn build(b: *std.Build) !void {
             config.target.result.os.tag.isDarwin() and
             (config.emit_xcframework or config.emit_macos_app))
         {
-            const xcframework_native = try buildpkg.GhosttyXCFramework.init(
+            const xcframework_native = try buildpkg.XGhosttyXCFramework.init(
                 b,
                 &deps,
                 .native,
             );
-            const macos_app_native_only = try buildpkg.GhosttyXcodebuild.init(
+            const macos_app_native_only = try buildpkg.XGhosttyXcodebuild.init(
                 b,
                 &config,
                 .{
@@ -295,11 +295,11 @@ pub fn build(b: *std.Build) !void {
 
     // Valgrind
     if (config.app_runtime != .none) {
-        // We need to rebuild Ghostty with a baseline CPU target.
+        // We need to rebuild XGhostty with a baseline CPU target.
         const valgrind_exe = exe: {
             var valgrind_config = config;
             valgrind_config.target = valgrind_config.baselineTarget();
-            break :exe try buildpkg.GhosttyExe.init(
+            break :exe try buildpkg.XGhosttyExe.init(
                 b,
                 &valgrind_config,
                 &deps,
@@ -355,13 +355,13 @@ pub fn build(b: *std.Build) !void {
         if (config.emit_test_exe) b.installArtifact(test_exe);
         _ = try deps.add(test_exe);
 
-        // Verify our internal libghostty header.
-        const ghostty_h = b.addTranslateC(.{
-            .root_source_file = b.path("include/ghostty.h"),
+        // Verify our internal libxghostty header.
+        const xghostty_h = b.addTranslateC(.{
+            .root_source_file = b.path("include/xghostty.h"),
             .target = config.baselineTarget(),
             .optimize = .Debug,
         });
-        test_exe.root_module.addImport("ghostty.h", ghostty_h.createModule());
+        test_exe.root_module.addImport("xghostty.h", xghostty_h.createModule());
 
         // Normal test running
         const test_run = b.addRunArtifact(test_exe);

@@ -216,7 +216,7 @@ const Placement = struct {
     /// bitmap.
     ///
     /// The glyf protocol supplies declared metrics (`units_per_em`,
-    /// `advance_width`, and `line_height`) in design units, while Ghostty's
+    /// `advance_width`, and `line_height`) in design units, while XGhostty's
     /// font constraint code works in cell-relative pixels. We first map the em
     /// square to one cell height, matching the linked glyph rasterizer's
     /// baseline model where design-space `y=0` is the bottom/baseline of the em

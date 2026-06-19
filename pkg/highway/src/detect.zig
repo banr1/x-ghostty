@@ -20,7 +20,7 @@ const loongarch = @import("detect/loongarch.zig");
 /// This version uses only inline assembly (CPUID on x86, MRS on AArch64)
 /// and lightweight syscalls (sysctlbyname on Darwin, getauxval on Linux),
 /// so it adds no data tables and no std.Target dependency.
-pub export fn ghostty_hwy_detect_targets() callconv(.c) i64 {
+pub export fn xghostty_hwy_detect_targets() callconv(.c) i64 {
     return switch (builtin.cpu.arch) {
         .x86_64, .x86 => x86.detect(),
         .aarch64, .aarch64_be => detectAarch64(),

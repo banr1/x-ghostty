@@ -27,7 +27,7 @@ const Terminal = @import("Terminal.zig");
 ///
 /// Previously, our renderer would use `clone` to clone the screen within
 /// the viewport to perform rendering. This worked well enough that we kept
-/// it all the way up through the Ghostty 1.2.x series, but the clone time
+/// it all the way up through the XGhostty 1.2.x series, but the clone time
 /// was repeatedly a bottleneck blocking IO.
 ///
 /// Rather than a generic clone that tries to clone all screen state per call

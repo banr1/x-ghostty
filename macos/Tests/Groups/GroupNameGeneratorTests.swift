@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Ghostty
+@testable import XGhostty
 
 /// Tests for `GroupNameGenerator` (`SPEC.md` §8, §19.1 "random group name
 /// uniqueness"). Randomness is injected via a deterministic generator so the

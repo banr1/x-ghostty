@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const args = @import("args.zig");
 const x11_color = @import("../terminal/main.zig").x11_color;
 const vaxis = @import("vaxis");
@@ -23,7 +23,7 @@ pub const Options = struct {
 };
 
 /// The `list-colors` command is used to list all the named RGB colors in
-/// Ghostty.
+/// XGhostty.
 ///
 /// Flags:
 ///

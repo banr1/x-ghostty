@@ -461,7 +461,7 @@ pub const StreamHandler = struct {
             },
 
             .xtgettcap => |*gettcap| {
-                const map = comptime terminfo.ghostty.xtgettcapMap();
+                const map = comptime terminfo.xghostty.xtgettcapMap();
                 while (gettcap.next()) |key| {
                     const response = map.get(key) orelse continue;
                     self.messageWriter(.{ .write_stable = response });
@@ -992,13 +992,13 @@ pub const StreamHandler = struct {
     pub fn reportXtversion(
         self: *StreamHandler,
     ) !void {
-        log.debug("reporting XTVERSION: ghostty {s}", .{build_config.version_string});
+        log.debug("reporting XTVERSION: xghostty {s}", .{build_config.version_string});
         var buf: [288]u8 = undefined;
         const resp = try std.fmt.bufPrint(
             &buf,
             "\x1BP>|{s} {s}\x1B\\",
             .{
-                "ghostty",
+                "xghostty",
                 build_config.version_string,
             },
         );

@@ -10,7 +10,7 @@ const gresource = @import("../build/gresource.zig");
 const i18n = @import("../../../os/main.zig").i18n;
 const Common = @import("../class.zig").Common;
 
-const log = std.log.scoped(.gtk_ghostty_surface_child_exited);
+const log = std.log.scoped(.gtk_xghostty_surface_child_exited);
 
 pub const SurfaceChildExited = if (adw_version.supportsBanner())
     SurfaceChildExitedBanner
@@ -24,7 +24,7 @@ const SurfaceChildExitedBanner = extern struct {
     parent_instance: Parent,
     pub const Parent = adw.Bin;
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttySurfaceChildExited",
+        .name = "XGhosttySurfaceChildExited",
         .instanceInit = &init,
         .classInit = &Class.init,
         .parent_class = &Class.parent,
@@ -211,7 +211,7 @@ const SurfaceChildExitedNoop = extern struct {
     parent_instance: Parent,
     pub const Parent = gtk.Widget;
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttySurfaceChildExited",
+        .name = "XGhosttySurfaceChildExited",
         .classInit = &Class.init,
         .parent_class = &Class.parent,
     });

@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const args = @import("args.zig");
 const diagnostics = @import("diagnostics.zig");
 const font = @import("../font/main.zig");
@@ -40,11 +40,11 @@ pub const Options = struct {
     }
 };
 
-/// The `show-face` command shows what font face Ghostty will use to render a
+/// The `show-face` command shows what font face XGhostty will use to render a
 /// specific codepoint. Note that this command does not take into consideration
 /// grapheme clustering or any other Unicode features that might modify the
 /// presentation of a codepoint, so this may show a different font face than
-/// Ghostty uses to render a codepoint in a terminal session.
+/// XGhostty uses to render a codepoint in a terminal session.
 ///
 /// Flags:
 ///
@@ -90,11 +90,11 @@ fn runArgs(
     stdout: *std.Io.Writer,
     stderr: *std.Io.Writer,
 ) !u8 {
-    // Its possible to build Ghostty without font discovery!
+    // Its possible to build XGhostty without font discovery!
     if (comptime font.Discover == void) {
         try stderr.print(
-            \\Ghostty was built without a font discovery mechanism. This is a compile-time
-            \\option. Please review how Ghostty was built from source, contact the
+            \\XGhostty was built without a font discovery mechanism. This is a compile-time
+            \\option. Please review how XGhostty was built from source, contact the
             \\maintainer to enable a font discovery mechanism, and try again.
         ,
             .{},

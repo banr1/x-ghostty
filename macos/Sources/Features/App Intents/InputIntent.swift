@@ -54,7 +54,7 @@ struct KeyEventIntent: AppIntent {
         description: "The key to send to the terminal.",
         default: .enter
     )
-    var key: Ghostty.Input.Key
+    var key: XGhostty.Input.Key
 
     @Parameter(
         title: "Modifier(s)",
@@ -68,7 +68,7 @@ struct KeyEventIntent: AppIntent {
         description: "A key press or release.",
         default: .press
     )
-    var action: Ghostty.Input.Action
+    var action: XGhostty.Input.Action
 
     @Parameter(
         title: "Terminal",
@@ -91,12 +91,12 @@ struct KeyEventIntent: AppIntent {
             throw GhosttyIntentError.surfaceNotFound
         }
 
-        // Convert KeyEventMods array to Ghostty.Input.Mods
-        let ghosttyMods = mods.reduce(Ghostty.Input.Mods()) { result, mod in
+        // Convert KeyEventMods array to XGhostty.Input.Mods
+        let ghosttyMods = mods.reduce(XGhostty.Input.Mods()) { result, mod in
             result.union(mod.ghosttyMod)
         }
 
-        let keyEvent = Ghostty.Input.KeyEvent(
+        let keyEvent = XGhostty.Input.KeyEvent(
             key: key,
             action: action,
             mods: ghosttyMods
@@ -118,14 +118,14 @@ struct MouseButtonIntent: AppIntent {
         description: "The mouse button to press or release.",
         default: .left
     )
-    var button: Ghostty.Input.MouseButton
+    var button: XGhostty.Input.MouseButton
 
     @Parameter(
         title: "Action",
         description: "Whether to press or release the button.",
         default: .press
     )
-    var action: Ghostty.Input.MouseState
+    var action: XGhostty.Input.MouseState
 
     @Parameter(
         title: "Modifier(s)",
@@ -155,12 +155,12 @@ struct MouseButtonIntent: AppIntent {
             throw GhosttyIntentError.surfaceNotFound
         }
 
-        // Convert KeyEventMods array to Ghostty.Input.Mods
-        let ghosttyMods = mods.reduce(Ghostty.Input.Mods()) { result, mod in
+        // Convert KeyEventMods array to XGhostty.Input.Mods
+        let ghosttyMods = mods.reduce(XGhostty.Input.Mods()) { result, mod in
             result.union(mod.ghosttyMod)
         }
 
-        let mouseEvent = Ghostty.Input.MouseButtonEvent(
+        let mouseEvent = XGhostty.Input.MouseButtonEvent(
             action: action,
             button: button,
             mods: ghosttyMods
@@ -218,12 +218,12 @@ struct MousePosIntent: AppIntent {
             throw GhosttyIntentError.surfaceNotFound
         }
 
-        // Convert KeyEventMods array to Ghostty.Input.Mods
-        let ghosttyMods = mods.reduce(Ghostty.Input.Mods()) { result, mod in
+        // Convert KeyEventMods array to XGhostty.Input.Mods
+        let ghosttyMods = mods.reduce(XGhostty.Input.Mods()) { result, mod in
             result.union(mod.ghosttyMod)
         }
 
-        let mousePosEvent = Ghostty.Input.MousePosEvent(
+        let mousePosEvent = XGhostty.Input.MousePosEvent(
             x: x,
             y: y,
             mods: ghosttyMods
@@ -263,9 +263,9 @@ struct MouseScrollIntent: AppIntent {
     @Parameter(
         title: "Momentum Phase",
         description: "The momentum phase for inertial scrolling.",
-        default: Ghostty.Input.Momentum.none
+        default: XGhostty.Input.Momentum.none
     )
-    var momentum: Ghostty.Input.Momentum
+    var momentum: XGhostty.Input.Momentum
 
     @Parameter(
         title: "Terminal",
@@ -288,7 +288,7 @@ struct MouseScrollIntent: AppIntent {
             throw GhosttyIntentError.surfaceNotFound
         }
 
-        let scrollEvent = Ghostty.Input.MouseScrollEvent(
+        let scrollEvent = XGhostty.Input.MouseScrollEvent(
             x: x,
             y: y,
             mods: .init(precision: precision, momentum: momentum)
@@ -316,7 +316,7 @@ enum KeyEventMods: String, AppEnum, CaseIterable {
         .command: "Command"
     ]
 
-    var ghosttyMod: Ghostty.Input.Mods {
+    var ghosttyMod: XGhostty.Input.Mods {
         switch self {
         case .shift: .shift
         case .control: .ctrl

@@ -3,8 +3,8 @@ const std = @import("std");
 /// Options set by Zig build.zig and exposed via `terminal_options`.
 pub const Options = struct {
     pub const Artifact = enum {
-        /// Ghostty application
-        ghostty,
+        /// XGhostty application
+        xghostty,
 
         /// libghostty-vt, Zig module
         lib,

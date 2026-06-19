@@ -23,7 +23,7 @@ import SwiftUI
 /// cancels on Escape. To keep Escape unambiguous, Escape reverts the draft to
 /// the current title first, so the trailing focus-loss commit becomes a no-op.
 struct GroupLabel: View {
-    @EnvironmentObject private var ghostty: Ghostty.App
+    @EnvironmentObject private var ghostty: XGhostty.App
 
     let title: String
     let isFocused: Bool

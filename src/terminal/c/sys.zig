@@ -182,7 +182,7 @@ const LogEmitter = struct {
 
 /// Custom std.log sink for C ABI builds.
 ///
-/// When a log callback is installed via ghostty_sys_set(), messages are
+/// When a log callback is installed via xghostty_sys_set(), messages are
 /// dispatched through it. When no callback is installed, messages are
 /// silently discarded. Large messages that exceed the stack buffer are
 /// delivered across multiple callback invocations.
@@ -214,7 +214,7 @@ pub fn logFn(
 /// Built-in log callback that writes to stderr.
 ///
 /// Formats each message as "[level](scope): message\n". Can be passed
-/// directly to ghostty_sys_set(GHOSTTY_SYS_OPT_LOG, &ghostty_sys_log_stderr).
+/// directly to xghostty_sys_set(XGHOSTTY_SYS_OPT_LOG, &xghostty_sys_log_stderr).
 ///
 /// Uses std.debug.lockStderrWriter for thread-safe, mutex-protected output.
 /// On freestanding/wasm targets this is a no-op (no stderr available).

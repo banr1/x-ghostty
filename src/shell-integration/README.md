@@ -14,17 +14,17 @@ README or [ghostty.org](https://ghostty.org/docs)
 
 Automatic [Bash](https://www.gnu.org/software/bash/) shell integration works by
 starting Bash in POSIX mode and using the `ENV` environment variable to load
-our integration script (`bash/ghostty.bash`). This prevents Bash from loading
+our integration script (`bash/xghostty.bash`). This prevents Bash from loading
 its normal startup files, which becomes our script's responsibility (along with
 disabling POSIX mode).
 
-Bash shell integration can also be sourced manually from `bash/ghostty.bash`.
+Bash shell integration can also be sourced manually from `bash/xghostty.bash`.
 This also works for older versions of Bash.
 
 ```bash
 # Ghostty shell integration for Bash. This must be at the top of your bashrc!
-if [ -n "${GHOSTTY_RESOURCES_DIR}" ]; then
-    builtin source "${GHOSTTY_RESOURCES_DIR}/shell-integration/bash/ghostty.bash"
+if [ -n "${XGHOSTTY_RESOURCES_DIR}" ]; then
+    builtin source "${XGHOSTTY_RESOURCES_DIR}/shell-integration/bash/xghostty.bash"
 fi
 ```
 
@@ -37,7 +37,7 @@ fi
 
 ### Elvish
 
-For [Elvish](https://elv.sh), `$GHOSTTY_RESOURCES_DIR/src/shell-integration`
+For [Elvish](https://elv.sh), `$XGHOSTTY_RESOURCES_DIR/src/shell-integration`
 contains an `./elvish/lib/ghostty-integration.elv` file.
 
 Elvish, on startup, searches for paths defined in `XDG_DATA_DIRS`
@@ -45,7 +45,7 @@ variable for `./elvish/lib/*.elv` files and imports them. They are thus
 made available for use as modules by way of `use <filename>`.
 
 Ghostty launches Elvish, passing the environment with `XDG_DATA_DIRS` prepended
-with `$GHOSTTY_RESOURCES_DIR/src/shell-integration`. It contains
+with `$XGHOSTTY_RESOURCES_DIR/src/shell-integration`. It contains
 `./elvish/lib/ghostty-integration.elv`. The user can then import it
 by `use ghostty-integration` every time after shell startup or
 autostart integration in `$XDG_CONFIG_HOME/elvish/rc.elv`,
@@ -56,7 +56,7 @@ detect whether the terminal is Ghostty or not. To do this, add this to the end
 of your `rc.elv` file:
 
 ```elvish
-if (eq $E:TERM "xterm-ghostty") {
+if (eq $E:TERM "xterm-xghostty") {
   try { use ghostty-integration } catch { }
 }
 ```
@@ -85,7 +85,7 @@ The shell integration is automatically enabled when running Nushell in Ghostty,
 but you can also load it manually is shell integration is disabled:
 
 ```nushell
-source $GHOSTTY_RESOURCES_DIR/shell-integration/nushell/vendor/autoload/ghostty.nu
+source $XGHOSTTY_RESOURCES_DIR/shell-integration/nushell/vendor/autoload/ghostty.nu
 use ghostty *
 ```
 
@@ -103,8 +103,8 @@ loaded. In this case, the shell integration needs to be loaded manually.
 To load the Zsh shell integration manually:
 
 ```zsh
-if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
-  source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
+if [[ -n $XGHOSTTY_RESOURCES_DIR ]]; then
+  source "$XGHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
 fi
 ```
 

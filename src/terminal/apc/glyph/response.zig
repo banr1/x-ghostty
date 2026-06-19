@@ -110,7 +110,7 @@ pub const Response = union(enum) {
             /// Payload exceeds 64 KiB after base64 decoding.
             payload_too_large,
 
-            /// A reason code not known by this version of Ghostty.
+            /// A reason code not known by this version of XGhostty.
             other: []const u8,
 
             /// Return the wire-format reason name.

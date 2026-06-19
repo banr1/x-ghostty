@@ -6,7 +6,7 @@ const Allocator = std.mem.Allocator;
 
 /// SplitTree represents a tree of view types that can be divided.
 ///
-/// Concretely for Ghostty, it represents a tree of terminal views. In
+/// Concretely for XGhostty, it represents a tree of terminal views. In
 /// its basic state, there are no splits and it is a single full-sized
 /// terminal. However, it can be split arbitrarily many times among two
 /// axes (horizontal and vertical) to create a tree of terminal views.
@@ -816,7 +816,7 @@ pub fn SplitTree(comptime V: type) type {
         /// The ratio is a signed delta representing the percentage to move
         /// the divider. The percentage is of the entire grid size, not just
         /// the specific split size.
-        /// We use the entire grid size because that's what Ghostty's
+        /// We use the entire grid size because that's what XGhostty's
         /// `resize_split` keybind does, because it maps to a general human
         /// understanding of moving a split relative to the entire window
         /// (generally).
@@ -1329,7 +1329,7 @@ pub fn SplitTree(comptime V: type) type {
                         else
                             type_name;
                         assert(last.len > 0);
-                        break :name "GhosttySplitTree" ++ last;
+                        break :name "XGhosttySplitTree" ++ last;
                     },
 
                     .funcs = .{

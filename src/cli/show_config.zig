@@ -1,7 +1,7 @@
 const std = @import("std");
 const args = @import("args.zig");
 const Allocator = std.mem.Allocator;
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const configpkg = @import("../config.zig");
 const Config = configpkg.Config;
 const Pager = @import("Pager.zig");
@@ -32,7 +32,7 @@ pub const Options = struct {
     }
 };
 
-/// The `show-config` command shows the current configuration in a valid Ghostty
+/// The `show-config` command shows the current configuration in a valid XGhostty
 /// configuration file format.
 ///
 /// When executed without any arguments this will output the current

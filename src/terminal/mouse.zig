@@ -31,7 +31,7 @@ pub const Format = lib.Enum(lib.target, &.{
 /// The shapes are always based on the W3C supported cursor styles so we
 /// can have a cross platform list.
 //
-// Must be kept in sync with ghostty_cursor_shape_e
+// Must be kept in sync with xghostty_cursor_shape_e
 pub const Shape = enum(c_int) {
     default,
     context_menu,
@@ -76,23 +76,23 @@ pub const Shape = enum(c_int) {
     /// Make this a valid gobject if we're in a GTK environment.
     pub const getGObjectType = gtk: {
         switch (build_options.artifact) {
-            .ghostty => {},
+            .xghostty => {},
             .lib => break :gtk void,
         }
 
         break :gtk switch (@import("../build_config.zig").app_runtime) {
             .gtk => @import("gobject").ext.defineEnum(
                 Shape,
-                .{ .name = "GhosttyMouseShape" },
+                .{ .name = "XGhosttyMouseShape" },
             ),
 
             .none => void,
         };
     };
 
-    test "ghostty.h MouseShape" {
+    test "xghostty.h MouseShape" {
         if (comptime build_options.artifact == .lib) return error.SkipZigTest;
-        try lib.checkGhosttyHEnum(Shape, "GHOSTTY_MOUSE_SHAPE_");
+        try lib.checkXGhosttyHEnum(Shape, "XGHOSTTY_MOUSE_SHAPE_");
     }
 };
 

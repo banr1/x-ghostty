@@ -17,14 +17,14 @@ const SplitTree = @import("split_tree.zig").SplitTree;
 const Surface = @import("surface.zig").Surface;
 const TitleDialog = @import("title_dialog.zig").TitleDialog;
 
-const log = std.log.scoped(.gtk_ghostty_window);
+const log = std.log.scoped(.gtk_xghostty_window);
 
 pub const Tab = extern struct {
     const Self = @This();
     parent_instance: Parent,
     pub const Parent = gtk.Box;
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttyTab",
+        .name = "XGhosttyTab",
         .instanceInit = &init,
         .classInit = &Class.init,
         .parent_class = &Class.parent,
@@ -301,7 +301,7 @@ pub const Tab = extern struct {
     }
 
     /// Returns true if this tab needs confirmation before quitting based
-    /// on the various Ghostty configurations.
+    /// on the various XGhostty configurations.
     pub fn getNeedsConfirmQuit(self: *Self) bool {
         const tree = self.getSplitTree();
         return tree.getNeedsConfirmQuit();

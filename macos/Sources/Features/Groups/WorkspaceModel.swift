@@ -54,7 +54,7 @@ final class WorkspaceModel: ObservableObject {
     /// regenerates (`SPEC.md` §8). `name` is injectable so tests stay
     /// deterministic; production passes `nil` to draw a random name.
     init(
-        wrapping paneTree: SplitTree<Ghostty.SurfaceView>,
+        wrapping paneTree: SplitTree<XGhostty.SurfaceView>,
         now: Date = Date(),
         name: String? = nil
     ) {
@@ -84,7 +84,7 @@ final class WorkspaceModel: ObservableObject {
         return state.groups[id]
     }
 
-    var focusedPaneTree: SplitTree<Ghostty.SurfaceView> {
+    var focusedPaneTree: SplitTree<XGhostty.SurfaceView> {
         get { focusedGroupState?.paneTree ?? .init() }
         set { replaceFocusedPaneTree(newValue) }
     }
@@ -93,8 +93,8 @@ final class WorkspaceModel: ObservableObject {
     /// consistent: an explicit focus wins; otherwise a still-present stored
     /// focus is kept; otherwise it falls back to the first leaf.
     func replaceFocusedPaneTree(
-        _ paneTree: SplitTree<Ghostty.SurfaceView>,
-        focusedSurface: Ghostty.SurfaceView? = nil,
+        _ paneTree: SplitTree<XGhostty.SurfaceView>,
+        focusedSurface: XGhostty.SurfaceView? = nil,
         now: Date = Date()
     ) {
         guard let id = state.focusedGroup, var group = state.groups[id] else { return }
@@ -148,7 +148,7 @@ final class WorkspaceModel: ObservableObject {
     func openNewGroup(
         _ newGroup: GroupState,
         direction: SplitTree<GroupRef>.NewDirection,
-        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) throws {
         guard let anchorID = state.focusedGroup else {
             throw WorkspaceError.noFocusedGroup
@@ -189,7 +189,7 @@ final class WorkspaceModel: ObservableObject {
     @discardableResult
     func switchFocusedGroup(
         to id: GroupID,
-        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) -> SurfaceID? {
         guard id != state.focusedGroup else { return nil }
         guard state.groups[id] != nil else { return nil }
@@ -272,7 +272,7 @@ final class WorkspaceModel: ObservableObject {
     @discardableResult
     func equalizeGroups() -> Bool {
         guard state.hiddenGroupIDs.isEmpty else {
-            Ghostty.logger.warning("equalize_groups skipped: hidden groups present (Phase 5)")
+            XGhostty.logger.warning("equalize_groups skipped: hidden groups present (Phase 5)")
             return false
         }
 
@@ -337,7 +337,7 @@ final class WorkspaceModel: ObservableObject {
     ///   group, §18.2).
     @discardableResult
     func hideFocusedGroup(
-        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) -> (target: GroupID, focus: SurfaceID?)? {
         guard let hideID = state.focusedGroup else { return nil }
         guard let neighbor = neighborAfterHiding(hideID) else { return nil }
@@ -377,7 +377,7 @@ final class WorkspaceModel: ObservableObject {
     @discardableResult
     func showGroup(
         _ id: GroupID,
-        savingOutgoingPaneTree outgoing: SplitTree<Ghostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) -> SurfaceID? {
         guard state.hiddenGroupIDs.contains(id) else { return nil }
 

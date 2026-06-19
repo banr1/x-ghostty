@@ -1,7 +1,7 @@
 const std = @import("std");
 const args = @import("args.zig");
 const Allocator = std.mem.Allocator;
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const help_strings = @import("help_strings");
 const Config = @import("../config/Config.zig");
 const ConfigKey = @import("../config/key.zig").Key;
@@ -31,7 +31,7 @@ pub const Options = struct {
 };
 
 /// The `explain-config` command prints the documentation for a single
-/// Ghostty configuration option or keybind action.
+/// XGhostty configuration option or keybind action.
 ///
 /// Examples:
 ///
@@ -78,9 +78,9 @@ pub fn run(alloc: Allocator) !u8 {
         var stderr: std.fs.File = .stderr();
         var buffer: [4096]u8 = undefined;
         var stderr_writer = stderr.writer(&buffer);
-        try stderr_writer.interface.writeAll("Usage: ghostty +explain-config <option>\n");
-        try stderr_writer.interface.writeAll("       ghostty +explain-config --option=<option>\n");
-        try stderr_writer.interface.writeAll("       ghostty +explain-config --keybind=<action>\n");
+        try stderr_writer.interface.writeAll("Usage: xghostty +explain-config <option>\n");
+        try stderr_writer.interface.writeAll("       xghostty +explain-config --option=<option>\n");
+        try stderr_writer.interface.writeAll("       xghostty +explain-config --keybind=<action>\n");
         try stderr_writer.end();
         return 1;
     };

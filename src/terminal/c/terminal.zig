@@ -278,7 +278,7 @@ fn new_(
     });
     errdefer t.deinit(alloc);
 
-    // libghostty-vt embedders don't necessarily install Ghostty's shell
+    // libghostty-vt embedders don't necessarily install XGhostty's shell
     // integration, so don't assume OSC 133 prompts can be redrawn on resize.
     // Shells can still opt in with OSC 133;A;redraw=1.
     t.flags.shell_redraws_prompt = .false;
@@ -615,7 +615,7 @@ pub fn mode_set(
     return .success;
 }
 
-/// C: GhosttyKittyGraphics
+/// C: XGhosttyKittyGraphics
 pub const KittyGraphics = kitty_gfx_c.KittyGraphics;
 
 /// C: GhosttyTerminalScreen

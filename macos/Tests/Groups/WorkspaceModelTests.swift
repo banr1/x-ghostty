@@ -1,10 +1,10 @@
 import Foundation
 import Testing
-@testable import Ghostty
+@testable import XGhostty
 
 /// Phase 0 tests for `WorkspaceModel`, the mirror that wraps the focused
 /// group's pane tree. Pane trees are kept empty because constructing
-/// `Ghostty.SurfaceView` leaves requires a live Ghostty app; richer pane
+/// `XGhostty.SurfaceView` leaves requires a live XGhostty app; richer pane
 /// operations are covered by the existing `SplitTreeTests` and manual
 /// integration checks.
 struct WorkspaceModelTests {
@@ -72,7 +72,7 @@ struct WorkspaceModelTests {
     // MARK: openNewGroup (SPEC §11.1, invariants §14.10–11)
 
     /// Builds a group with an empty pane tree. Pane trees stay empty because
-    /// constructing real `SurfaceView` leaves requires a live Ghostty app; the
+    /// constructing real `SurfaceView` leaves requires a live XGhostty app; the
     /// group-structure transition is independent of pane contents.
     private static func makeEmptyGroup(name: String) -> GroupState {
         GroupState(id: GroupID(), name: name, paneTree: .init(), createdAt: Date())

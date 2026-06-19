@@ -376,7 +376,7 @@ pub const FlatpakHostCommand = struct {
         const g_cwd = c.g_get_current_dir();
         defer c.g_free(g_cwd);
 
-        // Terminate session if Ghostty drops off the bus (e.g. due to crashes)
+        // Terminate session if XGhostty drops off the bus (e.g. due to crashes)
         const flags: Flags = .{ .watch_bus = true };
 
         // The params for our RPC call

@@ -257,7 +257,7 @@ pub const Options = struct {
     /// The total storage limit for Kitty images in bytes for this
     /// screen. Kitty image storage is per-screen.
     kitty_image_storage_limit: usize = switch (build_options.artifact) {
-        .ghostty => 320 * 1000 * 1000, // 320MB
+        .xghostty => 320 * 1000 * 1000, // 320MB
         .lib => 10 * 1000 * 1000, // 10MB
     },
 
@@ -5958,7 +5958,7 @@ test "Screen: resize (no reflow) less rows with scrollback" {
     }
 }
 
-// https://github.com/mitchellh/ghostty/issues/1030
+// https://github.com/mitchellh/xghostty/issues/1030
 test "Screen: resize (no reflow) less rows with empty trailing" {
     const testing = std.testing;
     const alloc = testing.allocator;
@@ -6151,7 +6151,7 @@ test "Screen: resize more cols no reflow" {
     }
 }
 
-// https://github.com/mitchellh/ghostty/issues/272#issuecomment-1676038963
+// https://github.com/mitchellh/xghostty/issues/272#issuecomment-1676038963
 test "Screen: resize more cols perfect split" {
     const testing = std.testing;
     const alloc = testing.allocator;
@@ -6169,7 +6169,7 @@ test "Screen: resize more cols perfect split" {
     }
 }
 
-// https://github.com/mitchellh/ghostty/issues/1159
+// https://github.com/mitchellh/xghostty/issues/1159
 test "Screen: resize (no reflow) more cols with scrollback scrolled up" {
     const testing = std.testing;
     const alloc = testing.allocator;
@@ -6202,7 +6202,7 @@ test "Screen: resize (no reflow) more cols with scrollback scrolled up" {
     try testing.expectEqual(@as(size.CellCountInt, 2), s.cursor.y);
 }
 
-// https://github.com/mitchellh/ghostty/issues/1159
+// https://github.com/mitchellh/xghostty/issues/1159
 test "Screen: resize (no reflow) less cols with scrollback scrolled up" {
     const testing = std.testing;
     const alloc = testing.allocator;
@@ -7998,7 +7998,7 @@ test "Screen: selectLine with scrollback" {
     }
 }
 
-// https://github.com/mitchellh/ghostty/issues/1329
+// https://github.com/mitchellh/xghostty/issues/1329
 test "Screen: selectLine semantic prompt boundary" {
     const testing = std.testing;
     const alloc = testing.allocator;
@@ -9130,7 +9130,7 @@ test "Screen: selectionString wide char with header" {
     }
 }
 
-// https://github.com/mitchellh/ghostty/issues/289
+// https://github.com/mitchellh/xghostty/issues/289
 test "Screen: selectionString empty with soft wrap" {
     const testing = std.testing;
     const alloc = testing.allocator;

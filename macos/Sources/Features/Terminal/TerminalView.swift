@@ -1,5 +1,5 @@
 import SwiftUI
-import GhosttyKit
+import XGhosttyKit
 import os
 
 /// This delegate is notified of actions and property changes regarding the terminal view. This
@@ -7,7 +7,7 @@ import os
 /// titles being set, cell sizes being changed, etc.
 protocol TerminalViewDelegate: AnyObject {
     /// Called when the currently focused surface changed. This can be nil.
-    func focusedSurfaceDidChange(to: Ghostty.SurfaceView?)
+    func focusedSurfaceDidChange(to: XGhostty.SurfaceView?)
 
     /// The URL of the pwd should change.
     func pwdDidChange(to: URL?)
@@ -16,7 +16,7 @@ protocol TerminalViewDelegate: AnyObject {
     func cellSizeDidChange(to: NSSize)
 
     /// Perform an action. At the time of writing this is only triggered by the command palette.
-    func performAction(_ action: String, on: Ghostty.SurfaceView)
+    func performAction(_ action: String, on: XGhostty.SurfaceView)
 
     /// A split tree operation
     func performSplitAction(_ action: TerminalSplitOperation)
@@ -34,7 +34,7 @@ protocol TerminalViewDelegate: AnyObject {
 protocol TerminalViewModel: ObservableObject {
     /// The tree of terminal surfaces (splits) within the view. This is mutated by TerminalView
     /// and children. This should be @Published.
-    var surfaceTree: SplitTree<Ghostty.SurfaceView> { get set }
+    var surfaceTree: SplitTree<XGhostty.SurfaceView> { get set }
 
     /// The group layer wrapping `surfaceTree`, used to drive the group-aware
     /// render path (`TerminalWorkspaceView`). In Phase 0/1 this mirrors the
@@ -52,7 +52,7 @@ protocol TerminalViewModel: ObservableObject {
 
 /// The main terminal view. This terminal view supports splits.
 struct TerminalView<ViewModel: TerminalViewModel>: View {
-    @ObservedObject var ghostty: Ghostty.App
+    @ObservedObject var ghostty: XGhostty.App
 
     // The required view model
     @ObservedObject var viewModel: ViewModel
@@ -61,7 +61,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
     weak var delegate: (any TerminalViewDelegate)?
 
     /// The most recently focused surface, equal to `focusedSurface` when it is non-nil.
-    @State private var lastFocusedSurface: Weak<Ghostty.SurfaceView>?
+    @State private var lastFocusedSurface: Weak<XGhostty.SurfaceView>?
 
     // This seems like a crutch after switching from SwiftUI to AppKit lifecycle.
     @FocusState private var focused: Bool
@@ -88,7 +88,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                 VStack(spacing: 0) {
                     // If we're running in debug mode we show a warning so that users
                     // know that performance will be degraded.
-                    if Ghostty.info.mode == GHOSTTY_BUILD_MODE_DEBUG || Ghostty.info.mode == GHOSTTY_BUILD_MODE_RELEASE_SAFE {
+                    if XGhostty.info.mode == XGHOSTTY_BUILD_MODE_DEBUG || XGhostty.info.mode == XGHOSTTY_BUILD_MODE_RELEASE_SAFE {
                         DebugBuildWarningView()
                     }
 

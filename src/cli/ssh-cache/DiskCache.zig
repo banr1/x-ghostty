@@ -102,7 +102,7 @@ pub fn add(
     } else {
         const key_copy = try alloc.dupe(u8, key);
         errdefer alloc.free(key_copy);
-        const terminfo_copy = try alloc.dupe(u8, "xterm-ghostty");
+        const terminfo_copy = try alloc.dupe(u8, "xterm-xghostty");
         errdefer alloc.free(terminfo_copy);
 
         try entries.put(key_copy, .{
@@ -414,7 +414,7 @@ test "disk cache default path" {
     const testing = std.testing;
     const alloc = std.testing.allocator;
 
-    const path = try DiskCache.defaultPath(alloc, "ghostty");
+    const path = try DiskCache.defaultPath(alloc, "xghostty");
     defer alloc.free(path);
     try testing.expect(path.len > 0);
 }
@@ -576,7 +576,7 @@ test "disk cache reads duplicate keys" {
         var buf: [256]u8 = undefined;
         var file_writer = file.writer(&buf);
         try file_writer.interface.writeAll(
-            "example.com|100|xterm-ghostty\nexample.com|200|xterm-newer\n",
+            "example.com|100|xterm-xghostty\nexample.com|200|xterm-newer\n",
         );
         try file_writer.interface.flush();
     }
@@ -607,9 +607,9 @@ test "disk cache reads survive allocation failure" {
         var buf: [256]u8 = undefined;
         var file_writer = file.writer(&buf);
         try file_writer.interface.writeAll(
-            "a.com|100|xterm-ghostty\n" ++
-                "b.com|100|xterm-ghostty\n" ++
-                "c.com|100|xterm-ghostty\n" ++
+            "a.com|100|xterm-xghostty\n" ++
+                "b.com|100|xterm-xghostty\n" ++
+                "c.com|100|xterm-xghostty\n" ++
                 "a.com|200|xterm-newer\n",
         );
         try file_writer.interface.flush();

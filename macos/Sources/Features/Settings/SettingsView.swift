@@ -14,7 +14,7 @@ struct SettingsView: View {
             VStack(alignment: .leading) {
                 Text("Coming Soon. 🚧").font(.title)
                 Text("You can't configure settings in the GUI yet. To modify settings, " +
-                     "edit the file at $HOME/.config/ghostty/config.ghostty and restart XGhostty.")
+                     "edit the file at $HOME/.config/xghostty/config.xghostty and restart XGhostty.")
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
             }

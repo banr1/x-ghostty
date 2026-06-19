@@ -1,4 +1,4 @@
-// This is the main file for the C API. The C API is used to embed Ghostty
+// This is the main file for the C API. The C API is used to embed XGhostty
 // within other applications. Depending on the build settings some APIs
 // may not be available (i.e. embedding into macOS exposes various Metal
 // support).
@@ -45,7 +45,7 @@ comptime {
     _ = @import("benchmark/main.zig").CApi;
 }
 
-/// ghostty_info_s
+/// xghostty_info_s
 const Info = extern struct {
     mode: BuildMode,
     version: [*]const u8,
@@ -59,7 +59,7 @@ const Info = extern struct {
     };
 };
 
-/// ghostty_string_s
+/// xghostty_string_s
 pub const String = extern struct {
     ptr: ?[*]const u8,
     len: usize,
@@ -102,12 +102,12 @@ pub const String = extern struct {
 };
 
 /// Initialize ghostty global state.
-pub export fn ghostty_init(argc: usize, argv: [*][*:0]u8) c_int {
+pub export fn xghostty_init(argc: usize, argv: [*][*:0]u8) c_int {
     assert(builtin.link_libc);
 
     std.os.argv = argv[0..argc];
     state.init() catch |err| {
-        std.log.err("failed to initialize ghostty error={}", .{err});
+        std.log.err("failed to initialize xghostty error={}", .{err});
         return 1;
     };
 
@@ -116,7 +116,7 @@ pub export fn ghostty_init(argc: usize, argv: [*][*:0]u8) c_int {
 
 /// Runs an action if it is specified. If there is no action this returns
 /// false. If there is an action then this doesn't return.
-pub export fn ghostty_cli_try_action() void {
+pub export fn xghostty_cli_try_action() void {
     const action = state.action orelse return;
     std.log.info("executing CLI action={}", .{action});
     posix.exit(action.run(state.alloc) catch |err| {
@@ -127,8 +127,8 @@ pub export fn ghostty_cli_try_action() void {
     posix.exit(0);
 }
 
-/// Return metadata about Ghostty, such as version, build mode, etc.
-pub export fn ghostty_info() Info {
+/// Return metadata about XGhostty, such as version, build mode, etc.
+pub export fn xghostty_info() Info {
     return .{
         .mode = switch (builtin.mode) {
             .Debug => .debug,
@@ -146,13 +146,13 @@ pub export fn ghostty_info() Info {
 /// if no translation is found, so the pointer must be stable through
 /// the function call.
 ///
-/// This should only be used for singular strings maintained by Ghostty.
-pub export fn ghostty_translate(msgid: [*:0]const u8) [*:0]const u8 {
+/// This should only be used for singular strings maintained by XGhostty.
+pub export fn xghostty_translate(msgid: [*:0]const u8) [*:0]const u8 {
     return internal_os.i18n._(msgid);
 }
 
-/// Free a string allocated by Ghostty.
-pub export fn ghostty_string_free(str: String) void {
+/// Free a string allocated by XGhostty.
+pub export fn xghostty_string_free(str: String) void {
     str.deinit();
 }
 
@@ -206,7 +206,7 @@ pub const DllMain = if (builtin.os.tag == .windows) struct {
     }
 }.handler else void;
 
-test "ghostty_string_s empty string" {
+test "xghostty_string_s empty string" {
     const testing = std.testing;
     const empty_string = String.empty;
     defer empty_string.deinit();
@@ -215,7 +215,7 @@ test "ghostty_string_s empty string" {
     try testing.expect(empty_string.sentinel == false);
 }
 
-test "ghostty_string_s c string" {
+test "xghostty_string_s c string" {
     const testing = std.testing;
     state.alloc = testing.allocator;
 
@@ -231,7 +231,7 @@ test "ghostty_string_s c string" {
     try testing.expect(c_null_string.sentinel == true);
 }
 
-test "ghostty_string_s zig string" {
+test "xghostty_string_s zig string" {
     const testing = std.testing;
     state.alloc = testing.allocator;
 

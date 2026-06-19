@@ -1,8 +1,8 @@
 const std = @import("std");
-const ghostty_vt = @import("ghostty-vt");
+const xghostty_vt = @import("ghostty-vt");
 const mem = @import("mem.zig");
-const Terminal = ghostty_vt.Terminal;
-const TerminalStream = ghostty_vt.TerminalStream;
+const Terminal = xghostty_vt.Terminal;
+const TerminalStream = xghostty_vt.TerminalStream;
 
 /// Use a single global allocator for simplicity and to avoid heap
 /// allocation overhead in the fuzzer. The allocator is backed by a fixed

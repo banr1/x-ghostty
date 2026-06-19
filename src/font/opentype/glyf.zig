@@ -672,7 +672,7 @@ fn testAppendHeader(
 }
 
 test "glyf" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;
@@ -877,7 +877,7 @@ test "glyf: decode contour ending at max point index" {
 }
 
 test "glyf: reject glyphs with instructions and composite glyphs" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;
@@ -914,7 +914,7 @@ test "glyf: reject glyphs with instructions and composite glyphs" {
 }
 
 test "glyf: reject truncated" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;
@@ -935,7 +935,7 @@ test "glyf: reject truncated" {
 }
 
 test "glyf: reject endpoints out of order" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;
@@ -964,7 +964,7 @@ test "glyf: reject endpoints out of order" {
 }
 
 test "glyf: reject too many points" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;

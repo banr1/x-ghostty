@@ -3,7 +3,7 @@ import SwiftUI
 import UserNotifications
 import OSLog
 import Sparkle
-import GhosttyKit
+import XGhosttyKit
 
 class AppDelegate: NSObject,
                     ObservableObject,
@@ -17,7 +17,7 @@ class AppDelegate: NSObject,
         category: String(describing: AppDelegate.self)
     )
 
-    /// Various menu items so that we can programmatically sync the keyboard shortcut with the Ghostty config
+    /// Various menu items so that we can programmatically sync the keyboard shortcut with the XGhostty config
     @IBOutlet private var menuAbout: NSMenuItem?
     @IBOutlet private var menuServices: NSMenu?
     @IBOutlet private var menuCheckForUpdates: NSMenuItem?
@@ -92,11 +92,11 @@ class AppDelegate: NSObject,
     /// seconds since the process was launched.
     private var applicationLaunchTime: TimeInterval = 0
 
-    /// This is the current configuration from the Ghostty configuration that we need.
+    /// This is the current configuration from the XGhostty configuration that we need.
     private var derivedConfig: DerivedConfig = DerivedConfig()
 
     /// The ghostty global state. Only one per process.
-    let ghostty: Ghostty.App
+    let ghostty: XGhostty.App
 
     /// The global undo manager for app-level state such as window restoration.
     lazy var undoManager = ExpiringUndoManager()
@@ -153,13 +153,13 @@ class AppDelegate: NSObject,
 
     private let appIconUpdater = AppIconUpdater()
 
-    @MainActor private lazy var menuShortcutManager = Ghostty.MenuShortcutManager()
+    @MainActor private lazy var menuShortcutManager = XGhostty.MenuShortcutManager()
 
     override init() {
 #if DEBUG
-        ghostty = Ghostty.App(configPath: ProcessInfo.processInfo.environment["GHOSTTY_CONFIG_PATH"])
+        ghostty = XGhostty.App(configPath: ProcessInfo.processInfo.environment["XGHOSTTY_CONFIG_PATH"])
 #else
-        ghostty = Ghostty.App()
+        ghostty = XGhostty.App()
 #endif
         super.init()
 
@@ -172,7 +172,7 @@ class AppDelegate: NSObject,
         #if DEBUG
         if
             let suite = UserDefaults.ghosttySuite,
-            let clear = ProcessInfo.processInfo.environment["GHOSTTY_CLEAR_USER_DEFAULTS"],
+            let clear = ProcessInfo.processInfo.environment["XGHOSTTY_CLEAR_USER_DEFAULTS"],
             (clear as NSString).boolValue {
             UserDefaults.ghostty.removePersistentDomain(forName: suite)
         }
@@ -218,7 +218,7 @@ class AppDelegate: NSObject,
         // Register our service provider. This must happen after everything is initialized.
         NSApp.servicesProvider = ServiceProvider()
 
-        // This registers the Ghostty => Services menu to exist.
+        // This registers the XGhostty => Services menu to exist.
         NSApp.servicesMenu = menuServices
 
         // Setup a local event monitor for app-level keyboard shortcuts. See
@@ -261,24 +261,24 @@ class AppDelegate: NSObject,
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(ghosttyNewWindow(_:)),
-            name: Ghostty.Notification.ghosttyNewWindow,
+            name: XGhostty.Notification.ghosttyNewWindow,
             object: nil)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(ghosttyNewTab(_:)),
-            name: Ghostty.Notification.ghosttyNewTab,
+            name: XGhostty.Notification.ghosttyNewTab,
             object: nil)
 
         // Configure user notifications
         let actions = [
-            UNNotificationAction(identifier: Ghostty.userNotificationActionShow, title: "Show")
+            UNNotificationAction(identifier: XGhostty.userNotificationActionShow, title: "Show")
         ]
 
         let center = UNUserNotificationCenter.current()
 
         center.setNotificationCategories([
             UNNotificationCategory(
-                identifier: Ghostty.userNotificationCategory,
+                identifier: XGhostty.userNotificationCategory,
                 actions: actions,
                 intentIdentifiers: [],
                 options: [.customDismissAction]
@@ -293,14 +293,14 @@ class AppDelegate: NSObject,
         ) { _, change in
             guard let appearance = change.newValue else { return }
             guard let app = self.ghostty.app else { return }
-            let scheme: ghostty_color_scheme_e
+            let scheme: xghostty_color_scheme_e
             if appearance.isDark {
-                scheme = GHOSTTY_COLOR_SCHEME_DARK
+                scheme = XGHOSTTY_COLOR_SCHEME_DARK
             } else {
-                scheme = GHOSTTY_COLOR_SCHEME_LIGHT
+                scheme = XGHOSTTY_COLOR_SCHEME_LIGHT
             }
 
-            ghostty_app_set_color_scheme(app, scheme)
+            xghostty_app_set_color_scheme(app, scheme)
         }
 
         // Setup our menu
@@ -309,7 +309,7 @@ class AppDelegate: NSObject,
         // Setup signal handlers
         setupSignals()
 
-        switch Ghostty.launchSource {
+        switch XGhostty.launchSource {
         case .app:
             // Don't have to do anything.
             break
@@ -385,7 +385,7 @@ class AppDelegate: NSObject,
 
         // If the user is shutting down, restarting, or logging out, we don't confirm quit.
         why: if let event = NSAppleEventManager.shared().currentAppleEvent {
-            // If all Ghostty windows are in the background (i.e. you Cmd-Q from the Cmd-Tab
+            // If all XGhostty windows are in the background (i.e. you Cmd-Q from the Cmd-Tab
             // view), then this is null. I don't know why (pun intended) but we have to
             // guard against it.
             guard let keyword = AEKeyword("why?") else { break why }
@@ -438,7 +438,7 @@ class AppDelegate: NSObject,
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        // Ghostty will validate as well but we can avoid creating an entirely new
+        // XGhostty will validate as well but we can avoid creating an entirely new
         // surface by doing our own validation here. We can also show a useful error
         // this way.
 
@@ -450,7 +450,7 @@ class AppDelegate: NSObject,
         var requiresConfirm: Bool = false
 
         // Initialize the surface config which will be used to create the tab or window for the opened file.
-        var config = Ghostty.SurfaceConfiguration()
+        var config = XGhostty.SurfaceConfiguration()
 
         if isDirectory.boolValue {
             // When opening a directory, check the configuration to decide
@@ -469,7 +469,7 @@ class AppDelegate: NSObject,
             // profile/rc files for the shell, which is super important on macOS
             // due to things like Homebrew. Instead, we set the command to
             // `<filename>; exit` which is what Terminal and iTerm2 do.
-            config.initialInput = "\(Ghostty.Shell.quote(filename)); exit\n"
+            config.initialInput = "\(XGhostty.Shell.quote(filename)); exit\n"
 
             // For commands executed directly, we want to ensure we wait after exit
             // because in most cases scripts don't block on exit and we don't want
@@ -528,7 +528,7 @@ class AppDelegate: NSObject,
         let sigusr2 = DispatchSource.makeSignalSource(signal: SIGUSR2, queue: .main)
         sigusr2.setEventHandler { [weak self] in
             guard let self else { return }
-            Ghostty.logger.info("reloading configuration in response to SIGUSR2")
+            XGhostty.logger.info("reloading configuration in response to SIGUSR2")
             self.ghostty.reloadConfig()
         }
 
@@ -573,17 +573,17 @@ class AppDelegate: NSObject,
 
         // If this event as-is would result in a key binding then we send it.
         if let app = ghostty.app, let config = ghostty.config.config {
-            var ghosttyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS)
+            var ghosttyEvent = event.ghosttyKeyEvent(XGHOSTTY_ACTION_PRESS)
             let match = (event.characters ?? "").withCString { ptr in
                 ghosttyEvent.text = ptr
-                if !ghostty_config_key_is_binding(config, ghosttyEvent) {
+                if !xghostty_config_key_is_binding(config, ghosttyEvent) {
                     return false
                 }
 
-                return ghostty_app_key(app, ghosttyEvent)
+                return xghostty_app_key(app, ghosttyEvent)
             }
 
-            // If the key was handled by Ghostty we stop the event chain. If
+            // If the key was handled by XGhostty we stop the event chain. If
             // the key wasn't handled then we let it fall through and continue
             // processing. This is important because some bindings may have no
             // affect at this scope.
@@ -599,15 +599,15 @@ class AppDelegate: NSObject,
         }
 
         // If we reach this point then we try to process the key event
-        // through the Ghostty key mechanism.
+        // through the XGhostty key mechanism.
 
-        // Ghostty must be loaded
+        // XGhostty must be loaded
         guard let ghostty = self.ghostty.app else { return event }
 
         // Build our event input and call ghostty
-        if ghostty_app_key(ghostty, event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS)) {
+        if xghostty_app_key(ghostty, event.ghosttyKeyEvent(XGHOSTTY_ACTION_PRESS)) {
             // The key was used so we want to stop it from going to our Mac app
-            Ghostty.logger.debug("local key event handled event=\(event, privacy: .public)")
+            XGhostty.logger.debug("local key event handled event=\(event, privacy: .public)")
             return nil
         }
 
@@ -630,7 +630,7 @@ class AppDelegate: NSObject,
         // Get our managed configuration object out
         guard let config = notification.userInfo?[
             Notification.Name.GhosttyConfigChangeKey
-        ] as? Ghostty.Config else { return }
+        ] as? XGhostty.Config else { return }
 
         ghosttyConfigDidChange(config: config)
     }
@@ -708,21 +708,21 @@ class AppDelegate: NSObject,
     }
 
     @objc private func ghosttyNewWindow(_ notification: Notification) {
-        let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
-        let config = configAny as? Ghostty.SurfaceConfiguration
+        let configAny = notification.userInfo?[XGhostty.Notification.NewSurfaceConfigKey]
+        let config = configAny as? XGhostty.SurfaceConfiguration
         _ = TerminalController.newWindow(ghostty, withBaseConfig: config)
     }
 
     @objc private func ghosttyNewTab(_ notification: Notification) {
-        guard let surfaceView = notification.object as? Ghostty.SurfaceView else { return }
+        guard let surfaceView = notification.object as? XGhostty.SurfaceView else { return }
         guard let window = surfaceView.window else { return }
 
         // We only want to listen to new tabs if the focused parent is
         // a regular terminal controller.
         guard window.windowController is TerminalController else { return }
 
-        let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
-        let config = configAny as? Ghostty.SurfaceConfiguration
+        let configAny = notification.userInfo?[XGhostty.Notification.NewSurfaceConfigKey]
+        let config = configAny as? XGhostty.SurfaceConfiguration
 
         _ = TerminalController.newTab(ghostty, from: window, withBaseConfig: config)
     }
@@ -737,7 +737,7 @@ class AppDelegate: NSObject,
         NSApp.dockTile.display()
     }
 
-    private func ghosttyConfigDidChange(config: Ghostty.Config) {
+    private func ghosttyConfigDidChange(config: XGhostty.Config) {
         // Update the config we need to store
         self.derivedConfig = DerivedConfig(config)
 
@@ -765,7 +765,7 @@ class AppDelegate: NSObject,
                 autoUpdate == .download
             /*
              To test `auto-update` easily, uncomment the line below and
-             delete `SUEnableAutomaticChecks` in Ghostty-Info.plist.
+             delete `SUEnableAutomaticChecks` in XGhostty-Info.plist.
 
              Note: When `auto-update = download`, you may need to
              `Clean Build Folder` if a background install has already begun.
@@ -806,8 +806,8 @@ class AppDelegate: NSObject,
         }
 
         // We need to handle our global event tap depending on if there are global
-        // events that we care about in Ghostty.
-        if ghostty_app_has_global_keybinds(ghostty.app!) {
+        // events that we care about in XGhostty.
+        if xghostty_app_has_global_keybinds(ghostty.app!) {
             if timeSinceLaunch > 5 {
                 // If the process has been running for awhile we enable right away
                 // because no windows are likely to pop up.
@@ -828,11 +828,11 @@ class AppDelegate: NSObject,
     }
 
     /// Sync the appearance of our app with the theme specified in the config.
-    private func syncAppearance(config: Ghostty.Config) {
+    private func syncAppearance(config: XGhostty.Config) {
         NSApplication.shared.appearance = .init(ghosttyConfig: config)
     }
 
-    private func updateAppIcon(from config: Ghostty.Config) {
+    private func updateAppIcon(from config: XGhostty.Config) {
         Task.detached {
             await self.appIconUpdater.update(icon: AppIcon(config: config))
         }
@@ -895,7 +895,7 @@ class AppDelegate: NSObject,
 
     // MARK: - GhosttyAppDelegate
 
-    func findSurface(forUUID uuid: UUID) -> Ghostty.SurfaceView? {
+    func findSurface(forUUID uuid: UUID) -> XGhostty.SurfaceView? {
         for c in TerminalController.all {
             for view in c.surfaceTree where view.id == uuid {
                 return view
@@ -907,7 +907,7 @@ class AppDelegate: NSObject,
 
     // MARK: - Global State
 
-    func setSecureInput(_ mode: Ghostty.SetSecureInput) {
+    func setSecureInput(_ mode: XGhostty.SetSecureInput) {
         let input = SecureInput.shared
         switch mode {
         case .on:
@@ -971,12 +971,12 @@ class AppDelegate: NSObject,
         quickController.toggle()
     }
 
-    /// Toggles visibility of all Ghosty Terminal windows. When hidden, activates Ghostty as the frontmost application
+    /// Toggles visibility of all Ghosty Terminal windows. When hidden, activates XGhostty as the frontmost application
     @IBAction func toggleVisibility(_ sender: Any) {
         // If we have focus, then we hide all windows.
         if NSApp.isActive {
             // Toggle visibility doesn't do anything if the focused window is native
-            // fullscreen. This is only relevant if Ghostty is active.
+            // fullscreen. This is only relevant if XGhostty is active.
             guard let keyWindow = NSApp.keyWindow,
                   !keyWindow.styleMask.contains(.fullScreen) else { return }
 
@@ -1021,7 +1021,7 @@ class AppDelegate: NSObject,
             self.quickTerminalPosition = .top
         }
 
-        init(_ config: Ghostty.Config) {
+        init(_ config: XGhostty.Config) {
             self.initialWindow = config.initialWindow
             self.shouldQuitAfterLastWindowClosed = config.shouldQuitAfterLastWindowClosed
             self.quickTerminalPosition = config.quickTerminalPosition
@@ -1128,8 +1128,8 @@ extension AppDelegate {
         self.menuFindParent?.setImageIfDesired(systemSymbolName: "text.page.badge.magnifyingglass")
     }
 
-    /// Sync all of our menu item keyboard shortcuts with the Ghostty configuration.
-    @MainActor private func syncMenuShortcuts(_ config: Ghostty.Config) {
+    /// Sync all of our menu item keyboard shortcuts with the XGhostty configuration.
+    @MainActor private func syncMenuShortcuts(_ config: XGhostty.Config) {
         guard ghostty.readiness == .ready else { return }
 
         menuShortcutManager.reset()
@@ -1191,7 +1191,7 @@ extension AppDelegate {
         syncMenuShortcut(config, action: "toggle_secure_input", menuItem: self.menuSecureInput)
 
         // This menu item is NOT synced with the configuration because it disables macOS
-        // global fullscreen keyboard shortcut. The shortcut in the Ghostty config will continue
+        // global fullscreen keyboard shortcut. The shortcut in the XGhostty config will continue
         // to work but it won't be reflected in the menu item.
         //
         // syncMenuShortcut(config, action: "toggle_fullscreen", menuItem: self.menuToggleFullScreen)
@@ -1200,7 +1200,7 @@ extension AppDelegate {
         reloadDockMenu()
     }
 
-    @MainActor private func syncMenuShortcut(_ config: Ghostty.Config, action: String, menuItem: NSMenuItem?) {
+    @MainActor private func syncMenuShortcut(_ config: XGhostty.Config, action: String, menuItem: NSMenuItem?) {
         menuShortcutManager.syncMenuShortcut(config, action: action, menuItem: menuItem)
     }
 
@@ -1245,7 +1245,7 @@ extension AppDelegate {
                 let alert = NSAlert()
                 alert.messageText = "Failed to Set Default Terminal"
                 alert.informativeText = """
-                Ghostty could not be set as the default terminal application.
+                XGhostty could not be set as the default terminal application.
 
                 Error: \(error.localizedDescription)
                 """

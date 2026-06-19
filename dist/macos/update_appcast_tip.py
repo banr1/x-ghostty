@@ -1,5 +1,5 @@
 """
-This script is used to update the appcast.xml file for Ghostty releases.
+This script is used to update the appcast.xml file for XGhostty releases.
 The script is currently hardcoded to only work for tip releases and therefore
 doesn't have rich release notes, hardcodes the URL to the tip bucket, etc.
 

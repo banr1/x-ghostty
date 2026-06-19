@@ -51,7 +51,7 @@ pub const Clipboard = enum(Backing) {
     pub const getGObjectType = switch (build_config.app_runtime) {
         .gtk => @import("gobject").ext.defineEnum(
             Clipboard,
-            .{ .name = "GhosttyApprtClipboard" },
+            .{ .name = "XGhosttyApprtClipboard" },
         ),
 
         .none => void,
@@ -85,7 +85,7 @@ pub const ClipboardRequest = union(ClipboardRequestType) {
     pub const getGObjectType = switch (build_config.app_runtime) {
         .gtk => @import("gobject").ext.defineBoxed(
             ClipboardRequest,
-            .{ .name = "GhosttyClipboardRequest" },
+            .{ .name = "XGhosttyClipboardRequest" },
         ),
 
         .none => void,

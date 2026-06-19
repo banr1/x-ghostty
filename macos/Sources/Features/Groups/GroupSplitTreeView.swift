@@ -55,7 +55,7 @@ struct GroupSplitTreeView: View {
 }
 
 private struct GroupSplitSubtreeView: View {
-    @EnvironmentObject var ghostty: Ghostty.App
+    @EnvironmentObject var ghostty: XGhostty.App
 
     let node: SplitTree<GroupRef>.Node
     let groups: [GroupID: GroupState]

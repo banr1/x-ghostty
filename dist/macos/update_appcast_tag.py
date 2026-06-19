@@ -1,6 +1,6 @@
 """
 This script is used to update the appcast.xml file for tagged
-Ghostty releases.
+XGhostty releases.
 
 This expects the following files in the current directory:
     - sign_update.txt - contains the output from "sign_update" in the Sparkle
@@ -87,7 +87,7 @@ elem = ET.SubElement(item, "sparkle:fullReleaseNotesLink")
 elem.text = f"https://ghostty.org/docs/install/release-notes/{version_dash}"
 elem = ET.SubElement(item, "description")
 elem.text = f"""
-<h1>Ghostty v{version}</h1>
+<h1>XGhostty v{version}</h1>
 <p>
 This release was built from commit <code><a href="{repo}/commits/{commit_long}">{commit}</a></code>
 on {now.strftime('%Y-%m-%d')}.

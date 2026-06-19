@@ -1,9 +1,9 @@
 import Foundation
-@testable import Ghostty
-@testable import GhosttyKit
+@testable import XGhostty
+@testable import XGhosttyKit
 
 /// Create a temporary config file and delete it when this is deallocated
-class TemporaryConfig: Ghostty.Config {
+class TemporaryConfig: XGhostty.Config {
     enum Error: Swift.Error {
         case failedToLoad
     }
@@ -29,14 +29,14 @@ class TemporaryConfig: Ghostty.Config {
         clone(config: cfg)
     }
 
-    var optionalAutoUpdateChannel: Ghostty.AutoUpdateChannel? {
+    var optionalAutoUpdateChannel: XGhostty.AutoUpdateChannel? {
         guard let config = self.config else { return nil }
         var v: UnsafePointer<Int8>?
         let key = "auto-update-channel"
-        guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+        guard xghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
         guard let ptr = v else { return nil }
         let str = String(cString: ptr)
-        return Ghostty.AutoUpdateChannel(rawValue: str)
+        return XGhostty.AutoUpdateChannel(rawValue: str)
     }
 
     deinit {

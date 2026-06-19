@@ -7,14 +7,14 @@ const i18n = @import("../../../os/main.zig").i18n;
 const Common = @import("../class.zig").Common;
 const Dialog = @import("dialog.zig").Dialog;
 
-const log = std.log.scoped(.gtk_ghostty_close_confirmation_dialog);
+const log = std.log.scoped(.gtk_xghostty_close_confirmation_dialog);
 
 pub const CloseConfirmationDialog = extern struct {
     const Self = @This();
     parent_instance: Parent,
     pub const Parent = Dialog;
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttyCloseConfirmationDialog",
+        .name = "XGhosttyCloseConfirmationDialog",
         .instanceInit = &init,
         .classInit = &Class.init,
         .parent_class = &Class.parent,
@@ -199,6 +199,6 @@ pub const Target = enum(c_int) {
 
     pub const getGObjectType = gobject.ext.defineEnum(
         Target,
-        .{ .name = "GhosttyCloseConfirmationDialogTarget" },
+        .{ .name = "XGhosttyCloseConfirmationDialogTarget" },
     );
 };

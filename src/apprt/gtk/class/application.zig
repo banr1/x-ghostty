@@ -43,7 +43,7 @@ const ConfigErrorsDialog = @import("config_errors_dialog.zig").ConfigErrorsDialo
 const GlobalShortcuts = @import("global_shortcuts.zig").GlobalShortcuts;
 const OpenURI = @import("../portal.zig").OpenURI;
 
-const log = std.log.scoped(.gtk_ghostty_application);
+const log = std.log.scoped(.gtk_xghostty_application);
 
 /// Function used to funnel GLib/GObject/GTK log messages into Zig's logging
 /// system rather than just getting dumped directly to stderr.
@@ -109,7 +109,7 @@ fn glibLogWriterFunction(
     return .handled;
 }
 
-/// The primary entrypoint for the Ghostty GTK application.
+/// The primary entrypoint for the XGhostty GTK application.
 ///
 /// This requires a `ghostty.App` and `ghostty.Config` and takes
 /// care of the rest. Call `run` to run the application to completion.
@@ -133,7 +133,7 @@ pub const Application = extern struct {
     parent_instance: Parent,
     pub const Parent = adw.Application;
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttyApplication",
+        .name = "XGhosttyApplication",
         .classInit = &Class.init,
         .parent_class = &Class.parent,
         .private = .{ .Type = Private, .offset = &Private.offset },
@@ -205,15 +205,15 @@ pub const Application = extern struct {
         /// glib source for our signal handler.
         signal_source: ?c_uint = null,
 
-        /// CSS Provider for any styles based on Ghostty configuration values.
+        /// CSS Provider for any styles based on XGhostty configuration values.
         css_provider: *gtk.CssProvider,
 
         /// Providers for loading custom stylesheets defined by user
         custom_css_providers: std.ArrayListUnmanaged(*gtk.CssProvider) = .empty,
 
-        /// A copy of the LANG environment variable that was provided to Ghostty
+        /// A copy of the LANG environment variable that was provided to XGhostty
         /// by the system. If this is null, the LANG environment variable did
-        /// not exist in Ghostty's environment variable.
+        /// not exist in XGhostty's environment variable.
         saved_language: ?[:0]const u8 = null,
 
         open_uri: OpenURI = undefined,
@@ -321,7 +321,7 @@ pub const Application = extern struct {
 
         // Our app ID determines uniqueness and maps to our desktop file.
         // We append "-debug" to the ID if we're in debug mode so that we
-        // can develop Ghostty in Ghostty.
+        // can develop XGhostty in XGhostty.
         const app_id: [:0]const u8 = app_id: {
             if (config.class) |class| {
                 if (gio.Application.idIsValid(class) != 0) {
@@ -465,7 +465,7 @@ pub const Application = extern struct {
         return self.private().core_app.alloc;
     }
 
-    /// Get the original language that Ghostty was launched with. This returns a
+    /// Get the original language that XGhostty was launched with. This returns a
     /// pointer to internal memory so it must be copied by callers.
     pub fn savedLanguage(self: *Self) ?[:0]const u8 {
         return self.private().saved_language;
@@ -517,7 +517,7 @@ pub const Application = extern struct {
 
         // This just calls the `activate` signal but its part of the normal startup
         // routine so we just call it, but only if the config allows it (this allows
-        // for launching Ghostty in the "background" without immediately opening
+        // for launching XGhostty in the "background" without immediately opening
         // a window).
         //
         // https://gitlab.gnome.org/GNOME/glib/-/blob/bd2ccc2f69ecfd78ca3f34ab59e42e2b462bad65/gio/gapplication.c#L2302
@@ -548,7 +548,7 @@ pub const Application = extern struct {
         while (priv.running) {
             _ = glib.MainContext.iteration(ctx, 1);
 
-            // Tick the core Ghostty terminal app
+            // Tick the core XGhostty terminal app
             try priv.core_app.tick(priv.rt_app);
 
             // Check if we must quit based on the current state.
@@ -950,7 +950,7 @@ pub const Application = extern struct {
         const headerbar_foreground = config.@"window-titlebar-foreground" orelse config.foreground;
 
         switch (window_theme) {
-            .ghostty => try writer.print(
+            .xghostty => try writer.print(
                 \\windowhandle {{
                 \\  background-color: rgb({d},{d},{d});
                 \\  color: rgb({d},{d},{d});
@@ -1041,19 +1041,19 @@ pub const Application = extern struct {
         );
 
         switch (window_theme) {
-            .ghostty => try writer.print(
+            .xghostty => try writer.print(
                 \\:root {{
-                \\  --ghostty-fg: rgb({d},{d},{d});
-                \\  --ghostty-bg: rgb({d},{d},{d});
-                \\  --headerbar-fg-color: var(--ghostty-fg);
-                \\  --headerbar-bg-color: var(--ghostty-bg);
+                \\  --xghostty-fg: rgb({d},{d},{d});
+                \\  --xghostty-bg: rgb({d},{d},{d});
+                \\  --headerbar-fg-color: var(--xghostty-fg);
+                \\  --headerbar-bg-color: var(--xghostty-bg);
                 \\  --headerbar-backdrop-color: oklab(from var(--headerbar-bg-color) calc(l * 0.9) a b / alpha);
-                \\  --overview-fg-color: var(--ghostty-fg);
-                \\  --overview-bg-color: var(--ghostty-bg);
-                \\  --popover-fg-color: var(--ghostty-fg);
-                \\  --popover-bg-color: var(--ghostty-bg);
-                \\  --window-fg-color: var(--ghostty-fg);
-                \\  --window-bg-color: var(--ghostty-bg);
+                \\  --overview-fg-color: var(--xghostty-fg);
+                \\  --overview-bg-color: var(--xghostty-bg);
+                \\  --popover-fg-color: var(--xghostty-fg);
+                \\  --popover-bg-color: var(--xghostty-bg);
+                \\  --window-fg-color: var(--xghostty-fg);
+                \\  --window-bg-color: var(--xghostty-bg);
                 \\}}
                 \\windowhandle {{
                 \\  background-color: var(--headerbar-bg-color);
@@ -1380,7 +1380,7 @@ pub const Application = extern struct {
         // Setup our initial light/dark
         const style = self.as(adw.Application).getStyleManager();
         style.setColorScheme(switch (config.@"window-theme") {
-            .auto, .ghostty => auto: {
+            .auto, .xghostty => auto: {
                 const lum = config.background.toTerminalRGB().perceivedLuminance();
                 break :auto if (lum > 0.5)
                     .prefer_light
@@ -1879,9 +1879,9 @@ pub const Application = extern struct {
             {
                 const c = @cImport({
                     // generated header files
-                    @cInclude("ghostty_resources.h");
+                    @cInclude("xghostty_resources.h");
                 });
-                if (c.ghostty_get_resource()) |ptr| {
+                if (c.xghostty_get_resource()) |ptr| {
                     gio.resourcesRegister(@ptrCast(@alignCast(ptr)));
                 } else {
                     // If we fail to load resources then things will
@@ -1988,7 +1988,7 @@ const Action = struct {
         defer notification.unref();
         notification.setBody(n.body);
 
-        const icon = gio.ThemedIcon.new("com.mitchellh.ghostty");
+        const icon = gio.ThemedIcon.new("com.mitchellh.xghostty");
         defer icon.unref();
         notification.setIcon(icon.as(gio.Icon));
         notification.setDefaultActionAndTargetValue(
@@ -2124,7 +2124,7 @@ const Action = struct {
         if (gtk_window.isActive() != 0) return false;
         // If it is hidden, skip it.
         if (gtk_window.as(gtk.Widget).isVisible() == 0) return false;
-        // If it isn't a Ghostty window, skip it.
+        // If it isn't a XGhostty window, skip it.
         const window = gobject.ext.cast(
             Window,
             gtk_window,
@@ -2863,7 +2863,7 @@ fn setGtkEnv(config: *const CoreConfig) error{NoSpaceLeft}!void {
     var gdk_debug: struct {
         /// output OpenGL debug information
         opengl: bool = false,
-        /// disable GLES, Ghostty can't use GLES
+        /// disable GLES, XGhostty can't use GLES
         @"gl-disable-gles": bool = false,
         // GTK's new renderer can cause blurry font when using fractional scaling.
         @"gl-no-fractional": bool = false,
@@ -2918,7 +2918,7 @@ fn setGtkEnv(config: *const CoreConfig) error{NoSpaceLeft}!void {
             break :environment;
         }
 
-        // Versions prior to 4.14 are a bit of an unknown for Ghostty. It
+        // Versions prior to 4.14 are a bit of an unknown for XGhostty. It
         // is an environment that isn't tested well and we don't have a
         // good understanding of what we may need to do.
         gdk_debug.@"vulkan-disable" = true;

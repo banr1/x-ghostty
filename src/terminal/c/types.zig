@@ -2,7 +2,7 @@
 //! extern structs for the current target.
 //!
 //! This is embedded in the binary as a const string and exposed via
-//! `ghostty_type_json` so that WASM (and other FFI) consumers can
+//! `xghostty_type_json` so that WASM (and other FFI) consumers can
 //! build structs without hardcoding byte offsets.
 const std = @import("std");
 const lib = @import("../lib.zig");
@@ -32,40 +32,40 @@ pub const Codepoints = extern struct {
     len: usize = 0,
 };
 
-/// All C API structs and their Ghostty C names.
+/// All C API structs and their XGhostty C names.
 pub const structs: std.StaticStringMap(StructInfo) = structs: {
     @setEvalBranchQuota(10_000);
     break :structs .initComptime(.{
-        .{ "GhosttyBuffer", StructInfo.init(lib.Buffer) },
-        .{ "GhosttyCodepoints", StructInfo.init(Codepoints) },
-        .{ "GhosttyColorRgb", StructInfo.init(color.RGB.C) },
-        .{ "GhosttyDeviceAttributes", StructInfo.init(terminal.DeviceAttributes) },
-        .{ "GhosttyDeviceAttributesPrimary", StructInfo.init(terminal.DeviceAttributes.Primary) },
-        .{ "GhosttyDeviceAttributesSecondary", StructInfo.init(terminal.DeviceAttributes.Secondary) },
-        .{ "GhosttyDeviceAttributesTertiary", StructInfo.init(terminal.DeviceAttributes.Tertiary) },
-        .{ "GhosttyFormatterTerminalOptions", StructInfo.init(formatter.TerminalOptions) },
-        .{ "GhosttySelection", StructInfo.init(selection.CSelection) },
-        .{ "GhosttyTerminalSelectWordOptions", StructInfo.init(selection.SelectWordOptions) },
-        .{ "GhosttyTerminalSelectWordBetweenOptions", StructInfo.init(selection.SelectWordBetweenOptions) },
-        .{ "GhosttyTerminalSelectLineOptions", StructInfo.init(selection.SelectLineOptions) },
-        .{ "GhosttyFormatterTerminalExtra", StructInfo.init(formatter.TerminalOptions.Extra) },
-        .{ "GhosttyFormatterScreenExtra", StructInfo.init(formatter.ScreenOptions.Extra) },
-        .{ "GhosttyGridRef", StructInfo.init(grid_ref.CGridRef) },
-        .{ "GhosttyMouseEncoderSize", StructInfo.init(mouse_encode.Size) },
-        .{ "GhosttyMousePosition", StructInfo.init(mouse_event.Position) },
-        .{ "GhosttyPoint", StructInfo.init(point.Point.C) },
-        .{ "GhosttyPointCoordinate", StructInfo.init(point.Coordinate) },
-        .{ "GhosttyRenderStateColors", StructInfo.init(render.Colors) },
-        .{ "GhosttySelectionGestureBehaviors", StructInfo.init(selection_gesture.Behaviors) },
-        .{ "GhosttySelectionGestureGeometry", StructInfo.init(selection_gesture.Geometry) },
-        .{ "GhosttySizeReportSize", StructInfo.init(size_report.Size) },
-        .{ "GhosttyString", StructInfo.init(lib.String) },
-        .{ "GhosttySurfacePosition", StructInfo.init(SurfacePosition) },
-        .{ "GhosttyStyle", StructInfo.init(style_c.Style) },
-        .{ "GhosttyStyleColor", StructInfo.init(style_c.Color) },
-        .{ "GhosttyTerminalOptions", StructInfo.init(terminal.Options) },
-        .{ "GhosttyTerminalScrollbar", StructInfo.init(terminal.TerminalScrollbar) },
-        .{ "GhosttyTerminalScrollViewport", StructInfo.init(terminal.ScrollViewport) },
+        .{ "XGhosttyBuffer", StructInfo.init(lib.Buffer) },
+        .{ "XGhosttyCodepoints", StructInfo.init(Codepoints) },
+        .{ "XGhosttyColorRgb", StructInfo.init(color.RGB.C) },
+        .{ "XGhosttyDeviceAttributes", StructInfo.init(terminal.DeviceAttributes) },
+        .{ "XGhosttyDeviceAttributesPrimary", StructInfo.init(terminal.DeviceAttributes.Primary) },
+        .{ "XGhosttyDeviceAttributesSecondary", StructInfo.init(terminal.DeviceAttributes.Secondary) },
+        .{ "XGhosttyDeviceAttributesTertiary", StructInfo.init(terminal.DeviceAttributes.Tertiary) },
+        .{ "XGhosttyFormatterTerminalOptions", StructInfo.init(formatter.TerminalOptions) },
+        .{ "XGhosttySelection", StructInfo.init(selection.CSelection) },
+        .{ "XGhosttyTerminalSelectWordOptions", StructInfo.init(selection.SelectWordOptions) },
+        .{ "XGhosttyTerminalSelectWordBetweenOptions", StructInfo.init(selection.SelectWordBetweenOptions) },
+        .{ "XGhosttyTerminalSelectLineOptions", StructInfo.init(selection.SelectLineOptions) },
+        .{ "XGhosttyFormatterTerminalExtra", StructInfo.init(formatter.TerminalOptions.Extra) },
+        .{ "XGhosttyFormatterScreenExtra", StructInfo.init(formatter.ScreenOptions.Extra) },
+        .{ "XGhosttyGridRef", StructInfo.init(grid_ref.CGridRef) },
+        .{ "XGhosttyMouseEncoderSize", StructInfo.init(mouse_encode.Size) },
+        .{ "XGhosttyMousePosition", StructInfo.init(mouse_event.Position) },
+        .{ "XGhosttyPoint", StructInfo.init(point.Point.C) },
+        .{ "XGhosttyPointCoordinate", StructInfo.init(point.Coordinate) },
+        .{ "XGhosttyRenderStateColors", StructInfo.init(render.Colors) },
+        .{ "XGhosttySelectionGestureBehaviors", StructInfo.init(selection_gesture.Behaviors) },
+        .{ "XGhosttySelectionGestureGeometry", StructInfo.init(selection_gesture.Geometry) },
+        .{ "XGhosttySizeReportSize", StructInfo.init(size_report.Size) },
+        .{ "XGhosttyString", StructInfo.init(lib.String) },
+        .{ "XGhosttySurfacePosition", StructInfo.init(SurfacePosition) },
+        .{ "XGhosttyStyle", StructInfo.init(style_c.Style) },
+        .{ "XGhosttyStyleColor", StructInfo.init(style_c.Color) },
+        .{ "XGhosttyTerminalOptions", StructInfo.init(terminal.Options) },
+        .{ "XGhosttyTerminalScrollbar", StructInfo.init(terminal.TerminalScrollbar) },
+        .{ "XGhosttyTerminalScrollViewport", StructInfo.init(terminal.ScrollViewport) },
     });
 };
 
@@ -84,7 +84,7 @@ pub const json: [:0]const u8 = json: {
 
 /// Returns a pointer to the comptime-generated JSON string describing
 /// the layout of all C API extern structs, and writes its length to `len`.
-/// Exported as `ghostty_type_json` for FFI consumers.
+/// Exported as `xghostty_type_json` for FFI consumers.
 pub fn get_json() callconv(lib.calling_conv) [*:0]const u8 {
     return json.ptr;
 }
@@ -209,11 +209,11 @@ test "json parses" {
     const root = parsed.value.object;
 
     // Verify we have all expected structs
-    try std.testing.expect(root.contains("GhosttyTerminalOptions"));
-    try std.testing.expect(root.contains("GhosttyFormatterTerminalOptions"));
+    try std.testing.expect(root.contains("XGhosttyTerminalOptions"));
+    try std.testing.expect(root.contains("XGhosttyFormatterTerminalOptions"));
 
     // Verify GhosttyTerminalOptions fields
-    const term_opts = root.get("GhosttyTerminalOptions").?.object;
+    const term_opts = root.get("XGhosttyTerminalOptions").?.object;
     try std.testing.expect(term_opts.contains("size"));
     try std.testing.expect(term_opts.contains("align"));
     try std.testing.expect(term_opts.contains("fields"));

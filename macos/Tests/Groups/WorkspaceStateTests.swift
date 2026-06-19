@@ -1,10 +1,10 @@
 import Foundation
 import Testing
-@testable import Ghostty
+@testable import XGhostty
 
 /// Phase 0 tests for the group-layer data model. These exercise the value-type
 /// pieces (`WorkspaceState`, `effectiveVisibleGroupTree`, Codable) without
-/// requiring a live Ghostty app, so pane trees are kept empty.
+/// requiring a live XGhostty app, so pane trees are kept empty.
 struct WorkspaceStateTests {
     // MARK: Helpers
 

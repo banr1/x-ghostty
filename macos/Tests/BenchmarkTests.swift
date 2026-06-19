@@ -1,12 +1,12 @@
 //
-//  GhosttyTests.swift
-//  GhosttyTests
+//  XGhosttyTests.swift
+//  XGhosttyTests
 //
 //  Created by Mitchell Hashimoto on 7/9/25.
 //
 
 import Testing
-import GhosttyKit
+import XGhosttyKit
 
 extension Tag {
     @Tag static var benchmark: Self
@@ -25,7 +25,7 @@ extension Tag {
 )
 struct BenchmarkTests {
     @Test func example() async throws {
-        ghostty_benchmark_cli(
+        xghostty_benchmark_cli(
             "terminal-stream",
             "--data=/Users/mitchellh/Documents/ghostty/bug.osc.txt")
     }

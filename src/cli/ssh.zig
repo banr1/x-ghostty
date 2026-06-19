@@ -3,19 +3,19 @@ const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const cli_args = @import("args.zig");
 const diagnostics = @import("diagnostics.zig");
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const DiskCache = @import("ssh_cache.zig").DiskCache;
 const internal_os = @import("../os/main.zig");
-const ghostty_terminfo = @import("../terminfo/main.zig").ghostty;
+const xghostty_terminfo = @import("../terminfo/main.zig").xghostty;
 
 const log = std.log.scoped(.ssh);
 
 const usage =
-    \\Usage: ghostty +ssh [flags] [--] <ssh args...>
+    \\Usage: xghostty +ssh [flags] [--] <ssh args...>
     \\
     \\Flags:
     \\  --forward-env[=bool]  Enable TERM / SendEnv forwarding. Default: true.
-    \\  --terminfo[=bool]     Install Ghostty terminfo on first connect. Default: true.
+    \\  --terminfo[=bool]     Install XGhostty terminfo on first connect. Default: true.
     \\  --cache[=bool]        Use the terminfo install cache. Default: true.
     \\  --ssh=<path>          Path to the ssh binary. Default: first `ssh` on PATH.
     \\  --verbose             Print +ssh status lines to stderr.
@@ -97,7 +97,7 @@ pub const Options = struct {
     }
 };
 
-/// Wrap `ssh` to automatically configure Ghostty terminal integration on
+/// Wrap `ssh` to automatically configure XGhostty terminal integration on
 /// remote hosts.
 ///
 /// Any arguments that aren't recognized as `+ssh` flags are passed to
@@ -106,7 +106,7 @@ pub const Options = struct {
 /// has no long flags, and `+ssh` defines no short flags, so there's
 /// nothing to collide.
 ///
-/// This is typically called via Ghostty's shell integration. When
+/// This is typically called via XGhostty's shell integration. When
 /// `shell-integration-features` includes `ssh-env` or `ssh-terminfo`,
 /// each shell defines an `ssh` function that runs:
 ///
@@ -121,17 +121,17 @@ pub const Options = struct {
 ///   1. **Environment forwarding** (`--forward-env`). Sets `TERM` to
 ///      `xterm-256color` and requests `SendEnv` forwarding of
 ///      `COLORTERM`, `TERM_PROGRAM`, and `TERM_PROGRAM_VERSION` so the
-///      remote shell can still detect that it's running inside Ghostty.
+///      remote shell can still detect that it's running inside XGhostty.
 ///      The remote `sshd_config` must list these in `AcceptEnv` for
 ///      forwarding to succeed.
 ///
 ///   2. **Terminfo install** (`--terminfo`). On the first connection to a
-///      given destination, installs Ghostty's terminfo entry on the remote
-///      host using `infocmp -x xterm-ghostty | ssh tic -x -` over a
+///      given destination, installs XGhostty's terminfo entry on the remote
+///      host using `infocmp -x xterm-xghostty | ssh tic -x -` over a
 ///      shared `ControlMaster` connection. Successful installs are cached
 ///      (see `ghostty +ssh-cache`) so subsequent connections skip this
 ///      step. When terminfo is successfully installed or already cached,
-///      `TERM` is set to `xterm-ghostty` instead of `xterm-256color`.
+///      `TERM` is set to `xterm-xghostty` instead of `xterm-256color`.
 ///
 /// If `--terminfo` install fails (e.g. `tic` not available on the
 /// remote, filesystem permissions), a warning is logged and the
@@ -163,7 +163,7 @@ pub const Options = struct {
 ///   # Basic invocation using defaults:
 ///   ghostty +ssh user@example.com
 ///
-///   # Forward Ghostty env vars but skip the terminfo install:
+///   # Forward XGhostty env vars but skip the terminfo install:
 ///   ghostty +ssh --terminfo=false user@example.com
 ///
 ///   # `ssh` flags (short-form `-p`, etc.) pass through unchanged:
@@ -242,8 +242,8 @@ fn runInner(
         };
 
         const cache: ?DiskCache = if (opts.cache) cache: {
-            const path = DiskCache.defaultPath(alloc, "ghostty") catch |err| {
-                warnPrint(stderr, "ghostty terminfo cache unavailable: {}", .{err});
+            const path = DiskCache.defaultPath(alloc, "xghostty") catch |err| {
+                warnPrint(stderr, "xghostty terminfo cache unavailable: {}", .{err});
                 break :session .{ .term = "xterm-256color" };
             };
             break :cache .{ .path = path };
@@ -252,7 +252,7 @@ fn runInner(
         if (cache) |c| {
             if (c.contains(alloc, dest) catch false) {
                 verbosePrint(opts, stderr, "dest: {s} (cached, skipping install)", .{dest});
-                break :session .{ .term = "xterm-ghostty" };
+                break :session .{ .term = "xterm-xghostty" };
             } else {
                 verbosePrint(opts, stderr, "dest: {s} (not cached, will install)", .{dest});
             }
@@ -260,7 +260,7 @@ fn runInner(
             verbosePrint(opts, stderr, "dest: {s} (cache disabled, will install)", .{dest});
         }
 
-        stderr.print("Setting up xterm-ghostty terminfo on {s}...\n", .{dest}) catch {};
+        stderr.print("Setting up xterm-xghostty terminfo on {s}...\n", .{dest}) catch {};
         stderr.flush() catch {};
 
         installRemoteTerminfo(alloc, opts, stderr) catch |err| {
@@ -268,7 +268,7 @@ fn runInner(
             break :session .{ .term = "xterm-256color" };
         };
         break :session .{
-            .term = "xterm-ghostty",
+            .term = "xterm-xghostty",
             .to_cache = if (cache) |c| .{ .cache = c, .dest = dest } else null,
         };
     };
@@ -435,7 +435,7 @@ fn parseDestination(alloc: Allocator, stdout: []const u8) ?[]const u8 {
     return std.fmt.allocPrint(alloc, "{s}@{s}", .{ user, host }) catch null;
 }
 
-/// Install Ghostty's terminfo on the remote host over a short-lived SSH
+/// Install XGhostty's terminfo on the remote host over a short-lived SSH
 /// ControlMaster connection. The master tears down with the client
 /// (`ControlPersist=no`) so no socket lingers.
 fn installRemoteTerminfo(
@@ -445,14 +445,14 @@ fn installRemoteTerminfo(
 ) !void {
     var buf: std.Io.Writer.Allocating = .init(alloc);
     defer buf.deinit();
-    try ghostty_terminfo.encode(&buf.writer);
+    try xghostty_terminfo.encode(&buf.writer);
     const terminfo = buf.written();
 
     // ControlPath is in TMPDIR with a short, random basename. ssh uses
     // ControlPath as the bind address for a Unix domain socket; macOS
     // limits sockaddr_un.sun_path to ~104 bytes, so keeping the path
     // short leaves margin.
-    const control_path = try internal_os.randomTmpPath(alloc, "ghostty-ssh-");
+    const control_path = try internal_os.randomTmpPath(alloc, "xghostty-ssh-");
     const control_path_opt = try std.fmt.allocPrint(
         alloc,
         "ControlPath={s}",
@@ -463,12 +463,12 @@ fn installRemoteTerminfo(
     // the most common failure source) and inherit ssh's stderr so it
     // reaches the user's terminal. Other steps stay quiet either way.
     const remote_script = if (opts.verbose)
-        \\infocmp xterm-ghostty >/dev/null 2>&1 && exit 0
+        \\infocmp xterm-xghostty >/dev/null 2>&1 && exit 0
         \\command -v tic >/dev/null 2>&1 || exit 1
         \\mkdir -p ~/.terminfo 2>/dev/null && tic -x - && exit 0
         \\exit 1
     else
-        \\infocmp xterm-ghostty >/dev/null 2>&1 && exit 0
+        \\infocmp xterm-xghostty >/dev/null 2>&1 && exit 0
         \\command -v tic >/dev/null 2>&1 || exit 1
         \\mkdir -p ~/.terminfo 2>/dev/null && tic -x - 2>/dev/null && exit 0
         \\exit 1

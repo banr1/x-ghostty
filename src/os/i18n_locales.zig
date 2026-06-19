@@ -22,7 +22,7 @@
 ///   3. Most preferred locale for a language without a country code.
 ///
 /// Note for "most common" locales, this is subjective and based on
-/// the perceived userbase of Ghostty, which may not be representative
+/// the perceived userbase of XGhostty, which may not be representative
 /// of general populations or global language distribution. Also note
 /// that ordering may be weird when we first merge a new locale since
 /// we don't have a good way to determine this. We can always reorder

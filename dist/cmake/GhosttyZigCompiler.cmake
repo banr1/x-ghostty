@@ -1,6 +1,6 @@
-# GhosttyZigCompiler.cmake — set up zig cc as a cross compiler
+# XGhosttyZigCompiler.cmake — set up zig cc as a cross compiler
 #
-# Provides ghostty_zig_compiler() which configures zig cc / zig c++ as
+# Provides xghostty_zig_compiler() which configures zig cc / zig c++ as
 # the C/CXX compiler for a given Zig target triple. It creates small
 # wrapper scripts (shell on Unix, .cmd on Windows) and sets the
 # following CMake variables in the caller's scope:
@@ -22,24 +22,24 @@
 #
 #   cmake_minimum_required(VERSION 3.19)
 #
-#   include(cmake/GhosttyZigCompiler.cmake)
-#   ghostty_zig_compiler(ZIG_TARGET x86_64-linux-gnu)
+#   include(cmake/XGhosttyZigCompiler.cmake)
+#   xghostty_zig_compiler(ZIG_TARGET x86_64-linux-gnu)
 #
 #   project(myapp LANGUAGES C CXX)
 #
-#   FetchContent_MakeAvailable(ghostty)
-#   ghostty_vt_add_target(NAME linux-amd64 ZIG_TARGET x86_64-linux-gnu)
-#   target_link_libraries(myapp PRIVATE ghostty-vt-static-linux-amd64)
+#   FetchContent_MakeAvailable(xghostty)
+#   xghostty_vt_add_target(NAME linux-amd64 ZIG_TARGET x86_64-linux-gnu)
+#   target_link_libraries(myapp PRIVATE xghostty-vt-static-linux-amd64)
 #
 # See example/c-vt-cmake-cross/ for a complete working example.
 
 include_guard(GLOBAL)
 
-function(ghostty_zig_compiler)
+function(xghostty_zig_compiler)
     cmake_parse_arguments(PARSE_ARGV 0 _GZC "" "ZIG_TARGET" "")
 
     if(NOT _GZC_ZIG_TARGET)
-        message(FATAL_ERROR "ghostty_zig_compiler: ZIG_TARGET is required")
+        message(FATAL_ERROR "xghostty_zig_compiler: ZIG_TARGET is required")
     endif()
 
     find_program(_GZC_ZIG zig REQUIRED)

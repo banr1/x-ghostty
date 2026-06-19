@@ -11,8 +11,8 @@ const DBus = @import("DBus.zig");
 ///
 /// ```sh
 /// gdbus call --session \
-///   --dest com.mitchellh.ghostty \
-///   --object-path /com/mitchellh/ghostty \
+///   --dest com.mitchellh.xghostty \
+///   --object-path /com/mitchellh/xghostty \
 ///   --method org.gtk.Actions.Activate \
 ///   toggle-quick-terminal [] []
 /// ```

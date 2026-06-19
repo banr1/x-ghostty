@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const args = @import("args.zig");
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const Arena = std.heap.ArenaAllocator;
 const Allocator = std.mem.Allocator;
 const configpkg = @import("../config.zig");
@@ -35,12 +35,12 @@ pub const Options = struct {
 };
 
 /// The `list-keybinds` command is used to list all the available keybinds for
-/// Ghostty.
+/// XGhostty.
 ///
 /// When executed without any arguments this will list the current keybinds
 /// loaded by the config file. If no config file is found or there aren't any
 /// changes to the keybinds it will print out the default ones configured for
-/// Ghostty
+/// XGhostty
 ///
 /// Flags:
 ///

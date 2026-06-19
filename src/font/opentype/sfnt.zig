@@ -285,7 +285,7 @@ pub const SFNT = struct {
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
 test "parse font" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;
@@ -301,7 +301,7 @@ test "parse font" {
 }
 
 test "get table" {
-    // lib-vt source archives intentionally exclude full Ghostty font fixtures.
+    // lib-vt source archives intentionally exclude full XGhostty font fixtures.
     if (comptime @import("terminal_options").artifact == .lib) return error.SkipZigTest;
 
     const testing = std.testing;

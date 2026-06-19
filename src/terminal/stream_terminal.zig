@@ -89,7 +89,7 @@ pub const Handler = struct {
         pwd_changed: ?*const fn (*Handler) void,
 
         /// Called in response to an XTVERSION query. Returns the version
-        /// string to report (e.g. "ghostty 1.2.3"). The returned memory
+        /// string to report (e.g. "xghostty 1.2.3"). The returned memory
         /// must be valid for the lifetime of the call. The maximum length
         /// is 256 bytes; longer strings will be silently ignored.
         xtversion: ?*const fn (*Handler) []const u8,
@@ -1611,7 +1611,7 @@ test "xtversion with effect" {
             written = data;
         }
         fn xtversion(_: *Handler) []const u8 {
-            return "ghostty 1.2.3";
+            return "xghostty 1.2.3";
         }
     };
     S.written = null;
@@ -1624,7 +1624,7 @@ test "xtversion with effect" {
     defer s.deinit();
 
     s.nextSlice("\x1b[>0q");
-    try testing.expectEqualStrings("\x1bP>|ghostty 1.2.3\x1b\\", S.written.?);
+    try testing.expectEqualStrings("\x1bP>|xghostty 1.2.3\x1b\\", S.written.?);
 }
 
 test "xtversion with empty string effect" {
@@ -1821,7 +1821,7 @@ test "enquiry with effect" {
             written = testing.allocator.dupe(u8, data) catch @panic("OOM");
         }
         fn enquiry(_: *Handler) []const u8 {
-            return "ghostty";
+            return "xghostty";
         }
     };
     S.written = null;
@@ -1835,7 +1835,7 @@ test "enquiry with effect" {
 
     s.nextSlice("\x05");
     defer testing.allocator.free(S.written.?);
-    try testing.expectEqualStrings("ghostty", S.written.?);
+    try testing.expectEqualStrings("xghostty", S.written.?);
 }
 
 test "enquiry with empty response" {

@@ -29,7 +29,7 @@ pub fn build(b: *std.Build) void {
     const target = b.resolveTargetQuery(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const ghostty_dep = b.lazyDependency("ghostty", .{
+    const xghostty_dep = b.lazyDependency("ghostty", .{
         .simd = false,
     });
 
@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
-        if (ghostty_dep) |dep| {
+        if (xghostty_dep) |dep| {
             lib_mod.addImport(
                 "ghostty-vt",
                 dep.module("ghostty-vt"),

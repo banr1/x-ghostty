@@ -63,7 +63,7 @@ struct NewTerminalIntent: AppIntent {
         }
         let ghostty = appDelegate.ghostty
 
-        var config = Ghostty.SurfaceConfiguration()
+        var config = XGhostty.SurfaceConfiguration()
 
         // We don't run command as "command" and instead use "initialInput" so
         // that we can get all the login scripts to setup things like PATH.
@@ -87,7 +87,7 @@ struct NewTerminalIntent: AppIntent {
         }
 
         // Determine if we have a parent and get it
-        let parent: Ghostty.SurfaceView?
+        let parent: XGhostty.SurfaceView?
         if let parentParam = self.parent {
             guard let view = parentParam.surfaceView else {
                 throw GhosttyIntentError.surfaceNotFound
@@ -153,7 +153,7 @@ enum NewTerminalLocation: String {
     case splitUp = "split:up"
     case splitDown = "split:down"
 
-    var splitDirection: SplitTree<Ghostty.SurfaceView>.NewDirection? {
+    var splitDirection: SplitTree<XGhostty.SurfaceView>.NewDirection? {
         switch self {
         case .splitLeft: return .left
         case .splitRight: return .right

@@ -61,7 +61,7 @@ struct WorkspaceState {
     /// Persist `paneTree` into the focused group. No-op when nothing is focused.
     /// Called before every focused-group switch so the outgoing group's layout
     /// is not lost.
-    mutating func saveOutgoingPaneTree(_ paneTree: SplitTree<Ghostty.SurfaceView>) {
+    mutating func saveOutgoingPaneTree(_ paneTree: SplitTree<XGhostty.SurfaceView>) {
         guard let id = focusedGroup, var group = groups[id] else { return }
         group.paneTree = paneTree
         groups[id] = group

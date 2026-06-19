@@ -1,4 +1,4 @@
-//! X11 window protocol implementation for the Ghostty GTK apprt.
+//! X11 window protocol implementation for the XGhostty GTK apprt.
 const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
@@ -45,9 +45,9 @@ pub const App = struct {
         const x11_program_name: [:0]const u8 = if (config.@"x11-instance-name") |pn|
             pn
         else if (builtin.mode == .Debug)
-            "ghostty-debug"
+            "xghostty-debug"
         else
-            "ghostty";
+            "xghostty";
 
         // Set the X11 window class property (WM_CLASS) if we are on an X11
         // display.
@@ -62,7 +62,7 @@ pub const App = struct {
         //
         // This makes the property show up like so when using xprop:
         //
-        //     WM_CLASS(STRING) = "ghostty", "com.mitchellh.ghostty"
+        //     WM_CLASS(STRING) = "ghostty", "com.mitchellh.xghostty"
         //
         // Append "-debug" on both when using the debug build.
         glib.setPrgname(x11_program_name);

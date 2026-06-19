@@ -148,13 +148,13 @@ Overlay terminal_page {
   }
 
   [overlay]
-  $GhosttySurfaceChildExited child_exited_overlay {
+  $XGhosttySurfaceChildExited child_exited_overlay {
     visible: bind template.child-exited;
     close-request => $child_exited_close();
   }
 
   [overlay]
-  $GhosttyResizeOverlay resize_overlay {}
+  $XGhosttyResizeOverlay resize_overlay {}
 
   [overlay]
   Label url_left {
@@ -188,7 +188,7 @@ Overlay terminal_page {
   }
 
   [overlay]
-  $GhosttySearchOverlay search_overlay {
+  $XGhosttySearchOverlay search_overlay {
     stop-search => $search_stop();
     search-changed => $search_changed();
     next-match => $search_next_match();
@@ -196,7 +196,7 @@ Overlay terminal_page {
   }
 
   [overlay]
-  $GhosttyKeyStateOverlay key_state_overlay {
+  $XGhosttyKeyStateOverlay key_state_overlay {
     tables: bind template.key-table;
     sequence: bind template.key-sequence;
   }
@@ -227,7 +227,7 @@ Overlay terminal_page {
   }
 }
 
-template $GhosttySurface: Adw.Bin {
+template $XGhosttySurface: Adw.Bin {
   styles [
     "surface",
   ]

@@ -10,7 +10,7 @@ pub const Viewport = @import("search/viewport.zig").ViewportSearch;
 // The search thread is not available in libghostty due to the xev dep
 // for now.
 pub const Thread = switch (options.artifact) {
-    .ghostty => @import("search/Thread.zig"),
+    .xghostty => @import("search/Thread.zig"),
     .lib => void,
 };
 

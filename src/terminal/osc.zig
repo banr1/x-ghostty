@@ -38,7 +38,7 @@ pub const Command = union(Key) {
     change_window_title: [:0]const u8,
 
     /// Set the icon of the terminal window. The name of the icon is not
-    /// well defined, so this is currently ignored by Ghostty at the time
+    /// well defined, so this is currently ignored by XGhostty at the time
     /// of writing this. We just parse it so that we don't get parse errors
     /// in the log.
     change_window_icon: [:0]const u8,
@@ -204,16 +204,16 @@ pub const Command = union(Key) {
             indeterminate,
             pause,
 
-            test "ghostty.h Command.ProgressReport.State" {
+            test "xghostty.h Command.ProgressReport.State" {
                 if (comptime build_options.artifact == .lib) return error.SkipZigTest;
-                try lib.checkGhosttyHEnum(State, "GHOSTTY_PROGRESS_STATE_");
+                try lib.checkXGhosttyHEnum(State, "XGHOSTTY_PROGRESS_STATE_");
             }
         };
 
         state: State,
         progress: ?u8 = null,
 
-        // sync with ghostty_action_progress_report_s
+        // sync with xghostty_action_progress_report_s
         pub const C = extern struct {
             state: c_int,
             progress: i8,

@@ -1,12 +1,12 @@
 import Combine
 
 class AboutViewModel: ObservableObject {
-    @Published var currentIcon: Ghostty.MacOSIcon?
+    @Published var currentIcon: XGhostty.MacOSIcon?
     @Published var isHovering: Bool = false
 
     private var timerCancellable: AnyCancellable?
 
-    private let icons: [Ghostty.MacOSIcon] = [
+    private let icons: [XGhostty.MacOSIcon] = [
         .official,
         .blueprint,
         .chalkboard,

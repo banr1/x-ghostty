@@ -2,7 +2,7 @@ const std = @import("std");
 const fs = std.fs;
 const Allocator = std.mem.Allocator;
 const args = @import("args.zig");
-const Action = @import("ghostty.zig").Action;
+const Action = @import("xghostty.zig").Action;
 const Duration = @import("../config.zig").Config.Duration;
 pub const Entry = @import("ssh-cache/Entry.zig");
 pub const DiskCache = @import("ssh-cache/DiskCache.zig");
@@ -25,7 +25,7 @@ pub const Options = struct {
 
 /// Manage the SSH terminfo cache for automatic remote host setup.
 ///
-/// The `+ssh` action installs Ghostty's terminfo on remote hosts and records
+/// The `+ssh` action installs XGhostty's terminfo on remote hosts and records
 /// each success in this cache so it doesn't re-upload on later connections.
 /// (`+ssh` runs automatically from the shell integration when
 /// `shell-integration-features` includes `ssh-terminfo`.) This command
@@ -88,7 +88,7 @@ pub fn run(alloc_gpa: Allocator) !u8 {
             if (is_host_flag) {
                 try stderr.print(
                     "Warning: --host is deprecated; pass the destination " ++
-                        "directly, e.g. `ghostty +ssh-cache {s}`.\n",
+                        "directly, e.g. `xghostty +ssh-cache {s}`.\n",
                     .{arg["--host=".len..]},
                 );
             }
@@ -165,7 +165,7 @@ pub fn runInner(
     }
 
     // Setup our disk cache to the standard location
-    const cache_path = try DiskCache.defaultPath(alloc, "ghostty");
+    const cache_path = try DiskCache.defaultPath(alloc, "xghostty");
     const cache: DiskCache = .{ .path = cache_path };
 
     if (opts.clear) {

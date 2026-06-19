@@ -1,7 +1,7 @@
 import AppKit
 import System
 
-/// The icon style for the Ghostty App.
+/// The icon style for the XGhostty App.
 enum AppIcon: Equatable, Codable, Sendable {
     case official
     case blueprint
@@ -17,7 +17,7 @@ enum AppIcon: Equatable, Codable, Sendable {
     case customStyle(_ icon: ColorizedGhosttyIcon)
 
 #if !DOCK_TILE_PLUGIN
-    init?(config: Ghostty.Config) {
+    init?(config: XGhostty.Config) {
         switch config.macosIcon {
         case .official:
             return nil

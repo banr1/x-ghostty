@@ -37,7 +37,7 @@ const InspectorWindow = @import("inspector_window.zig").InspectorWindow;
 const i18n = @import("../../../os/i18n.zig");
 const media = @import("../media.zig");
 
-const log = std.log.scoped(.gtk_ghostty_surface);
+const log = std.log.scoped(.gtk_xghostty_surface);
 
 pub const Surface = extern struct {
     const Self = @This();
@@ -45,7 +45,7 @@ pub const Surface = extern struct {
     pub const Parent = adw.Bin;
     pub const Implements = [_]type{gtk.Scrollable};
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttySurface",
+        .name = "XGhosttySurface",
         .instanceInit = &init,
         .classInit = &Class.init,
         .parent_class = &Class.parent,
@@ -815,7 +815,7 @@ pub const Surface = extern struct {
         }
     }
 
-    /// Force the surface to redraw itself. Ghostty often will only redraw
+    /// Force the surface to redraw itself. XGhostty often will only redraw
     /// the terminal in reaction to internal changes. If there are external
     /// events that invalidate the surface, such as the widget moving parents,
     /// then we should force a redraw.
@@ -1010,7 +1010,7 @@ pub const Surface = extern struct {
         const priv = self.private();
         const group = priv.vadj_signal_group.?;
 
-        // During manual scrollbar changes from Ghostty core we don't
+        // During manual scrollbar changes from XGhostty core we don't
         // want to emit value-changed signals so we block them. This would
         // cause a waste of resources at best and infinite loops at worst.
         group.block();
@@ -1308,7 +1308,7 @@ pub const Surface = extern struct {
             // });
 
             // If the input method handled the event, you would think we would
-            // never proceed with key encoding for Ghostty but that is not the
+            // never proceed with key encoding for XGhostty but that is not the
             // case. Input methods will handle basic character encoding like
             // typing "a" and we want to associate that with the key event.
             // So we have to check additional state to determine if we exit.
@@ -1423,7 +1423,7 @@ pub const Surface = extern struct {
             }
         }
 
-        // Invoke the core Ghostty logic to handle this input.
+        // Invoke the core XGhostty logic to handle this input.
         const surface = priv.core_surface orelse return false;
         const effect = surface.keyCallback(.{
             .action = action,
@@ -1606,7 +1606,7 @@ pub const Surface = extern struct {
         env.remove("GDK_DISABLE");
         env.remove("GSK_RENDERER");
 
-        // Remove some environment variables that are set when Ghostty is launched
+        // Remove some environment variables that are set when XGhostty is launched
         // from a `.desktop` file, by D-Bus activation, or systemd.
         env.remove("GIO_LAUNCHED_DESKTOP_FILE");
         env.remove("GIO_LAUNCHED_DESKTOP_FILE_PID");
@@ -1617,7 +1617,7 @@ pub const Surface = extern struct {
         env.remove("NOTIFY_SOCKET");
 
         // Unset environment varies set by snaps if we're running in a snap.
-        // This allows Ghostty to further launch additional snaps.
+        // This allows XGhostty to further launch additional snaps.
         if (comptime build_config.snap) {
             if (env.get("SNAP") != null) try filterSnapPaths(
                 alloc,
@@ -1633,7 +1633,7 @@ pub const Surface = extern struct {
             try window.winproto().addSubprocessEnv(&env);
 
             if (window.isQuickTerminal()) {
-                try env.put("GHOSTTY_QUICK_TERMINAL", "1");
+                try env.put("XGHOSTTY_QUICK_TERMINAL", "1");
             }
         }
 
@@ -1670,7 +1670,7 @@ pub const Surface = extern struct {
 
             // Ignore fields we set ourself
             if (std.mem.eql(u8, key, "TERMINFO")) continue;
-            if (std.mem.startsWith(u8, key, "GHOSTTY")) continue;
+            if (std.mem.startsWith(u8, key, "XGHOSTTY")) continue;
 
             // Any env var starting with SNAP must be removed
             if (std.mem.startsWith(u8, key, "SNAP_")) {
@@ -1762,7 +1762,7 @@ pub const Surface = extern struct {
         defer notification.unref();
         notification.setBody(body);
 
-        const icon = gio.ThemedIcon.new("com.mitchellh.ghostty");
+        const icon = gio.ThemedIcon.new("com.mitchellh.xghostty");
         defer icon.unref();
         notification.setIcon(icon.as(gio.Icon));
 
@@ -3115,7 +3115,7 @@ pub const Surface = extern struct {
         defer glib.free(buf);
         const str = std.mem.sliceTo(buf, 0);
 
-        // Update our preedit state in Ghostty core
+        // Update our preedit state in XGhostty core
         // log.warn("GTKIM: preedit change str={s}", .{str});
         surface.preeditCallback(str) catch |err| {
             log.warn(
@@ -3135,7 +3135,7 @@ pub const Surface = extern struct {
         const priv = self.private();
         priv.im_composing = false;
 
-        // End our preedit state in Ghostty core
+        // End our preedit state in XGhostty core
         const surface = priv.core_surface orelse return;
         surface.preeditCallback(null) catch |err| {
             log.warn("error in preedit callback err={}", .{err});
@@ -3174,7 +3174,7 @@ pub const Surface = extern struct {
 
             // If we're not composing then this commit is just a normal
             // key encoding and we want our key event to handle it so
-            // that Ghostty can be aware of the key event alongside
+            // that XGhostty can be aware of the key event alongside
             // the text.
             .not_composing => {
                 if (str.len > priv.im_buf.len) {
@@ -3718,7 +3718,7 @@ pub const Surface = extern struct {
 
         pub const getGObjectType = gobject.ext.defineBoxed(
             Size,
-            .{ .name = "GhosttySurfaceSize" },
+            .{ .name = "XGhosttySurfaceSize" },
         );
     };
 };

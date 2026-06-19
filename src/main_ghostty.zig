@@ -12,7 +12,7 @@ const renderer = @import("renderer.zig");
 const apprt = @import("apprt.zig");
 
 const App = @import("App.zig");
-const Ghostty = @import("main_c.zig").Ghostty;
+const XGhostty = @import("main_c.zig").XGhostty;
 const state = &@import("global.zig").state;
 
 /// The return type for main() depends on the build artifact. The lib build
@@ -44,7 +44,7 @@ pub fn main() !MainReturn {
             error.InvalidAction => try stderr.print(
                 "Error: unknown CLI action specified. CLI actions are specified with\n" ++
                     "the '+' character.\n\n" ++
-                    "All valid CLI actions can be listed with `ghostty +help`\n",
+                    "All valid CLI actions can be listed with `xghostty +help`\n",
                 .{},
             ),
 
@@ -57,7 +57,7 @@ pub fn main() !MainReturn {
 
     if (comptime builtin.mode == .Debug) {
         std.log.warn("This is a debug build. Performance will be very poor.", .{});
-        std.log.warn("You should only use a debug build for developing Ghostty.", .{});
+        std.log.warn("You should only use a debug build for developing XGhostty.", .{});
         std.log.warn("Otherwise, please rebuild in a release mode.", .{});
     }
 
@@ -73,15 +73,15 @@ pub fn main() !MainReturn {
 
     if (comptime build_config.app_runtime == .none) {
         const stdout = std.io.getStdOut().writer();
-        try stdout.print("Usage: ghostty +<action> [flags]\n\n", .{});
+        try stdout.print("Usage: xghostty +<action> [flags]\n\n", .{});
         try stdout.print(
-            \\This is the Ghostty helper CLI that accompanies the graphical Ghostty app.
+            \\This is the XGhostty helper CLI that accompanies the graphical XGhostty app.
             \\To launch the terminal directly, please launch the graphical app
-            \\(i.e. Ghostty.app on macOS). This CLI can be used to perform various
+            \\(i.e. XGhostty.app on macOS). This CLI can be used to perform various
             \\actions such as inspecting the version, listing fonts, etc.
             \\
-            \\On macOS, the terminal can also be launched using `open -na Ghostty.app`,
-            \\or `open -na Ghostty.app --args --foo=bar --baz=qux` to pass arguments.
+            \\On macOS, the terminal can also be launched using `open -na XGhostty.app`,
+            \\or `open -na XGhostty.app --args --foo=bar --baz=qux` to pass arguments.
             \\
             \\We don't have proper help output yet, sorry! Please refer to the
             \\source code or Discord community for help for now. We'll fix this in time.
@@ -120,7 +120,7 @@ fn logFn(
 ) void {
     // On Mac, we use unified logging. To view this:
     //
-    //   sudo log stream --level debug --predicate 'subsystem=="com.mitchellh.ghostty"'
+    //   sudo log stream --level debug --predicate 'subsystem=="com.mitchellh.xghostty"'
     //
     // macOS logging is thread safe so no need for locks/mutexes
     macos: {
@@ -167,7 +167,7 @@ pub const std_options: std.Options = .{
     // Our log level is always at least info in every build mode.
     //
     // Note, we don't lower this to debug even with conditional logging
-    // via GHOSTTY_LOG because our debug logs are very expensive to
+    // via XGHOSTTY_LOG because our debug logs are very expensive to
     // calculate and we want to make sure they're optimized out in
     // builds.
     .log_level = switch (builtin.mode) {

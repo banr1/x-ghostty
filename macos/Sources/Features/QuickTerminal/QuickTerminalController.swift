@@ -1,7 +1,7 @@
 import Foundation
 import Cocoa
 import SwiftUI
-import GhosttyKit
+import XGhosttyKit
 
 /// Controller for the "quick" terminal.
 class QuickTerminalController: BaseTerminalController {
@@ -13,7 +13,7 @@ class QuickTerminalController: BaseTerminalController {
     /// The current state of the quick terminal
     private(set) var visible: Bool = false
 
-    /// The previously running application when the terminal is shown. This is NEVER Ghostty.
+    /// The previously running application when the terminal is shown. This is NEVER XGhostty.
     /// If this is set then when the quick terminal is animated out then we will restore this
     /// application to the front.
     private var previousApp: NSRunningApplication?
@@ -27,7 +27,7 @@ class QuickTerminalController: BaseTerminalController {
     /// Non-nil if we have hidden dock state.
     private var hiddenDock: HiddenDock?
 
-    /// The configuration derived from the Ghostty config so we don't need to rely on references.
+    /// The configuration derived from the XGhostty config so we don't need to rely on references.
     private var derivedConfig: DerivedConfig
 
     /// Tracks if we're currently handling a manual resize to prevent recursion
@@ -38,9 +38,9 @@ class QuickTerminalController: BaseTerminalController {
     let restorable: Bool
     private var restorationState: QuickTerminalRestorableState?
 
-    init(_ ghostty: Ghostty.App,
+    init(_ ghostty: XGhostty.App,
          position: QuickTerminalPosition = .top,
-         baseConfig base: Ghostty.SurfaceConfiguration? = nil,
+         baseConfig base: XGhostty.SurfaceConfiguration? = nil,
          restorationState: QuickTerminalRestorableState? = nil,
     ) {
         self.position = position
@@ -68,7 +68,7 @@ class QuickTerminalController: BaseTerminalController {
         center.addObserver(
             self,
             selector: #selector(onToggleFullscreen(notification:)),
-            name: Ghostty.Notification.ghosttyToggleFullscreen,
+            name: XGhostty.Notification.ghosttyToggleFullscreen,
             object: nil)
         center.addObserver(
             self,
@@ -84,7 +84,7 @@ class QuickTerminalController: BaseTerminalController {
         center.addObserver(
             self,
             selector: #selector(onNewTab),
-            name: Ghostty.Notification.ghosttyNewTab,
+            name: XGhostty.Notification.ghosttyNewTab,
             object: nil)
         center.addObserver(
             self,
@@ -252,7 +252,7 @@ class QuickTerminalController: BaseTerminalController {
 
     // MARK: Base Controller Overrides
 
-    override func focusSurface(_ view: Ghostty.SurfaceView) {
+    override func focusSurface(_ view: XGhostty.SurfaceView) {
         if visible {
             // If we're visible, we just focus the surface as normal.
             super.focusSurface(view)
@@ -262,13 +262,13 @@ class QuickTerminalController: BaseTerminalController {
         guard surfaceTree.contains(view) else { return }
         // Set the target surface as focused
         DispatchQueue.main.async {
-            Ghostty.moveFocus(to: view)
+            XGhostty.moveFocus(to: view)
         }
         // Animation completion handler will handle window/app activation
         animateIn()
     }
 
-    override func surfaceTreeDidChange(from: SplitTree<Ghostty.SurfaceView>, to: SplitTree<Ghostty.SurfaceView>) {
+    override func surfaceTreeDidChange(from: SplitTree<XGhostty.SurfaceView>, to: SplitTree<XGhostty.SurfaceView>) {
         super.surfaceTreeDidChange(from: from, to: to)
 
         // If our surface tree is nil then we animate the window out. We
@@ -288,7 +288,7 @@ class QuickTerminalController: BaseTerminalController {
     }
 
     override func closeSurface(
-        _ node: SplitTree<Ghostty.SurfaceView>.Node,
+        _ node: SplitTree<XGhostty.SurfaceView>.Node,
         withConfirmation: Bool = true
     ) {
         // If this isn't the root then we're dealing with a split closure.
@@ -316,12 +316,12 @@ class QuickTerminalController: BaseTerminalController {
     }
 
     override func newSplit(
-        at oldView: Ghostty.SurfaceView,
-        direction: SplitTree<Ghostty.SurfaceView>.NewDirection,
-        baseConfig config: Ghostty.SurfaceConfiguration? = nil
-    ) -> Ghostty.SurfaceView? {
-        var config = config ?? Ghostty.SurfaceConfiguration()
-        config.environmentVariables["GHOSTTY_QUICK_TERMINAL"] = "1"
+        at oldView: XGhostty.SurfaceView,
+        direction: SplitTree<XGhostty.SurfaceView>.NewDirection,
+        baseConfig config: XGhostty.SurfaceConfiguration? = nil
+    ) -> XGhostty.SurfaceView? {
+        var config = config ?? XGhostty.SurfaceConfiguration()
+        config.environmentVariables["XGHOSTTY_QUICK_TERMINAL"] = "1"
         return super.newSplit(at: oldView, direction: direction, baseConfig: config)
     }
 
@@ -364,7 +364,7 @@ class QuickTerminalController: BaseTerminalController {
         // tree can be empty if for example we run "exit" in the terminal and force
         // animate out.
         if surfaceTree.isEmpty,
-           let ghostty_app = ghostty.app {
+           let xghostty_app = ghostty.app {
             if let tree = restorationState?.surfaceTree, !tree.isEmpty {
                 surfaceTree = tree
                 let view = tree.first(where: { $0.id.uuidString == restorationState?.focusedSurface }) ?? tree.first!
@@ -379,10 +379,10 @@ class QuickTerminalController: BaseTerminalController {
                     }
                 }
             } else {
-                var config = Ghostty.SurfaceConfiguration()
-                config.environmentVariables["GHOSTTY_QUICK_TERMINAL"] = "1"
+                var config = XGhostty.SurfaceConfiguration()
+                config.environmentVariables["XGHOSTTY_QUICK_TERMINAL"] = "1"
 
-                let view = Ghostty.SurfaceView(ghostty_app, baseConfig: config)
+                let view = XGhostty.SurfaceView(xghostty_app, baseConfig: config)
                 surfaceTree = SplitTree(view: view)
                 focusedSurface = view
             }
@@ -503,7 +503,7 @@ class QuickTerminalController: BaseTerminalController {
                     NSApp.activate(ignoringOtherApps: true)
 
                     // This works around a really funky bug where if the terminal is
-                    // shown on a screen that has no other Ghostty windows, it takes
+                    // shown on a screen that has no other XGhostty windows, it takes
                     // a few (variable) event loop ticks until we can actually focus it.
                     // https://github.com/ghostty-org/ghostty/issues/2409
                     //
@@ -629,7 +629,7 @@ class QuickTerminalController: BaseTerminalController {
             window.backgroundColor = .white.withAlphaComponent(0.001)
 
             if !derivedConfig.backgroundBlur.isGlassStyle {
-                ghostty_set_window_background_blur(ghostty.app, Unmanaged.passUnretained(window).toOpaque())
+                xghostty_set_window_background_blur(ghostty.app, Unmanaged.passUnretained(window).toOpaque())
             }
         } else {
             window.isOpaque = true
@@ -679,7 +679,7 @@ class QuickTerminalController: BaseTerminalController {
     }
 
     @objc private func onToggleFullscreen(notification: SwiftUI.Notification) {
-        guard let target = notification.object as? Ghostty.SurfaceView else { return }
+        guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard target == self.focusedSurface else { return }
         onToggleFullscreen()
     }
@@ -714,7 +714,7 @@ class QuickTerminalController: BaseTerminalController {
         // Get our managed configuration object out
         guard let config = notification.userInfo?[
             Notification.Name.GhosttyConfigChangeKey
-        ] as? Ghostty.Config else { return }
+        ] as? XGhostty.Config else { return }
 
         // Update our derived config
         self.derivedConfig = DerivedConfig(config)
@@ -725,7 +725,7 @@ class QuickTerminalController: BaseTerminalController {
     }
 
     @objc private func onNewTab(notification: SwiftUI.Notification) {
-        guard let surfaceView = notification.object as? Ghostty.SurfaceView else { return }
+        guard let surfaceView = notification.object as? XGhostty.SurfaceView else { return }
         guard let window = surfaceView.window else { return }
         guard window.windowController is QuickTerminalController else { return }
         // Tabs aren't supported with Quick Terminals or derivatives
@@ -739,7 +739,7 @@ class QuickTerminalController: BaseTerminalController {
         let quickTerminalSpaceBehavior: QuickTerminalSpaceBehavior
         let quickTerminalSize: QuickTerminalSize
         let backgroundOpacity: Double
-        let backgroundBlur: Ghostty.Config.BackgroundBlur
+        let backgroundBlur: XGhostty.Config.BackgroundBlur
 
         init() {
             self.quickTerminalScreen = .main
@@ -751,7 +751,7 @@ class QuickTerminalController: BaseTerminalController {
             self.backgroundBlur = .disabled
         }
 
-        init(_ config: Ghostty.Config) {
+        init(_ config: XGhostty.Config) {
             self.quickTerminalScreen = config.quickTerminalScreen
             self.quickTerminalAnimationDuration = config.quickTerminalAnimationDuration
             self.quickTerminalAutoHide = config.quickTerminalAutoHide

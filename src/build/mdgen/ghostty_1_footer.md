@@ -4,7 +4,7 @@ _\$XDG_CONFIG_HOME/ghostty/config.ghostty_
 
 : Location of the default configuration file.
 
-_\$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty_
+_\$HOME/Library/Application Support/com.mitchellh.xghostty/config.ghostty_
 
 : **On macOS**, location of the default configuration file. This location takes
 precedence over the XDG environment locations.
@@ -18,7 +18,7 @@ for configuration files.
 
 **TERM**
 
-: Defaults to `xterm-ghostty`. Can be configured with the `term` configuration option.
+: Defaults to `xterm-xghostty`. Can be configured with the `term` configuration option.
 
 **GHOSTTY_RESOURCES_DIR**
 
@@ -28,7 +28,7 @@ for configuration files.
 
 : Default location for configuration files.
 
-**$HOME/Library/Application Support/com.mitchellh.ghostty**
+**$HOME/Library/Application Support/com.mitchellh.xghostty**
 
 : **MACOS ONLY** default location for configuration files. This location takes
 precedence over the XDG environment locations.

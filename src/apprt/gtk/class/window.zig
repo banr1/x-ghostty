@@ -30,14 +30,14 @@ const DebugWarning = @import("debug_warning.zig").DebugWarning;
 const CommandPalette = @import("command_palette.zig").CommandPalette;
 const WeakRef = @import("../weak_ref.zig").WeakRef;
 
-const log = std.log.scoped(.gtk_ghostty_window);
+const log = std.log.scoped(.gtk_xghostty_window);
 
 pub const Window = extern struct {
     const Self = @This();
     parent_instance: Parent,
     pub const Parent = adw.ApplicationWindow;
     pub const getGObjectType = gobject.ext.defineClass(Self, .{
-        .name = "GhosttyWindow",
+        .name = "XGhosttyWindow",
         .instanceInit = &init,
         .classInit = &Class.init,
         .parent_class = &Class.parent,
@@ -691,9 +691,9 @@ pub const Window = extern struct {
         // GTK version is before 4.16. The conditional is because above 4.16
         // we use GTK CSS color variables.
         self.toggleCssClass(
-            "window-theme-ghostty",
+            "window-theme-xghostty",
             !gtk_version.atLeast(4, 16, 0) and
-                config.@"window-theme" == .ghostty,
+                config.@"window-theme" == .xghostty,
         );
 
         // Move the tab bar to the proper location.
@@ -1628,7 +1628,7 @@ pub const Window = extern struct {
             // If the tab overview is open, then we don't close the window
             // because its a rather abrupt experience. This also fixes an
             // issue where dragging out the last tab in the tab overview
-            // won't cause Ghostty to exit.
+            // won't cause XGhostty to exit.
             if (priv.tab_overview.getOpen() != 0) return;
 
             self.as(gtk.Window).close();
@@ -1793,7 +1793,7 @@ pub const Window = extern struct {
         self: *Self,
     ) callconv(.c) void {
         const name = "XGhostty";
-        const icon = "com.mitchellh.ghostty";
+        const icon = "com.mitchellh.xghostty";
         const website = "https://ghostty.org";
 
         if (adw_version.supportsDialogs()) {
@@ -2065,13 +2065,13 @@ pub const Window = extern struct {
         self.toggleCommandPalette();
     }
 
-    /// Toggle the Ghostty inspector for the active surface.
+    /// Toggle the XGhostty inspector for the active surface.
     fn toggleInspector(self: *Self) void {
         const surface = self.getActiveSurface() orelse return;
         _ = surface.controlInspector(.toggle);
     }
 
-    /// React to a GTK action requesting that the Ghostty inspector be toggled.
+    /// React to a GTK action requesting that the XGhostty inspector be toggled.
     fn actionToggleInspector(
         _: *gio.SimpleAction,
         _: ?*glib.Variant,

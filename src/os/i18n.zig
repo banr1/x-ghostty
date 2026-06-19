@@ -55,13 +55,13 @@ pub fn init(resources_dir: []const u8) InitError!void {
 /// `gettext` (`_`) calls to look up translations for our application.
 ///
 /// This should only be called for apprts that are fully owning the
-/// Ghostty application. This should not be called for libghostty users.
+/// XGhostty application. This should not be called for libghostty users.
 pub fn initGlobalDomain() error{OutOfMemory}!void {
     if (comptime !build_config.i18n) return;
     _ = textdomain(build_config.bundle_id) orelse return error.OutOfMemory;
 }
 
-/// Translate a message for the Ghostty domain.
+/// Translate a message for the XGhostty domain.
 pub fn _(msgid: [*:0]const u8) [*:0]const u8 {
     if (comptime !build_config.i18n) return msgid;
     return dgettext(build_config.bundle_id, msgid);

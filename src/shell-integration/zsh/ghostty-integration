@@ -26,8 +26,8 @@
 # ghostty-integration won't automatically run. Zsh users who want integration with
 # Ghostty in all shells should add the following lines to their .zshrc:
 #
-#   if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
-#     source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
+#   if [[ -n $XGHOSTTY_RESOURCES_DIR ]]; then
+#     source "$XGHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
 #   fi
 #
 # Implementation note: We can assume that alias expansion is disabled in this
@@ -240,7 +240,7 @@ _ghostty_deferred_init() {
         _ghostty_report_pwd"
     _ghostty_report_pwd
 
-    if [[ "$GHOSTTY_SHELL_FEATURES" == *"title"* ]]; then
+    if [[ "$XGHOSTTY_SHELL_FEATURES" == *"title"* ]]; then
       # Enable terminal title changes, formatted for user-friendly display.
       functions[_ghostty_precmd]+="
           builtin print -rnu $_ghostty_fd \$'\\e]2;'\"\${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
@@ -248,14 +248,14 @@ _ghostty_deferred_init() {
           builtin print -rnu $_ghostty_fd \$'\\e]2;'\"\${1//[[:cntrl:]]}\"\$'\\a'"
     fi
 
-    if [[ "$GHOSTTY_SHELL_FEATURES" == *"cursor"* ]]; then
+    if [[ "$XGHOSTTY_SHELL_FEATURES" == *"cursor"* ]]; then
       # Enable cursor shape changes depending on the current keymap.
       # This implementation leaks blinking block cursor into external commands
       # executed from zle. For example, users of fzf-based widgets may find
       # themselves with a blinking block cursor within fzf.
       _ghostty_zle_line_init _ghostty_zle_line_finish _ghostty_zle_keymap_select() {
         builtin local steady=0
-        [[ "$GHOSTTY_SHELL_FEATURES" == *"cursor:steady"* ]] && steady=1
+        [[ "$XGHOSTTY_SHELL_FEATURES" == *"cursor:steady"* ]] && steady=1
         case ${KEYMAP-} in
             vicmd|visual) builtin print -nu "$_ghostty_fd" "\e[$(( 1 + steady )) q" ;; # block
             *)            builtin print -nu "$_ghostty_fd" "\e[$(( 5 + steady )) q" ;; # bar
@@ -280,14 +280,14 @@ _ghostty_deferred_init() {
     "${functions[_ghostty_zle_line_init]}
 
     # Add Ghostty binary to PATH if the path feature is enabled
-    if [[ "$GHOSTTY_SHELL_FEATURES" == *"path"* ]] && [[ -n "$GHOSTTY_BIN_DIR" ]]; then
-      if [[ ":$PATH:" != *":$GHOSTTY_BIN_DIR:"* ]]; then
-        builtin export PATH="$PATH:$GHOSTTY_BIN_DIR"
+    if [[ "$XGHOSTTY_SHELL_FEATURES" == *"path"* ]] && [[ -n "$XGHOSTTY_BIN_DIR" ]]; then
+      if [[ ":$PATH:" != *":$XGHOSTTY_BIN_DIR:"* ]]; then
+        builtin export PATH="$PATH:$XGHOSTTY_BIN_DIR"
       fi
     fi
 
     # Sudo
-    if [[ "$GHOSTTY_SHELL_FEATURES" == *"sudo"* ]] && [[ -n "$TERMINFO" ]]; then
+    if [[ "$XGHOSTTY_SHELL_FEATURES" == *"sudo"* ]] && [[ -n "$TERMINFO" ]]; then
       # Wrap `sudo` command to ensure Ghostty terminfo is preserved
       function sudo() {
         builtin local sudo_has_sudoedit_flags="no"
@@ -314,12 +314,12 @@ _ghostty_deferred_init() {
     #
     # Wrap `ssh` with `ghostty +ssh` and translate the shell-integration
     # feature flags into command options.
-    if [[ "$GHOSTTY_SHELL_FEATURES" == *ssh-* ]]; then
+    if [[ "$XGHOSTTY_SHELL_FEATURES" == *ssh-* ]]; then
       function ssh() {
         local flags=()
-        [[ "$GHOSTTY_SHELL_FEATURES" != *ssh-env* ]] && flags+=(--forward-env=false)
-        [[ "$GHOSTTY_SHELL_FEATURES" != *ssh-terminfo* ]] && flags+=(--terminfo=false)
-        "$GHOSTTY_BIN_DIR/ghostty" +ssh $flags -- "$@"
+        [[ "$XGHOSTTY_SHELL_FEATURES" != *ssh-env* ]] && flags+=(--forward-env=false)
+        [[ "$XGHOSTTY_SHELL_FEATURES" != *ssh-terminfo* ]] && flags+=(--terminfo=false)
+        "$XGHOSTTY_BIN_DIR/ghostty" +ssh $flags -- "$@"
       }
     fi
 
