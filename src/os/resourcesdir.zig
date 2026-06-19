@@ -60,7 +60,7 @@ pub fn resourcesDir(alloc: Allocator) !ResourcesDir {
     // we've found the resources directory.
     const sentinels = switch (comptime builtin.target.os.tag) {
         .windows => .{"terminfo/xghostty.terminfo"},
-        .macos => .{"terminfo/x/xterm-xghostty"},
+        .macos => .{"terminfo/78/xterm-xghostty"},
         .freebsd => .{ "site-terminfo/x/xghostty", "site-terminfo/x/xterm-xghostty" },
         else => .{ "terminfo/x/xghostty", "terminfo/x/xterm-xghostty" },
     };

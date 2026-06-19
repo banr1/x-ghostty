@@ -252,7 +252,7 @@ pub fn build(b: *std.Build) !void {
             // build.
             run_cmd.setEnvironmentVariable(
                 "XGHOSTTY_RESOURCES_DIR",
-                b.getInstallPath(.prefix, "share/ghostty"),
+                b.getInstallPath(.prefix, "share/xghostty"),
             );
 
             run_step.dependOn(&run_cmd.step);
