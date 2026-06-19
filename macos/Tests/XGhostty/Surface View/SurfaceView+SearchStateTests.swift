@@ -1,5 +1,5 @@
 import AppKit
-import GhosttyKit
+import XGhosttyKit
 import Testing
 @testable import XGhostty
 

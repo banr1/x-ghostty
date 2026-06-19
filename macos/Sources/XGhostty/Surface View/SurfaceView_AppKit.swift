@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 import CoreText
 import UserNotifications
-import GhosttyKit
+import XGhosttyKit
 
 extension XGhostty {
     /// The NSView implementation for a terminal surface.

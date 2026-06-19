@@ -1,5 +1,5 @@
 import Foundation
-import GhosttyKit
+import XGhosttyKit
 import SwiftUI
 
 extension XGhostty {

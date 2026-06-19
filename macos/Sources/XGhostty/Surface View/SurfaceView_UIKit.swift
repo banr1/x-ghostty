@@ -1,5 +1,5 @@
 import SwiftUI
-import GhosttyKit
+import XGhosttyKit
 
 extension XGhostty {
     /// The UIView implementation for a terminal surface.

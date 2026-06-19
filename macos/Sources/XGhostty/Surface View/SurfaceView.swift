@@ -1,6 +1,6 @@
 import SwiftUI
 import UserNotifications
-import GhosttyKit
+import XGhosttyKit
 import System
 
 extension XGhostty {

@@ -1,6 +1,6 @@
 import AppKit
 import AppIntents
-import GhosttyKit
+import XGhosttyKit
 
 struct CloseTerminalIntent: AppIntent {
     static var title: LocalizedStringResource = "Close Terminal"

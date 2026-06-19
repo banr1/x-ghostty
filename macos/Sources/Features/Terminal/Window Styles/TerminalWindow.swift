@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import GhosttyKit
+import XGhosttyKit
 
 /// The base class for all standalone, "normal" terminal windows. This sets the basic
 /// style and configuration of the window based on the app configuration.
