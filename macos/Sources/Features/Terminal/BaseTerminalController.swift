@@ -896,10 +896,23 @@ class BaseTerminalController: NSWindowController,
         newGroupSplit(at: oldView, direction: splitDirection, baseConfig: config)
     }
 
+    // Returns true when `view` belongs to any group in this workspace.
+    //
+    // After a group switch the macOS first-responder is updated asynchronously,
+    // so the previously focused surface (now in the outgoing group) may still
+    // fire action notifications while `surfaceTree` already reflects the newly
+    // focused group. Accepting any workspace-member view prevents those actions
+    // from silently dropping during that async window.
+    private func isInWorkspace(_ view: XGhostty.SurfaceView) -> Bool {
+        if surfaceTree.contains(view) { return true }
+        return workspace.state.groups.values.contains { $0.paneTree.contains(view) }
+    }
+
     @objc private func ghosttyDidRenameGroup(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         // `rename_group` targets the focused group; enter inline-rename mode.
         workspace.beginRenamingFocusedGroup()
@@ -907,7 +920,7 @@ class BaseTerminalController: NSWindowController,
 
     @objc private func ghosttyDidSetGroupTitle(_ notification: Notification) {
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
         guard let title = notification.userInfo?["title"] as? String else { return }
         guard let id = workspace.state.focusedGroup else { return }
 
@@ -916,9 +929,10 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidGotoGroup(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         guard let direction = notification.userInfo?[
             XGhostty.Notification.GroupDirectionKey] as? XGhostty.SplitFocusDirection else { return }
@@ -932,9 +946,10 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidResizeGroup(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         guard let direction = notification.userInfo?[
             XGhostty.Notification.ResizeGroupDirectionKey] as? XGhostty.SplitResizeDirection else { return }
@@ -967,42 +982,51 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidEqualizeGroups(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         workspace.equalizeGroups()
     }
 
     @objc private func ghosttyDidToggleGroupZoom(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         // Toggle group zoom; rendering reacts via `effectiveVisibleGroupTree`
         // (`SPEC.md` §11.6). The focused group stays focused, so `surfaceTree`
         // is untouched. Toggling reshapes the group view tree (split↔single
         // leaf), which re-hosts the same surface views, so re-assert keyboard
         // focus on the triggering surface (mirrors `ghosttyDidToggleSplitZoom`).
+        //
+        // If the triggering view is from the previously focused group (async
+        // focus window), fall back to the first surface in the current group
+        // so focus lands inside the window rather than on a stale view.
         workspace.toggleGroupZoom()
         window?.makeKeyAndOrderFront(nil)
+        let focusTarget = surfaceTree.contains(view) ? view : (surfaceTree.first ?? view)
         DispatchQueue.main.async {
-            XGhostty.moveFocus(to: view)
+            XGhostty.moveFocus(to: focusTarget)
         }
     }
 
     @objc private func ghosttyDidHideGroup(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         hideFocusedGroup()
     }
 
     @objc private func ghosttyDidShowGroup(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         guard let name = notification.userInfo?[
             XGhostty.Notification.ShowGroupNameKey] as? String else { return }
@@ -1011,9 +1035,10 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidCloseGroup(_ notification: Notification) {
-        // The triggering surface must be within our (focused group's) tree.
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(view) else { return }
+        guard isInWorkspace(view) else { return }
 
         closeFocusedGroup()
     }
