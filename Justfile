@@ -34,6 +34,24 @@ build-release *args:
 build-app *args:
     {{zig}} build {{args}}
 
+# Build release and install to /Applications so Raycast/Spotlight can launch it.
+# Quits a running instance first, then relaunches the installed copy.
+install *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{zig}} build -Doptimize=ReleaseFast {{args}}
+    if pgrep -xq xghostty; then
+        osascript -e 'quit app "XGhostty"'
+        while pgrep -xq xghostty; do sleep 0.2; done
+    fi
+    rm -rf /Applications/XGhostty.app
+    ditto "{{release-app}}" /Applications/XGhostty.app
+    # The Zig build edits Info.plist after xcodebuild signs the bundle, which
+    # invalidates the signature; LaunchServices (open/Raycast) then refuses to
+    # launch it on Apple Silicon. Re-sign ad-hoc so it launches cleanly.
+    codesign --force --deep --sign - /Applications/XGhostty.app
+    open /Applications/XGhostty.app
+
 # Open the already-built debug app without rebuilding.
 app:
     open "{{app}}"
