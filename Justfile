@@ -1,23 +1,24 @@
 # Justfile for local development.
 # Run `just` (or `just --list`) to see available recipes.
 #
-# Ghostty requires Zig 0.15.x. The system zig may be a different version,
+# XGhostty requires Zig 0.15.x. The system zig may be a different version,
 # so default to the Homebrew keg-only 0.15 and allow overriding via ZIG.
 zig := env_var_or_default("ZIG", "/opt/homebrew/opt/zig@0.15/bin/zig")
 
-# Path to the prebuilt app bundles.
-app         := justfile_directory() / "macos/build/Debug/Ghostty.app"
-release-app := justfile_directory() / "macos/build/Release/Ghostty.app"
+# Path to the prebuilt app bundles. Release-family optimize modes all build
+# under the "ReleaseLocal" Xcode configuration (see XGhosttyXcodebuild.zig).
+app         := justfile_directory() / "macos/build/Debug/XGhostty.app"
+release-app := justfile_directory() / "macos/build/ReleaseLocal/XGhostty.app"
 
 # List available recipes.
 default:
     @just --list
 
-# Build and launch Ghostty in debug mode (full build, including the macOS app).
+# Build and launch XGhostty in debug mode (full build, including the macOS app).
 run *args:
     {{zig}} build run {{args}}
 
-# Build and launch Ghostty in release mode (ReleaseFast; optimized, no safety checks).
+# Build and launch XGhostty in release mode (ReleaseFast; optimized, no safety checks).
 run-release *args:
     {{zig}} build run -Doptimize=ReleaseFast {{args}}
 
@@ -52,12 +53,12 @@ fmt:
 # Build the macOS Swift app via xcodebuild with a clean env (avoids Nix interference).
 swift-build action="build":
     env -i HOME="$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
-        xcodebuild -project macos/Ghostty.xcodeproj -scheme Ghostty \
+        xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty \
         -configuration Debug SYMROOT="{{justfile_directory()}}/macos/build" {{action}}
 
-# Run the Swift unit tests only (GhosttyUITests crash in headless envs).
+# Run the Swift unit tests only (XGhosttyUITests crash in headless envs).
 swift-test:
     env -i HOME="$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
-        xcodebuild -project macos/Ghostty.xcodeproj -scheme Ghostty \
+        xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty \
         -configuration Debug SYMROOT="{{justfile_directory()}}/macos/build" \
-        -only-testing:GhosttyTests test
+        -only-testing:XGhosttyTests test
