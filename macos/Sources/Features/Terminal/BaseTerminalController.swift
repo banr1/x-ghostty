@@ -66,6 +66,42 @@ class BaseTerminalController: NSWindowController,
     /// rendering, actions and Combine observation. See `SPEC.md` §15 Phase 0.
     private(set) var workspace = WorkspaceModel()
 
+    /// Every surface this controller owns, across *all* groups — focused,
+    /// unfocused, and hidden alike.
+    ///
+    /// `surfaceTree` is only the focused group's panes; the other groups' panes
+    /// live in `workspace.state.groups` and their processes are just as alive
+    /// (`SPEC.md` §14.7). Anything that reasons about what closing this
+    /// tab/window would destroy must use this, never `surfaceTree`, or it will
+    /// silently kill background groups.
+    var allSurfaces: [XGhostty.SurfaceView] {
+        // The focused group's canonical panes are `surfaceTree`; the workspace
+        // copy is only mirrored on change, so prefer the live tree for it and
+        // take the rest from the workspace. Dedupe by id because the mirror is
+        // normally in sync (the same views would otherwise appear twice).
+        var seen = Set<UUID>()
+        var result: [XGhostty.SurfaceView] = []
+
+        for view in surfaceTree where seen.insert(view.id).inserted {
+            result.append(view)
+        }
+
+        let focusedGroup = workspace.state.focusedGroup
+        for (id, group) in workspace.state.groups where id != focusedGroup {
+            for view in group.paneTree where seen.insert(view.id).inserted {
+                result.append(view)
+            }
+        }
+
+        return result
+    }
+
+    /// Whether closing this controller (tab or window) would terminate a live
+    /// process in any group, and therefore requires confirmation.
+    var needsCloseConfirmation: Bool {
+        allSurfaces.contains(where: { $0.needsConfirmQuit })
+    }
+
     /// This can be set to show/hide the command palette.
     @Published var commandPaletteIsShowing: Bool = false
 
@@ -727,6 +763,20 @@ class BaseTerminalController: NSWindowController,
         let focus = workspace.focusedGroupState?.focusedSurface
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toGroupSurface: focus)
+    }
+
+    /// Release every surface this controller owns, in every group.
+    ///
+    /// Called when a tab/window is closed for good and the caller has already
+    /// captured whatever undo state it needs. Clearing `surfaceTree` alone only
+    /// empties the *focused* group: the other groups' `SurfaceView`s stay retained
+    /// by `workspace.state.groups`, so their processes would outlive the close and
+    /// a stale `undoState` could still be registered for the dead window. The
+    /// workspace is dropped first so the `surfaceTreeDidChange` mirror that follows
+    /// has no group left to write into.
+    func removeAllSurfaces() {
+        workspace.removeAllGroups()
+        surfaceTree = .init()
     }
 
     /// Register a group-aware undo that swaps between two whole-`WorkspaceState`
@@ -1748,14 +1798,17 @@ class BaseTerminalController: NSWindowController,
         // We must have a window. Is it even possible not to?
         guard let window = self.window else { return true }
 
-        // If we have no surfaces, close.
-        if surfaceTree.isEmpty { return true }
+        // If we have no surfaces in any group, close. Closing this window tears
+        // down every group, not just the focused one, so both the emptiness check
+        // and the confirmation check below span all of them (`SPEC.md` §14.7).
+        let surfaces = allSurfaces
+        if surfaces.isEmpty { return true }
 
         // If we already have an alert, continue with it
         guard alert == nil else { return false }
 
         // If our surfaces don't require confirmation, close.
-        if !surfaceTree.contains(where: { $0.needsConfirmQuit }) { return true }
+        if !surfaces.contains(where: { $0.needsConfirmQuit }) { return true }
 
         return false
     }

@@ -815,12 +815,15 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
 
         if let tabGroup = window.tabGroup, tabGroup.windows.count > 1 {
             tabGroup.windows.forEach { window in
-                // Clear out the surfacetree to ensure there is no undo state.
+                // Release every group's surfaces to ensure there is no undo state.
                 // This prevents unnecessary undos registered since AppKit may
                 // process them on later ticks so we can't just disable undo registration.
+                // It must clear all groups, not just `surfaceTree`: the unfocused and
+                // hidden groups' surfaces are owned by the workspace, and leaving them
+                // retained would keep their shells running after the window is gone.
                 if let controller = window.windowController as? TerminalController {
                     controller.cancelPendingInitialPresentation()
-                    controller.surfaceTree = .init()
+                    controller.removeAllSurfaces()
                 }
 
                 window.close()
@@ -944,10 +947,11 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     static func closeAllWindows() {
         // The window we use for confirmations. Try to find the first window that
         // needs quit confirmation. This lets us attach the confirmation to something
-        // that is running.
+        // that is running. We check every group, not just the focused one, but we
+        // attach to the controller's own window: a surface in a hidden or
+        // unfocused group has no `window` of its own to sheet onto.
         guard let confirmWindow = all
-            .first(where: { $0.surfaceTree.contains(where: { $0.needsConfirmQuit }) })?
-            .surfaceTree.first(where: { $0.needsConfirmQuit })?
+            .first(where: { $0.needsCloseConfirmation })?
             .window
         else {
             closeAllWindowsImmediately()
@@ -981,9 +985,17 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     // MARK: Undo/Redo
 
     /// The state that we require to recreate a TerminalController from an undo.
+    ///
+    /// The snapshot is the whole `WorkspaceState`, not just the focused group's
+    /// pane tree: a tab/window owns every group, so an undo that only carried
+    /// `surfaceTree` would resurrect one group and drop the rest (along with
+    /// their still-running shells) on the floor. Being a value-type copy that
+    /// retains the live `SurfaceView`s, it also keeps every group's processes
+    /// alive for the `undoExpiration` window, exactly like the group-level undo
+    /// in `BaseTerminalController.registerWorkspaceUndo`.
     struct UndoState {
         let frame: NSRect
-        let surfaceTree: SplitTree<XGhostty.SurfaceView>
+        let workspace: WorkspaceState
         let focusedSurface: UUID?
         let tabIndex: Int?
         weak var tabGroup: NSWindowTabGroup?
@@ -991,7 +1003,12 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     }
 
     convenience init(_ ghostty: XGhostty.App, with undoState: UndoState) {
-        self.init(ghostty, withSurfaceTree: undoState.surfaceTree)
+        // Restore the full group layer. We pass the snapshot verbatim rather than
+        // through `WorkspaceState.restoring` because an undo must bring the window
+        // back exactly as it was, hidden and zoomed groups included; `restoring`
+        // deliberately clears that runtime state, which is right for a relaunch
+        // but wrong here.
+        self.init(ghostty, withWorkspace: undoState.workspace)
 
         // Show the window and restore its frame
         showWindow(nil)
@@ -1016,7 +1033,10 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
                 window.makeKeyAndOrderFront(nil)
             }
 
-            // Restore focus to the previously focused surface
+            // Restore focus to the previously focused surface. It must live in the
+            // focused group (that group's panes are our `surfaceTree`); a focus that
+            // pointed into some other group would be inconsistent state, so we fall
+            // back to the focused group's first pane.
             if let focusedUUID = undoState.focusedSurface,
                let focusTarget = surfaceTree.first(where: { $0.id == focusedUUID }) {
                 DispatchQueue.main.async {
@@ -1036,10 +1056,21 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     /// The current undo state for this controller
     var undoState: UndoState? {
         guard let window else { return nil }
-        guard !surfaceTree.isEmpty else { return nil }
+
+        // Nothing to restore only when *every* group is empty. The focused group's
+        // panes may be empty mid-close while other groups still hold live shells.
+        guard !allSurfaces.isEmpty else { return nil }
+
+        // Snapshot the group layer with the focused group's live panes folded in:
+        // `workspace.state` mirrors `surfaceTree` on every change, but taking it
+        // through the same `saveOutgoingPaneTree` path the group switches use keeps
+        // the snapshot authoritative rather than relying on the mirror.
+        var snapshot = workspace.state
+        snapshot.saveOutgoingPaneTree(surfaceTree)
+
         return .init(
             frame: window.frame,
-            surfaceTree: surfaceTree,
+            workspace: snapshot,
             focusedSurface: focusedSurface?.id,
             tabIndex: window.tabGroup?.windows.firstIndex(of: window),
             tabGroup: window.tabGroup,
@@ -1282,7 +1313,8 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
             return
         }
 
-        guard surfaceTree.contains(where: { $0.needsConfirmQuit }) else {
+        // All of this tab's groups die with it, not just the focused one.
+        guard needsCloseConfirmation else {
             closeTabImmediately()
             return
         }
@@ -1312,8 +1344,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
                 return false
             }
 
-            // Check if any surfaces require confirmation
-            return controller.surfaceTree.contains(where: { $0.needsConfirmQuit })
+            // Check if any surfaces require confirmation, across every group in
+            // that tab (not just its focused one).
+            return controller.needsCloseConfirmation
         }) else {
             self.closeOtherTabsImmediately()
             return
@@ -1340,7 +1373,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
                 return false
             }
 
-            return controller.surfaceTree.contains(where: { $0.needsConfirmQuit })
+            return controller.needsCloseConfirmation
         }
 
         if !needsConfirm {
@@ -1370,7 +1403,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         let windows: [NSWindow] = window.tabGroup?.windows ?? [window]
         guard let confirmController = windows
             .compactMap({ $0.windowController as? TerminalController })
-            .first(where: { $0.surfaceTree.contains(where: { $0.needsConfirmQuit }) })
+            .first(where: { $0.needsCloseConfirmation })
         else {
             closeWindowImmediately()
             return
