@@ -492,4 +492,18 @@ final class WorkspaceModel: ObservableObject {
             self.renamingGroup = nil
         }
     }
+
+    // MARK: Teardown
+
+    /// Drop every group, leaving an empty workspace.
+    ///
+    /// Used when a tab/window is closed for good and the controller must stop
+    /// owning any surface: clearing only `surfaceTree` would empty the focused
+    /// group but leave the other groups' `SurfaceView`s retained here, which both
+    /// keeps their processes alive past the close and lets a stale `undoState` be
+    /// registered for a window that is already gone.
+    func removeAllGroups() {
+        state = WorkspaceState(canonicalGroupTree: .init(), groups: [:])
+        renamingGroup = nil
+    }
 }

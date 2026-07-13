@@ -695,4 +695,44 @@ struct WorkspaceModelTests {
         model.restoreState(snapshot)
         #expect(model.renamingGroup == right)
     }
+
+    // MARK: Teardown
+
+    @Test func removeAllGroupsDropsEveryGroup() throws {
+        // A window close must release *every* group's surfaces, not just the
+        // focused one's, so no unfocused/hidden group's shell outlives the window.
+        let (model, _, _) = try Self.makeTwoGroupHorizontal()
+        #expect(model.state.groups.count == 2)
+
+        model.removeAllGroups()
+
+        #expect(model.state.groups.isEmpty)
+        #expect(model.state.canonicalGroupTree.isEmpty)
+        #expect(model.state.focusedGroup == nil)
+        #expect(model.focusedPaneTree.isEmpty)
+    }
+
+    @Test func removeAllGroupsClearsRename() throws {
+        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+        model.beginRenaming(right)
+
+        model.removeAllGroups()
+
+        #expect(model.renamingGroup == nil)
+    }
+
+    @Test func removeAllGroupsAlsoDropsHiddenGroups() throws {
+        // Hidden groups are the ones most at risk: they're invisible, still
+        // running, and only reachable through `groups`.
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        model.hideFocusedGroup(savingOutgoingPaneTree: .init())
+        #expect(model.state.hiddenGroupIDs == [right])
+        #expect(model.state.focusedGroup == left)
+
+        model.removeAllGroups()
+
+        #expect(model.state.groups.isEmpty)
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(model.state.zoomedGroup == nil)
+    }
 }
