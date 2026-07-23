@@ -22,7 +22,7 @@
  *
  * @ingroup key
  */
-typedef struct GhosttyKeyEncoderImpl *GhosttyKeyEncoder;
+typedef struct XGhosttyKeyEncoderImpl *XGhosttyKeyEncoder;
 
 /**
  * Kitty keyboard protocol flags.
@@ -74,7 +74,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     /** Only right option key is treated as alt */
     XGHOSTTY_OPTION_AS_ALT_RIGHT = 3,
     XGHOSTTY_OPTION_AS_ALT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyOptionAsAlt;
+} XGhosttyOptionAsAlt;
 
 /**
  * Key encoder option identifiers.
@@ -103,7 +103,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     /** Kitty keyboard protocol flags (value: XGhosttyKittyKeyFlags bitmask) */
     XGHOSTTY_KEY_ENCODER_OPT_KITTY_FLAGS = 5,
 
-    /** macOS option-as-alt setting (value: GhosttyOptionAsAlt) */
+    /** macOS option-as-alt setting (value: XGhosttyOptionAsAlt) */
     XGHOSTTY_KEY_ENCODER_OPT_MACOS_OPTION_AS_ALT = 6,
 
     /** Backarrow key mode (value: bool)
@@ -114,7 +114,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     XGHOSTTY_KEY_ENCODER_OPT_BACKARROW_KEY_MODE = 7,
 
     XGHOSTTY_KEY_ENCODER_OPT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyKeyEncoderOption;
+} XGhosttyKeyEncoderOption;
 
 /**
  * Create a new key encoder instance.
@@ -129,7 +129,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup key
  */
-XGHOSTTY_API GhosttyResult xghostty_key_encoder_new(const GhosttyAllocator *allocator, GhosttyKeyEncoder *encoder);
+XGHOSTTY_API XGhosttyResult xghostty_key_encoder_new(const XGhosttyAllocator *allocator, XGhosttyKeyEncoder *encoder);
 
 /**
  * Free a key encoder instance.
@@ -141,7 +141,7 @@ XGHOSTTY_API GhosttyResult xghostty_key_encoder_new(const GhosttyAllocator *allo
  *
  * @ingroup key
  */
-XGHOSTTY_API void xghostty_key_encoder_free(GhosttyKeyEncoder encoder);
+XGHOSTTY_API void xghostty_key_encoder_free(XGhosttyKeyEncoder encoder);
 
 /**
  * Set an option on the key encoder.
@@ -164,7 +164,7 @@ XGHOSTTY_API void xghostty_key_encoder_free(GhosttyKeyEncoder encoder);
  *
  * @ingroup key
  */
-XGHOSTTY_API void xghostty_key_encoder_setopt(GhosttyKeyEncoder encoder, GhosttyKeyEncoderOption option, const void *value);
+XGHOSTTY_API void xghostty_key_encoder_setopt(XGhosttyKeyEncoder encoder, XGhosttyKeyEncoderOption option, const void *value);
 
 /**
  * Set encoder options from a terminal's current state.
@@ -183,7 +183,7 @@ XGHOSTTY_API void xghostty_key_encoder_setopt(GhosttyKeyEncoder encoder, Ghostty
  *
  * @ingroup key
  */
-XGHOSTTY_API void xghostty_key_encoder_setopt_from_terminal(GhosttyKeyEncoder encoder, GhosttyTerminal terminal);
+XGHOSTTY_API void xghostty_key_encoder_setopt_from_terminal(XGhosttyKeyEncoder encoder, XGhosttyTerminal terminal);
 
 /**
  * Encode a key event into a terminal escape sequence.
@@ -211,7 +211,7 @@ XGHOSTTY_API void xghostty_key_encoder_setopt_from_terminal(GhosttyKeyEncoder en
  * @code{.c}
  * // Query the required size with a NULL buffer (always returns OUT_OF_SPACE)
  * size_t required = 0;
- * GhosttyResult result = xghostty_key_encoder_encode(encoder, event, NULL, 0, &required);
+ * XGhosttyResult result = xghostty_key_encoder_encode(encoder, event, NULL, 0, &required);
  * assert(result == XGHOSTTY_OUT_OF_SPACE);
  *
  * // Allocate buffer of required size
@@ -233,7 +233,7 @@ XGHOSTTY_API void xghostty_key_encoder_setopt_from_terminal(GhosttyKeyEncoder en
  * // Most escape sequences are short, so a static buffer often suffices
  * char buf[128];
  * size_t written = 0;
- * GhosttyResult result = xghostty_key_encoder_encode(encoder, event, buf, sizeof(buf), &written);
+ * XGhosttyResult result = xghostty_key_encoder_encode(encoder, event, buf, sizeof(buf), &written);
  *
  * if (result == XGHOSTTY_SUCCESS) {
  *   // Write the encoded sequence to the terminal
@@ -250,6 +250,6 @@ XGHOSTTY_API void xghostty_key_encoder_setopt_from_terminal(GhosttyKeyEncoder en
  *
  * @ingroup key
  */
-XGHOSTTY_API GhosttyResult xghostty_key_encoder_encode(GhosttyKeyEncoder encoder, GhosttyKeyEvent event, char *out_buf, size_t out_buf_size, size_t *out_len);
+XGHOSTTY_API XGhosttyResult xghostty_key_encoder_encode(XGhosttyKeyEncoder encoder, XGhosttyKeyEvent event, char *out_buf, size_t out_buf_size, size_t *out_len);
 
 #endif /* XGHOSTTY_VT_KEY_ENCODER_H */

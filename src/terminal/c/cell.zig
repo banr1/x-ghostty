@@ -7,10 +7,10 @@ const color = @import("../color.zig");
 const style_c = @import("style.zig");
 const Result = @import("result.zig").Result;
 
-/// C: GhosttyCell
+/// C: XGhosttyCell
 pub const CCell = u64;
 
-/// C: GhosttyCellContentTag
+/// C: XGhosttyCellContentTag
 pub const ContentTag = enum(c_int) {
     codepoint = 0,
     codepoint_grapheme = 1,
@@ -18,7 +18,7 @@ pub const ContentTag = enum(c_int) {
     bg_color_rgb = 3,
 };
 
-/// C: GhosttyCellWide
+/// C: XGhosttyCellWide
 pub const Wide = enum(c_int) {
     narrow = 0,
     wide = 1,
@@ -26,14 +26,14 @@ pub const Wide = enum(c_int) {
     spacer_head = 3,
 };
 
-/// C: GhosttyCellSemanticContent
+/// C: XGhosttyCellSemanticContent
 pub const SemanticContent = enum(c_int) {
     output = 0,
     input = 1,
     prompt = 2,
 };
 
-/// C: GhosttyCellData
+/// C: XGhosttyCellData
 pub const CellData = enum(c_int) {
     invalid = 0,
 

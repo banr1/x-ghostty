@@ -50,17 +50,17 @@ def get_paths_to_open(files):
 def get_items_for_files(name, files):
     paths = get_paths_to_open(files)
     if paths:
-        item = Nautilus.MenuItem(name=name, label=_('Open in Ghostty'),
+        item = Nautilus.MenuItem(name=name, label=_('Open in XGhostty'),
             icon='com.mitchellh.xghostty')
-        item.connect('activate', open_in_ghostty_activated, paths)
+        item.connect('activate', open_in_xghostty_activated, paths)
         return [item]
     else:
         return []
 
 
-class GhosttyMenuProvider(GObject.GObject, Nautilus.MenuProvider):
+class XGhosttyMenuProvider(GObject.GObject, Nautilus.MenuProvider):
     def get_file_items(self, files):
-        return get_items_for_files('GhosttyNautilus::open_in_ghostty', files)
+        return get_items_for_files('XGhosttyNautilus::open_in_xghostty', files)
 
     def get_background_items(self, file):
-        return get_items_for_files('GhosttyNautilus::open_folder_in_ghostty', [file])
+        return get_items_for_files('XGhosttyNautilus::open_folder_in_xghostty', [file])

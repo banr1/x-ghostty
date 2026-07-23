@@ -20,13 +20,13 @@ const style_c = @import("style.zig");
 const mouse_encode = @import("mouse_encode.zig");
 const grid_ref = @import("grid_ref.zig");
 
-/// C: GhosttySurfacePosition
+/// C: XGhosttySurfacePosition
 pub const SurfacePosition = extern struct {
     x: f64,
     y: f64,
 };
 
-/// C: GhosttyCodepoints
+/// C: XGhosttyCodepoints
 pub const Codepoints = extern struct {
     ptr: ?[*]const u32 = null,
     len: usize = 0,

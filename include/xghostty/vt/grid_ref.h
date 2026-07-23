@@ -58,7 +58,7 @@ extern "C" {
  * point with xghostty_tracked_grid_ref_set().
  *
  * To read cell data from a tracked reference, first snapshot it with
- * xghostty_tracked_grid_ref_snapshot(). The returned `GhosttyGridRef` is again
+ * xghostty_tracked_grid_ref_snapshot(). The returned `XGhosttyGridRef` is again
  * an untracked reference and follows the same short lifetime rules as any other
  * untracked grid reference.
  *
@@ -109,7 +109,7 @@ typedef struct {
   void *node;
   uint16_t x;
   uint16_t y;
-} GhosttyGridRef;
+} XGhosttyGridRef;
 
 /**
  * Get the cell from a grid reference.
@@ -121,8 +121,8 @@ typedef struct {
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_grid_ref_cell(const GhosttyGridRef *ref,
-                                    GhosttyCell *out_cell);
+XGHOSTTY_API XGhosttyResult xghostty_grid_ref_cell(const XGhosttyGridRef *ref,
+                                    XGhosttyCell *out_cell);
 
 /**
  * Get the row from a grid reference.
@@ -134,8 +134,8 @@ XGHOSTTY_API GhosttyResult xghostty_grid_ref_cell(const GhosttyGridRef *ref,
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_grid_ref_row(const GhosttyGridRef *ref,
-                                   GhosttyRow *out_row);
+XGHOSTTY_API XGhosttyResult xghostty_grid_ref_row(const XGhosttyGridRef *ref,
+                                   XGhosttyRow *out_row);
 
 /**
  * Get the grapheme cluster codepoints for the cell at the grid reference's
@@ -159,7 +159,7 @@ XGHOSTTY_API GhosttyResult xghostty_grid_ref_row(const GhosttyGridRef *ref,
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_grid_ref_graphemes(const GhosttyGridRef *ref,
+XGHOSTTY_API XGhosttyResult xghostty_grid_ref_graphemes(const XGhosttyGridRef *ref,
                                          uint32_t *buf,
                                          size_t buf_len,
                                          size_t *out_len);
@@ -184,8 +184,8 @@ XGHOSTTY_API GhosttyResult xghostty_grid_ref_graphemes(const GhosttyGridRef *ref
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_grid_ref_hyperlink_uri(
-    const GhosttyGridRef *ref,
+XGHOSTTY_API XGhosttyResult xghostty_grid_ref_hyperlink_uri(
+    const XGhosttyGridRef *ref,
     uint8_t *buf,
     size_t buf_len,
     size_t *out_len);
@@ -200,8 +200,8 @@ XGHOSTTY_API GhosttyResult xghostty_grid_ref_hyperlink_uri(
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_grid_ref_style(const GhosttyGridRef *ref,
-                                     GhosttyStyle *out_style);
+XGHOSTTY_API XGhosttyResult xghostty_grid_ref_style(const XGhosttyGridRef *ref,
+                                     XGhosttyStyle *out_style);
 
 /** @} */
 

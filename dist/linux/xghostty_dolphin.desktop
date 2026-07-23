@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=inode/directory
+Actions=RunXGhosttyDir
+
+[Desktop Action RunXGhosttyDir]
+Name=Open XGhostty Here
+Icon=com.mitchellh.xghostty
+Exec=xghostty +new-window --working-directory=%F

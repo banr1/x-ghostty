@@ -22,7 +22,7 @@ A file for [guiding coding agents](https://agents.md/).
 - Build WASM: `zig build -Demit-lib-vt -Dtarget=wasm32-freestanding -Doptimize=ReleaseSmall`
 - Test: `zig build test-lib-vt -Dtest-filter=<filter>`
   - Prefer this when the change is in a libghostty-vt file
-- All C enums in `include/ghostty/vt/` must have a `_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE`
+- All C enums in `include/xghostty/vt/` must have a `_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE`
   sentinel as the last entry to force int enum sizing (pre-C23 portability).
 
 ## Directory Structure

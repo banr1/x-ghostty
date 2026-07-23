@@ -153,7 +153,7 @@ in {
       };
     };
     testScript = {...}: ''
-      machine.succeed("su - ghostty -c 'ghostty +version'")
+      machine.succeed("su - ghostty -c 'xghostty +version'")
     '';
   };
 
@@ -162,7 +162,7 @@ in {
     settings = {
       home-manager.users.ghostty = {
         xdg.configFile = {
-          "ghostty/config".text = ''
+          "xghostty/config.xghostty".text = ''
             background = ${pink_value}
           '';
         };
@@ -174,7 +174,7 @@ in {
       bus_path = "/run/user/${toString user.uid}/bus";
       bus = "DBUS_SESSION_BUS_ADDRESS=unix:path=${bus_path}";
       gdbus = "${bus} gdbus";
-      ghostty = "${bus} ghostty";
+      ghostty = "${bus} xghostty";
       su = command: "su - ${user.name} -c '${command}'";
       gseval = "call --session -d org.gnome.Shell -o /org/gnome/Shell -m org.gnome.Shell.Eval";
       wm_class = su "${gdbus} ${gseval} global.display.focus_window.wm_class";
@@ -192,9 +192,9 @@ in {
               check_for_pink() == False
           ), "Pink was present on the screen before we even launched a terminal!"
 
-      machine.systemctl("enable app-com.mitchellh.ghostty-debug.service", user="${user.name}")
+      machine.systemctl("enable app-com.mitchellh.xghostty-debug.service", user="${user.name}")
       machine.succeed("${su "${ghostty} +new-window"}")
-      machine.wait_until_succeeds("${wm_class} | grep -q 'com.mitchellh.ghostty-debug'")
+      machine.wait_until_succeeds("${wm_class} | grep -q 'com.mitchellh.xghostty-debug'")
 
       machine.sleep(2)
 
@@ -203,7 +203,7 @@ in {
               check_for_pink() == True
           ), "Pink was not found on the screen!"
 
-      machine.systemctl("stop app-com.mitchellh.ghostty-debug.service", user="${user.name}")
+      machine.systemctl("stop app-com.mitchellh.xghostty-debug.service", user="${user.name}")
     '';
   };
 
@@ -243,7 +243,7 @@ in {
           settings = {
             home-manager.users.ghostty = {
               xdg.configFile = {
-                "ghostty/config".text = let
+                "xghostty/config.xghostty".text = let
                 in ''
                   shell-integration-features = ssh-terminfo
                 '';
@@ -258,7 +258,7 @@ in {
       bus_path = "/run/user/${toString user.uid}/bus";
       bus = "DBUS_SESSION_BUS_ADDRESS=unix:path=${bus_path}";
       gdbus = "${bus} gdbus";
-      ghostty = "${bus} ghostty";
+      ghostty = "${bus} xghostty";
       su = command: "su - ${user.name} -c '${command}'";
       gseval = "call --session -d org.gnome.Shell -o /org/gnome/Shell -m org.gnome.Shell.Eval";
       wm_class = su "${gdbus} ${gseval} global.display.focus_window.wm_class";
@@ -271,14 +271,14 @@ in {
           client.start()
           client.wait_for_x()
           client.wait_for_file("${bus_path}")
-          client.systemctl("enable app-com.mitchellh.ghostty-debug.service", user="${user.name}")
+          client.systemctl("enable app-com.mitchellh.xghostty-debug.service", user="${user.name}")
           client.succeed("${su "${ghostty} +new-window"}")
-          client.wait_until_succeeds("${wm_class} | grep -q 'com.mitchellh.ghostty-debug'")
+          client.wait_until_succeeds("${wm_class} | grep -q 'com.mitchellh.xghostty-debug'")
 
       with subtest("SSH from client to server and verify that the Ghostty terminfo is copied."):
           client.sleep(2)
           client.send_chars("ssh ghostty@server\n")
-          server.wait_for_file("${user.home}/.terminfo/x/xterm-ghostty", timeout=30)
+          server.wait_for_file("${user.home}/.terminfo/x/xterm-xghostty", timeout=30)
     '';
   };
 
@@ -304,7 +304,7 @@ in {
 
       home-manager.users.ghostty = {
         xdg.configFile = {
-          "ghostty/config".text = ''
+          "xghostty/config.xghostty".text = ''
             bell-features = audio
             bell-audio-path = ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/bell.oga
             bell-audio-volume = 0
@@ -317,7 +317,7 @@ in {
       bus_path = "/run/user/${toString user.uid}/bus";
       bus = "DBUS_SESSION_BUS_ADDRESS=unix:path=${bus_path}";
       gdbus = "${bus} gdbus";
-      ghostty = "${bus} ghostty";
+      ghostty = "${bus} xghostty";
       su = command: "su - ${user.name} -c '${command}'";
       gseval = "call --session -d org.gnome.Shell -o /org/gnome/Shell -m org.gnome.Shell.Eval";
       wm_class = su "${gdbus} ${gseval} global.display.focus_window.wm_class";
@@ -337,7 +337,7 @@ in {
       def ghostty_threads():
           out = machine.succeed(
               "max=0; "
-              "for p in $(pgrep -f ghostty); do "
+              "for p in $(pgrep -f xghostty); do "
               "  n=$(ls /proc/$p/task 2>/dev/null | wc -l); "
               "  [ \"$n\" -gt \"$max\" ] && max=$n; "
               "done; "
@@ -346,14 +346,14 @@ in {
           return int(out)
 
       def window_open():
-          status, _ = machine.execute("${wm_class} | grep -q 'com.mitchellh.ghostty-debug'")
+          status, _ = machine.execute("${wm_class} | grep -q 'com.mitchellh.xghostty-debug'")
           return status == 0
 
       with subtest("boot and open a keep-alive ghostty window"):
           start_all()
           machine.wait_for_x()
           machine.wait_for_file("${bus_path}")
-          machine.systemctl("enable app-com.mitchellh.ghostty-debug.service", user="${user.name}")
+          machine.systemctl("enable app-com.mitchellh.xghostty-debug.service", user="${user.name}")
 
           # Under software GL the +new-window D-Bus activation can exceed its
           # client-side timeout even though the window still comes up, so we

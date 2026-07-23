@@ -5,17 +5,17 @@ const page = @import("../page.zig");
 const Row = page.Row;
 const Result = @import("result.zig").Result;
 
-/// C: GhosttyRow
+/// C: XGhosttyRow
 pub const CRow = Row.C;
 
-/// C: GhosttyRowSemanticPrompt
+/// C: XGhosttyRowSemanticPrompt
 pub const SemanticPrompt = enum(c_int) {
     none = 0,
     prompt = 1,
     prompt_continuation = 2,
 };
 
-/// C: GhosttyRowData
+/// C: XGhosttyRowData
 pub const RowData = enum(c_int) {
     invalid = 0,
 

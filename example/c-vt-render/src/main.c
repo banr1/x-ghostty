@@ -2,16 +2,16 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <ghostty/vt.h>
+#include <xghostty/vt.h>
 
 /// Helper: resolve a style color to an RGB value using the palette.
-static GhosttyColorRgb resolve_color(GhosttyStyleColor color,
-                                     const GhosttyRenderStateColors* colors,
-                                     GhosttyColorRgb fallback) {
+static XGhosttyColorRgb resolve_color(XGhosttyStyleColor color,
+                                     const XGhosttyRenderStateColors* colors,
+                                     XGhosttyColorRgb fallback) {
   switch (color.tag) {
-    case GHOSTTY_STYLE_COLOR_RGB:
+    case XGHOSTTY_STYLE_COLOR_RGB:
       return color.value.rgb;
-    case GHOSTTY_STYLE_COLOR_PALETTE:
+    case XGHOSTTY_STYLE_COLOR_PALETTE:
       return colors->palette[color.value.palette];
     default:
       return fallback;
@@ -19,79 +19,79 @@ static GhosttyColorRgb resolve_color(GhosttyStyleColor color,
 }
 
 int main(void) {
-  GhosttyResult result;
+  XGhosttyResult result;
 
   //! [render-state-update]
   // Create a terminal and render state, then update the render state
   // from the terminal. The render state captures a snapshot of everything
   // needed to draw a frame.
-  GhosttyTerminal terminal = NULL;
-  GhosttyTerminalOptions terminal_opts = {
+  XGhosttyTerminal terminal = NULL;
+  XGhosttyTerminalOptions terminal_opts = {
       .cols = 40,
       .rows = 5,
       .max_scrollback = 10000,
   };
-  result = ghostty_terminal_new(NULL, &terminal, terminal_opts);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_terminal_new(NULL, &terminal, terminal_opts);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  GhosttyRenderState render_state = NULL;
-  result = ghostty_render_state_new(NULL, &render_state);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyRenderState render_state = NULL;
+  result = xghostty_render_state_new(NULL, &render_state);
+  assert(result == XGHOSTTY_SUCCESS);
 
   // Feed some styled content into the terminal.
   const char* content =
       "Hello, \033[1;32mworld\033[0m!\r\n"     // bold green "world"
       "\033[4munderlined\033[0m text\r\n"       // underlined text
       "\033[38;2;255;128;0morange\033[0m\r\n";  // 24-bit orange fg
-  ghostty_terminal_vt_write(
+  xghostty_terminal_vt_write(
       terminal, (const uint8_t*)content, strlen(content));
 
   // Select "underlined" on the second row. Render state exposes this
   // later as a row-local selected cell range.
-  GhosttyGridRef selection_start = GHOSTTY_INIT_SIZED(GhosttyGridRef);
-  GhosttyPoint selection_start_pt = {
-      .tag = GHOSTTY_POINT_TAG_ACTIVE,
+  XGhosttyGridRef selection_start = XGHOSTTY_INIT_SIZED(XGhosttyGridRef);
+  XGhosttyPoint selection_start_pt = {
+      .tag = XGHOSTTY_POINT_TAG_ACTIVE,
       .value = { .coordinate = { .x = 0, .y = 1 } },
   };
-  result = ghostty_terminal_grid_ref(
+  result = xghostty_terminal_grid_ref(
       terminal, selection_start_pt, &selection_start);
-  assert(result == GHOSTTY_SUCCESS);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  GhosttyGridRef selection_end = GHOSTTY_INIT_SIZED(GhosttyGridRef);
-  GhosttyPoint selection_end_pt = {
-      .tag = GHOSTTY_POINT_TAG_ACTIVE,
+  XGhosttyGridRef selection_end = XGHOSTTY_INIT_SIZED(XGhosttyGridRef);
+  XGhosttyPoint selection_end_pt = {
+      .tag = XGHOSTTY_POINT_TAG_ACTIVE,
       .value = { .coordinate = { .x = 9, .y = 1 } },
   };
-  result = ghostty_terminal_grid_ref(terminal, selection_end_pt, &selection_end);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_terminal_grid_ref(terminal, selection_end_pt, &selection_end);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  GhosttySelection selection = GHOSTTY_INIT_SIZED(GhosttySelection);
+  XGhosttySelection selection = XGHOSTTY_INIT_SIZED(XGhosttySelection);
   selection.start = selection_start;
   selection.end = selection_end;
-  result = ghostty_terminal_set(
-      terminal, GHOSTTY_TERMINAL_OPT_SELECTION, &selection);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_terminal_set(
+      terminal, XGHOSTTY_TERMINAL_OPT_SELECTION, &selection);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  result = ghostty_render_state_update(render_state, terminal);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_render_state_update(render_state, terminal);
+  assert(result == XGHOSTTY_SUCCESS);
   //! [render-state-update]
 
   //! [render-dirty-check]
   // Check the global dirty state to decide how much work the renderer
   // needs to do. After rendering, reset it to false.
-  GhosttyRenderStateDirty dirty;
-  result = ghostty_render_state_get(
-      render_state, GHOSTTY_RENDER_STATE_DATA_DIRTY, &dirty);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyRenderStateDirty dirty;
+  result = xghostty_render_state_get(
+      render_state, XGHOSTTY_RENDER_STATE_DATA_DIRTY, &dirty);
+  assert(result == XGHOSTTY_SUCCESS);
 
   switch (dirty) {
-    case GHOSTTY_RENDER_STATE_DIRTY_FALSE:
+    case XGHOSTTY_RENDER_STATE_DIRTY_FALSE:
       printf("Frame is clean, nothing to draw.\n");
       break;
-    case GHOSTTY_RENDER_STATE_DIRTY_PARTIAL:
+    case XGHOSTTY_RENDER_STATE_DIRTY_PARTIAL:
       printf("Partial redraw needed.\n");
       break;
-    case GHOSTTY_RENDER_STATE_DIRTY_FULL:
+    case XGHOSTTY_RENDER_STATE_DIRTY_FULL:
       printf("Full redraw needed.\n");
       break;
   }
@@ -100,10 +100,10 @@ int main(void) {
   //! [render-colors]
   // Retrieve colors (background, foreground, palette) from the render
   // state. These are needed to resolve palette-indexed cell colors.
-  GhosttyRenderStateColors colors =
-      GHOSTTY_INIT_SIZED(GhosttyRenderStateColors);
-  result = ghostty_render_state_colors_get(render_state, &colors);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyRenderStateColors colors =
+      XGHOSTTY_INIT_SIZED(XGhosttyRenderStateColors);
+  result = xghostty_render_state_colors_get(render_state, &colors);
+  assert(result == XGHOSTTY_SUCCESS);
 
   printf("Background: #%02x%02x%02x\n",
          colors.background.r, colors.background.g, colors.background.b);
@@ -114,39 +114,39 @@ int main(void) {
   //! [render-cursor]
   // Read cursor position and visual style from the render state.
   bool cursor_visible = false;
-  ghostty_render_state_get(
-      render_state, GHOSTTY_RENDER_STATE_DATA_CURSOR_VISIBLE,
+  xghostty_render_state_get(
+      render_state, XGHOSTTY_RENDER_STATE_DATA_CURSOR_VISIBLE,
       &cursor_visible);
 
   bool cursor_in_viewport = false;
-  ghostty_render_state_get(
-      render_state, GHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_HAS_VALUE,
+  xghostty_render_state_get(
+      render_state, XGHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_HAS_VALUE,
       &cursor_in_viewport);
 
   if (cursor_visible && cursor_in_viewport) {
     uint16_t cx, cy;
-    ghostty_render_state_get(
-        render_state, GHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_X, &cx);
-    ghostty_render_state_get(
-        render_state, GHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_Y, &cy);
+    xghostty_render_state_get(
+        render_state, XGHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_X, &cx);
+    xghostty_render_state_get(
+        render_state, XGHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_Y, &cy);
 
-    GhosttyRenderStateCursorVisualStyle style;
-    ghostty_render_state_get(
-        render_state, GHOSTTY_RENDER_STATE_DATA_CURSOR_VISUAL_STYLE,
+    XGhosttyRenderStateCursorVisualStyle style;
+    xghostty_render_state_get(
+        render_state, XGHOSTTY_RENDER_STATE_DATA_CURSOR_VISUAL_STYLE,
         &style);
 
     const char* style_name = "unknown";
     switch (style) {
-      case GHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BAR:
+      case XGHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BAR:
         style_name = "bar";
         break;
-      case GHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BLOCK:
+      case XGHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BLOCK:
         style_name = "block";
         break;
-      case GHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_UNDERLINE:
+      case XGHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_UNDERLINE:
         style_name = "underline";
         break;
-      case GHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BLOCK_HOLLOW:
+      case XGHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BLOCK_HOLLOW:
         style_name = "hollow";
         break;
     }
@@ -158,50 +158,50 @@ int main(void) {
   // Iterate rows via the row iterator. For each dirty row, iterate its
   // cells, read codepoints/graphemes and styles, and emit ANSI-colored
   // output as a simple "renderer".
-  GhosttyRenderStateRowIterator row_iter = NULL;
-  result = ghostty_render_state_row_iterator_new(NULL, &row_iter);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyRenderStateRowIterator row_iter = NULL;
+  result = xghostty_render_state_row_iterator_new(NULL, &row_iter);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  result = ghostty_render_state_get(
-      render_state, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &row_iter);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_render_state_get(
+      render_state, XGHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &row_iter);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  GhosttyRenderStateRowCells cells = NULL;
-  result = ghostty_render_state_row_cells_new(NULL, &cells);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyRenderStateRowCells cells = NULL;
+  result = xghostty_render_state_row_cells_new(NULL, &cells);
+  assert(result == XGHOSTTY_SUCCESS);
 
   int row_index = 0;
-  while (ghostty_render_state_row_iterator_next(row_iter)) {
+  while (xghostty_render_state_row_iterator_next(row_iter)) {
     // Check per-row dirty state; a real renderer would skip clean rows.
     bool row_dirty = false;
-    ghostty_render_state_row_get(
-        row_iter, GHOSTTY_RENDER_STATE_ROW_DATA_DIRTY, &row_dirty);
+    xghostty_render_state_row_get(
+        row_iter, XGHOSTTY_RENDER_STATE_ROW_DATA_DIRTY, &row_dirty);
 
     printf("Row %2d [%s]: ", row_index,
            row_dirty ? "dirty" : "clean");
 
     // Query the row-local selection range. Rows without a selection return
-    // GHOSTTY_NO_VALUE; selected rows return inclusive start/end columns.
-    GhosttyRenderStateRowSelection row_selection =
-        GHOSTTY_INIT_SIZED(GhosttyRenderStateRowSelection);
-    result = ghostty_render_state_row_get(
-        row_iter, GHOSTTY_RENDER_STATE_ROW_DATA_SELECTION, &row_selection);
-    assert(result == GHOSTTY_SUCCESS || result == GHOSTTY_NO_VALUE);
-    if (result == GHOSTTY_SUCCESS) {
+    // XGHOSTTY_NO_VALUE; selected rows return inclusive start/end columns.
+    XGhosttyRenderStateRowSelection row_selection =
+        XGHOSTTY_INIT_SIZED(XGhosttyRenderStateRowSelection);
+    result = xghostty_render_state_row_get(
+        row_iter, XGHOSTTY_RENDER_STATE_ROW_DATA_SELECTION, &row_selection);
+    assert(result == XGHOSTTY_SUCCESS || result == XGHOSTTY_NO_VALUE);
+    if (result == XGHOSTTY_SUCCESS) {
       printf("selection=%u..%u ",
              row_selection.start_x, row_selection.end_x);
     }
 
     // Get cells for this row (reuses the same cells handle).
-    result = ghostty_render_state_row_get(
-        row_iter, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &cells);
-    assert(result == GHOSTTY_SUCCESS);
+    result = xghostty_render_state_row_get(
+        row_iter, XGHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &cells);
+    assert(result == XGHOSTTY_SUCCESS);
 
-    while (ghostty_render_state_row_cells_next(cells)) {
+    while (xghostty_render_state_row_cells_next(cells)) {
       // Get the grapheme length; 0 means the cell is empty.
       uint32_t grapheme_len = 0;
-      ghostty_render_state_row_cells_get(
-          cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_LEN,
+      xghostty_render_state_row_cells_get(
+          cells, XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_LEN,
           &grapheme_len);
 
       if (grapheme_len == 0) {
@@ -211,12 +211,12 @@ int main(void) {
 
       // Read the style for this cell. Returns the default style for
       // cells that have no explicit styling.
-      GhosttyStyle style = GHOSTTY_INIT_SIZED(GhosttyStyle);
-      ghostty_render_state_row_cells_get(
-          cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, &style);
+      XGhosttyStyle style = XGHOSTTY_INIT_SIZED(XGhosttyStyle);
+      xghostty_render_state_row_cells_get(
+          cells, XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, &style);
 
       // Resolve foreground color for this cell.
-      GhosttyColorRgb fg =
+      XGhosttyColorRgb fg =
           resolve_color(style.fg_color, &colors, colors.foreground);
 
       // Emit ANSI true-color escape for the foreground.
@@ -228,8 +228,8 @@ int main(void) {
       // The buffer must be at least grapheme_len elements.
       uint32_t codepoints[16];
       uint32_t len = grapheme_len < 16 ? grapheme_len : 16;
-      ghostty_render_state_row_cells_get(
-          cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF,
+      xghostty_render_state_row_cells_get(
+          cells, XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF,
           codepoints);
 
       for (uint32_t i = 0; i < len; i++) {
@@ -247,8 +247,8 @@ int main(void) {
 
     // Clear per-row dirty flag after "rendering" it.
     bool clean = false;
-    ghostty_render_state_row_set(
-        row_iter, GHOSTTY_RENDER_STATE_ROW_OPTION_DIRTY, &clean);
+    xghostty_render_state_row_set(
+        row_iter, XGHOSTTY_RENDER_STATE_ROW_OPTION_DIRTY, &clean);
 
     row_index++;
   }
@@ -257,16 +257,16 @@ int main(void) {
   //! [render-dirty-reset]
   // After finishing the frame, reset the global dirty state so the next
   // update can report changes accurately.
-  GhosttyRenderStateDirty clean_state = GHOSTTY_RENDER_STATE_DIRTY_FALSE;
-  result = ghostty_render_state_set(
-      render_state, GHOSTTY_RENDER_STATE_OPTION_DIRTY, &clean_state);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyRenderStateDirty clean_state = XGHOSTTY_RENDER_STATE_DIRTY_FALSE;
+  result = xghostty_render_state_set(
+      render_state, XGHOSTTY_RENDER_STATE_OPTION_DIRTY, &clean_state);
+  assert(result == XGHOSTTY_SUCCESS);
   //! [render-dirty-reset]
 
   // Cleanup
-  ghostty_render_state_row_cells_free(cells);
-  ghostty_render_state_row_iterator_free(row_iter);
-  ghostty_render_state_free(render_state);
-  ghostty_terminal_free(terminal);
+  xghostty_render_state_row_cells_free(cells);
+  xghostty_render_state_row_iterator_free(row_iter);
+  xghostty_render_state_free(render_state);
+  xghostty_terminal_free(terminal);
   return 0;
 }

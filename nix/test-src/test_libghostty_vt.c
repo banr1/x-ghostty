@@ -1,9 +1,9 @@
-#include <ghostty/vt.h>
+#include <xghostty/vt.h>
 #include <stdio.h>
 int main(void) {
     bool simd = false;
-    GhosttyResult r = ghostty_build_info(GHOSTTY_BUILD_INFO_SIMD, &simd);
-    if (r != GHOSTTY_SUCCESS) return 1;
+    XGhosttyResult r = xghostty_build_info(XGHOSTTY_BUILD_INFO_SIMD, &simd);
+    if (r != XGHOSTTY_SUCCESS) return 1;
     printf("SIMD: %s\n", simd ? "yes" : "no");
     return 0;
 }

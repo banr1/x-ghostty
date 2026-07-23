@@ -64,7 +64,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_OSC_COMMAND_CONEMU_COMMENT = 21,
   XGHOSTTY_OSC_COMMAND_KITTY_TEXT_SIZING = 22,
   XGHOSTTY_OSC_COMMAND_TYPE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyOscCommandType;
+} XGhosttyOscCommandType;
 
 /**
  * OSC command data types.
@@ -90,7 +90,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    */
   XGHOSTTY_OSC_DATA_CHANGE_WINDOW_TITLE_STR = 1,
   XGHOSTTY_OSC_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyOscCommandData;
+} XGhosttyOscCommandData;
 
 /**
  * Create a new OSC parser instance.
@@ -105,7 +105,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * 
  * @ingroup osc
  */
-XGHOSTTY_API GhosttyResult xghostty_osc_new(const GhosttyAllocator *allocator, GhosttyOscParser *parser);
+XGHOSTTY_API XGhosttyResult xghostty_osc_new(const XGhosttyAllocator *allocator, XGhosttyOscParser *parser);
 
 /**
  * Free an OSC parser instance.
@@ -117,7 +117,7 @@ XGHOSTTY_API GhosttyResult xghostty_osc_new(const GhosttyAllocator *allocator, G
  * 
  * @ingroup osc
  */
-XGHOSTTY_API void xghostty_osc_free(GhosttyOscParser parser);
+XGHOSTTY_API void xghostty_osc_free(XGhosttyOscParser parser);
 
 /**
  * Reset an OSC parser instance to its initial state.
@@ -130,7 +130,7 @@ XGHOSTTY_API void xghostty_osc_free(GhosttyOscParser parser);
  * 
  * @ingroup osc
  */
-XGHOSTTY_API void xghostty_osc_reset(GhosttyOscParser parser);
+XGHOSTTY_API void xghostty_osc_reset(XGhosttyOscParser parser);
 
 /**
  * Parse the next byte in an OSC sequence.
@@ -147,7 +147,7 @@ XGHOSTTY_API void xghostty_osc_reset(GhosttyOscParser parser);
  * 
  * @ingroup osc
  */
-XGHOSTTY_API void xghostty_osc_next(GhosttyOscParser parser, uint8_t byte);
+XGHOSTTY_API void xghostty_osc_next(XGhosttyOscParser parser, uint8_t byte);
 
 /**
  * Finalize OSC parsing and retrieve the parsed command.
@@ -177,7 +177,7 @@ XGHOSTTY_API void xghostty_osc_next(GhosttyOscParser parser, uint8_t byte);
  * 
  * @ingroup osc
  */
-XGHOSTTY_API GhosttyOscCommand xghostty_osc_end(GhosttyOscParser parser, uint8_t terminator);
+XGHOSTTY_API XGhosttyOscCommand xghostty_osc_end(XGhosttyOscParser parser, uint8_t terminator);
 
 /**
  * Get the type of an OSC command.
@@ -191,7 +191,7 @@ XGHOSTTY_API GhosttyOscCommand xghostty_osc_end(GhosttyOscParser parser, uint8_t
  * 
  * @ingroup osc
  */
-XGHOSTTY_API GhosttyOscCommandType xghostty_osc_command_type(GhosttyOscCommand command);
+XGHOSTTY_API XGhosttyOscCommandType xghostty_osc_command_type(XGhosttyOscCommand command);
 
 /**
  * Extract data from an OSC command.
@@ -199,7 +199,7 @@ XGHOSTTY_API GhosttyOscCommandType xghostty_osc_command_type(GhosttyOscCommand c
  * Extracts typed data from the given OSC command based on the specified
  * data type. The output pointer must be of the appropriate type for the
  * requested data kind. Valid command types, output types, and memory
- * safety information are documented in the `GhosttyOscCommandData` enum.
+ * safety information are documented in the `XGhosttyOscCommandData` enum.
  *
  * @param command The OSC command handle to query (may be NULL)
  * @param data The type of data to extract
@@ -208,7 +208,7 @@ XGHOSTTY_API GhosttyOscCommandType xghostty_osc_command_type(GhosttyOscCommand c
  * 
  * @ingroup osc
  */
-XGHOSTTY_API bool xghostty_osc_command_data(GhosttyOscCommand command, GhosttyOscCommandData data, void *out);
+XGHOSTTY_API bool xghostty_osc_command_data(XGhosttyOscCommand command, XGhosttyOscCommandData data, void *out);
 
 /** @} */
 

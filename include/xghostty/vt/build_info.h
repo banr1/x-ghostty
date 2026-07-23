@@ -41,7 +41,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_OPTIMIZE_RELEASE_SMALL = 2,
   XGHOSTTY_OPTIMIZE_RELEASE_FAST = 3,
   XGHOSTTY_OPTIMIZE_MODE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyOptimizeMode;
+} XGhosttyOptimizeMode;
 
 /**
  * Build info data types that can be queried.
@@ -76,14 +76,14 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /**
    * The optimization mode the library was built with.
    *
-   * Output type: GhosttyOptimizeMode *
+   * Output type: XGhosttyOptimizeMode *
    */
   XGHOSTTY_BUILD_INFO_OPTIMIZE = 4,
 
   /**
    * The full version string (e.g. "1.2.3" or "1.2.3-dev+abcdef").
    *
-   * Output type: GhosttyString *
+   * Output type: XGhosttyString *
    */
   XGHOSTTY_BUILD_INFO_VERSION_STRING = 5,
 
@@ -112,7 +112,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The pre metadata string (e.g. "alpha", "beta", "dev"). Has zero length if
    * no pre metadata is present.
    *
-   * Output type: GhosttyString *
+   * Output type: XGhosttyString *
    */
   XGHOSTTY_BUILD_INFO_VERSION_PRE = 9,
 
@@ -120,17 +120,17 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The build metadata string (e.g. commit hash). Has zero length if
    * no build metadata is present.
    *
-   * Output type: GhosttyString *
+   * Output type: XGhosttyString *
    */
   XGHOSTTY_BUILD_INFO_VERSION_BUILD = 10,
   XGHOSTTY_BUILD_INFO_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyBuildInfo;
+} XGhosttyBuildInfo;
 
 /**
  * Query a compile-time build configuration value.
  *
  * The caller must pass a pointer to the correct output type for the
- * requested data (see GhosttyBuildInfo variants for types).
+ * requested data (see XGhosttyBuildInfo variants for types).
  *
  * @param data The build info field to query
  * @param out Pointer to store the result (type depends on data parameter)
@@ -139,7 +139,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup build_info
  */
-XGHOSTTY_API GhosttyResult xghostty_build_info(GhosttyBuildInfo data, void *out);
+XGHOSTTY_API XGhosttyResult xghostty_build_info(XGhosttyBuildInfo data, void *out);
 
 #ifdef __cplusplus
 }

@@ -1,9 +1,9 @@
 import Foundation
-import GhosttyVt
+import XGhosttyVt
 
 // Create a terminal with a small grid
-var terminal: GhosttyTerminal?
-var opts = GhosttyTerminalOptions(
+var terminal: XGhosttyTerminal?
+var opts = XGhosttyTerminalOptions(
     cols: 80,
     rows: 24,
     max_scrollback: 0
@@ -20,12 +20,12 @@ text.withCString { ptr in
 }
 
 // Format the terminal contents as plain text
-var fmtOpts = GhosttyFormatterTerminalOptions()
-fmtOpts.size = MemoryLayout<GhosttyFormatterTerminalOptions>.size
+var fmtOpts = XGhosttyFormatterTerminalOptions()
+fmtOpts.size = MemoryLayout<XGhosttyFormatterTerminalOptions>.size
 fmtOpts.emit = XGHOSTTY_FORMATTER_FORMAT_PLAIN
 fmtOpts.trim = true
 
-var formatter: GhosttyFormatter?
+var formatter: XGhosttyFormatter?
 let fmtResult = xghostty_formatter_terminal_new(nil, &formatter, terminal, fmtOpts)
 guard fmtResult == XGHOSTTY_SUCCESS, let formatter else {
     fatalError("Failed to create formatter")

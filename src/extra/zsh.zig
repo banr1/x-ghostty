@@ -110,7 +110,7 @@ fn writeZshCompletions(writer: *std.Io.Writer) !void {
     try writer.writeAll("\n}\n\n");
 
     try writer.writeAll(
-        \\_ghostty() {
+        \\_xghostty() {
         \\  typeset -A opt_args
         \\  local context state line
         \\  local opt=('-e' '--help' '--version')
@@ -225,7 +225,7 @@ fn writeZshCompletions(writer: *std.Io.Writer) !void {
         \\  esac
         \\}
         \\
-        \\_ghostty "$@"
+        \\_xghostty "$@"
         \\
     );
 }

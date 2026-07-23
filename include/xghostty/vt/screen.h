@@ -20,8 +20,8 @@ extern "C" {
  *
  * Terminal screen cell and row types.
  *
- * These types represent the contents of a terminal screen. A GhosttyCell
- * is a single grid cell and a GhosttyRow is a single row. Both are opaque
+ * These types represent the contents of a terminal screen. A XGhosttyCell
+ * is a single grid cell and a XGhosttyRow is a single row. Both are opaque
  * values whose fields are accessed via xghostty_cell_get() and
  * xghostty_row_get() respectively.
  *
@@ -37,7 +37,7 @@ extern "C" {
  *
  * @ingroup screen
  */
-typedef uint64_t GhosttyCell;
+typedef uint64_t XGhosttyCell;
 
 /**
  * Opaque row value.
@@ -48,7 +48,7 @@ typedef uint64_t GhosttyCell;
  *
  * @ingroup screen
  */
-typedef uint64_t GhosttyRow;
+typedef uint64_t XGhosttyRow;
 
 /**
  * Cell content tag.
@@ -70,7 +70,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** No text; background color as RGB. */
   XGHOSTTY_CELL_CONTENT_BG_COLOR_RGB = 3,
   XGHOSTTY_CELL_CONTENT_TAG_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyCellContentTag;
+} XGhosttyCellContentTag;
 
 /**
  * Cell wide property.
@@ -92,7 +92,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Spacer at end of soft-wrapped line for a wide character. */
   XGHOSTTY_CELL_WIDE_SPACER_HEAD = 3,
   XGHOSTTY_CELL_WIDE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyCellWide;
+} XGhosttyCellWide;
 
 /**
  * Semantic content type of a cell.
@@ -112,7 +112,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Content that is part of a shell prompt. */
   XGHOSTTY_CELL_SEMANTIC_PROMPT = 2,
   XGHOSTTY_CELL_SEMANTIC_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyCellSemanticContent;
+} XGhosttyCellSemanticContent;
 
 /**
  * Cell data types.
@@ -136,14 +136,14 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /**
    * The content tag describing what kind of content is in the cell.
    *
-   * Output type: GhosttyCellContentTag *
+   * Output type: XGhosttyCellContentTag *
    */
   XGHOSTTY_CELL_DATA_CONTENT_TAG = 2,
 
   /**
    * The wide property of the cell.
    *
-   * Output type: GhosttyCellWide *
+   * Output type: XGhosttyCellWide *
    */
   XGHOSTTY_CELL_DATA_WIDE = 3,
 
@@ -185,7 +185,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /**
    * The semantic content type of the cell (from OSC 133).
    *
-   * Output type: GhosttyCellSemanticContent *
+   * Output type: XGhosttyCellSemanticContent *
    */
   XGHOSTTY_CELL_DATA_SEMANTIC_CONTENT = 9,
 
@@ -193,7 +193,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The palette index for the cell's background color.
    * Only valid when content_tag is XGHOSTTY_CELL_CONTENT_BG_COLOR_PALETTE.
    *
-   * Output type: GhosttyColorPaletteIndex *
+   * Output type: XGhosttyColorPaletteIndex *
    */
   XGHOSTTY_CELL_DATA_COLOR_PALETTE = 10,
 
@@ -201,11 +201,11 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The RGB value for the cell's background color.
    * Only valid when content_tag is XGHOSTTY_CELL_CONTENT_BG_COLOR_RGB.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_CELL_DATA_COLOR_RGB = 11,
   XGHOSTTY_CELL_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyCellData;
+} XGhosttyCellData;
 
 /**
  * Row semantic prompt state.
@@ -225,7 +225,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Prompt cells exist and this is a continuation line. */
   XGHOSTTY_ROW_SEMANTIC_PROMPT_CONTINUATION = 2,
   XGHOSTTY_ROW_SEMANTIC_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRowSemanticPrompt;
+} XGhosttyRowSemanticPrompt;
 
 /**
  * Row data types.
@@ -277,7 +277,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /**
    * The semantic prompt state of this row.
    *
-   * Output type: GhosttyRowSemanticPrompt *
+   * Output type: XGhosttyRowSemanticPrompt *
    */
   XGHOSTTY_ROW_DATA_SEMANTIC_PROMPT = 6,
 
@@ -295,7 +295,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    */
   XGHOSTTY_ROW_DATA_DIRTY = 8,
   XGHOSTTY_ROW_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRowData;
+} XGhosttyRowData;
 
 /**
  * Get data from a cell.
@@ -303,7 +303,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * Extracts typed data from the given cell based on the specified
  * data type. The output pointer must be of the appropriate type for the
  * requested data kind. Valid data types and output types are documented
- * in the `GhosttyCellData` enum.
+ * in the `XGhosttyCellData` enum.
  *
  * @param cell The cell value
  * @param data The type of data to extract
@@ -313,8 +313,8 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup screen
  */
-XGHOSTTY_API GhosttyResult xghostty_cell_get(GhosttyCell cell,
-                                GhosttyCellData data,
+XGHOSTTY_API XGhosttyResult xghostty_cell_get(XGhosttyCell cell,
+                                XGhosttyCellData data,
                                 void *out);
 
 /**
@@ -338,9 +338,9 @@ XGHOSTTY_API GhosttyResult xghostty_cell_get(GhosttyCell cell,
  *
  * @ingroup screen
  */
-XGHOSTTY_API GhosttyResult xghostty_cell_get_multi(GhosttyCell cell,
+XGHOSTTY_API XGhosttyResult xghostty_cell_get_multi(XGhosttyCell cell,
                                      size_t count,
-                                     const GhosttyCellData* keys,
+                                     const XGhosttyCellData* keys,
                                      void** values,
                                      size_t* out_written);
 
@@ -350,7 +350,7 @@ XGHOSTTY_API GhosttyResult xghostty_cell_get_multi(GhosttyCell cell,
  * Extracts typed data from the given row based on the specified
  * data type. The output pointer must be of the appropriate type for the
  * requested data kind. Valid data types and output types are documented
- * in the `GhosttyRowData` enum.
+ * in the `XGhosttyRowData` enum.
  *
  * @param row The row value
  * @param data The type of data to extract
@@ -360,8 +360,8 @@ XGHOSTTY_API GhosttyResult xghostty_cell_get_multi(GhosttyCell cell,
  *
  * @ingroup screen
  */
-XGHOSTTY_API GhosttyResult xghostty_row_get(GhosttyRow row,
-                               GhosttyRowData data,
+XGHOSTTY_API XGhosttyResult xghostty_row_get(XGhosttyRow row,
+                               XGhosttyRowData data,
                                void *out);
 
 /**
@@ -385,9 +385,9 @@ XGHOSTTY_API GhosttyResult xghostty_row_get(GhosttyRow row,
  *
  * @ingroup screen
  */
-XGHOSTTY_API GhosttyResult xghostty_row_get_multi(GhosttyRow row,
+XGHOSTTY_API XGhosttyResult xghostty_row_get_multi(XGhosttyRow row,
                                     size_t count,
-                                    const GhosttyRowData* keys,
+                                    const XGhosttyRowData* keys,
                                     void** values,
                                     size_t* out_written);
 

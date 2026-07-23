@@ -75,12 +75,12 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     XGHOSTTY_COLOR_SCHEME_LIGHT = 0,
     XGHOSTTY_COLOR_SCHEME_DARK = 1,
     XGHOSTTY_COLOR_SCHEME_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyColorScheme;
+} XGhosttyColorScheme;
 
 /**
  * Primary device attributes (DA1) response data.
  *
- * Returned as part of GhosttyDeviceAttributes in response to a CSI c query.
+ * Returned as part of XGhosttyDeviceAttributes in response to a CSI c query.
  * The conformance_level is the Pp parameter and features contains the Ps
  * feature codes.
  *
@@ -95,12 +95,12 @@ typedef struct {
 
     /** Number of valid entries in the features array. */
     size_t num_features;
-} GhosttyDeviceAttributesPrimary;
+} XGhosttyDeviceAttributesPrimary;
 
 /**
  * Secondary device attributes (DA2) response data.
  *
- * Returned as part of GhosttyDeviceAttributes in response to a CSI > c query.
+ * Returned as part of XGhosttyDeviceAttributes in response to a CSI > c query.
  * Response format: CSI > Pp ; Pv ; Pc c
  *
  * @ingroup terminal
@@ -114,12 +114,12 @@ typedef struct {
 
     /** ROM cartridge registration number (Pc). Always 0 for emulators. */
     uint16_t rom_cartridge;
-} GhosttyDeviceAttributesSecondary;
+} XGhosttyDeviceAttributesSecondary;
 
 /**
  * Tertiary device attributes (DA3) response data.
  *
- * Returned as part of GhosttyDeviceAttributes in response to a CSI = c query.
+ * Returned as part of XGhosttyDeviceAttributes in response to a CSI = c query.
  * Response format: DCS ! | D...D ST (DECRPTUI).
  *
  * @ingroup terminal
@@ -127,7 +127,7 @@ typedef struct {
 typedef struct {
     /** Unit ID encoded as 8 uppercase hex digits in the response. */
     uint32_t unit_id;
-} GhosttyDeviceAttributesTertiary;
+} XGhosttyDeviceAttributesTertiary;
 
 /**
  * Device attributes response data for all three DA levels.
@@ -139,10 +139,10 @@ typedef struct {
  * @ingroup terminal
  */
 typedef struct {
-    GhosttyDeviceAttributesPrimary primary;
-    GhosttyDeviceAttributesSecondary secondary;
-    GhosttyDeviceAttributesTertiary tertiary;
-} GhosttyDeviceAttributes;
+    XGhosttyDeviceAttributesPrimary primary;
+    XGhosttyDeviceAttributesSecondary secondary;
+    XGhosttyDeviceAttributesTertiary tertiary;
+} XGhosttyDeviceAttributes;
 
 #ifdef __cplusplus
 }

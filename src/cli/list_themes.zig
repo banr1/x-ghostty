@@ -81,16 +81,16 @@ const ThemeListElement = struct {
 /// Two different directories will be searched for themes.
 ///
 /// The first directory is the `themes` subdirectory of your XGhostty
-/// configuration directory. This is `$XDG_CONFIG_HOME/ghostty/themes` or
-/// `~/.config/ghostty/themes`.
+/// configuration directory. This is `$XDG_CONFIG_HOME/xghostty/themes` or
+/// `~/.config/xghostty/themes`.
 ///
 /// The second directory is the `themes` subdirectory of the XGhostty resources
 /// directory. XGhostty ships with a multitude of themes that will be installed
 /// into this directory. On macOS, this directory is the
-/// `XGhostty.app/Contents/Resources/ghostty/themes`. On Linux, this directory
-/// is the `share/ghostty/themes` (wherever you installed the XGhostty "share"
+/// `XGhostty.app/Contents/Resources/xghostty/themes`. On Linux, this directory
+/// is the `share/xghostty/themes` (wherever you installed the XGhostty "share"
 /// directory). If you're running XGhostty from the source, this is the
-/// `zig-out/share/ghostty/themes` directory.
+/// `zig-out/share/xghostty/themes` directory.
 ///
 /// You can also set the `XGHOSTTY_RESOURCES_DIR` environment variable to point
 /// to the resources directory.

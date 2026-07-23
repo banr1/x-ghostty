@@ -50,7 +50,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     /** XTWINOPS text area size in characters: ESC [ 8 ; rows ; cols t */
     XGHOSTTY_SIZE_REPORT_CSI_18_T = 3,
     XGHOSTTY_SIZE_REPORT_STYLE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySizeReportStyle;
+} XGhosttySizeReportStyle;
 
 /**
  * Terminal size information for encoding size reports.
@@ -64,7 +64,7 @@ typedef struct {
     uint32_t cell_width;
     /** Height of a single terminal cell in pixels. */
     uint32_t cell_height;
-} GhosttySizeReportSize;
+} XGhosttySizeReportSize;
 
 /**
  * Encode a terminal size report into an escape sequence.
@@ -85,9 +85,9 @@ typedef struct {
  * @return XGHOSTTY_SUCCESS on success, XGHOSTTY_OUT_OF_SPACE if the buffer
  *         is too small
  */
-XGHOSTTY_API GhosttyResult xghostty_size_report_encode(
-    GhosttySizeReportStyle style,
-    GhosttySizeReportSize size,
+XGHOSTTY_API XGhosttyResult xghostty_size_report_encode(
+    XGhosttySizeReportStyle style,
+    XGhosttySizeReportSize size,
     char* buf,
     size_t buf_len,
     size_t* out_written);

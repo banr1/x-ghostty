@@ -81,7 +81,7 @@
   # Wrap `ssh` with `ghostty +ssh` and translate the shell-integration
   # feature flags into command options.
   fn ssh-integration {|@args|
-    var ghostty = $E:XGHOSTTY_BIN_DIR/"ghostty"
+    var ghostty = $E:XGHOSTTY_BIN_DIR/"xghostty"
     var flags = []
     if (not (has-value $features ssh-env)) {
       set flags = (conj $flags --forward-env=false)

@@ -124,7 +124,7 @@ if [[ "$XGHOSTTY_SHELL_FEATURES" == *ssh-* ]]; then
     flags=()
     [[ "$XGHOSTTY_SHELL_FEATURES" != *ssh-env* ]] && flags+=(--forward-env=false)
     [[ "$XGHOSTTY_SHELL_FEATURES" != *ssh-terminfo* ]] && flags+=(--terminfo=false)
-    "$XGHOSTTY_BIN_DIR/ghostty" +ssh "${flags[@]}" -- "$@"
+    "$XGHOSTTY_BIN_DIR/xghostty" +ssh "${flags[@]}" -- "$@"
   }
 fi
 

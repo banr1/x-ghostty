@@ -7,11 +7,11 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "swift-vt-xcframework",
-            dependencies: ["GhosttyVt"],
+            dependencies: ["XGhosttyVt"],
             path: "Sources"
         ),
         .binaryTarget(
-            name: "GhosttyVt",
+            name: "XGhosttyVt",
             path: "../../zig-out/lib/ghostty-vt.xcframework"
         ),
     ]

@@ -1,12 +1,12 @@
-# Croatian translations for com.mitchellh.ghostty package
-# Hrvatski prijevod za paket com.mitchellh.ghostty.
-# Copyright (C) 2025 "Mitchell Hashimoto, Ghostty contributors"
-# This file is distributed under the same license as the com.mitchellh.ghostty package.
+# Croatian translations for com.mitchellh.xghostty package
+# Hrvatski prijevod za paket com.mitchellh.xghostty.
+# Copyright (C) 2025 "Mitchell Hashimoto, XGhostty contributors"
+# This file is distributed under the same license as the com.mitchellh.xghostty package.
 # Filip <filipm7@protonmail.com>, 2026.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: com.mitchellh.ghostty\n"
+"Project-Id-Version: com.mitchellh.xghostty\n"
 "Report-Msgid-Bugs-To: m@mitchellh.com\n"
 "POT-Creation-Date: 2026-03-25 16:24-0700\n"
 "PO-Revision-Date: 2026-02-18 21:00+0200\n"
@@ -20,8 +20,8 @@ msgstr ""
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 #: dist/linux/ghostty_nautilus.py:53
-msgid "Open in Ghostty"
-msgstr "Otvori u Ghosttyju"
+msgid "Open in XGhostty"
+msgstr "Otvori u XGhosttyju"
 
 #: src/apprt/gtk/ui/1.0/clipboard-confirmation-dialog.blp:12
 #: src/apprt/gtk/ui/1.4/clipboard-confirmation-dialog.blp:12
@@ -83,12 +83,12 @@ msgstr "Ponovno učitaj postavke"
 #: src/apprt/gtk/ui/1.2/debug-warning.blp:7
 #: src/apprt/gtk/ui/1.3/debug-warning.blp:6
 msgid ""
-"⚠️ You're running a debug build of Ghostty! Performance will be degraded."
-msgstr "⚠️ Pokrenuta je debug verzija Ghosttyja! Performanse će biti smanjene."
+"⚠️ You're running a debug build of XGhostty! Performance will be degraded."
+msgstr "⚠️ Pokrenuta je debug verzija XGhosttyja! Performanse će biti smanjene."
 
 #: src/apprt/gtk/ui/1.5/inspector-window.blp:5
-msgid "Ghostty: Terminal Inspector"
-msgstr "Ghostty: inspektor terminala"
+msgid "XGhostty: Terminal Inspector"
+msgstr "XGhostty: inspektor terminala"
 
 #: src/apprt/gtk/ui/1.2/search-overlay.blp:29
 msgid "Find…"
@@ -243,8 +243,8 @@ msgid "Terminal Inspector"
 msgstr "Inspektor terminala"
 
 #: src/apprt/gtk/ui/1.5/window.blp:307 src/apprt/gtk/class/window.zig:1772
-msgid "About Ghostty"
-msgstr "O Ghosttyju"
+msgid "About XGhostty"
+msgstr "O XGhosttyju"
 
 #: src/apprt/gtk/ui/1.5/window.blp:312
 msgid "Quit"
@@ -283,8 +283,8 @@ msgstr ""
 "naredbe mogu biti izvršene."
 
 #: src/apprt/gtk/class/close_confirmation_dialog.zig:184
-msgid "Quit Ghostty?"
-msgstr "Zatvori Ghostty?"
+msgid "Quit XGhostty?"
+msgstr "Zatvori XGhostty?"
 
 #: src/apprt/gtk/class/close_confirmation_dialog.zig:185
 msgid "Close Tab?"
@@ -355,5 +355,5 @@ msgid "Cleared clipboard"
 msgstr "Očišćen međuspremnik"
 
 #: src/apprt/gtk/class/window.zig:1753
-msgid "Ghostty Developers"
-msgstr "Razvijatelji Ghosttyja"
+msgid "XGhostty Developers"
+msgstr "Razvijatelji XGhosttyja"

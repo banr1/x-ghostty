@@ -17,7 +17,7 @@
  * 1. Create an encoder instance with xghostty_key_encoder_new()
  * 2. Configure encoder options with xghostty_key_encoder_setopt()
  *    or xghostty_key_encoder_setopt_from_terminal() if you have a 
- *    GhosttyTerminal.
+ *    XGhosttyTerminal.
  * 3. For each key event:
  *    - Create a key event with xghostty_key_event_new()
  *    - Set event properties (action, key, modifiers, etc.)
@@ -36,20 +36,20 @@
  *
  * ## Example: Encoding with Terminal State
  *
- * When you have a GhosttyTerminal, you can sync its modes (cursor key
+ * When you have a XGhosttyTerminal, you can sync its modes (cursor key
  * application, Kitty flags, etc.) into the encoder automatically:
  *
  * @code{.c}
  * // Create a terminal and feed it some VT data that changes modes
- * GhosttyTerminal terminal;
+ * XGhosttyTerminal terminal;
  * xghostty_terminal_new(NULL, &terminal,
- *     (GhosttyTerminalOptions){.cols = 80, .rows = 24, .max_scrollback = 0});
+ *     (XGhosttyTerminalOptions){.cols = 80, .rows = 24, .max_scrollback = 0});
  *
  * // Application might write data that enables Kitty keyboard protocol, etc.
  * xghostty_terminal_vt_write(terminal, vt_data, vt_len);
  *
  * // Create an encoder and sync its options from the terminal
- * GhosttyKeyEncoder encoder;
+ * XGhosttyKeyEncoder encoder;
  * xghostty_key_encoder_new(NULL, &encoder);
  * xghostty_key_encoder_setopt_from_terminal(encoder, terminal);
  *

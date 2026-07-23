@@ -38,7 +38,7 @@ extern "C" {
  * @ingroup formatter
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyFormatterScreenExtra). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyFormatterScreenExtra). */
   size_t size;
 
   /** Emit cursor position using CUP (CSI H). */
@@ -58,7 +58,7 @@ typedef struct {
 
   /** Emit character set designations and invocations. */
   bool charsets;
-} GhosttyFormatterScreenExtra;
+} XGhosttyFormatterScreenExtra;
 
 /**
  * Extra terminal state to include in styled output.
@@ -66,7 +66,7 @@ typedef struct {
  * @ingroup formatter
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyFormatterTerminalExtra). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyFormatterTerminalExtra). */
   size_t size;
 
   /** Emit the palette using OSC 4 sequences. */
@@ -88,8 +88,8 @@ typedef struct {
   bool keyboard;
 
   /** Screen-level extras. */
-  GhosttyFormatterScreenExtra screen;
-} GhosttyFormatterTerminalExtra;
+  XGhosttyFormatterScreenExtra screen;
+} XGhosttyFormatterTerminalExtra;
 
 /**
  * Options for creating a terminal formatter.
@@ -97,11 +97,11 @@ typedef struct {
  * @ingroup formatter
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyFormatterTerminalOptions). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyFormatterTerminalOptions). */
   size_t size;
 
   /** Output format to emit. */
-  GhosttyFormatterFormat emit;
+  XGhosttyFormatterFormat emit;
 
   /** Whether to unwrap soft-wrapped lines. */
   bool unwrap;
@@ -110,12 +110,12 @@ typedef struct {
   bool trim;
 
   /** Extra terminal state to include in styled output. */
-  GhosttyFormatterTerminalExtra extra;
+  XGhosttyFormatterTerminalExtra extra;
 
   /** Optional selection to restrict output to a range.
    *  If NULL, the entire screen is formatted. */
-  const GhosttySelection *selection;
-} GhosttyFormatterTerminalOptions;
+  const XGhosttySelection *selection;
+} XGhosttyFormatterTerminalOptions;
 
 /**
  * Create a formatter for a terminal's active screen.
@@ -131,11 +131,11 @@ typedef struct {
  *
  * @ingroup formatter
  */
-XGHOSTTY_API GhosttyResult xghostty_formatter_terminal_new(
-    const GhosttyAllocator* allocator,
-    GhosttyFormatter* formatter,
-    GhosttyTerminal terminal,
-    GhosttyFormatterTerminalOptions options);
+XGHOSTTY_API XGhosttyResult xghostty_formatter_terminal_new(
+    const XGhosttyAllocator* allocator,
+    XGhosttyFormatter* formatter,
+    XGhosttyTerminal terminal,
+    XGhosttyFormatterTerminalOptions options);
 
 /**
  * Run the formatter and produce output into the caller-provided buffer.
@@ -158,7 +158,7 @@ XGHOSTTY_API GhosttyResult xghostty_formatter_terminal_new(
  *
  * @ingroup formatter
  */
-XGHOSTTY_API GhosttyResult xghostty_formatter_format_buf(GhosttyFormatter formatter,
+XGHOSTTY_API XGhosttyResult xghostty_formatter_format_buf(XGhosttyFormatter formatter,
                                            uint8_t* buf,
                                            size_t buf_len,
                                            size_t* out_written);
@@ -181,8 +181,8 @@ XGHOSTTY_API GhosttyResult xghostty_formatter_format_buf(GhosttyFormatter format
  *
  * @ingroup formatter
  */
-XGHOSTTY_API GhosttyResult xghostty_formatter_format_alloc(GhosttyFormatter formatter,
-                                             const GhosttyAllocator* allocator,
+XGHOSTTY_API XGhosttyResult xghostty_formatter_format_alloc(XGhosttyFormatter formatter,
+                                             const XGhosttyAllocator* allocator,
                                              uint8_t** out_ptr,
                                              size_t* out_len);
 
@@ -196,7 +196,7 @@ XGHOSTTY_API GhosttyResult xghostty_formatter_format_alloc(GhosttyFormatter form
  *
  * @ingroup formatter
  */
-XGHOSTTY_API void xghostty_formatter_free(GhosttyFormatter formatter);
+XGHOSTTY_API void xghostty_formatter_free(XGhosttyFormatter formatter);
 
 /** @} */
 

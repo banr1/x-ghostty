@@ -36,7 +36,7 @@ extern "C" {
  *
  * @ingroup style
  */
-typedef uint16_t GhosttyStyleId;
+typedef uint16_t XGhosttyStyleId;
 
 /**
  * Style color tags.
@@ -51,7 +51,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_STYLE_COLOR_PALETTE = 1,
   XGHOSTTY_STYLE_COLOR_RGB = 2,
   XGHOSTTY_STYLE_COLOR_TAG_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-  } GhosttyStyleColorTag;
+  } XGhosttyStyleColorTag;
 
 /**
  * Style color value union.
@@ -61,10 +61,10 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @ingroup style
  */
 typedef union {
-  GhosttyColorPaletteIndex palette;
-  GhosttyColorRgb rgb;
+  XGhosttyColorPaletteIndex palette;
+  XGhosttyColorRgb rgb;
   uint64_t _padding;
-} GhosttyStyleColorValue;
+} XGhosttyStyleColorValue;
 
 /**
  * Style color (tagged union).
@@ -75,9 +75,9 @@ typedef union {
  * @ingroup style
  */
 typedef struct {
-  GhosttyStyleColorTag tag;
-  GhosttyStyleColorValue value;
-} GhosttyStyleColor;
+  XGhosttyStyleColorTag tag;
+  XGhosttyStyleColorValue value;
+} XGhosttyStyleColor;
 
 /**
  * Terminal cell style.
@@ -85,7 +85,7 @@ typedef struct {
  * Describes the complete visual style for a terminal cell, including
  * foreground, background, and underline colors, as well as text
  * decoration flags. The underline field uses the same values as
- * GhosttySgrUnderline.
+ * XGhosttySgrUnderline.
  *
  * This is a sized struct. Use XGHOSTTY_INIT_SIZED() to initialize it.
  *
@@ -93,9 +93,9 @@ typedef struct {
  */
 typedef struct {
   size_t size;
-  GhosttyStyleColor fg_color;
-  GhosttyStyleColor bg_color;
-  GhosttyStyleColor underline_color;
+  XGhosttyStyleColor fg_color;
+  XGhosttyStyleColor bg_color;
+  XGhosttyStyleColor underline_color;
   bool bold;
   bool italic;
   bool faint;
@@ -105,7 +105,7 @@ typedef struct {
   bool strikethrough;
   bool overline;
   int underline; /**< One of XGHOSTTY_SGR_UNDERLINE_* values */
-} GhosttyStyle;
+} XGhosttyStyle;
 
 /**
  * Get the default style.
@@ -116,7 +116,7 @@ typedef struct {
  *
  * @ingroup style
  */
-XGHOSTTY_API void xghostty_style_default(GhosttyStyle* style);
+XGHOSTTY_API void xghostty_style_default(XGhosttyStyle* style);
 
 /**
  * Check if a style is the default style.
@@ -128,7 +128,7 @@ XGHOSTTY_API void xghostty_style_default(GhosttyStyle* style);
  *
  * @ingroup style
  */
-XGHOSTTY_API bool xghostty_style_is_default(const GhosttyStyle* style);
+XGHOSTTY_API bool xghostty_style_is_default(const XGhosttyStyle* style);
 
 #ifdef __cplusplus
 }

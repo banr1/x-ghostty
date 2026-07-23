@@ -55,7 +55,7 @@ extern "C" {
  * characters, title changes, device status report responses, and more.
  *
  * Each effect is registered with xghostty_terminal_set() using the
- * corresponding `GhosttyTerminalOption` identifier. A `NULL` value
+ * corresponding `XGhosttyTerminalOption` identifier. A `NULL` value
  * pointer clears the callback and disables the effect.
  *
  * A userdata pointer can be attached via `XGHOSTTY_TERMINAL_OPT_USERDATA`
@@ -73,15 +73,15 @@ extern "C" {
  *
  * | Option                                  | Callback Type                     | Trigger                                   |
  * |-----------------------------------------|-----------------------------------|-------------------------------------------|
- * | `XGHOSTTY_TERMINAL_OPT_WRITE_PTY`        | `GhosttyTerminalWritePtyFn`       | Query responses written back to the pty   |
- * | `XGHOSTTY_TERMINAL_OPT_BELL`             | `GhosttyTerminalBellFn`           | BEL character (0x07)                      |
- * | `XGHOSTTY_TERMINAL_OPT_TITLE_CHANGED`    | `GhosttyTerminalTitleChangedFn`   | Title change via OSC 0 / OSC 2            |
- * | `XGHOSTTY_TERMINAL_OPT_PWD_CHANGED`      | `GhosttyTerminalPwdChangedFn`     | Pwd change via OSC 7 / OSC 9 / OSC 1337   |
- * | `XGHOSTTY_TERMINAL_OPT_ENQUIRY`          | `GhosttyTerminalEnquiryFn`        | ENQ character (0x05)                      |
- * | `XGHOSTTY_TERMINAL_OPT_XTVERSION`        | `GhosttyTerminalXtversionFn`      | XTVERSION query (CSI > q)                 |
- * | `XGHOSTTY_TERMINAL_OPT_SIZE`             | `GhosttyTerminalSizeFn`           | XTWINOPS size query (CSI 14/16/18 t)      |
- * | `XGHOSTTY_TERMINAL_OPT_COLOR_SCHEME`     | `GhosttyTerminalColorSchemeFn`    | Color scheme query (CSI ? 996 n)          |
- * | `XGHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES`| `GhosttyTerminalDeviceAttributesFn`| Device attributes query (CSI c / > c / = c)|
+ * | `XGHOSTTY_TERMINAL_OPT_WRITE_PTY`        | `XGhosttyTerminalWritePtyFn`       | Query responses written back to the pty   |
+ * | `XGHOSTTY_TERMINAL_OPT_BELL`             | `XGhosttyTerminalBellFn`           | BEL character (0x07)                      |
+ * | `XGHOSTTY_TERMINAL_OPT_TITLE_CHANGED`    | `XGhosttyTerminalTitleChangedFn`   | Title change via OSC 0 / OSC 2            |
+ * | `XGHOSTTY_TERMINAL_OPT_PWD_CHANGED`      | `XGhosttyTerminalPwdChangedFn`     | Pwd change via OSC 7 / OSC 9 / OSC 1337   |
+ * | `XGHOSTTY_TERMINAL_OPT_ENQUIRY`          | `XGhosttyTerminalEnquiryFn`        | ENQ character (0x05)                      |
+ * | `XGHOSTTY_TERMINAL_OPT_XTVERSION`        | `XGhosttyTerminalXtversionFn`      | XTVERSION query (CSI > q)                 |
+ * | `XGHOSTTY_TERMINAL_OPT_SIZE`             | `XGhosttyTerminalSizeFn`           | XTWINOPS size query (CSI 14/16/18 t)      |
+ * | `XGHOSTTY_TERMINAL_OPT_COLOR_SCHEME`     | `XGhosttyTerminalColorSchemeFn`    | Color scheme query (CSI ? 996 n)          |
+ * | `XGHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES`| `XGhosttyTerminalDeviceAttributesFn`| Device attributes query (CSI c / > c / = c)|
  *
  * ### Defining a write_pty callback
  * @snippet c-vt-effects/src/main.c effects-write-pty
@@ -113,10 +113,10 @@ extern "C" {
  *
  * | Option                                  | Input Type              | Description                          |
  * |-----------------------------------------|-------------------------|--------------------------------------|
- * | `XGHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND` | `GhosttyColorRgb*`      | Default foreground color             |
- * | `XGHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND` | `GhosttyColorRgb*`      | Default background color             |
- * | `XGHOSTTY_TERMINAL_OPT_COLOR_CURSOR`     | `GhosttyColorRgb*`      | Default cursor color                 |
- * | `XGHOSTTY_TERMINAL_OPT_COLOR_PALETTE`    | `GhosttyColorRgb[256]*` | Default 256-color palette            |
+ * | `XGHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND` | `XGhosttyColorRgb*`      | Default foreground color             |
+ * | `XGHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND` | `XGhosttyColorRgb*`      | Default background color             |
+ * | `XGHOSTTY_TERMINAL_OPT_COLOR_CURSOR`     | `XGhosttyColorRgb*`      | Default cursor color                 |
+ * | `XGHOSTTY_TERMINAL_OPT_COLOR_PALETTE`    | `XGhosttyColorRgb[256]*` | Default 256-color palette            |
  *
  * For the palette, passing `NULL` resets to the built-in default palette.
  * The palette set operation preserves any per-index OSC overrides that
@@ -131,14 +131,14 @@ extern "C" {
  *
  * | Data                                              | Output Type             | Description                                    |
  * |---------------------------------------------------|-------------------------|------------------------------------------------|
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND`          | `GhosttyColorRgb*`      | Effective foreground (override or default)      |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND`          | `GhosttyColorRgb*`      | Effective background (override or default)      |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_CURSOR`              | `GhosttyColorRgb*`      | Effective cursor (override or default)          |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_PALETTE`             | `GhosttyColorRgb[256]*` | Current palette (with any OSC overrides)        |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT`  | `GhosttyColorRgb*`      | Default foreground only (ignores OSC override)  |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT`  | `GhosttyColorRgb*`      | Default background only (ignores OSC override)  |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_CURSOR_DEFAULT`      | `GhosttyColorRgb*`      | Default cursor only (ignores OSC override)      |
- * | `XGHOSTTY_TERMINAL_DATA_COLOR_PALETTE_DEFAULT`     | `GhosttyColorRgb[256]*` | Default palette only (ignores OSC overrides)    |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND`          | `XGhosttyColorRgb*`      | Effective foreground (override or default)      |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND`          | `XGhosttyColorRgb*`      | Effective background (override or default)      |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_CURSOR`              | `XGhosttyColorRgb*`      | Effective cursor (override or default)          |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_PALETTE`             | `XGhosttyColorRgb[256]*` | Current palette (with any OSC overrides)        |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT`  | `XGhosttyColorRgb*`      | Default foreground only (ignores OSC override)  |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT`  | `XGhosttyColorRgb*`      | Default background only (ignores OSC override)  |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_CURSOR_DEFAULT`      | `XGhosttyColorRgb*`      | Default cursor only (ignores OSC override)      |
+ * | `XGHOSTTY_TERMINAL_DATA_COLOR_PALETTE_DEFAULT`     | `XGhosttyColorRgb[256]*` | Default palette only (ignores OSC overrides)    |
  *
  * For foreground, background, and cursor colors, the getters return
  * `XGHOSTTY_NO_VALUE` if no color is configured (neither a default nor an
@@ -175,7 +175,7 @@ typedef struct {
   // TODO: Consider ABI compatibility implications of this struct.
   // We may want to artificially pad it significantly to support
   // future options.
-} GhosttyTerminalOptions;
+} XGhosttyTerminalOptions;
 
 /**
  * Scroll viewport behavior tag.
@@ -192,7 +192,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Scroll by a delta amount (up is negative). */
   XGHOSTTY_SCROLL_VIEWPORT_DELTA,
   XGHOSTTY_SCROLL_VIEWPORT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyTerminalScrollViewportTag;
+} XGhosttyTerminalScrollViewportTag;
 
 /**
  * Scroll viewport value.
@@ -205,7 +205,7 @@ typedef union {
 
   /** Padding for ABI compatibility. Do not use. */
   uint64_t _padding[2];
-} GhosttyTerminalScrollViewportValue;
+} XGhosttyTerminalScrollViewportValue;
 
 /**
  * Tagged union for scroll viewport behavior.
@@ -213,9 +213,9 @@ typedef union {
  * @ingroup terminal
  */
 typedef struct {
-  GhosttyTerminalScrollViewportTag tag;
-  GhosttyTerminalScrollViewportValue value;
-} GhosttyTerminalScrollViewport;
+  XGhosttyTerminalScrollViewportTag tag;
+  XGhosttyTerminalScrollViewportValue value;
+} XGhosttyTerminalScrollViewport;
 
 /**
  * Terminal screen identifier.
@@ -231,7 +231,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** The alternate screen. */
   XGHOSTTY_TERMINAL_SCREEN_ALTERNATE = 1,
   XGHOSTTY_TERMINAL_SCREEN_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyTerminalScreen;
+} XGhosttyTerminalScreen;
 
 /**
  * Visual style of the terminal cursor.
@@ -251,7 +251,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Hollow block cursor. */
   XGHOSTTY_TERMINAL_CURSOR_STYLE_BLOCK_HOLLOW = 3,
   XGHOSTTY_TERMINAL_CURSOR_STYLE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyTerminalCursorStyle;
+} XGhosttyTerminalCursorStyle;
 
 /**
  * Scrollbar state for the terminal viewport.
@@ -269,7 +269,7 @@ typedef struct {
 
   /** Length of the visible area in rows. */
   uint64_t len;
-} GhosttyTerminalScrollbar;
+} XGhosttyTerminalScrollbar;
 
 /**
  * Callback function type for bell.
@@ -281,7 +281,7 @@ typedef struct {
  *
  * @ingroup terminal
  */
-typedef void (*GhosttyTerminalBellFn)(GhosttyTerminal terminal,
+typedef void (*XGhosttyTerminalBellFn)(XGhosttyTerminal terminal,
                                       void* userdata);
 
 /**
@@ -298,9 +298,9 @@ typedef void (*GhosttyTerminalBellFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef bool (*GhosttyTerminalColorSchemeFn)(GhosttyTerminal terminal,
+typedef bool (*XGhosttyTerminalColorSchemeFn)(XGhosttyTerminal terminal,
                                              void* userdata,
-                                             GhosttyColorScheme* out_scheme);
+                                             XGhosttyColorScheme* out_scheme);
 
 /**
  * Callback function type for device attributes queries (DA1/DA2/DA3).
@@ -319,15 +319,15 @@ typedef bool (*GhosttyTerminalColorSchemeFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef bool (*GhosttyTerminalDeviceAttributesFn)(GhosttyTerminal terminal,
+typedef bool (*XGhosttyTerminalDeviceAttributesFn)(XGhosttyTerminal terminal,
                                                    void* userdata,
-                                                   GhosttyDeviceAttributes* out_attrs);
+                                                   XGhosttyDeviceAttributes* out_attrs);
 
 /**
  * Callback function type for enquiry (ENQ, 0x05).
  *
  * Called when the terminal receives an ENQ character. Return the
- * response bytes as a GhosttyString. The memory must remain valid
+ * response bytes as a XGhosttyString. The memory must remain valid
  * until the callback returns. Return a zero-length string to send
  * no response.
  *
@@ -337,7 +337,7 @@ typedef bool (*GhosttyTerminalDeviceAttributesFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef GhosttyString (*GhosttyTerminalEnquiryFn)(GhosttyTerminal terminal,
+typedef XGhosttyString (*XGhosttyTerminalEnquiryFn)(XGhosttyTerminal terminal,
                                                    void* userdata);
 
 /**
@@ -354,9 +354,9 @@ typedef GhosttyString (*GhosttyTerminalEnquiryFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef bool (*GhosttyTerminalSizeFn)(GhosttyTerminal terminal,
+typedef bool (*XGhosttyTerminalSizeFn)(XGhosttyTerminal terminal,
                                       void* userdata,
-                                      GhosttySizeReportSize* out_size);
+                                      XGhosttySizeReportSize* out_size);
 
 /**
  * Callback function type for title_changed.
@@ -370,7 +370,7 @@ typedef bool (*GhosttyTerminalSizeFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef void (*GhosttyTerminalTitleChangedFn)(GhosttyTerminal terminal,
+typedef void (*XGhosttyTerminalTitleChangedFn)(XGhosttyTerminal terminal,
                                               void* userdata);
 
 /**
@@ -395,7 +395,7 @@ typedef void (*GhosttyTerminalTitleChangedFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef void (*GhosttyTerminalPwdChangedFn)(GhosttyTerminal terminal,
+typedef void (*XGhosttyTerminalPwdChangedFn)(XGhosttyTerminal terminal,
                                             void* userdata);
 
 /**
@@ -413,7 +413,7 @@ typedef void (*GhosttyTerminalPwdChangedFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef void (*GhosttyTerminalWritePtyFn)(GhosttyTerminal terminal,
+typedef void (*XGhosttyTerminalWritePtyFn)(XGhosttyTerminal terminal,
                                           void* userdata,
                                           const uint8_t* data,
                                           size_t len);
@@ -422,7 +422,7 @@ typedef void (*GhosttyTerminalWritePtyFn)(GhosttyTerminal terminal,
  * Callback function type for XTVERSION.
  *
  * Called when the terminal receives an XTVERSION query (CSI > q).
- * Return the version string (e.g. "myterm 1.0") as a GhosttyString.
+ * Return the version string (e.g. "myterm 1.0") as a XGhosttyString.
  * The memory must remain valid until the callback returns. Return a
  * zero-length string to report the default "libghostty" version.
  *
@@ -432,7 +432,7 @@ typedef void (*GhosttyTerminalWritePtyFn)(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-typedef GhosttyString (*GhosttyTerminalXtversionFn)(GhosttyTerminal terminal,
+typedef XGhosttyString (*XGhosttyTerminalXtversionFn)(XGhosttyTerminal terminal,
                                                      void* userdata);
 
 /**
@@ -456,7 +456,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * to the pty (e.g. in response to a DECRQM query or device
    * status report). Set to NULL to ignore such sequences.
    *
-   * Input type: GhosttyTerminalWritePtyFn
+   * Input type: XGhosttyTerminalWritePtyFn
    */
   XGHOSTTY_TERMINAL_OPT_WRITE_PTY = 1,
 
@@ -464,7 +464,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * Callback invoked when the terminal receives a BEL character
    * (0x07). Set to NULL to ignore bell events.
    *
-   * Input type: GhosttyTerminalBellFn
+   * Input type: XGhosttyTerminalBellFn
    */
   XGHOSTTY_TERMINAL_OPT_BELL = 2,
 
@@ -472,7 +472,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * Callback invoked when the terminal receives an ENQ character
    * (0x05). Set to NULL to send no response.
    *
-   * Input type: GhosttyTerminalEnquiryFn
+   * Input type: XGhosttyTerminalEnquiryFn
    */
   XGHOSTTY_TERMINAL_OPT_ENQUIRY = 3,
 
@@ -480,7 +480,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * Callback invoked when the terminal receives an XTVERSION query
    * (CSI > q). Set to NULL to report the default "libghostty" string.
    *
-   * Input type: GhosttyTerminalXtversionFn
+   * Input type: XGhosttyTerminalXtversionFn
    */
   XGHOSTTY_TERMINAL_OPT_XTVERSION = 4,
 
@@ -489,7 +489,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * sequences (e.g. OSC 0 or OSC 2). Set to NULL to ignore title
    * change events.
    *
-   * Input type: GhosttyTerminalTitleChangedFn
+   * Input type: XGhosttyTerminalTitleChangedFn
    */
   XGHOSTTY_TERMINAL_OPT_TITLE_CHANGED = 5,
 
@@ -497,7 +497,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * Callback invoked in response to XTWINOPS size queries
    * (CSI 14/16/18 t). Set to NULL to silently ignore size queries.
    *
-   * Input type: GhosttyTerminalSizeFn
+   * Input type: XGhosttyTerminalSizeFn
    */
   XGHOSTTY_TERMINAL_OPT_SIZE = 6,
 
@@ -507,7 +507,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * to report the current scheme, or return false to silently ignore.
    * Set to NULL to ignore color scheme queries.
    *
-   * Input type: GhosttyTerminalColorSchemeFn
+   * Input type: XGhosttyTerminalColorSchemeFn
    */
   XGHOSTTY_TERMINAL_OPT_COLOR_SCHEME = 7,
 
@@ -517,7 +517,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * pointer with response data, or return false to silently ignore.
    * Set to NULL to ignore device attributes queries.
    *
-   * Input type: GhosttyTerminalDeviceAttributesFn
+   * Input type: XGhosttyTerminalDeviceAttributesFn
    */
   XGHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES = 8,
 
@@ -527,7 +527,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The string data is copied into the terminal. A NULL value pointer
    * clears the title (equivalent to setting an empty string).
    *
-   * Input type: GhosttyString*
+   * Input type: XGhosttyString*
    */
   XGHOSTTY_TERMINAL_OPT_TITLE = 9,
 
@@ -537,7 +537,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The string data is copied into the terminal. A NULL value pointer
    * clears the pwd (equivalent to setting an empty string).
    *
-   * Input type: GhosttyString*
+   * Input type: XGhosttyString*
    */
   XGHOSTTY_TERMINAL_OPT_PWD = 10,
 
@@ -546,7 +546,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * A NULL value pointer clears the default (unset).
    *
-   * Input type: GhosttyColorRgb*
+   * Input type: XGhosttyColorRgb*
    */
   XGHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND = 11,
 
@@ -555,7 +555,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * A NULL value pointer clears the default (unset).
    *
-   * Input type: GhosttyColorRgb*
+   * Input type: XGhosttyColorRgb*
    */
   XGHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND = 12,
 
@@ -564,17 +564,17 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * A NULL value pointer clears the default (unset).
    *
-   * Input type: GhosttyColorRgb*
+   * Input type: XGhosttyColorRgb*
    */
   XGHOSTTY_TERMINAL_OPT_COLOR_CURSOR = 13,
 
   /**
    * Set the default 256-color palette.
    *
-   * The value must point to an array of exactly 256 GhosttyColorRgb values.
+   * The value must point to an array of exactly 256 XGhosttyColorRgb values.
    * A NULL value pointer resets to the built-in default palette.
    *
-   * Input type: GhosttyColorRgb[256]*
+   * Input type: XGhosttyColorRgb[256]*
    */
   XGHOSTTY_TERMINAL_OPT_COLOR_PALETTE = 14,
 
@@ -643,15 +643,15 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /**
    * Set the active screen selection.
    *
-   * The value must point to a GhosttySelection whose grid references are
+   * The value must point to a XGhosttySelection whose grid references are
    * valid for this terminal's active screen at the time of the call. The
    * terminal copies the selection immediately and converts it to
-   * terminal-owned tracked state, so the GhosttySelection struct and its
+   * terminal-owned tracked state, so the XGhosttySelection struct and its
    * untracked grid references do not need to outlive this call.
    *
    * Passing NULL clears the active screen selection.
    *
-   * Input type: GhosttySelection*
+   * Input type: XGhosttySelection*
    */
   XGHOSTTY_TERMINAL_OPT_SELECTION = 21,
 
@@ -660,7 +660,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * A NULL value pointer resets to the built-in default block cursor.
    *
-   * Input type: GhosttyTerminalCursorStyle*
+   * Input type: XGhosttyTerminalCursorStyle*
    */
   XGHOSTTY_TERMINAL_OPT_DEFAULT_CURSOR_STYLE = 22,
 
@@ -690,11 +690,11 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * sequences (OSC 7, OSC 9, or OSC 1337 CurrentDir). Set to NULL
    * to ignore pwd change events.
    *
-   * Input type: GhosttyTerminalPwdChangedFn
+   * Input type: XGhosttyTerminalPwdChangedFn
    */
   XGHOSTTY_TERMINAL_OPT_PWD_CHANGED = 25,
   XGHOSTTY_TERMINAL_OPT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyTerminalOption;
+} XGhosttyTerminalOption;
 
 /**
  * Terminal data types.
@@ -746,7 +746,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /**
    * The currently active screen.
    *
-   * Output type: GhosttyTerminalScreen *
+   * Output type: XGhosttyTerminalScreen *
    */
   XGHOSTTY_TERMINAL_DATA_ACTIVE_SCREEN = 6,
 
@@ -771,7 +771,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * is (arbitrary pins are expensive). The caller should take care to only
    * call this as needed and not too frequently.
    *
-   * Output type: GhosttyTerminalScrollbar *
+   * Output type: XGhosttyTerminalScrollbar *
    */
   XGHOSTTY_TERMINAL_DATA_SCROLLBAR = 9,
 
@@ -780,7 +780,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * This is the style that will be applied to newly printed characters.
    *
-   * Output type: GhosttyStyle *
+   * Output type: XGhosttyStyle *
    */
   XGHOSTTY_TERMINAL_DATA_CURSOR_STYLE = 10,
 
@@ -801,7 +801,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * to xghostty_terminal_vt_write() or xghostty_terminal_reset(). An empty
    * string (len=0) is returned when no title has been set.
    *
-   * Output type: GhosttyString *
+   * Output type: XGhosttyString *
    */
   XGHOSTTY_TERMINAL_DATA_TITLE = 12,
 
@@ -813,7 +813,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * to xghostty_terminal_vt_write() or xghostty_terminal_reset(). An empty
    * string (len=0) is returned when no pwd has been set.
    *
-   * Output type: GhosttyString *
+   * Output type: XGhosttyString *
    */
   XGHOSTTY_TERMINAL_DATA_PWD = 13,
 
@@ -854,7 +854,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE if no foreground color is set.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND = 18,
 
@@ -863,7 +863,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE if no background color is set.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND = 19,
 
@@ -872,14 +872,14 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE if no cursor color is set.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_CURSOR = 20,
 
   /**
    * The current 256-color palette.
    *
-   * Output type: GhosttyColorRgb[256] *
+   * Output type: XGhosttyColorRgb[256] *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_PALETTE = 21,
 
@@ -888,7 +888,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE if no default foreground color is set.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT = 22,
 
@@ -897,7 +897,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE if no default background color is set.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT = 23,
 
@@ -906,14 +906,14 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE if no default cursor color is set.
    *
-   * Output type: GhosttyColorRgb *
+   * Output type: XGhosttyColorRgb *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_CURSOR_DEFAULT = 24,
 
   /**
    * The default 256-color palette (ignoring any OSC overrides).
    *
-   * Output type: GhosttyColorRgb[256] *
+   * Output type: XGhosttyColorRgb[256] *
    */
   XGHOSTTY_TERMINAL_DATA_COLOR_PALETTE_DEFAULT = 25,
 
@@ -974,7 +974,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    * The active screen's current selection.
    *
    * On success, writes an untracked snapshot of the terminal-owned selection
-   * to the caller-provided GhosttySelection. The GhosttySelection struct is
+   * to the caller-provided XGhosttySelection. The XGhosttySelection struct is
    * caller-owned and may be kept, but the grid references inside it are
    * untracked borrowed references into the active screen. They are only valid
    * until the next mutating terminal call, such as xghostty_terminal_set(),
@@ -983,7 +983,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *
    * Returns XGHOSTTY_NO_VALUE when there is no active selection.
    *
-   * Output type: GhosttySelection *
+   * Output type: XGhosttySelection *
    */
   XGHOSTTY_TERMINAL_DATA_SELECTION = 31,
 
@@ -997,7 +997,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    */
   XGHOSTTY_TERMINAL_DATA_VIEWPORT_ACTIVE = 32,
   XGHOSTTY_TERMINAL_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyTerminalData;
+} XGhosttyTerminalData;
 
 /**
  * Create a new terminal instance.
@@ -1009,9 +1009,9 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_new(const GhosttyAllocator* allocator,
-                                   GhosttyTerminal* terminal,
-                                   GhosttyTerminalOptions options);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_new(const XGhosttyAllocator* allocator,
+                                   XGhosttyTerminal* terminal,
+                                   XGhosttyTerminalOptions options);
 
 /**
  * Free a terminal instance.
@@ -1023,7 +1023,7 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_new(const GhosttyAllocator* allocat
  *
  * @ingroup terminal
  */
-XGHOSTTY_API void xghostty_terminal_free(GhosttyTerminal terminal);
+XGHOSTTY_API void xghostty_terminal_free(XGhosttyTerminal terminal);
 
 /**
  * Perform a full reset of the terminal (RIS).
@@ -1036,7 +1036,7 @@ XGHOSTTY_API void xghostty_terminal_free(GhosttyTerminal terminal);
  *
  * @ingroup terminal
  */
-XGHOSTTY_API void xghostty_terminal_reset(GhosttyTerminal terminal);
+XGHOSTTY_API void xghostty_terminal_reset(XGhosttyTerminal terminal);
 
 /**
  * Resize the terminal to the given dimensions.
@@ -1059,7 +1059,7 @@ XGHOSTTY_API void xghostty_terminal_reset(GhosttyTerminal terminal);
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_resize(GhosttyTerminal terminal,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_resize(XGhosttyTerminal terminal,
                                       uint16_t cols,
                                       uint16_t rows,
                                       uint32_t cell_width_px,
@@ -1071,7 +1071,7 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_resize(GhosttyTerminal terminal,
  * Configures terminal callbacks and associated state such as the
  * write_pty callback and userdata pointer. The value is passed
  * directly for pointer types (callbacks, userdata) or as a pointer
- * to the value for non-pointer types (e.g. GhosttyString*).
+ * to the value for non-pointer types (e.g. XGhosttyString*).
  * NULL clears the option to its default.
  *
  * Callbacks are invoked synchronously during xghostty_terminal_vt_write().
@@ -1085,8 +1085,8 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_resize(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_set(GhosttyTerminal terminal,
-                                   GhosttyTerminalOption option,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_set(XGhosttyTerminal terminal,
+                                   XGhosttyTerminalOption option,
                                    const void* value);
 
 /**
@@ -1110,7 +1110,7 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_set(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API void xghostty_terminal_vt_write(GhosttyTerminal terminal,
+XGHOSTTY_API void xghostty_terminal_vt_write(XGhosttyTerminal terminal,
                                 const uint8_t* data,
                                 size_t len);
 
@@ -1127,8 +1127,8 @@ XGHOSTTY_API void xghostty_terminal_vt_write(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API void xghostty_terminal_scroll_viewport(GhosttyTerminal terminal,
-                                       GhosttyTerminalScrollViewport behavior);
+XGHOSTTY_API void xghostty_terminal_scroll_viewport(XGhosttyTerminal terminal,
+                                       XGhosttyTerminalScrollViewport behavior);
 
 /**
  * Get the current value of a terminal mode.
@@ -1144,8 +1144,8 @@ XGHOSTTY_API void xghostty_terminal_scroll_viewport(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_mode_get(GhosttyTerminal terminal,
-                                        GhosttyMode mode,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_mode_get(XGhosttyTerminal terminal,
+                                        XGhosttyMode mode,
                                         bool* out_value);
 
 /**
@@ -1161,8 +1161,8 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_mode_get(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_mode_set(GhosttyTerminal terminal,
-                                         GhosttyMode mode,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_mode_set(XGhosttyTerminal terminal,
+                                         XGhosttyMode mode,
                                          bool value);
 
 /**
@@ -1171,7 +1171,7 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_mode_set(GhosttyTerminal terminal,
  * Extracts typed data from the given terminal based on the specified
  * data type. The output pointer must be of the appropriate type for the
  * requested data kind. Valid data types and output types are documented
- * in the `GhosttyTerminalData` enum.
+ * in the `XGhosttyTerminalData` enum.
  *
  * @param terminal The terminal handle (may be NULL)
  * @param data The type of data to extract
@@ -1181,8 +1181,8 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_mode_set(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_get(GhosttyTerminal terminal,
-                                    GhosttyTerminalData data,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_get(XGhosttyTerminal terminal,
+                                    XGhosttyTerminalData data,
                                     void *out);
 
 /**
@@ -1212,9 +1212,9 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_get(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_get_multi(GhosttyTerminal terminal,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_get_multi(XGhosttyTerminal terminal,
                                     size_t count,
-                                    const GhosttyTerminalData* keys,
+                                    const XGhosttyTerminalData* keys,
                                     void** values,
                                     size_t* out_written);
 
@@ -1244,9 +1244,9 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_get_multi(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_grid_ref(GhosttyTerminal terminal,
-                                        GhosttyPoint point,
-                                        GhosttyGridRef *out_ref);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_grid_ref(XGhosttyTerminal terminal,
+                                        XGhosttyPoint point,
+                                        XGhosttyGridRef *out_ref);
 
 /**
  * Create an owned tracked grid reference for a terminal point.
@@ -1275,10 +1275,10 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_grid_ref(GhosttyTerminal terminal,
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_grid_ref_track(
-    GhosttyTerminal terminal,
-    GhosttyPoint point,
-    GhosttyTrackedGridRef *out_ref);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_grid_ref_track(
+    XGhosttyTerminal terminal,
+    XGhosttyPoint point,
+    XGhosttyTrackedGridRef *out_ref);
 
 /**
  * Convert a grid reference back to a point in the given coordinate system.
@@ -1307,11 +1307,11 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_grid_ref_track(
  *
  * @ingroup terminal
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_point_from_grid_ref(
-    GhosttyTerminal terminal,
-    const GhosttyGridRef *ref,
-    GhosttyPointTag tag,
-    GhosttyPointCoordinate *out);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_point_from_grid_ref(
+    XGhosttyTerminal terminal,
+    const XGhosttyGridRef *ref,
+    XGhosttyPointTag tag,
+    XGhosttyPointCoordinate *out);
 
 /** @} */
 

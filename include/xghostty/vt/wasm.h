@@ -70,7 +70,7 @@
 
 /**
  * Allocate an opaque pointer. This can be used for any opaque pointer
- * types such as GhosttyKeyEncoder, GhosttyKeyEvent, etc.
+ * types such as XGhosttyKeyEncoder, XGhosttyKeyEvent, etc.
  *
  * @return Pointer to allocated opaque pointer, or NULL if allocation failed
  * @ingroup wasm

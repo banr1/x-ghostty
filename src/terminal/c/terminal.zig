@@ -101,7 +101,7 @@ const Effects = struct {
     pub const DeviceAttributesFn = *const fn (Terminal, ?*anyopaque, *CDeviceAttributes) callconv(lib.calling_conv) bool;
 
     /// C-compatible device attributes struct.
-    /// C: GhosttyDeviceAttributes
+    /// C: XGhosttyDeviceAttributes
     pub const CDeviceAttributes = extern struct {
         primary: Primary,
         secondary: Secondary,
@@ -220,14 +220,14 @@ const Effects = struct {
     }
 };
 
-/// C: GhosttyTerminal
+/// C: XGhosttyTerminal
 pub const Terminal = ?*TerminalWrapper;
 
 pub fn zigTerminal(terminal_: Terminal) ?*ZigTerminal {
     return (terminal_ orelse return null).terminal;
 }
 
-/// C: GhosttyTerminalOptions
+/// C: XGhosttyTerminalOptions
 pub const Options = extern struct {
     cols: size.CellCountInt,
     rows: size.CellCountInt,
@@ -315,7 +315,7 @@ pub fn vt_write(
     wrapper.stream.nextSlice(ptr[0..len]);
 }
 
-/// C: GhosttyTerminalOption
+/// C: XGhosttyTerminalOption
 pub const Option = enum(c_int) {
     userdata = 0,
     write_pty = 1,
@@ -509,7 +509,7 @@ fn setTyped(
     return .success;
 }
 
-/// C: GhosttyTerminalCursorStyle
+/// C: XGhosttyTerminalCursorStyle
 pub const TerminalCursorStyle = enum(c_int) {
     bar = 0,
     block = 1,
@@ -528,10 +528,10 @@ pub const TerminalCursorStyle = enum(c_int) {
     }
 };
 
-/// C: GhosttyDeviceAttributes
+/// C: XGhosttyDeviceAttributes
 pub const DeviceAttributes = Effects.CDeviceAttributes;
 
-/// C: GhosttyTerminalScrollViewport
+/// C: XGhosttyTerminalScrollViewport
 pub const ScrollViewport = ZigTerminal.ScrollViewport.C;
 
 pub fn scroll_viewport(
@@ -618,13 +618,13 @@ pub fn mode_set(
 /// C: XGhosttyKittyGraphics
 pub const KittyGraphics = kitty_gfx_c.KittyGraphics;
 
-/// C: GhosttyTerminalScreen
+/// C: XGhosttyTerminalScreen
 pub const TerminalScreen = ScreenSet.Key;
 
-/// C: GhosttyTerminalScrollbar
+/// C: XGhosttyTerminalScrollbar
 pub const TerminalScrollbar = PageList.Scrollbar.C;
 
-/// C: GhosttyTerminalData
+/// C: XGhosttyTerminalData
 pub const TerminalData = enum(c_int) {
     invalid = 0,
     cols = 1,

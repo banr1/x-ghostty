@@ -82,7 +82,7 @@ extern "C" {
  * - xghostty_kitty_graphics_placement_source_rect() — resolved source
  *   rectangle in pixels, clamped to image bounds.
  * - xghostty_kitty_graphics_placement_rect() — bounding rectangle as a
- *   @ref GhosttySelection.
+ *   @ref XGhosttySelection.
  *
  * ## Lifetime and Thread Safety
  *
@@ -405,7 +405,7 @@ typedef struct {
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_get(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_get(
     XGhosttyKittyGraphics graphics,
     XGhosttyKittyGraphicsData data,
     void* out);
@@ -439,7 +439,7 @@ XGHOSTTY_API XGhosttyKittyGraphicsImage xghostty_kitty_graphics_image(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_image_get(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_image_get(
     XGhosttyKittyGraphicsImage image,
     XGhosttyKittyGraphicsImageData data,
     void* out);
@@ -471,7 +471,7 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_image_get(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_image_get_multi(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_image_get_multi(
     XGhosttyKittyGraphicsImage image,
     size_t count,
     const XGhosttyKittyGraphicsImageData* keys,
@@ -492,8 +492,8 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_image_get_multi(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_iterator_new(
-    const GhosttyAllocator* allocator,
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_iterator_new(
+    const XGhosttyAllocator* allocator,
     XGhosttyKittyGraphicsPlacementIterator* out_iterator);
 
 /**
@@ -524,7 +524,7 @@ XGHOSTTY_API void xghostty_kitty_graphics_placement_iterator_free(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_iterator_set(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_iterator_set(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsPlacementIteratorOption option,
     const void* value);
@@ -558,7 +558,7 @@ XGHOSTTY_API bool xghostty_kitty_graphics_placement_next(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_get(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_get(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsPlacementData data,
     void* out);
@@ -590,7 +590,7 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_get(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_get_multi(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_get_multi(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     size_t count,
     const XGhosttyKittyGraphicsPlacementData* keys,
@@ -615,11 +615,11 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_get_multi(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_rect(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_rect(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsImage image,
-    GhosttyTerminal terminal,
-    GhosttySelection* out_selection);
+    XGhosttyTerminal terminal,
+    XGhosttySelection* out_selection);
 
 /**
  * Compute the rendered pixel size of the current placement.
@@ -639,10 +639,10 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_rect(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_pixel_size(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_pixel_size(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsImage image,
-    GhosttyTerminal terminal,
+    XGhosttyTerminal terminal,
     uint32_t* out_width,
     uint32_t* out_height);
 
@@ -665,10 +665,10 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_pixel_size(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_grid_size(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_grid_size(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsImage image,
-    GhosttyTerminal terminal,
+    XGhosttyTerminal terminal,
     uint32_t* out_cols,
     uint32_t* out_rows);
 
@@ -707,10 +707,10 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_grid_size(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_viewport_pos(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_viewport_pos(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsImage image,
-    GhosttyTerminal terminal,
+    XGhosttyTerminal terminal,
     int32_t* out_col,
     int32_t* out_row);
 
@@ -733,7 +733,7 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_viewport_pos(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_source_rect(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_source_rect(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsImage image,
     uint32_t* out_x,
@@ -760,10 +760,10 @@ XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_source_rect(
  *
  * @ingroup kitty_graphics
  */
-XGHOSTTY_API GhosttyResult xghostty_kitty_graphics_placement_render_info(
+XGHOSTTY_API XGhosttyResult xghostty_kitty_graphics_placement_render_info(
     XGhosttyKittyGraphicsPlacementIterator iterator,
     XGhosttyKittyGraphicsImage image,
-    GhosttyTerminal terminal,
+    XGhosttyTerminal terminal,
     XGhosttyKittyGraphicsPlacementRenderInfo* out_info);
 
 /** @} */

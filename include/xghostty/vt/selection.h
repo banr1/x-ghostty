@@ -24,20 +24,20 @@ extern "C" {
  * A snapshot selection range defined by two grid references that identifies
  * a contiguous or rectangular region of terminal content.
  *
- * The start and end values are GhosttyGridRef values. They are therefore
+ * The start and end values are XGhosttyGridRef values. They are therefore
  * untracked grid references and inherit the same lifetime rules: they are
  * only safe to use until the next mutating operation on the terminal that
  * produced them, including freeing the terminal. To keep a selection valid
  * across terminal mutations, callers must maintain tracked grid references
- * for the endpoints and reconstruct a GhosttySelection from fresh snapshots
+ * for the endpoints and reconstruct a XGhosttySelection from fresh snapshots
  * when needed.
  *
  * Selection gestures provide a reusable state machine for turning UI pointer
  * interactions into selection snapshots. A caller creates one
- * GhosttySelectionGesture per active gesture stream, reuses typed
- * GhosttySelectionGestureEvent objects for synthetic press, drag, release,
+ * XGhosttySelectionGesture per active gesture stream, reuses typed
+ * XGhosttySelectionGestureEvent objects for synthetic press, drag, release,
  * autoscroll tick, and deep-press events, and applies each event with
- * xghostty_selection_gesture_event(). The returned GhosttySelection is a
+ * xghostty_selection_gesture_event(). The returned XGhosttySelection is a
  * snapshot; the embedder decides whether to render it, format/copy it, or
  * install it as the terminal's active selection.
  *
@@ -58,7 +58,7 @@ extern "C" {
  *
  * @ingroup selection
  */
-typedef struct GhosttySelectionGestureImpl* GhosttySelectionGesture;
+typedef struct XGhosttySelectionGestureImpl* XGhosttySelectionGesture;
 
 /**
  * Opaque handle to reusable input data for selection gesture operations.
@@ -68,7 +68,7 @@ typedef struct GhosttySelectionGestureImpl* GhosttySelectionGesture;
  *
  * @ingroup selection
  */
-typedef struct GhosttySelectionGestureEventImpl* GhosttySelectionGestureEvent;
+typedef struct XGhosttySelectionGestureEventImpl* XGhosttySelectionGestureEvent;
 
 /**
  * A snapshot selection range defined by two grid references.
@@ -81,7 +81,7 @@ typedef struct GhosttySelectionGestureEventImpl* GhosttySelectionGestureEvent;
  * rectangle is true, the same endpoints are interpreted as opposite corners
  * of a rectangular/block selection.
  *
- * The start and end values are untracked GhosttyGridRef snapshots and are
+ * The start and end values are untracked XGhosttyGridRef snapshots and are
  * only valid until the next mutating operation on the terminal that produced
  * them unless the selection is reconstructed from tracked references.
  *
@@ -90,31 +90,31 @@ typedef struct GhosttySelectionGestureEventImpl* GhosttySelectionGestureEvent;
  * @ingroup selection
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttySelection). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttySelection). */
   size_t size;
 
   /**
    * Start of the selection range (inclusive).
    *
    * This may be after end in terminal order. It is an untracked
-   * GhosttyGridRef snapshot and follows untracked grid-ref lifetime rules.
+   * XGhosttyGridRef snapshot and follows untracked grid-ref lifetime rules.
    */
-  GhosttyGridRef start;
+  XGhosttyGridRef start;
 
   /**
    * End of the selection range (inclusive).
    *
    * This may be before start in terminal order. It is an untracked
-   * GhosttyGridRef snapshot and follows untracked grid-ref lifetime rules.
+   * XGhosttyGridRef snapshot and follows untracked grid-ref lifetime rules.
    */
-  GhosttyGridRef end;
+  XGhosttyGridRef end;
 
   /**
    * Whether the endpoints are interpreted as a rectangular/block selection
    * rather than a linear selection.
    */
   bool rectangle;
-} GhosttySelection;
+} XGhosttySelection;
 
 /**
  * Options for deriving a word selection from a terminal grid reference.
@@ -127,18 +127,18 @@ typedef struct {
  * @ingroup selection
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyTerminalSelectWordOptions). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyTerminalSelectWordOptions). */
   size_t size;
 
   /** Grid reference under which to derive the word selection. */
-  GhosttyGridRef ref;
+  XGhosttyGridRef ref;
 
   /** Optional word-boundary codepoints as uint32_t scalar values. */
   const uint32_t* boundary_codepoints;
 
   /** Number of entries in boundary_codepoints. */
   size_t boundary_codepoints_len;
-} GhosttyTerminalSelectWordOptions;
+} XGhosttyTerminalSelectWordOptions;
 
 /**
  * Options for deriving the nearest word selection between two grid references.
@@ -151,21 +151,21 @@ typedef struct {
  * @ingroup selection
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyTerminalSelectWordBetweenOptions). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyTerminalSelectWordBetweenOptions). */
   size_t size;
 
   /** Starting grid reference for the inclusive search range. */
-  GhosttyGridRef start;
+  XGhosttyGridRef start;
 
   /** Ending grid reference for the inclusive search range. */
-  GhosttyGridRef end;
+  XGhosttyGridRef end;
 
   /** Optional word-boundary codepoints as uint32_t scalar values. */
   const uint32_t* boundary_codepoints;
 
   /** Number of entries in boundary_codepoints. */
   size_t boundary_codepoints_len;
-} GhosttyTerminalSelectWordBetweenOptions;
+} XGhosttyTerminalSelectWordBetweenOptions;
 
 /**
  * Options for deriving a line selection from a terminal grid reference.
@@ -178,11 +178,11 @@ typedef struct {
  * @ingroup selection
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyTerminalSelectLineOptions). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyTerminalSelectLineOptions). */
   size_t size;
 
   /** Grid reference under which to derive the line selection. */
-  GhosttyGridRef ref;
+  XGhosttyGridRef ref;
 
   /** Optional codepoints to trim from the start and end of the line. */
   const uint32_t* whitespace;
@@ -192,7 +192,7 @@ typedef struct {
 
   /** Whether semantic prompt state changes should bound the line selection. */
   bool semantic_prompt_boundary;
-} GhosttyTerminalSelectLineOptions;
+} XGhosttyTerminalSelectLineOptions;
 
 /**
  * Options for one-shot formatting of a terminal selection.
@@ -203,18 +203,18 @@ typedef struct {
  * If selection is non-NULL, that caller-provided snapshot selection is used.
  *
  * The selection is formatted from the terminal's active screen using the same
- * formatting semantics as GhosttyFormatter. For copy/clipboard behavior
+ * formatting semantics as XGhosttyFormatter. For copy/clipboard behavior
  * matching XGhostty's Screen.selectionString(), use plain output with unwrap
  * and trim both set to true.
  *
  * @ingroup selection
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyTerminalSelectionFormatOptions). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyTerminalSelectionFormatOptions). */
   size_t size;
 
   /** Output format to emit. */
-  GhosttyFormatterFormat emit;
+  XGhosttyFormatterFormat emit;
 
   /** Whether to unwrap soft-wrapped lines. */
   bool unwrap;
@@ -229,10 +229,10 @@ typedef struct {
    * has no active selection, formatting returns XGHOSTTY_NO_VALUE.
    *
    * If non-NULL, the pointed-to selection must be a valid snapshot selection
-   * for this terminal and must obey GhosttySelection lifetime rules.
+   * for this terminal and must obey XGhosttySelection lifetime rules.
    */
-  const GhosttySelection *selection;
-} GhosttyTerminalSelectionFormatOptions;
+  const XGhosttySelection *selection;
+} XGhosttyTerminalSelectionFormatOptions;
 
 /**
  * Ordering of a selection's endpoints in terminal coordinates.
@@ -257,7 +257,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_ORDER_MIRRORED_REVERSE = 3,
 
   XGHOSTTY_SELECTION_ORDER_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionOrder;
+} XGhosttySelectionOrder;
 
 /**
  * Operation used to adjust a selection endpoint.
@@ -312,7 +312,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_ADJUST_END_OF_LINE = 9,
 
   XGHOSTTY_SELECTION_ADJUST_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionAdjust;
+} XGhosttySelectionAdjust;
 
 /**
  * Selection behavior chosen for a gesture's click sequence.
@@ -333,7 +333,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_GESTURE_BEHAVIOR_OUTPUT = 3,
 
   XGHOSTTY_SELECTION_GESTURE_BEHAVIOR_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionGestureBehavior;
+} XGhosttySelectionGestureBehavior;
 
 /**
  * Selection behaviors for single-, double-, and triple-click gestures.
@@ -342,14 +342,14 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  */
 typedef struct {
   /** Behavior for single-click selection gestures. */
-  GhosttySelectionGestureBehavior single_click;
+  XGhosttySelectionGestureBehavior single_click;
 
   /** Behavior for double-click selection gestures. */
-  GhosttySelectionGestureBehavior double_click;
+  XGhosttySelectionGestureBehavior double_click;
 
   /** Behavior for triple-click selection gestures. */
-  GhosttySelectionGestureBehavior triple_click;
-} GhosttySelectionGestureBehaviors;
+  XGhosttySelectionGestureBehavior triple_click;
+} XGhosttySelectionGestureBehaviors;
 
 /**
  * Display geometry used to interpret selection gesture drag events.
@@ -368,7 +368,7 @@ typedef struct {
 
   /** Height of the rendered terminal surface in surface pixels. Must be non-zero. */
   uint32_t screen_height;
-} GhosttySelectionGestureGeometry;
+} XGhosttySelectionGestureGeometry;
 
 /**
  * Current autoscroll direction for an active selection drag gesture.
@@ -386,7 +386,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_GESTURE_AUTOSCROLL_DOWN = 2,
 
   XGHOSTTY_SELECTION_GESTURE_AUTOSCROLL_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionGestureAutoscroll;
+} XGhosttySelectionGestureAutoscroll;
 
 /**
  * Data fields readable from a selection gesture with
@@ -401,23 +401,23 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Whether the current/last left-click gesture has dragged: bool*. */
   XGHOSTTY_SELECTION_GESTURE_DATA_DRAGGED = 1,
 
-  /** Current autoscroll request: GhosttySelectionGestureAutoscroll*. */
+  /** Current autoscroll request: XGhosttySelectionGestureAutoscroll*. */
   XGHOSTTY_SELECTION_GESTURE_DATA_AUTOSCROLL = 2,
 
-  /** Current gesture behavior: GhosttySelectionGestureBehavior*. */
+  /** Current gesture behavior: XGhosttySelectionGestureBehavior*. */
   XGHOSTTY_SELECTION_GESTURE_DATA_BEHAVIOR = 3,
 
   /**
-   * Current left-click anchor: GhosttyGridRef*.
+   * Current left-click anchor: XGhosttyGridRef*.
    *
    * Returns XGHOSTTY_NO_VALUE if there is no valid active anchor. On success,
-   * writes an untracked GhosttyGridRef snapshot with normal GhosttyGridRef
+   * writes an untracked XGhosttyGridRef snapshot with normal XGhosttyGridRef
    * lifetime rules.
    */
   XGHOSTTY_SELECTION_GESTURE_DATA_ANCHOR = 4,
 
   XGHOSTTY_SELECTION_GESTURE_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionGestureData;
+} XGhosttySelectionGestureData;
 
 /**
  * Selection gesture event type.
@@ -444,7 +444,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_GESTURE_EVENT_TYPE_DEEP_PRESS = 4,
 
   XGHOSTTY_SELECTION_GESTURE_EVENT_TYPE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionGestureEventType;
+} XGhosttySelectionGestureEventType;
 
 /**
  * Options stored on a reusable selection gesture event.
@@ -456,7 +456,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  */
 typedef enum XGHOSTTY_ENUM_TYPED {
   /**
-   * Grid reference under the pointer: GhosttyGridRef*.
+   * Grid reference under the pointer: XGhosttyGridRef*.
    *
    * Required for PRESS and DRAG events. Optional for RELEASE events; when unset
    * or cleared, release records that the pointer did not map to a valid cell.
@@ -464,7 +464,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_REF = 0,
 
   /**
-   * Surface-space pointer position: GhosttySurfacePosition*.
+   * Surface-space pointer position: XGhosttySurfacePosition*.
    *
    * Valid for PRESS, DRAG, and AUTOSCROLL_TICK.
    */
@@ -485,7 +485,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_REPEAT_INTERVAL_NS = 4,
 
   /**
-   * Word-boundary codepoints: GhosttyCodepoints*.
+   * Word-boundary codepoints: XGhosttyCodepoints*.
    *
    * The codepoints are copied into event-owned storage when set. If unset,
    * operations that need word boundaries use XGhostty's defaults.
@@ -495,7 +495,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_WORD_BOUNDARY_CODEPOINTS = 5,
 
   /**
-   * Selection behavior table: GhosttySelectionGestureBehaviors*.
+   * Selection behavior table: XGhosttySelectionGestureBehaviors*.
    *
    * If unset, press uses the default behavior table: cell, word, line.
    */
@@ -504,14 +504,14 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Whether a drag or autoscroll tick should produce a rectangular selection: bool*. */
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_RECTANGLE = 7,
 
-  /** Drag display geometry: GhosttySelectionGestureGeometry*. Required for DRAG and AUTOSCROLL_TICK. */
+  /** Drag display geometry: XGhosttySelectionGestureGeometry*. Required for DRAG and AUTOSCROLL_TICK. */
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_GEOMETRY = 8,
 
-  /** Viewport coordinate for an autoscroll tick: GhosttyPointCoordinate*. Required for AUTOSCROLL_TICK. */
+  /** Viewport coordinate for an autoscroll tick: XGhosttyPointCoordinate*. Required for AUTOSCROLL_TICK. */
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_VIEWPORT = 9,
 
   XGHOSTTY_SELECTION_GESTURE_EVENT_OPT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySelectionGestureEventOption;
+} XGhosttySelectionGestureEventOption;
 
 /**
  * Create a reusable selection gesture event object.
@@ -524,10 +524,10 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event_new(
-                                    const GhosttyAllocator* allocator,
-                                    GhosttySelectionGestureEvent* out_event,
-                                    GhosttySelectionGestureEventType type);
+XGHOSTTY_API XGhosttyResult xghostty_selection_gesture_event_new(
+                                    const XGhosttyAllocator* allocator,
+                                    XGhosttySelectionGestureEvent* out_event,
+                                    XGhosttySelectionGestureEventType type);
 
 /**
  * Free a selection gesture event object.
@@ -539,13 +539,13 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event_new(
  * @ingroup selection
  */
 XGHOSTTY_API void xghostty_selection_gesture_event_free(
-                                    GhosttySelectionGestureEvent event);
+                                    XGhosttySelectionGestureEvent event);
 
 /**
  * Set or clear an option on a selection gesture event.
  *
  * The value type depends on option and is documented by
- * GhosttySelectionGestureEventOption. Passing NULL for value clears the option.
+ * XGhosttySelectionGestureEventOption. Passing NULL for value clears the option.
  *
  * @param event Selection gesture event handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param option Event option to set or clear
@@ -556,9 +556,9 @@ XGHOSTTY_API void xghostty_selection_gesture_event_free(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event_set(
-                                    GhosttySelectionGestureEvent event,
-                                    GhosttySelectionGestureEventOption option,
+XGHOSTTY_API XGhosttyResult xghostty_selection_gesture_event_set(
+                                    XGhosttySelectionGestureEvent event,
+                                    XGhosttySelectionGestureEventOption option,
                                     const void* value);
 
 /**
@@ -592,7 +592,7 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event_set(
  * optional and uses initialized defaults when unset or cleared.
  *
  * The returned selection is not installed as the terminal's current selection.
- * It is a snapshot with the same lifetime rules as GhosttySelection.
+ * It is a snapshot with the same lifetime rules as XGhosttySelection.
  *
  * @param gesture Selection gesture handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param terminal Terminal used to interpret and update gesture state
@@ -606,11 +606,11 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event_set(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event(
-                                    GhosttySelectionGesture gesture,
-                                    GhosttyTerminal terminal,
-                                    GhosttySelectionGestureEvent event,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_selection_gesture_event(
+                                    XGhosttySelectionGesture gesture,
+                                    XGhosttyTerminal terminal,
+                                    XGhosttySelectionGestureEvent event,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Create a selection gesture object.
@@ -626,9 +626,9 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_event(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_selection_gesture_new(
-                                    const GhosttyAllocator* allocator,
-                                    GhosttySelectionGesture* out_gesture);
+XGHOSTTY_API XGhosttyResult xghostty_selection_gesture_new(
+                                    const XGhosttyAllocator* allocator,
+                                    XGhosttySelectionGesture* out_gesture);
 
 /**
  * Free a selection gesture object.
@@ -651,8 +651,8 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_new(
  * @ingroup selection
  */
 XGHOSTTY_API void xghostty_selection_gesture_free(
-                                    GhosttySelectionGesture gesture,
-                                    GhosttyTerminal terminal);
+                                    XGhosttySelectionGesture gesture,
+                                    XGhosttyTerminal terminal);
 
 /**
  * Reset any active selection gesture state.
@@ -667,15 +667,15 @@ XGHOSTTY_API void xghostty_selection_gesture_free(
  * @ingroup selection
  */
 XGHOSTTY_API void xghostty_selection_gesture_reset(
-                                    GhosttySelectionGesture gesture,
-                                    GhosttyTerminal terminal);
+                                    XGhosttySelectionGesture gesture,
+                                    XGhosttyTerminal terminal);
 
 /**
  * Read data from a selection gesture.
  *
  * The type of value depends on data and is documented by
- * GhosttySelectionGestureData. For XGHOSTTY_SELECTION_GESTURE_DATA_ANCHOR,
- * the returned GhosttyGridRef is an untracked snapshot with normal grid-ref
+ * XGhosttySelectionGestureData. For XGHOSTTY_SELECTION_GESTURE_DATA_ANCHOR,
+ * the returned XGhosttyGridRef is an untracked snapshot with normal grid-ref
  * lifetime rules.
  *
  * @param gesture Selection gesture handle (NULL returns XGHOSTTY_INVALID_VALUE)
@@ -688,10 +688,10 @@ XGHOSTTY_API void xghostty_selection_gesture_reset(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_selection_gesture_get(
-                                    GhosttySelectionGesture gesture,
-                                    GhosttyTerminal terminal,
-                                    GhosttySelectionGestureData data,
+XGHOSTTY_API XGhosttyResult xghostty_selection_gesture_get(
+                                    XGhosttySelectionGesture gesture,
+                                    XGhosttyTerminal terminal,
+                                    XGhosttySelectionGestureData data,
                                     void* value);
 
 /**
@@ -699,7 +699,7 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_get(
  *
  * This is an optimization over calling xghostty_selection_gesture_get() multiple
  * times. Each entry in values must point to storage of the type documented by
- * the corresponding GhosttySelectionGestureData key.
+ * the corresponding XGhosttySelectionGestureData key.
  *
  * If any individual read fails, the function returns that error and writes the
  * index of the failing key to out_written when out_written is non-NULL. On
@@ -717,11 +717,11 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_get(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_selection_gesture_get_multi(
-                                    GhosttySelectionGesture gesture,
-                                    GhosttyTerminal terminal,
+XGHOSTTY_API XGhosttyResult xghostty_selection_gesture_get_multi(
+                                    XGhosttySelectionGesture gesture,
+                                    XGhosttyTerminal terminal,
                                     size_t count,
-                                    const GhosttySelectionGestureData* keys,
+                                    const XGhosttySelectionGestureData* keys,
                                     void** values,
                                     size_t* out_written);
 
@@ -729,7 +729,7 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_get_multi(
  * Derive a word selection snapshot from a terminal grid reference.
  *
  * The returned selection is not installed as the terminal's current
- * selection. It is a snapshot with the same lifetime rules as GhosttySelection.
+ * selection. It is a snapshot with the same lifetime rules as XGhosttySelection.
  *
  * @param terminal The terminal handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param options Word-selection options
@@ -741,10 +741,10 @@ XGHOSTTY_API GhosttyResult xghostty_selection_gesture_get_multi(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_select_word(
-                                    GhosttyTerminal terminal,
-                                    const GhosttyTerminalSelectWordOptions* options,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_select_word(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttyTerminalSelectWordOptions* options,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Derive the nearest word selection snapshot between two terminal grid refs.
@@ -763,7 +763,7 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_select_word(
  * @snippet c-vt-selection/src/main.c selection-word-between
  *
  * The returned selection is not installed as the terminal's current
- * selection. It is a snapshot with the same lifetime rules as GhosttySelection.
+ * selection. It is a snapshot with the same lifetime rules as XGhosttySelection.
  *
  * @param terminal The terminal handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param options Word-between-selection options
@@ -775,16 +775,16 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_select_word(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_select_word_between(
-                                    GhosttyTerminal terminal,
-                                    const GhosttyTerminalSelectWordBetweenOptions* options,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_select_word_between(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttyTerminalSelectWordBetweenOptions* options,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Derive a line selection snapshot from a terminal grid reference.
  *
  * The returned selection is not installed as the terminal's current
- * selection. It is a snapshot with the same lifetime rules as GhosttySelection.
+ * selection. It is a snapshot with the same lifetime rules as XGhosttySelection.
  *
  * @param terminal The terminal handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param options Line-selection options
@@ -796,16 +796,16 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_select_word_between(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_select_line(
-                                    GhosttyTerminal terminal,
-                                    const GhosttyTerminalSelectLineOptions* options,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_select_line(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttyTerminalSelectLineOptions* options,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Derive a selection snapshot covering all selectable terminal content.
  *
  * The returned selection is not installed as the terminal's current
- * selection. It is a snapshot with the same lifetime rules as GhosttySelection.
+ * selection. It is a snapshot with the same lifetime rules as XGhosttySelection.
  *
  * @param terminal The terminal handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param[out] out_selection On success, receives the derived selection
@@ -815,15 +815,15 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_select_line(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_select_all(
-                                    GhosttyTerminal terminal,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_select_all(
+                                    XGhosttyTerminal terminal,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Derive a command-output selection snapshot from a terminal grid reference.
  *
  * The returned selection is not installed as the terminal's current
- * selection. It is a snapshot with the same lifetime rules as GhosttySelection.
+ * selection. It is a snapshot with the same lifetime rules as XGhosttySelection.
  *
  * @param terminal The terminal handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param ref Grid reference within command output to select
@@ -834,17 +834,17 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_select_all(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_select_output(
-                                    GhosttyTerminal terminal,
-                                    GhosttyGridRef ref,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_select_output(
+                                    XGhosttyTerminal terminal,
+                                    XGhosttyGridRef ref,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Format a terminal selection into a caller-provided buffer.
  *
  * This is a one-shot convenience API for formatting either the terminal's
- * active selection or a caller-provided GhosttySelection without explicitly
- * creating a GhosttyFormatter.
+ * active selection or a caller-provided XGhosttySelection without explicitly
+ * creating a XGhosttyFormatter.
  *
  * Pass NULL for buf to query the required output size. In that case,
  * out_written receives the required size and the function returns
@@ -867,9 +867,9 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_select_output(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_format_buf(
-                                    GhosttyTerminal terminal,
-                                    GhosttyTerminalSelectionFormatOptions options,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_format_buf(
+                                    XGhosttyTerminal terminal,
+                                    XGhosttyTerminalSelectionFormatOptions options,
                                     uint8_t* buf,
                                     size_t buf_len,
                                     size_t* out_written);
@@ -878,8 +878,8 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_format_buf(
  * Format a terminal selection into an allocated buffer.
  *
  * This is a one-shot convenience API for formatting either the terminal's
- * active selection or a caller-provided GhosttySelection without explicitly
- * creating a GhosttyFormatter.
+ * active selection or a caller-provided XGhosttySelection without explicitly
+ * creating a XGhosttyFormatter.
  *
  * The returned buffer is allocated using allocator, or the default allocator
  * if NULL is passed. The caller owns the returned buffer and must free it with
@@ -900,17 +900,17 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_format_buf(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_format_alloc(
-                                    GhosttyTerminal terminal,
-                                    const GhosttyAllocator* allocator,
-                                    GhosttyTerminalSelectionFormatOptions options,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_format_alloc(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttyAllocator* allocator,
+                                    XGhosttyTerminalSelectionFormatOptions options,
                                     uint8_t** out_ptr,
                                     size_t* out_len);
 
 /**
  * Adjust a selection snapshot using terminal selection semantics.
  *
- * This mutates the caller-provided GhosttySelection in place. The logical end
+ * This mutates the caller-provided XGhosttySelection in place. The logical end
  * endpoint is always moved, regardless of whether the selection is forward or
  * reversed visually. The input selection remains a snapshot: after adjustment,
  * call xghostty_terminal_set() with XGHOSTTY_TERMINAL_OPT_SELECTION to install it
@@ -932,10 +932,10 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_format_alloc(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_adjust(
-                                    GhosttyTerminal terminal,
-                                    GhosttySelection* selection,
-                                    GhosttySelectionAdjust adjustment);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_adjust(
+                                    XGhosttyTerminal terminal,
+                                    XGhosttySelection* selection,
+                                    XGhosttySelectionAdjust adjustment);
 
 /**
  * Get the current endpoint ordering of a selection snapshot.
@@ -956,10 +956,10 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_adjust(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_order(
-                                    GhosttyTerminal terminal,
-                                    const GhosttySelection* selection,
-                                    GhosttySelectionOrder* out_order);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_order(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttySelection* selection,
+                                    XGhosttySelectionOrder* out_order);
 
 /**
  * Return a selection snapshot with endpoints ordered as requested.
@@ -987,11 +987,11 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_order(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_ordered(
-                                    GhosttyTerminal terminal,
-                                    const GhosttySelection* selection,
-                                    GhosttySelectionOrder desired,
-                                    GhosttySelection* out_selection);
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_ordered(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttySelection* selection,
+                                    XGhosttySelectionOrder desired,
+                                    XGhosttySelection* out_selection);
 
 /**
  * Test whether a terminal point is inside a selection snapshot.
@@ -1016,10 +1016,10 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_ordered(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_contains(
-                                    GhosttyTerminal terminal,
-                                    const GhosttySelection* selection,
-                                    GhosttyPoint point,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_contains(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttySelection* selection,
+                                    XGhosttyPoint point,
                                     bool* out_contains);
 
 /**
@@ -1027,7 +1027,7 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_contains(
  *
  * Equality uses the terminal's internal selection semantics: both endpoint
  * pins must match and both selections must have the same rectangular/block
- * state. This avoids requiring callers to compare raw GhosttyGridRef internals.
+ * state. This avoids requiring callers to compare raw XGhosttyGridRef internals.
  *
  * Both selections' start and end grid refs must be valid untracked snapshots
  * for the given terminal's currently active screen. In practice, they must
@@ -1046,10 +1046,10 @@ XGHOSTTY_API GhosttyResult xghostty_terminal_selection_contains(
  *
  * @ingroup selection
  */
-XGHOSTTY_API GhosttyResult xghostty_terminal_selection_equal(
-                                    GhosttyTerminal terminal,
-                                    const GhosttySelection* a,
-                                    const GhosttySelection* b,
+XGHOSTTY_API XGhosttyResult xghostty_terminal_selection_equal(
+                                    XGhosttyTerminal terminal,
+                                    const XGhosttySelection* a,
+                                    const XGhosttySelection* b,
                                     bool* out_equal);
 
 /** @} */

@@ -14,10 +14,10 @@ const Result = @import("result.zig").Result;
 
 const log = std.log.scoped(.selection_gesture_c);
 
-/// C: GhosttySelectionGesture
+/// C: XGhosttySelectionGesture
 pub const Gesture = ?*GestureWrapper;
 
-/// C: GhosttySelectionGestureEvent
+/// C: XGhosttySelectionGestureEvent
 pub const Event = ?*EventWrapper;
 
 const GestureWrapper = struct {
@@ -127,20 +127,20 @@ const EventWrapper = struct {
     }
 };
 
-/// C: GhosttySelectionGestureBehavior
+/// C: XGhosttySelectionGestureBehavior
 pub const Behavior = SelectionGesture.Behavior;
 
-/// C: GhosttySelectionGestureAutoscroll
+/// C: XGhosttySelectionGestureAutoscroll
 pub const Autoscroll = SelectionGesture.Autoscroll;
 
-/// C: GhosttySelectionGestureBehaviors
+/// C: XGhosttySelectionGestureBehaviors
 pub const Behaviors = extern struct {
     single_click: Behavior,
     double_click: Behavior,
     triple_click: Behavior,
 };
 
-/// C: GhosttySelectionGestureData
+/// C: XGhosttySelectionGestureData
 pub const Data = enum(c_int) {
     click_count = 0,
     dragged = 1,
@@ -159,7 +159,7 @@ pub const Data = enum(c_int) {
     }
 };
 
-/// C: GhosttySelectionGestureEventType
+/// C: XGhosttySelectionGestureEventType
 pub const EventType = enum(c_int) {
     press = 0,
     release = 1,
@@ -168,7 +168,7 @@ pub const EventType = enum(c_int) {
     deep_press = 4,
 };
 
-/// C: GhosttySelectionGestureEventOption
+/// C: XGhosttySelectionGestureEventOption
 pub const EventOption = enum(c_int) {
     ref = 0,
     position = 1,
@@ -197,7 +197,7 @@ pub const EventOption = enum(c_int) {
     }
 };
 
-/// C: GhosttySelectionGestureGeometry
+/// C: XGhosttySelectionGestureGeometry
 pub const Geometry = extern struct {
     columns: u32,
     cell_width: u32,

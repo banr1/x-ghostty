@@ -102,7 +102,7 @@ extern "C" {
  * single 16-bit integer. Use the inline helper functions to construct
  * and inspect modes rather than manipulating bits directly.
  */
-typedef uint16_t GhosttyMode;
+typedef uint16_t XGhosttyMode;
 
 /**
  * Create a mode from a mode value and ANSI flag.
@@ -113,8 +113,8 @@ typedef uint16_t GhosttyMode;
  *
  * @ingroup modes
  */
-static inline GhosttyMode xghostty_mode_new(uint16_t value, bool ansi) {
-    return (GhosttyMode)((value & 0x7FFF) | ((uint16_t)ansi << 15));
+static inline XGhosttyMode xghostty_mode_new(uint16_t value, bool ansi) {
+    return (XGhosttyMode)((value & 0x7FFF) | ((uint16_t)ansi << 15));
 }
 
 /**
@@ -125,7 +125,7 @@ static inline GhosttyMode xghostty_mode_new(uint16_t value, bool ansi) {
  *
  * @ingroup modes
  */
-static inline uint16_t xghostty_mode_value(GhosttyMode mode) {
+static inline uint16_t xghostty_mode_value(XGhosttyMode mode) {
     return mode & 0x7FFF;
 }
 
@@ -137,7 +137,7 @@ static inline uint16_t xghostty_mode_value(GhosttyMode mode) {
  *
  * @ingroup modes
  */
-static inline bool xghostty_mode_ansi(GhosttyMode mode) {
+static inline bool xghostty_mode_ansi(XGhosttyMode mode) {
     return (mode >> 15) != 0;
 }
 
@@ -159,7 +159,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     /** Mode is permanently reset */
     XGHOSTTY_MODE_REPORT_PERMANENTLY_RESET = 4,
     XGHOSTTY_MODE_REPORT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyModeReportState;
+} XGhosttyModeReportState;
 
 /**
  * Encode a DECRPM (DEC Private Mode Report) response sequence.
@@ -182,9 +182,9 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @return XGHOSTTY_SUCCESS on success, XGHOSTTY_OUT_OF_SPACE if the buffer
  *         is too small
  */
-XGHOSTTY_API GhosttyResult xghostty_mode_report_encode(
-    GhosttyMode mode,
-    GhosttyModeReportState state,
+XGHOSTTY_API XGhosttyResult xghostty_mode_report_encode(
+    XGhosttyMode mode,
+    XGhosttyModeReportState state,
     char* buf,
     size_t buf_len,
     size_t* out_written);

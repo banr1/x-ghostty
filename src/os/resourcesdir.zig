@@ -43,7 +43,7 @@ pub fn resourcesDir(alloc: Allocator) !ResourcesDir {
     // In debug builds we try using terminfo detection first instead, since
     // if debug XGhostty is launched by an older version of XGhostty, it
     // would inherit the old, stale resources of older XGhostty instead of the
-    // freshly built ones under zig-out/share/ghostty.
+    // freshly built ones under zig-out/share/xghostty.
     //
     // Note: we ALWAYS want to allocate here because the result is always
     // freed, do not try to use internal_os.getenv or posix getenv.

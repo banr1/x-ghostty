@@ -83,7 +83,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     /** The requested value has no value */
     XGHOSTTY_NO_VALUE = -4,
     XGHOSTTY_RESULT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyResult;
+} XGhosttyResult;
 
 /* ---- Opaque handles ---- */
 
@@ -92,7 +92,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup terminal
  */
-typedef struct GhosttyTerminalImpl* GhosttyTerminal;
+typedef struct XGhosttyTerminalImpl* XGhosttyTerminal;
 
 /**
  * Opaque handle to a tracked grid reference.
@@ -104,7 +104,7 @@ typedef struct GhosttyTerminalImpl* GhosttyTerminal;
  *
  * @ingroup grid_ref
  */
-typedef struct GhosttyTrackedGridRefImpl* GhosttyTrackedGridRef;
+typedef struct XGhosttyTrackedGridRefImpl* XGhosttyTrackedGridRef;
 
 /**
  * Opaque handle to a Kitty graphics image storage.
@@ -141,21 +141,21 @@ typedef struct XGhosttyKittyGraphicsPlacementIteratorImpl* XGhosttyKittyGraphics
  *
  * @ingroup render
  */
-typedef struct GhosttyRenderStateImpl* GhosttyRenderState;
+typedef struct XGhosttyRenderStateImpl* XGhosttyRenderState;
 
 /**
  * Opaque handle to a render-state row iterator.
  *
  * @ingroup render
  */
-typedef struct GhosttyRenderStateRowIteratorImpl* GhosttyRenderStateRowIterator;
+typedef struct XGhosttyRenderStateRowIteratorImpl* XGhosttyRenderStateRowIterator;
 
 /**
  * Opaque handle to render-state row cells.
  *
  * @ingroup render
  */
-typedef struct GhosttyRenderStateRowCellsImpl* GhosttyRenderStateRowCells;
+typedef struct XGhosttyRenderStateRowCellsImpl* XGhosttyRenderStateRowCells;
 
 /**
  * Opaque handle to an SGR parser instance.
@@ -165,14 +165,14 @@ typedef struct GhosttyRenderStateRowCellsImpl* GhosttyRenderStateRowCells;
  *
  * @ingroup sgr
  */
-typedef struct GhosttySgrParserImpl* GhosttySgrParser;
+typedef struct XGhosttySgrParserImpl* XGhosttySgrParser;
 
 /**
  * Opaque handle to a formatter instance.
  *
  * @ingroup formatter
  */
-typedef struct GhosttyFormatterImpl* GhosttyFormatter;
+typedef struct XGhosttyFormatterImpl* XGhosttyFormatter;
 
 /**
  * Opaque handle to an OSC parser instance.
@@ -182,7 +182,7 @@ typedef struct GhosttyFormatterImpl* GhosttyFormatter;
  *
  * @ingroup osc
  */
-typedef struct GhosttyOscParserImpl* GhosttyOscParser;
+typedef struct XGhosttyOscParserImpl* XGhosttyOscParser;
 
 /**
  * Opaque handle to a single OSC command.
@@ -192,7 +192,7 @@ typedef struct GhosttyOscParserImpl* GhosttyOscParser;
  *
  * @ingroup osc
  */
-typedef struct GhosttyOscCommandImpl* GhosttyOscCommand;
+typedef struct XGhosttyOscCommandImpl* XGhosttyOscCommand;
 
 /* ---- Common value types ---- */
 
@@ -211,7 +211,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** HTML with inline styles. */
   XGHOSTTY_FORMATTER_FORMAT_HTML,
   XGHOSTTY_FORMATTER_FORMAT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyFormatterFormat;
+} XGhosttyFormatterFormat;
 
 /**
  * A borrowed byte string (pointer + length).
@@ -225,7 +225,7 @@ typedef struct {
 
   /** Length of the string in bytes. */
   size_t len;
-} GhosttyString;
+} XGhosttyString;
 
 /**
  * A caller-provided byte buffer.
@@ -242,7 +242,7 @@ typedef struct {
 
   /** Bytes written on success, or required byte capacity on XGHOSTTY_OUT_OF_SPACE. */
   size_t len;
-} GhosttyBuffer;
+} XGhosttyBuffer;
 
 /**
  * A surface-space position in pixels.
@@ -257,7 +257,7 @@ typedef struct {
 
   /** Y position in surface pixels. */
   double y;
-} GhosttySurfacePosition;
+} XGhosttySurfacePosition;
 
 /**
  * A borrowed list of Unicode scalar values.
@@ -274,7 +274,7 @@ typedef struct {
 
   /** Number of entries in ptr. */
   size_t len;
-} GhosttyCodepoints;
+} XGhosttyCodepoints;
 
 /**
  * Initialize a sized struct to zero and set its size field.
@@ -289,7 +289,7 @@ typedef struct {
  *
  * Example:
  * @code
- * GhosttyFormatterTerminalOptions opts = XGHOSTTY_INIT_SIZED(GhosttyFormatterTerminalOptions);
+ * XGhosttyFormatterTerminalOptions opts = XGHOSTTY_INIT_SIZED(XGhosttyFormatterTerminalOptions);
  * opts.emit = XGHOSTTY_FORMATTER_FORMAT_PLAIN;
  * opts.trim = true;
  * @endcode
@@ -308,7 +308,7 @@ typedef struct {
  * Example (abbreviated):
  * @code{.json}
  * {
- *   "GhosttyMouseEncoderSize": {
+ *   "XGhosttyMouseEncoderSize": {
  *     "size": 40,
  *     "align": 8,
  *     "fields": {
