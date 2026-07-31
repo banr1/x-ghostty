@@ -151,6 +151,10 @@ class AppDelegate: NSObject,
     /// Signals
     private var signals: [DispatchSourceSignal] = []
 
+    /// Watches the config files for external changes so both edits and
+    /// accidental corruption reload (and surface errors) immediately.
+    private var configFileWatcher: ConfigFileWatcher?
+
     private let appIconUpdater = AppIconUpdater()
 
     @MainActor private lazy var menuShortcutManager = XGhostty.MenuShortcutManager()
@@ -308,6 +312,9 @@ class AppDelegate: NSObject,
 
         // Setup signal handlers
         setupSignals()
+
+        // Watch the config files for external changes
+        setupConfigFileWatcher()
 
         switch XGhostty.launchSource {
         case .app:
@@ -538,6 +545,25 @@ class AppDelegate: NSObject,
 
         // We need to keep a strong reference to it so it isn't disabled.
         signals.append(sigusr2)
+    }
+
+    /// Setup the config file watcher so external modifications (editors,
+    /// scripts, sync tools) are reloaded immediately. Corruption then shows
+    /// the configuration errors window within a second of the write instead
+    /// of lying dormant until the next launch.
+    private func setupConfigFileWatcher() {
+        var paths = ConfigFileWatcher.defaultPaths()
+#if DEBUG
+        if let override = ProcessInfo.processInfo.environment["XGHOSTTY_CONFIG_PATH"],
+           !override.isEmpty {
+            paths = [override]
+        }
+#endif
+        configFileWatcher = ConfigFileWatcher(paths: paths) { [weak self] in
+            guard let self else { return }
+            XGhostty.logger.info("config file changed on disk, reloading configuration")
+            self.ghostty.reloadConfig()
+        }
     }
 
     // MARK: Notifications and Events
