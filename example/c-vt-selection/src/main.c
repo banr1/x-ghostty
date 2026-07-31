@@ -1,64 +1,64 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <ghostty/vt.h>
+#include <xghostty/vt.h>
 
 //! [selection-main]
-static void vt_write(GhosttyTerminal terminal, const char *s) {
-  ghostty_terminal_vt_write(terminal, (const uint8_t *)s, strlen(s));
+static void vt_write(XGhosttyTerminal terminal, const char *s) {
+  xghostty_terminal_vt_write(terminal, (const uint8_t *)s, strlen(s));
 }
 
-static GhosttyGridRef ref_at(GhosttyTerminal terminal, uint16_t x, uint16_t y) {
-  GhosttyGridRef ref = GHOSTTY_INIT_SIZED(GhosttyGridRef);
-  GhosttyPoint point = {
-    .tag = GHOSTTY_POINT_TAG_ACTIVE,
+static XGhosttyGridRef ref_at(XGhosttyTerminal terminal, uint16_t x, uint16_t y) {
+  XGhosttyGridRef ref = XGHOSTTY_INIT_SIZED(XGhosttyGridRef);
+  XGhosttyPoint point = {
+    .tag = XGHOSTTY_POINT_TAG_ACTIVE,
     .value = { .coordinate = { .x = x, .y = y } },
   };
 
-  GhosttyResult result = ghostty_terminal_grid_ref(terminal, point, &ref);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyResult result = xghostty_terminal_grid_ref(terminal, point, &ref);
+  assert(result == XGHOSTTY_SUCCESS);
   return ref;
 }
 
 static void print_selection(
-    GhosttyTerminal terminal,
+    XGhosttyTerminal terminal,
     const char *label,
-    const GhosttySelection *selection) {
-  GhosttyFormatterTerminalOptions opts = GHOSTTY_INIT_SIZED(GhosttyFormatterTerminalOptions);
-  opts.emit = GHOSTTY_FORMATTER_FORMAT_PLAIN;
+    const XGhosttySelection *selection) {
+  XGhosttyFormatterTerminalOptions opts = XGHOSTTY_INIT_SIZED(XGhosttyFormatterTerminalOptions);
+  opts.emit = XGHOSTTY_FORMATTER_FORMAT_PLAIN;
   opts.trim = true;
   opts.selection = selection;
 
-  GhosttyFormatter formatter;
-  GhosttyResult result = ghostty_formatter_terminal_new(
+  XGhosttyFormatter formatter;
+  XGhosttyResult result = xghostty_formatter_terminal_new(
       NULL, &formatter, terminal, opts);
-  assert(result == GHOSTTY_SUCCESS);
+  assert(result == XGHOSTTY_SUCCESS);
 
   uint8_t *buf = NULL;
   size_t len = 0;
-  result = ghostty_formatter_format_alloc(formatter, NULL, &buf, &len);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_formatter_format_alloc(formatter, NULL, &buf, &len);
+  assert(result == XGHOSTTY_SUCCESS);
 
   printf("%s: ", label);
   fwrite(buf, 1, len, stdout);
   printf("\n");
 
-  ghostty_free(NULL, buf, len);
-  ghostty_formatter_free(formatter);
+  xghostty_free(NULL, buf, len);
+  xghostty_formatter_free(formatter);
 }
 
 int main() {
-  GhosttyTerminal terminal;
-  GhosttyTerminalOptions opts = {
+  XGhosttyTerminal terminal;
+  XGhosttyTerminalOptions opts = {
     .cols = 80,
     .rows = 8,
     .max_scrollback = 0,
   };
-  GhosttyResult result = ghostty_terminal_new(NULL, &terminal, opts);
-  assert(result == GHOSTTY_SUCCESS);
+  XGhosttyResult result = xghostty_terminal_new(NULL, &terminal, opts);
+  assert(result == XGHOSTTY_SUCCESS);
 
   // A realistic shell transcript with OSC 133 semantic prompt markers.
-  // Ghostty uses these markers to distinguish prompt/input from command
+  // XGhostty uses these markers to distinguish prompt/input from command
   // output for semantic line and output selections.
   vt_write(terminal,
       "\033]133;A\007$ "           // Prompt starts: "$ "
@@ -67,13 +67,13 @@ int main() {
       "On branch main\r\n"
       "nothing to commit, working tree clean");
 
-  GhosttySelection selection = GHOSTTY_INIT_SIZED(GhosttySelection);
+  XGhosttySelection selection = XGHOSTTY_INIT_SIZED(XGhosttySelection);
 
   // Double-click style word selection under the cursor.
-  GhosttyTerminalSelectWordOptions word = GHOSTTY_INIT_SIZED(GhosttyTerminalSelectWordOptions);
+  XGhosttyTerminalSelectWordOptions word = XGHOSTTY_INIT_SIZED(XGhosttyTerminalSelectWordOptions);
   word.ref = ref_at(terminal, 6, 0); // the "status" in "git status"
-  result = ghostty_terminal_select_word(terminal, &word, &selection);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_terminal_select_word(terminal, &word, &selection);
+  assert(result == XGHOSTTY_SUCCESS);
   print_selection(terminal, "word", &selection);
 
   //! [selection-word-between]
@@ -81,30 +81,30 @@ int main() {
   // "git" and drags to "status". The pointer may pass over whitespace, so
   // select the nearest word between the original click and current drag point
   // in both directions, then combine the outer word bounds.
-  GhosttyGridRef click_ref = ref_at(terminal, 2, 0); // the "git" in "git status"
-  GhosttyGridRef drag_ref = ref_at(terminal, 6, 0);  // the "status" in "git status"
+  XGhosttyGridRef click_ref = ref_at(terminal, 2, 0); // the "git" in "git status"
+  XGhosttyGridRef drag_ref = ref_at(terminal, 6, 0);  // the "status" in "git status"
 
-  GhosttyTerminalSelectWordBetweenOptions start_word_opts =
-      GHOSTTY_INIT_SIZED(GhosttyTerminalSelectWordBetweenOptions);
+  XGhosttyTerminalSelectWordBetweenOptions start_word_opts =
+      XGHOSTTY_INIT_SIZED(XGhosttyTerminalSelectWordBetweenOptions);
   start_word_opts.start = click_ref;
   start_word_opts.end = drag_ref;
 
-  GhosttySelection start_word = GHOSTTY_INIT_SIZED(GhosttySelection);
-  result = ghostty_terminal_select_word_between(
+  XGhosttySelection start_word = XGHOSTTY_INIT_SIZED(XGhosttySelection);
+  result = xghostty_terminal_select_word_between(
       terminal, &start_word_opts, &start_word);
-  assert(result == GHOSTTY_SUCCESS);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  GhosttyTerminalSelectWordBetweenOptions end_word_opts =
-      GHOSTTY_INIT_SIZED(GhosttyTerminalSelectWordBetweenOptions);
+  XGhosttyTerminalSelectWordBetweenOptions end_word_opts =
+      XGHOSTTY_INIT_SIZED(XGhosttyTerminalSelectWordBetweenOptions);
   end_word_opts.start = drag_ref;
   end_word_opts.end = click_ref;
 
-  GhosttySelection end_word = GHOSTTY_INIT_SIZED(GhosttySelection);
-  result = ghostty_terminal_select_word_between(
+  XGhosttySelection end_word = XGHOSTTY_INIT_SIZED(XGhosttySelection);
+  result = xghostty_terminal_select_word_between(
       terminal, &end_word_opts, &end_word);
-  assert(result == GHOSTTY_SUCCESS);
+  assert(result == XGHOSTTY_SUCCESS);
 
-  GhosttySelection drag_selection = GHOSTTY_INIT_SIZED(GhosttySelection);
+  XGhosttySelection drag_selection = XGHOSTTY_INIT_SIZED(XGhosttySelection);
   drag_selection.start = start_word.start;
   drag_selection.end = end_word.end;
   print_selection(terminal, "double-click drag", &drag_selection);
@@ -112,25 +112,25 @@ int main() {
 
   // Triple-click style line selection. With semantic prompt boundaries enabled,
   // this selects only the input area rather than the leading "$ " prompt.
-  GhosttyTerminalSelectLineOptions line = GHOSTTY_INIT_SIZED(GhosttyTerminalSelectLineOptions);
+  XGhosttyTerminalSelectLineOptions line = XGHOSTTY_INIT_SIZED(XGhosttyTerminalSelectLineOptions);
   line.ref = ref_at(terminal, 2, 0); // the "git status" input area
   line.semantic_prompt_boundary = true;
-  result = ghostty_terminal_select_line(terminal, &line, &selection);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_terminal_select_line(terminal, &line, &selection);
+  assert(result == XGHOSTTY_SUCCESS);
   print_selection(terminal, "line", &selection);
 
   // Select exactly the command output for the command under the cursor.
-  result = ghostty_terminal_select_output(
+  result = xghostty_terminal_select_output(
       terminal, ref_at(terminal, 0, 1), &selection);
-  assert(result == GHOSTTY_SUCCESS);
+  assert(result == XGHOSTTY_SUCCESS);
   print_selection(terminal, "output", &selection);
 
   // Select all visible content.
-  result = ghostty_terminal_select_all(terminal, &selection);
-  assert(result == GHOSTTY_SUCCESS);
+  result = xghostty_terminal_select_all(terminal, &selection);
+  assert(result == XGHOSTTY_SUCCESS);
   print_selection(terminal, "all", &selection);
 
-  ghostty_terminal_free(terminal);
+  xghostty_terminal_free(terminal);
   return 0;
 }
 //! [selection-main]

@@ -22,7 +22,7 @@
  * functions and data structures.
  *
  * libghostty-vt uses explicit memory allocation via an allocator
- * interface provided by GhosttyAllocator. The interface is based on the
+ * interface provided by XGhosttyAllocator. The interface is based on the
  * [Zig](https://ziglang.org) allocator interface, since this has been
  * shown to be a flexible and powerful interface in practice and enables
  * a wide variety of allocation strategies.
@@ -41,8 +41,8 @@
  * we provide our own default allocator if libc isn't linked).
  *
  * To use a custom allocator:
- * 1. Implement the GhosttyAllocatorVtable function pointers
- * 2. Create a GhosttyAllocator struct with your vtable and context
+ * 1. Implement the XGhosttyAllocatorVtable function pointers
+ * 2. Create a XGhosttyAllocator struct with your vtable and context
  * 3. Pass the allocator to functions that accept one
  *
  * ## Alloc/Free Helpers
@@ -175,7 +175,7 @@ typedef struct {
      * @param ret_addr First return address of the allocation call stack (0 if not provided)
      */
     void (*free)(void *ctx, void *memory, size_t memory_len, uint8_t alignment, uintptr_t ret_addr);
-} GhosttyAllocatorVtable;
+} XGhosttyAllocatorVtable;
 
 /**
  * Custom memory allocator.
@@ -189,13 +189,13 @@ typedef struct {
  *
  * Usage example:
  * @code
- * GhosttyAllocator allocator = {
+ * XGhosttyAllocator allocator = {
  *     .vtable = &my_allocator_vtable,
  *     .ctx = my_allocator_state
  * };
  * @endcode
  */
-typedef struct GhosttyAllocator {
+typedef struct XGhosttyAllocator {
     /**
      * Opaque context pointer passed to all vtable functions.
      * This allows the allocator implementation to maintain state
@@ -207,8 +207,8 @@ typedef struct GhosttyAllocator {
      * Pointer to the allocator's vtable containing function pointers
      * for memory operations (alloc, resize, remap, free).
      */
-    const GhosttyAllocatorVtable *vtable;
-} GhosttyAllocator;
+    const XGhosttyAllocatorVtable *vtable;
+} XGhosttyAllocator;
 
 /**
  * Allocate a buffer of `len` bytes.
@@ -223,7 +223,7 @@ typedef struct GhosttyAllocator {
  *
  * @ingroup allocator
  */
-XGHOSTTY_API uint8_t* xghostty_alloc(const GhosttyAllocator* allocator, size_t len);
+XGHOSTTY_API uint8_t* xghostty_alloc(const XGhosttyAllocator* allocator, size_t len);
 
 /**
  * Free memory that was allocated by a libghostty-vt function.
@@ -248,7 +248,7 @@ XGHOSTTY_API uint8_t* xghostty_alloc(const GhosttyAllocator* allocator, size_t l
  *
  * @ingroup allocator
  */
-XGHOSTTY_API void xghostty_free(const GhosttyAllocator* allocator, uint8_t* ptr, size_t len);
+XGHOSTTY_API void xghostty_free(const XGhosttyAllocator* allocator, uint8_t* ptr, size_t len);
 
 /** @} */
 

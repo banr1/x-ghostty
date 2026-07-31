@@ -33,7 +33,7 @@ typedef struct {
 
   /** Row (0-indexed). May exceed page size for screen/history tags. */
   uint32_t y;
-} GhosttyPointCoordinate;
+} XGhosttyPointCoordinate;
 
 /**
  * Point reference tag.
@@ -55,7 +55,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Scrollback history only (before active area). */
   XGHOSTTY_POINT_TAG_HISTORY = 3,
   XGHOSTTY_POINT_TAG_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-  } GhosttyPointTag;
+  } XGhosttyPointTag;
 
 /**
  * Point value union.
@@ -64,11 +64,11 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  */
 typedef union {
   /** Coordinate (used for all tag variants). */
-  GhosttyPointCoordinate coordinate;
+  XGhosttyPointCoordinate coordinate;
 
   /** Padding for ABI compatibility. Do not use. */
   uint64_t _padding[2];
-} GhosttyPointValue;
+} XGhosttyPointValue;
 
 /**
  * Tagged union for a point in the terminal grid.
@@ -76,9 +76,9 @@ typedef union {
  * @ingroup point
  */
 typedef struct {
-  GhosttyPointTag tag;
-  GhosttyPointValue value;
-} GhosttyPoint;
+  XGhosttyPointTag tag;
+  XGhosttyPointValue value;
+} XGhosttyPoint;
 
 /** @} */
 

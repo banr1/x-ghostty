@@ -8,11 +8,11 @@
 
 To configure Ghostty, you must use a configuration file. GUI-based configuration
 is on the roadmap but not yet supported. The configuration file must be placed
-at `$XDG_CONFIG_HOME/ghostty/config.ghostty`, which defaults to `~/.config/ghostty/config.ghostty`
+at `$XDG_CONFIG_HOME/xghostty/config.xghostty`, which defaults to `~/.config/xghostty/config.xghostty`
 if the [XDG environment is not set](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html).
 
 **If you are using macOS, the configuration file can also be placed at
-`$HOME/Library/Application Support/com.mitchellh.xghostty/config.ghostty`.** This is the
+`$HOME/Library/Application Support/com.mitchellh.xxghostty/config.xghostty`.** This is the
 default configuration location for macOS. It will be searched before any of the
 XDG environment locations listed above.
 
@@ -109,7 +109,7 @@ optimization level Ghostty is compiled with. If Ghostty is compiled with `Debug`
 optimizations debug logs will be output to `stderr`. If Ghostty is compiled with
 any other optimization the debug logs will not be output to `stderr`.
 
-Ghostty also checks the `GHOSTTY_LOG` environment variable. It can be used
+Ghostty also checks the `XGHOSTTY_LOG` environment variable. It can be used
 to control which destinations receive logs. Ghostty currently defines two
 destinations:
 
@@ -118,5 +118,5 @@ destinations:
 
 Combine values with a comma to enable multiple destinations. Prefix a
 destination with `no-` to disable it. Enabling and disabling destinations
-can be done at the same time. Setting `GHOSTTY_LOG` to `true` will enable all
-destinations. Setting `GHOSTTY_LOG` to `false` will disable all destinations.
+can be done at the same time. Setting `XGHOSTTY_LOG` to `true` will enable all
+destinations. Setting `XGHOSTTY_LOG` to `false` will disable all destinations.

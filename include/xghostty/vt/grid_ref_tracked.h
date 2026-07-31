@@ -34,7 +34,7 @@ extern "C" {
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API void xghostty_tracked_grid_ref_free(GhosttyTrackedGridRef ref);
+XGHOSTTY_API void xghostty_tracked_grid_ref_free(XGhosttyTrackedGridRef ref);
 
 /**
  * Return whether a tracked grid reference currently has a meaningful value.
@@ -48,7 +48,7 @@ XGHOSTTY_API void xghostty_tracked_grid_ref_free(GhosttyTrackedGridRef ref);
  * @ingroup grid_ref
  */
 XGHOSTTY_API bool xghostty_tracked_grid_ref_has_value(
-    GhosttyTrackedGridRef ref);
+    XGhosttyTrackedGridRef ref);
 
 /**
  * Convert a tracked grid reference to a point in the requested coordinate
@@ -56,7 +56,7 @@ XGHOSTTY_API bool xghostty_tracked_grid_ref_has_value(
  *
  * This is the tracked equivalent of xghostty_terminal_point_from_grid_ref().
  * Unlike snapshotting, this does not expose an intermediate untracked
- * GhosttyGridRef.
+ * XGhosttyGridRef.
  *
  * A tracked reference is resolved against the terminal screen/page-list that
  * currently owns the reference. If the terminal has switched between primary
@@ -76,10 +76,10 @@ XGHOSTTY_API bool xghostty_tracked_grid_ref_has_value(
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_tracked_grid_ref_point(
-    GhosttyTrackedGridRef ref,
-    GhosttyPointTag tag,
-    GhosttyPointCoordinate *out_point);
+XGHOSTTY_API XGhosttyResult xghostty_tracked_grid_ref_point(
+    XGhosttyTrackedGridRef ref,
+    XGhosttyPointTag tag,
+    XGhosttyPointCoordinate *out_point);
 
 /**
  * Move an existing tracked grid reference to a new terminal point.
@@ -102,15 +102,15 @@ XGHOSTTY_API GhosttyResult xghostty_tracked_grid_ref_point(
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_tracked_grid_ref_set(
-    GhosttyTrackedGridRef ref,
-    GhosttyTerminal terminal,
-    GhosttyPoint point);
+XGHOSTTY_API XGhosttyResult xghostty_tracked_grid_ref_set(
+    XGhosttyTrackedGridRef ref,
+    XGhosttyTerminal terminal,
+    XGhosttyPoint point);
 
 /**
- * Snapshot a tracked grid reference into a regular GhosttyGridRef.
+ * Snapshot a tracked grid reference into a regular XGhosttyGridRef.
  *
- * The returned GhosttyGridRef is an untracked snapshot and has the same
+ * The returned XGhosttyGridRef is an untracked snapshot and has the same
  * lifetime rules as xghostty_terminal_grid_ref(): it is only valid until the
  * next terminal update. Snapshot immediately before calling
  * xghostty_grid_ref_cell(), xghostty_grid_ref_row(),
@@ -128,9 +128,9 @@ XGHOSTTY_API GhosttyResult xghostty_tracked_grid_ref_set(
  *
  * @ingroup grid_ref
  */
-XGHOSTTY_API GhosttyResult xghostty_tracked_grid_ref_snapshot(
-    GhosttyTrackedGridRef ref,
-    GhosttyGridRef *out_ref);
+XGHOSTTY_API XGhosttyResult xghostty_tracked_grid_ref_snapshot(
+    XGhosttyTrackedGridRef ref,
+    XGhosttyGridRef *out_ref);
 
 #ifdef __cplusplus
 }

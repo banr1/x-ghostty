@@ -5,7 +5,7 @@ const CAllocator = lib.alloc.Allocator;
 const terminal_sys = @import("../sys.zig");
 const Result = @import("result.zig").Result;
 
-/// C: GhosttySysImage
+/// C: XGhosttySysImage
 pub const Image = extern struct {
     width: u32,
     height: u32,
@@ -13,7 +13,7 @@ pub const Image = extern struct {
     data_len: usize,
 };
 
-/// C: GhosttySysDecodePngFn
+/// C: XGhosttySysDecodePngFn
 pub const DecodePngFn = *const fn (
     ?*anyopaque,
     *const CAllocator,
@@ -22,7 +22,7 @@ pub const DecodePngFn = *const fn (
     *Image,
 ) callconv(lib.calling_conv) bool;
 
-/// C: GhosttySysLogLevel
+/// C: XGhosttySysLogLevel
 pub const LogLevel = enum(c_int) {
     @"error" = 0,
     warning = 1,
@@ -39,7 +39,7 @@ pub const LogLevel = enum(c_int) {
     }
 };
 
-/// C: GhosttySysLogFn
+/// C: XGhosttySysLogFn
 pub const LogFn = *const fn (
     ?*anyopaque,
     LogLevel,
@@ -49,7 +49,7 @@ pub const LogFn = *const fn (
     usize,
 ) callconv(lib.calling_conv) void;
 
-/// C: GhosttySysOption
+/// C: XGhosttySysOption
 pub const Option = enum(c_int) {
     userdata = 0,
     decode_png = 1,

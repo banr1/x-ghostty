@@ -23,7 +23,7 @@
  *
  * @ingroup mouse
  */
-typedef struct GhosttyMouseEncoderImpl *GhosttyMouseEncoder;
+typedef struct XGhosttyMouseEncoderImpl *XGhosttyMouseEncoder;
 
 /**
  * Mouse tracking mode.
@@ -46,7 +46,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Any-event tracking mode. */
   XGHOSTTY_MOUSE_TRACKING_ANY = 4,
   XGHOSTTY_MOUSE_TRACKING_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyMouseTrackingMode;
+} XGhosttyMouseTrackingMode;
 
 /**
  * Mouse output format.
@@ -60,7 +60,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_MOUSE_FORMAT_URXVT = 3,
   XGHOSTTY_MOUSE_FORMAT_SGR_PIXELS = 4,
   XGHOSTTY_MOUSE_FORMAT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyMouseFormat;
+} XGhosttyMouseFormat;
 
 /**
  * Mouse encoder size and geometry context.
@@ -71,7 +71,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @ingroup mouse
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyMouseEncoderSize). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyMouseEncoderSize). */
   size_t size;
 
   /** Full screen width in pixels. */
@@ -97,7 +97,7 @@ typedef struct {
 
   /** Left padding in pixels. */
   uint32_t padding_left;
-} GhosttyMouseEncoderSize;
+} XGhosttyMouseEncoderSize;
 
 /**
  * Mouse encoder option identifiers.
@@ -108,13 +108,13 @@ typedef struct {
  * @ingroup mouse
  */
 typedef enum XGHOSTTY_ENUM_TYPED {
-  /** Mouse tracking mode (value: GhosttyMouseTrackingMode). */
+  /** Mouse tracking mode (value: XGhosttyMouseTrackingMode). */
   XGHOSTTY_MOUSE_ENCODER_OPT_EVENT = 0,
 
-  /** Mouse output format (value: GhosttyMouseFormat). */
+  /** Mouse output format (value: XGhosttyMouseFormat). */
   XGHOSTTY_MOUSE_ENCODER_OPT_FORMAT = 1,
 
-  /** Renderer size context (value: GhosttyMouseEncoderSize). */
+  /** Renderer size context (value: XGhosttyMouseEncoderSize). */
   XGHOSTTY_MOUSE_ENCODER_OPT_SIZE = 2,
 
   /** Whether any mouse button is currently pressed (value: bool). */
@@ -123,7 +123,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Whether to enable motion deduplication by last cell (value: bool). */
   XGHOSTTY_MOUSE_ENCODER_OPT_TRACK_LAST_CELL = 4,
   XGHOSTTY_MOUSE_ENCODER_OPT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyMouseEncoderOption;
+} XGhosttyMouseEncoderOption;
 
 /**
  * Create a new mouse encoder instance.
@@ -134,8 +134,8 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup mouse
  */
-XGHOSTTY_API GhosttyResult xghostty_mouse_encoder_new(const GhosttyAllocator *allocator,
-                                        GhosttyMouseEncoder *encoder);
+XGHOSTTY_API XGhosttyResult xghostty_mouse_encoder_new(const XGhosttyAllocator *allocator,
+                                        XGhosttyMouseEncoder *encoder);
 
 /**
  * Free a mouse encoder instance.
@@ -144,7 +144,7 @@ XGHOSTTY_API GhosttyResult xghostty_mouse_encoder_new(const GhosttyAllocator *al
  *
  * @ingroup mouse
  */
-XGHOSTTY_API void xghostty_mouse_encoder_free(GhosttyMouseEncoder encoder);
+XGHOSTTY_API void xghostty_mouse_encoder_free(XGhosttyMouseEncoder encoder);
 
 /**
  * Set an option on the mouse encoder.
@@ -157,8 +157,8 @@ XGHOSTTY_API void xghostty_mouse_encoder_free(GhosttyMouseEncoder encoder);
  *
  * @ingroup mouse
  */
-XGHOSTTY_API void xghostty_mouse_encoder_setopt(GhosttyMouseEncoder encoder,
-                                  GhosttyMouseEncoderOption option,
+XGHOSTTY_API void xghostty_mouse_encoder_setopt(XGhosttyMouseEncoder encoder,
+                                  XGhosttyMouseEncoderOption option,
                                   const void *value);
 
 /**
@@ -172,8 +172,8 @@ XGHOSTTY_API void xghostty_mouse_encoder_setopt(GhosttyMouseEncoder encoder,
  *
  * @ingroup mouse
  */
-XGHOSTTY_API void xghostty_mouse_encoder_setopt_from_terminal(GhosttyMouseEncoder encoder,
-                                                GhosttyTerminal terminal);
+XGHOSTTY_API void xghostty_mouse_encoder_setopt_from_terminal(XGhosttyMouseEncoder encoder,
+                                                XGhosttyTerminal terminal);
 
 /**
  * Reset internal encoder state.
@@ -184,7 +184,7 @@ XGHOSTTY_API void xghostty_mouse_encoder_setopt_from_terminal(GhosttyMouseEncode
  *
  * @ingroup mouse
  */
-XGHOSTTY_API void xghostty_mouse_encoder_reset(GhosttyMouseEncoder encoder);
+XGHOSTTY_API void xghostty_mouse_encoder_reset(XGhosttyMouseEncoder encoder);
 
 /**
  * Encode a mouse event into a terminal escape sequence.
@@ -205,8 +205,8 @@ XGHOSTTY_API void xghostty_mouse_encoder_reset(GhosttyMouseEncoder encoder);
  *
  * @ingroup mouse
  */
-XGHOSTTY_API GhosttyResult xghostty_mouse_encoder_encode(GhosttyMouseEncoder encoder,
-                                           GhosttyMouseEvent event,
+XGHOSTTY_API XGhosttyResult xghostty_mouse_encoder_encode(XGhosttyMouseEncoder encoder,
+                                           XGhosttyMouseEvent event,
                                            char *out_buf,
                                            size_t out_buf_size,
                                            size_t *out_len);

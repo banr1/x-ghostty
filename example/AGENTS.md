@@ -18,7 +18,7 @@ edits are needed when adding a new example.
 ## Doxygen Snippet Tags
 
 Example source files use Doxygen `@snippet` tags so the corresponding
-header in `include/ghostty/vt/` can reference them. Wrap the relevant
+header in `include/xghostty/vt/` can reference them. Wrap the relevant
 code with `//! [snippet-name]` markers:
 
 ```c
@@ -30,7 +30,7 @@ int main() { ... }
 The header then uses `@snippet <dir>/src/main.c my-snippet` instead of
 inline `@code` blocks. Never duplicate example code inline in the
 headers — always use `@snippet`. When modifying example code, keep the
-snippet markers in sync with the headers in `include/ghostty/vt/`.
+snippet markers in sync with the headers in `include/xghostty/vt/`.
 
 ## Conventions
 

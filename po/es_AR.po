@@ -1,11 +1,11 @@
-# Spanish translations for com.mitchellh.ghostty package.
+# Spanish translations for com.mitchellh.xghostty package.
 # Copyright (C) 2025 Mitchell Hashimoto
-# This file is distributed under the same license as the com.mitchellh.ghostty package.
+# This file is distributed under the same license as the com.mitchellh.xghostty package.
 # Alan Moyano <alanmoyano203@gmail.com>, 2025.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: com.mitchellh.ghostty\n"
+"Project-Id-Version: com.mitchellh.xghostty\n"
 "Report-Msgid-Bugs-To: m@mitchellh.com\n"
 "POT-Creation-Date: 2026-03-25 16:24-0700\n"
 "PO-Revision-Date: 2026-02-19 13:34-0300\n"
@@ -18,8 +18,8 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: dist/linux/ghostty_nautilus.py:53
-msgid "Open in Ghostty"
-msgstr "Abrir en Ghostty"
+msgid "Open in XGhostty"
+msgstr "Abrir en XGhostty"
 
 #: src/apprt/gtk/ui/1.0/clipboard-confirmation-dialog.blp:12
 #: src/apprt/gtk/ui/1.4/clipboard-confirmation-dialog.blp:12
@@ -81,14 +81,14 @@ msgstr "Recargar configuración"
 #: src/apprt/gtk/ui/1.2/debug-warning.blp:7
 #: src/apprt/gtk/ui/1.3/debug-warning.blp:6
 msgid ""
-"⚠️ You're running a debug build of Ghostty! Performance will be degraded."
+"⚠️ You're running a debug build of XGhostty! Performance will be degraded."
 msgstr ""
-"⚠️ Estás ejecutando una versión de depuración de Ghostty. El rendimiento no "
+"⚠️ Estás ejecutando una versión de depuración de XGhostty. El rendimiento no "
 "será óptimo."
 
 #: src/apprt/gtk/ui/1.5/inspector-window.blp:5
-msgid "Ghostty: Terminal Inspector"
-msgstr "Ghostty: Inspector de la terminal"
+msgid "XGhostty: Terminal Inspector"
+msgstr "XGhostty: Inspector de la terminal"
 
 #: src/apprt/gtk/ui/1.2/search-overlay.blp:29
 msgid "Find…"
@@ -243,8 +243,8 @@ msgid "Terminal Inspector"
 msgstr "Inspector de la terminal"
 
 #: src/apprt/gtk/ui/1.5/window.blp:307 src/apprt/gtk/class/window.zig:1772
-msgid "About Ghostty"
-msgstr "Acerca de Ghostty"
+msgid "About XGhostty"
+msgstr "Acerca de XGhostty"
 
 #: src/apprt/gtk/ui/1.5/window.blp:312
 msgid "Quit"
@@ -283,8 +283,8 @@ msgstr ""
 "algunos comandos podrían ejecutarse."
 
 #: src/apprt/gtk/class/close_confirmation_dialog.zig:184
-msgid "Quit Ghostty?"
-msgstr "¿Salir de Ghostty?"
+msgid "Quit XGhostty?"
+msgstr "¿Salir de XGhostty?"
 
 #: src/apprt/gtk/class/close_confirmation_dialog.zig:185
 msgid "Close Tab?"
@@ -355,5 +355,5 @@ msgid "Cleared clipboard"
 msgstr "Portapapeles limpiado"
 
 #: src/apprt/gtk/class/window.zig:1753
-msgid "Ghostty Developers"
-msgstr "Desarrolladores de Ghostty"
+msgid "XGhostty Developers"
+msgstr "Desarrolladores de XGhostty"

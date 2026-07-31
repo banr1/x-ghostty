@@ -552,14 +552,14 @@ language: ?[:0]const u8 = null,
 /// include path separators unless it is an absolute pathname.
 ///
 /// The first directory is the `themes` subdirectory of your XGhostty
-/// configuration directory. This is `$XDG_CONFIG_HOME/ghostty/themes` or
+/// configuration directory. This is `$XDG_CONFIG_HOME/xghostty/themes` or
 /// `~/.config/xghostty/themes`.
 ///
 /// The second directory is the `themes` subdirectory of the XGhostty resources
 /// directory. XGhostty ships with a multitude of themes that will be installed
 /// into this directory. On macOS, this list is in the
-/// `XGhostty.app/Contents/Resources/ghostty/themes` directory. On Linux, this
-/// list is in the `share/ghostty/themes` directory (wherever you installed the
+/// `XGhostty.app/Contents/Resources/xghostty/themes` directory. On Linux, this
+/// list is in the `share/xghostty/themes` directory (wherever you installed the
 /// XGhostty "share" directory.
 ///
 /// To see a list of available themes, run `ghostty +list-themes`.

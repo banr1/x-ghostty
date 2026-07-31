@@ -51,7 +51,7 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !XGhostt
         .windows => {
             exe.subsystem = .Windows;
             exe.addWin32ResourceFile(.{
-                .file = b.path("dist/windows/ghostty.rc"),
+                .file = b.path("dist/windows/xghostty.rc"),
             });
         },
 

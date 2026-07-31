@@ -1,8 +1,8 @@
-name: ghostty
+name: xghostty
 base: core24
 summary: A terminal emulator
 description: |
-  Ghostty is a fast, feature-rich, and cross-platform terminal emulator that
+  XGhostty is a fast, feature-rich, and cross-platform terminal emulator that
   uses platform-native UI and GPU acceleration.
 grade: stable
 confinement: classic
@@ -11,23 +11,23 @@ issues: https://github.com/ghostty-org/ghostty/issues
 website: https://ghostty.org
 license: MIT
 icon: images/icons/icon_512.png
-adopt-info: ghostty
+adopt-info: xghostty
 
 platforms:
   amd64:
   arm64:
 
 apps:
-  ghostty:
-    command: bin/ghostty
+  xghostty:
+    command: bin/xghostty
     command-chain: [app/launcher]
-    completer: share/bash-completion/completions/ghostty.bash
-    desktop: share/applications/com.mitchellh.ghostty.desktop
+    completer: share/bash-completion/completions/xghostty.bash
+    desktop: share/applications/com.mitchellh.xghostty.desktop
     #refresh-mode: ignore-running # Store rejects this, needs fix in review-tools
     environment:
-      PATH: /snap/ghostty/current/bin:/snap/ghostty/current/usr/bin:$PATH
+      PATH: /snap/xghostty/current/bin:/snap/xghostty/current/usr/bin:$PATH
       LC_ALL: C.UTF-8
-      GHOSTTY_RESOURCES_DIR: /snap/ghostty/current/share/ghostty
+      XGHOSTTY_RESOURCES_DIR: /snap/xghostty/current/share/xghostty
 
 parts:
   launcher:
@@ -64,7 +64,7 @@ parts:
     prime:
       - -*
 
-  ghostty:
+  xghostty:
     source: .
     after: [zig]
     plugin: nil
@@ -86,7 +86,7 @@ parts:
         -Dcpu=baseline \
         -fno-sys=gtk4-layer-shell
       cp -rp zig-out/* $CRAFT_PART_INSTALL/
-      sed -i 's|Icon=com.mitchellh.ghostty|Icon=${SNAP}/share/icons/hicolor/512x512/apps/com.mitchellh.ghostty.png|g' $CRAFT_PART_INSTALL/share/applications/com.mitchellh.ghostty.desktop
+      sed -i 's|Icon=com.mitchellh.xghostty|Icon=${SNAP}/share/icons/hicolor/512x512/apps/com.mitchellh.xghostty.png|g' $CRAFT_PART_INSTALL/share/applications/com.mitchellh.xghostty.desktop
 
   libs:
     plugin: nil

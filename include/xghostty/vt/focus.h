@@ -41,7 +41,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     /** Terminal window lost focus */
     XGHOSTTY_FOCUS_LOST = 1,
     XGHOSTTY_FOCUS_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyFocusEvent;
+} XGhosttyFocusEvent;
 
 /**
  * Encode a focus event into a terminal escape sequence.
@@ -61,8 +61,8 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @return XGHOSTTY_SUCCESS on success, XGHOSTTY_OUT_OF_SPACE if the buffer
  *         is too small
  */
-XGHOSTTY_API GhosttyResult xghostty_focus_encode(
-    GhosttyFocusEvent event,
+XGHOSTTY_API XGhosttyResult xghostty_focus_encode(
+    XGhosttyFocusEvent event,
     char* buf,
     size_t buf_len,
     size_t* out_written);

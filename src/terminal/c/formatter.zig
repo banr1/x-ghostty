@@ -19,17 +19,17 @@ const FormatterWrapper = struct {
     };
 };
 
-/// C: GhosttyFormatter
+/// C: XGhosttyFormatter
 pub const Formatter = ?*FormatterWrapper;
 
-/// C: GhosttyFormatterFormat
+/// C: XGhosttyFormatterFormat
 pub const Format = formatterpkg.Format;
 
 const CSelection = selection_c.CSelection;
 
-/// C: GhosttyFormatterScreenOptions
+/// C: XGhosttyFormatterScreenOptions
 pub const ScreenOptions = extern struct {
-    /// C: GhosttyFormatterScreenExtra
+    /// C: XGhosttyFormatterScreenExtra
     pub const Extra = extern struct {
         size: usize = @sizeOf(Extra),
         cursor: bool,
@@ -59,7 +59,7 @@ pub const ScreenOptions = extern struct {
     };
 };
 
-/// C: GhosttyFormatterTerminalOptions
+/// C: XGhosttyFormatterTerminalOptions
 pub const TerminalOptions = extern struct {
     size: usize = @sizeOf(TerminalOptions),
     emit: Format,
@@ -71,7 +71,7 @@ pub const TerminalOptions = extern struct {
     /// If null, the entire screen is formatted.
     selection: ?*const CSelection = null,
 
-    /// C: GhosttyFormatterTerminalExtra
+    /// C: XGhosttyFormatterTerminalExtra
     pub const Extra = extern struct {
         size: usize = @sizeOf(Extra),
         palette: bool,

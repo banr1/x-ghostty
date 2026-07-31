@@ -116,8 +116,8 @@ in
       echo "$terminfo" >> "$out/nix-support/propagated-user-env-packages"
 
       mkdir -p "$shell_integration"
-      mv "$out/share/ghostty/shell-integration" "$shell_integration/shell-integration"
-      ln -sf "$shell_integration/shell-integration" "$out/share/ghostty/shell-integration"
+      mv "$out/share/xghostty/shell-integration" "$shell_integration/shell-integration"
+      ln -sf "$shell_integration/shell-integration" "$out/share/xghostty/shell-integration"
       echo "$shell_integration" >> "$out/nix-support/propagated-user-env-packages"
 
       mv $out/share/vim/vimfiles "$vim"
@@ -136,6 +136,6 @@ in
         "x86_64-linux"
         "aarch64-linux"
       ];
-      mainProgram = "ghostty";
+      mainProgram = "xghostty";
     };
   })

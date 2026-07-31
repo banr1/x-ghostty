@@ -23,14 +23,14 @@ typedef struct {
   uint8_t r; /**< Red component (0-255) */
   uint8_t g; /**< Green component (0-255) */
   uint8_t b; /**< Blue component (0-255) */
-} GhosttyColorRgb;
+} XGhosttyColorRgb;
 
 /**
  * Palette color index (0-255).
  *
  * @ingroup sgr
  */
-typedef uint8_t GhosttyColorPaletteIndex;
+typedef uint8_t XGhosttyColorPaletteIndex;
 
 /** @addtogroup sgr
  * @{
@@ -75,7 +75,7 @@ typedef uint8_t GhosttyColorPaletteIndex;
  * Get the RGB color components.
  *
  * This function extracts the individual red, green, and blue components
- * from a GhosttyColorRgb value. Primarily useful in WebAssembly environments
+ * from a XGhosttyColorRgb value. Primarily useful in WebAssembly environments
  * where accessing struct fields directly is difficult.
  *
  * @param color The RGB color value
@@ -85,7 +85,7 @@ typedef uint8_t GhosttyColorPaletteIndex;
  *
  * @ingroup sgr
  */
-XGHOSTTY_API void xghostty_color_rgb_get(GhosttyColorRgb color,
+XGHOSTTY_API void xghostty_color_rgb_get(XGhosttyColorRgb color,
                            uint8_t* r,
                            uint8_t* g,
                            uint8_t* b);

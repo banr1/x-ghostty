@@ -38,7 +38,7 @@ fi
 ### Elvish
 
 For [Elvish](https://elv.sh), `$XGHOSTTY_RESOURCES_DIR/src/shell-integration`
-contains an `./elvish/lib/ghostty-integration.elv` file.
+contains an `./elvish/lib/xghostty-integration.elv` file.
 
 Elvish, on startup, searches for paths defined in `XDG_DATA_DIRS`
 variable for `./elvish/lib/*.elv` files and imports them. They are thus
@@ -46,18 +46,18 @@ made available for use as modules by way of `use <filename>`.
 
 Ghostty launches Elvish, passing the environment with `XDG_DATA_DIRS` prepended
 with `$XGHOSTTY_RESOURCES_DIR/src/shell-integration`. It contains
-`./elvish/lib/ghostty-integration.elv`. The user can then import it
-by `use ghostty-integration` every time after shell startup or
+`./elvish/lib/xghostty-integration.elv`. The user can then import it
+by `use xghostty-integration` every time after shell startup or
 autostart integration in `$XDG_CONFIG_HOME/elvish/rc.elv`,
 which will run the integration routines.
 
-If you decide to autostart `ghostty-integration` with `rc.elv`, you should
+If you decide to autostart `xghostty-integration` with `rc.elv`, you should
 detect whether the terminal is Ghostty or not. To do this, add this to the end
 of your `rc.elv` file:
 
 ```elvish
 if (eq $E:TERM "xterm-xghostty") {
-  try { use ghostty-integration } catch { }
+  try { use xghostty-integration } catch { }
 }
 ```
 
@@ -73,9 +73,9 @@ on the Fish startup process, see the
 ### Nushell
 
 For [Nushell](https://www.nushell.sh/), Ghostty prepends to the
-`XDG_DATA_DIRS` directory, making the `ghostty` module available through
+`XDG_DATA_DIRS` directory, making the `xghostty` module available through
 Nushell's vendor autoload mechanism. Ghostty then automatically imports
-the module using the `-e "use ghostty *"` flag when starting Nushell.
+the module using the `-e "use xghostty *"` flag when starting Nushell.
 
 Nushell provides many shell features itself, such as `title` and `cursor`,
 so our integration focuses on Ghostty-specific features like `sudo`,
@@ -85,8 +85,8 @@ The shell integration is automatically enabled when running Nushell in Ghostty,
 but you can also load it manually is shell integration is disabled:
 
 ```nushell
-source $XGHOSTTY_RESOURCES_DIR/shell-integration/nushell/vendor/autoload/ghostty.nu
-use ghostty *
+source $XGHOSTTY_RESOURCES_DIR/shell-integration/nushell/vendor/autoload/xghostty.nu
+use xghostty *
 ```
 
 ### Zsh
@@ -104,7 +104,7 @@ To load the Zsh shell integration manually:
 
 ```zsh
 if [[ -n $XGHOSTTY_RESOURCES_DIR ]]; then
-  source "$XGHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
+  source "$XGHOSTTY_RESOURCES_DIR"/shell-integration/zsh/xghostty-integration
 fi
 ```
 

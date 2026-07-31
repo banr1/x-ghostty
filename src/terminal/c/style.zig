@@ -6,21 +6,21 @@ const style = @import("../style.zig");
 const color = @import("../color.zig");
 const sgr = @import("../sgr.zig");
 
-/// C: GhosttyStyleColorTag
+/// C: XGhosttyStyleColorTag
 pub const ColorTag = enum(c_int) {
     none = 0,
     palette = 1,
     rgb = 2,
 };
 
-/// C: GhosttyStyleColorValue
+/// C: XGhosttyStyleColorValue
 pub const ColorValue = extern union {
     palette: u8,
     rgb: color.RGB.C,
     _padding: u64,
 };
 
-/// C: GhosttyStyleColor
+/// C: XGhosttyStyleColor
 pub const Color = extern struct {
     tag: ColorTag,
     value: ColorValue,
@@ -43,7 +43,7 @@ pub const Color = extern struct {
     }
 };
 
-/// C: GhosttyStyle
+/// C: XGhosttyStyle
 pub const Style = extern struct {
     size: usize = @sizeOf(Style),
     fg_color: Color,

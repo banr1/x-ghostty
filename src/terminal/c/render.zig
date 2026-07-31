@@ -51,26 +51,26 @@ const RowCellsWrapper = struct {
     palette: *const colorpkg.Palette,
 };
 
-/// C: GhosttyRenderState
+/// C: XGhosttyRenderState
 pub const RenderState = ?*RenderStateWrapper;
 
-/// C: GhosttyRenderStateRowIterator
+/// C: XGhosttyRenderStateRowIterator
 pub const RowIterator = ?*RowIteratorWrapper;
 
-/// C: GhosttyRenderStateRowCells
+/// C: XGhosttyRenderStateRowCells
 pub const RowCells = ?*RowCellsWrapper;
 
-/// C: GhosttyRenderStateDirty
+/// C: XGhosttyRenderStateDirty
 pub const Dirty = renderpkg.RenderState.Dirty;
 
-/// C: GhosttyRenderStateRowSelection
+/// C: XGhosttyRenderStateRowSelection
 pub const RowSelection = extern struct {
     size: usize = @sizeOf(RowSelection),
     start_x: u16 = 0,
     end_x: u16 = 0,
 };
 
-/// C: GhosttyRenderStateCursorVisualStyle
+/// C: XGhosttyRenderStateCursorVisualStyle
 pub const CursorVisualStyle = enum(c_int) {
     bar = 0,
     block = 1,
@@ -87,7 +87,7 @@ pub const CursorVisualStyle = enum(c_int) {
     }
 };
 
-/// C: GhosttyRenderStateData
+/// C: XGhosttyRenderStateData
 pub const Data = enum(c_int) {
     invalid = 0,
     cols = 1,
@@ -126,7 +126,7 @@ pub const Data = enum(c_int) {
     }
 };
 
-/// C: GhosttyRenderStateOption
+/// C: XGhosttyRenderStateOption
 pub const SetOption = enum(c_int) {
     dirty = 0,
 
@@ -138,7 +138,7 @@ pub const SetOption = enum(c_int) {
     }
 };
 
-/// C: GhosttyRenderStateColors
+/// C: XGhosttyRenderStateColors
 pub const Colors = extern struct {
     size: usize = @sizeOf(Colors),
     background: colorpkg.RGB.C,
@@ -456,7 +456,7 @@ pub fn row_cells_free(cells_: RowCells) callconv(lib.calling_conv) void {
     alloc.destroy(cells);
 }
 
-/// C: GhosttyRenderStateRowCellsData
+/// C: XGhosttyRenderStateRowCellsData
 pub const RowCellsData = enum(c_int) {
     invalid = 0,
     raw = 1,
@@ -614,7 +614,7 @@ fn rowCellsGetGraphemesUtf8(
     return .success;
 }
 
-/// C: GhosttyRenderStateRowData
+/// C: XGhosttyRenderStateRowData
 pub const RowData = enum(c_int) {
     invalid = 0,
     dirty = 1,
@@ -634,7 +634,7 @@ pub const RowData = enum(c_int) {
     }
 };
 
-/// C: GhosttyRenderStateRowOption
+/// C: XGhosttyRenderStateRowOption
 pub const RowOption = enum(c_int) {
     dirty = 0,
 

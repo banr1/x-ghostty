@@ -88,7 +88,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SGR_ATTR_BG_256 = 29,
   XGHOSTTY_SGR_ATTR_FG_256 = 30,
   XGHOSTTY_SGR_ATTR_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySgrAttributeTag;
+} XGhosttySgrAttributeTag;
 
 /**
  * Underline style types.
@@ -103,7 +103,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   XGHOSTTY_SGR_UNDERLINE_DOTTED = 4,
   XGHOSTTY_SGR_UNDERLINE_DASHED = 5,
   XGHOSTTY_SGR_UNDERLINE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySgrUnderline;
+} XGhosttySgrUnderline;
 
 /**
  * Unknown SGR attribute data.
@@ -118,7 +118,7 @@ typedef struct {
   size_t full_len;
   const uint16_t* partial_ptr;
   size_t partial_len;
-} GhosttySgrUnknown;
+} XGhosttySgrUnknown;
 
 /**
  * SGR attribute value union.
@@ -130,20 +130,20 @@ typedef struct {
  * @ingroup sgr
  */
 typedef union {
-  GhosttySgrUnknown unknown;
-  GhosttySgrUnderline underline;
-  GhosttyColorRgb underline_color;
-  GhosttyColorPaletteIndex underline_color_256;
-  GhosttyColorRgb direct_color_fg;
-  GhosttyColorRgb direct_color_bg;
-  GhosttyColorPaletteIndex bg_8;
-  GhosttyColorPaletteIndex fg_8;
-  GhosttyColorPaletteIndex bright_bg_8;
-  GhosttyColorPaletteIndex bright_fg_8;
-  GhosttyColorPaletteIndex bg_256;
-  GhosttyColorPaletteIndex fg_256;
+  XGhosttySgrUnknown unknown;
+  XGhosttySgrUnderline underline;
+  XGhosttyColorRgb underline_color;
+  XGhosttyColorPaletteIndex underline_color_256;
+  XGhosttyColorRgb direct_color_fg;
+  XGhosttyColorRgb direct_color_bg;
+  XGhosttyColorPaletteIndex bg_8;
+  XGhosttyColorPaletteIndex fg_8;
+  XGhosttyColorPaletteIndex bright_bg_8;
+  XGhosttyColorPaletteIndex bright_fg_8;
+  XGhosttyColorPaletteIndex bg_256;
+  XGhosttyColorPaletteIndex fg_256;
   uint64_t _padding[8];
-} GhosttySgrAttributeValue;
+} XGhosttySgrAttributeValue;
 
 /**
  * SGR attribute (tagged union).
@@ -158,9 +158,9 @@ typedef union {
  * @ingroup sgr
  */
 typedef struct {
-  GhosttySgrAttributeTag tag;
-  GhosttySgrAttributeValue value;
-} GhosttySgrAttribute;
+  XGhosttySgrAttributeTag tag;
+  XGhosttySgrAttributeValue value;
+} XGhosttySgrAttribute;
 
 /**
  * Create a new SGR parser instance.
@@ -176,8 +176,8 @@ typedef struct {
  *
  * @ingroup sgr
  */
-XGHOSTTY_API GhosttyResult xghostty_sgr_new(const GhosttyAllocator* allocator,
-                              GhosttySgrParser* parser);
+XGHOSTTY_API XGhosttyResult xghostty_sgr_new(const XGhosttyAllocator* allocator,
+                              XGhosttySgrParser* parser);
 
 /**
  * Free an SGR parser instance.
@@ -190,7 +190,7 @@ XGHOSTTY_API GhosttyResult xghostty_sgr_new(const GhosttyAllocator* allocator,
  *
  * @ingroup sgr
  */
-XGHOSTTY_API void xghostty_sgr_free(GhosttySgrParser parser);
+XGHOSTTY_API void xghostty_sgr_free(XGhosttySgrParser parser);
 
 /**
  * Reset an SGR parser instance to the beginning of the parameter list.
@@ -203,7 +203,7 @@ XGHOSTTY_API void xghostty_sgr_free(GhosttySgrParser parser);
  *
  * @ingroup sgr
  */
-XGHOSTTY_API void xghostty_sgr_reset(GhosttySgrParser parser);
+XGHOSTTY_API void xghostty_sgr_reset(XGhosttySgrParser parser);
 
 /**
  * Set SGR parameters for parsing.
@@ -235,7 +235,7 @@ XGHOSTTY_API void xghostty_sgr_reset(GhosttySgrParser parser);
  *
  * @ingroup sgr
  */
-XGHOSTTY_API GhosttyResult xghostty_sgr_set_params(GhosttySgrParser parser,
+XGHOSTTY_API XGhosttyResult xghostty_sgr_set_params(XGhosttySgrParser parser,
                                      const uint16_t* params,
                                      const char* separators,
                                      size_t len);
@@ -253,7 +253,7 @@ XGHOSTTY_API GhosttyResult xghostty_sgr_set_params(GhosttySgrParser parser,
  *
  * @ingroup sgr
  */
-XGHOSTTY_API bool xghostty_sgr_next(GhosttySgrParser parser, GhosttySgrAttribute* attr);
+XGHOSTTY_API bool xghostty_sgr_next(XGhosttySgrParser parser, XGhosttySgrAttribute* attr);
 
 /**
  * Get the full parameter list from an unknown SGR attribute.
@@ -268,7 +268,7 @@ XGHOSTTY_API bool xghostty_sgr_next(GhosttySgrParser parser, GhosttySgrAttribute
  *
  * @ingroup sgr
  */
-XGHOSTTY_API size_t xghostty_sgr_unknown_full(GhosttySgrUnknown unknown,
+XGHOSTTY_API size_t xghostty_sgr_unknown_full(XGhosttySgrUnknown unknown,
                                 const uint16_t** ptr);
 
 /**
@@ -284,7 +284,7 @@ XGHOSTTY_API size_t xghostty_sgr_unknown_full(GhosttySgrUnknown unknown,
  *
  * @ingroup sgr
  */
-XGHOSTTY_API size_t xghostty_sgr_unknown_partial(GhosttySgrUnknown unknown,
+XGHOSTTY_API size_t xghostty_sgr_unknown_partial(XGhosttySgrUnknown unknown,
                                    const uint16_t** ptr);
 
 /**
@@ -299,7 +299,7 @@ XGHOSTTY_API size_t xghostty_sgr_unknown_partial(GhosttySgrUnknown unknown,
  *
  * @ingroup sgr
  */
-XGHOSTTY_API GhosttySgrAttributeTag xghostty_sgr_attribute_tag(GhosttySgrAttribute attr);
+XGHOSTTY_API XGhosttySgrAttributeTag xghostty_sgr_attribute_tag(XGhosttySgrAttribute attr);
 
 /**
  * Get the value from an SGR attribute.
@@ -313,8 +313,8 @@ XGHOSTTY_API GhosttySgrAttributeTag xghostty_sgr_attribute_tag(GhosttySgrAttribu
  *
  * @ingroup sgr
  */
-XGHOSTTY_API GhosttySgrAttributeValue* xghostty_sgr_attribute_value(
-    GhosttySgrAttribute* attr);
+XGHOSTTY_API XGhosttySgrAttributeValue* xghostty_sgr_attribute_value(
+    XGhosttySgrAttribute* attr);
 
 #ifdef __wasm__
 /**
@@ -327,7 +327,7 @@ XGHOSTTY_API GhosttySgrAttributeValue* xghostty_sgr_attribute_value(
  *
  * @ingroup wasm
  */
-XGHOSTTY_API GhosttySgrAttribute* xghostty_wasm_alloc_sgr_attribute(void);
+XGHOSTTY_API XGhosttySgrAttribute* xghostty_wasm_alloc_sgr_attribute(void);
 
 /**
  * Free memory for an SGR attribute (WebAssembly only).
@@ -338,7 +338,7 @@ XGHOSTTY_API GhosttySgrAttribute* xghostty_wasm_alloc_sgr_attribute(void);
  *
  * @ingroup wasm
  */
-XGHOSTTY_API void xghostty_wasm_free_sgr_attribute(GhosttySgrAttribute* attr);
+XGHOSTTY_API void xghostty_wasm_free_sgr_attribute(XGhosttySgrAttribute* attr);
 #endif
 
 #ifdef __cplusplus

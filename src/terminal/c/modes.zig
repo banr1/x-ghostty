@@ -3,7 +3,7 @@ const lib = @import("../lib.zig");
 const modes = @import("../modes.zig");
 const Result = @import("result.zig").Result;
 
-/// C: GhosttyModeReportState
+/// C: XGhosttyModeReportState
 pub const ReportState = enum(c_int) {
     _,
 

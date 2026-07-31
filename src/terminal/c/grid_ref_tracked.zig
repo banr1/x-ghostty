@@ -7,7 +7,7 @@ const grid_ref_c = @import("grid_ref.zig");
 const terminal_c = @import("terminal.zig");
 const Result = @import("result.zig").Result;
 
-/// C: GhosttyTrackedGridRef
+/// C: XGhosttyTrackedGridRef
 ///
 /// An owned tracked reference to a position in the terminal grid. The
 /// underlying PageList pin is automatically updated as the PageList changes.

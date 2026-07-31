@@ -16,19 +16,19 @@ const MouseEventWrapper = struct {
     alloc: Allocator,
 };
 
-/// C: GhosttyMouseEvent
+/// C: XGhosttyMouseEvent
 pub const Event = ?*MouseEventWrapper;
 
-/// C: GhosttyMouseAction
+/// C: XGhosttyMouseAction
 pub const Action = mouse.Action;
 
-/// C: GhosttyMouseButton
+/// C: XGhosttyMouseButton
 pub const Button = mouse.Button;
 
-/// C: GhosttyMousePosition
+/// C: XGhosttyMousePosition
 pub const Position = mouse_encode.Event.Pos;
 
-/// C: GhosttyMods
+/// C: XGhosttyMods
 pub const Mods = key.Mods;
 
 pub fn new(

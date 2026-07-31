@@ -33,20 +33,20 @@
  *
  * ## Example: Encoding with Terminal State
  *
- * When you have a GhosttyTerminal, you can sync its tracking mode and
+ * When you have a XGhosttyTerminal, you can sync its tracking mode and
  * output format into the encoder automatically:
  *
  * @code{.c}
  * // Create a terminal and feed it some VT data that enables mouse tracking
- * GhosttyTerminal terminal;
+ * XGhosttyTerminal terminal;
  * xghostty_terminal_new(NULL, &terminal,
- *     (GhosttyTerminalOptions){.cols = 80, .rows = 24, .max_scrollback = 0});
+ *     (XGhosttyTerminalOptions){.cols = 80, .rows = 24, .max_scrollback = 0});
  *
  * // Application might write data that enables mouse reporting, etc.
  * xghostty_terminal_vt_write(terminal, vt_data, vt_len);
  *
  * // Create an encoder and sync its options from the terminal
- * GhosttyMouseEncoder encoder;
+ * XGhosttyMouseEncoder encoder;
  * xghostty_mouse_encoder_new(NULL, &encoder);
  * xghostty_mouse_encoder_setopt_from_terminal(encoder, terminal);
  *

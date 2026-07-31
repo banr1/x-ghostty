@@ -26,7 +26,7 @@ class GhosttyCustomConfigCase: XCTestCase {
     static let defaultsSuiteName: String = "XGHOSTTY_UI_TESTS"
 
     private let configFile: URL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        .appendingPathExtension("ghostty")
+        .appendingPathExtension("xghostty")
 
     override func setUpWithError() throws {
         continueAfterFailure = false

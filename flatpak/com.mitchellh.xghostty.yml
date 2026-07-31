@@ -3,7 +3,7 @@ runtime: org.gnome.Platform
 runtime-version: "50"
 sdk: org.gnome.Sdk
 default-branch: tip
-command: ghostty
+command: xghostty
 finish-args:
   # 3D rendering
   - --device=dri

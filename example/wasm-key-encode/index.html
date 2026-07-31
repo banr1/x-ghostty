@@ -417,11 +417,11 @@
 
             try {
                 // Create key event
-                const eventPtrPtr = wasmInstance.exports.ghostty_wasm_alloc_opaque();
-                const result = wasmInstance.exports.ghostty_key_event_new(0, eventPtrPtr);
+                const eventPtrPtr = wasmInstance.exports.xghostty_wasm_alloc_opaque();
+                const result = wasmInstance.exports.xghostty_key_event_new(0, eventPtrPtr);
                 
                 if (result !== 0) {
-                    throw new Error(`ghostty_key_event_new failed with result ${result}`);
+                    throw new Error(`xghostty_key_event_new failed with result ${result}`);
                 }
                 
                 const eventPtr = new DataView(getBuffer()).getUint32(eventPtrPtr, true);
@@ -429,11 +429,11 @@
                 // Get action from radio buttons
                 const actionRadio = document.querySelector('input[name="action"]:checked');
                 const action = parseInt(actionRadio.value);
-                wasmInstance.exports.ghostty_key_event_set_action(eventPtr, action);
+                wasmInstance.exports.xghostty_key_event_set_action(eventPtr, action);
 
                 // Map key code from event.code (preferred, layout-independent)
                 let keyCode = keyCodeMap[event.code] || 0; // GHOSTTY_KEY_UNIDENTIFIED = 0
-                wasmInstance.exports.ghostty_key_event_set_key(eventPtr, keyCode);
+                wasmInstance.exports.xghostty_key_event_set_key(eventPtr, keyCode);
 
                 // Map modifiers with left/right side information
                 let mods = 0;
@@ -453,33 +453,33 @@
                     mods |= 0x08; // GHOSTTY_MODS_SUPER
                     if (event.code === 'MetaRight') mods |= 0x200; // GHOSTTY_MODS_SUPER_SIDE
                 }
-                wasmInstance.exports.ghostty_key_event_set_mods(eventPtr, mods);
+                wasmInstance.exports.xghostty_key_event_set_mods(eventPtr, mods);
 
                 // Set UTF-8 text from the key event (the actual character produced)
                 if (event.key.length === 1) {
                     const utf8Bytes = new TextEncoder().encode(event.key);
-                    const utf8Ptr = wasmInstance.exports.ghostty_wasm_alloc_u8_array(utf8Bytes.length);
+                    const utf8Ptr = wasmInstance.exports.xghostty_wasm_alloc_u8_array(utf8Bytes.length);
                     new Uint8Array(getBuffer()).set(utf8Bytes, utf8Ptr);
-                    wasmInstance.exports.ghostty_key_event_set_utf8(eventPtr, utf8Ptr, utf8Bytes.length);
+                    wasmInstance.exports.xghostty_key_event_set_utf8(eventPtr, utf8Ptr, utf8Bytes.length);
                 }
 
                 // Set unshifted codepoint
                 const unshiftedCodepoint = getUnshiftedCodepoint(event);
                 if (unshiftedCodepoint !== 0) {
-                    wasmInstance.exports.ghostty_key_event_set_unshifted_codepoint(eventPtr, unshiftedCodepoint);
+                    wasmInstance.exports.xghostty_key_event_set_unshifted_codepoint(eventPtr, unshiftedCodepoint);
                 }
 
                 // Encode the key event
-                const requiredPtr = wasmInstance.exports.ghostty_wasm_alloc_usize();
-                wasmInstance.exports.ghostty_key_encoder_encode(
+                const requiredPtr = wasmInstance.exports.xghostty_wasm_alloc_usize();
+                wasmInstance.exports.xghostty_key_encoder_encode(
                     encoderPtr, eventPtr, 0, 0, requiredPtr
                 );
                 
                 const required = new DataView(getBuffer()).getUint32(requiredPtr, true);
                 
-                const bufPtr = wasmInstance.exports.ghostty_wasm_alloc_u8_array(required);
-                const writtenPtr = wasmInstance.exports.ghostty_wasm_alloc_usize();
-                const encodeResult = wasmInstance.exports.ghostty_key_encoder_encode(
+                const bufPtr = wasmInstance.exports.xghostty_wasm_alloc_u8_array(required);
+                const writtenPtr = wasmInstance.exports.xghostty_wasm_alloc_usize();
+                const encodeResult = wasmInstance.exports.xghostty_key_encoder_encode(
                     encoderPtr, eventPtr, bufPtr, required, writtenPtr
                 );
                 
@@ -555,9 +555,9 @@
             if (!encoderPtr) return;
             
             const flags = getKittyFlags();
-            const flagsPtr = wasmInstance.exports.ghostty_wasm_alloc_u8();
+            const flagsPtr = wasmInstance.exports.xghostty_wasm_alloc_u8();
             new DataView(getBuffer()).setUint8(flagsPtr, flags);
-            wasmInstance.exports.ghostty_key_encoder_setopt(
+            wasmInstance.exports.xghostty_key_encoder_setopt(
                 encoderPtr, 
                 5, // GHOSTTY_KEY_ENCODER_OPT_KITTY_FLAGS
                 flagsPtr
@@ -642,11 +642,11 @@
                 }
 
                 // Create key encoder
-                const encoderPtrPtr = wasmInstance.exports.ghostty_wasm_alloc_opaque();
-                const result = wasmInstance.exports.ghostty_key_encoder_new(0, encoderPtrPtr);
+                const encoderPtrPtr = wasmInstance.exports.xghostty_wasm_alloc_opaque();
+                const result = wasmInstance.exports.xghostty_key_encoder_new(0, encoderPtrPtr);
                 
                 if (result !== 0) {
-                    throw new Error(`ghostty_key_encoder_new failed with result ${result}`);
+                    throw new Error(`xghostty_key_encoder_new failed with result ${result}`);
                 }
                 
                 encoderPtr = new DataView(getBuffer()).getUint32(encoderPtrPtr, true);

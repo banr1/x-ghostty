@@ -16,7 +16,7 @@ pub const Adjustment = Selection.Adjustment;
 pub const Order = Selection.Order;
 pub const Format = formatterpkg.Format;
 
-/// C: GhosttySelection
+/// C: XGhosttySelection
 pub const CSelection = extern struct {
     size: usize = @sizeOf(CSelection),
     start: grid_ref.CGridRef,
@@ -38,7 +38,7 @@ pub const CSelection = extern struct {
     }
 };
 
-/// C: GhosttyTerminalSelectWordOptions
+/// C: XGhosttyTerminalSelectWordOptions
 pub const SelectWordOptions = extern struct {
     size: usize = @sizeOf(SelectWordOptions),
     ref: grid_ref.CGridRef,
@@ -46,7 +46,7 @@ pub const SelectWordOptions = extern struct {
     boundary_codepoints_len: usize = 0,
 };
 
-/// C: GhosttyTerminalSelectWordBetweenOptions
+/// C: XGhosttyTerminalSelectWordBetweenOptions
 pub const SelectWordBetweenOptions = extern struct {
     size: usize = @sizeOf(SelectWordBetweenOptions),
     start: grid_ref.CGridRef,
@@ -55,7 +55,7 @@ pub const SelectWordBetweenOptions = extern struct {
     boundary_codepoints_len: usize = 0,
 };
 
-/// C: GhosttyTerminalSelectLineOptions
+/// C: XGhosttyTerminalSelectLineOptions
 pub const SelectLineOptions = extern struct {
     size: usize = @sizeOf(SelectLineOptions),
     ref: grid_ref.CGridRef,
@@ -64,7 +64,7 @@ pub const SelectLineOptions = extern struct {
     semantic_prompt_boundary: bool = false,
 };
 
-/// C: GhosttyTerminalSelectionFormatOptions
+/// C: XGhosttyTerminalSelectionFormatOptions
 pub const FormatOptions = extern struct {
     size: usize = @sizeOf(FormatOptions),
     emit: Format,

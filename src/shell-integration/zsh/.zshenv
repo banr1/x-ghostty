@@ -17,7 +17,7 @@
 
 # This script is sourced automatically by zsh when ZDOTDIR is set to this
 # directory. It therefore assumes it's running within our shell integration
-# environment and should not be sourced manually (unlike ghostty-integration).
+# environment and should not be sourced manually (unlike xghostty-integration).
 #
 # This file can get sourced with aliases enabled. To avoid alias expansion
 # we quote everything that can be quoted. Some aliases will still break us
@@ -36,8 +36,8 @@ fi
 {
     # Zsh treats unset ZDOTDIR as if it was HOME. We do the same.
     #
-    # Source the user's .zshenv before sourcing ghostty-integration because the
-    # former might set fpath and other things without which ghostty-integration
+    # Source the user's .zshenv before sourcing xghostty-integration because the
+    # former might set fpath and other things without which xghostty-integration
     # won't work.
     #
     # Use typeset in case we are in a function with warn_create_global in
@@ -50,7 +50,7 @@ fi
     if [[ -o 'interactive' ]]; then
         # ${(%):-%x} is the path to the current file.
         # On top of it we add :A:h to get the directory.
-        'builtin' 'typeset' _ghostty_file="${${(%):-%x}:A:h}"/ghostty-integration
+        'builtin' 'typeset' _ghostty_file="${${(%):-%x}:A:h}"/xxghostty-integration
         if [[ -r "$_ghostty_file" ]]; then
             'builtin' 'autoload' '-Uz' '--' "$_ghostty_file"
             "${_ghostty_file:t}"

@@ -24,7 +24,7 @@
  * example, setting a PNG decoder enables PNG image support in the Kitty
  * Graphics Protocol.
  *
- * Use xghostty_sys_set() with a `GhosttySysOption` to install or clear
+ * Use xghostty_sys_set() with a `XGhosttySysOption` to install or clear
  * an implementation. Passing NULL as the value clears the implementation
  * and disables the corresponding feature.
  *
@@ -62,7 +62,7 @@ typedef struct {
 
     /** Length of the pixel data in bytes. */
     size_t data_len;
-} GhosttySysImage;
+} XGhosttySysImage;
 
 /**
  * Log severity levels for the log callback.
@@ -73,7 +73,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
     XGHOSTTY_SYS_LOG_LEVEL_INFO = 2,
     XGHOSTTY_SYS_LOG_LEVEL_DEBUG = 3,
     XGHOSTTY_SYS_LOG_LEVEL_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySysLogLevel;
+} XGhosttySysLogLevel;
 
 /**
  * Callback type for logging.
@@ -95,9 +95,9 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @param message     Pointer to the log message bytes
  * @param message_len Length of the log message in bytes
  */
-typedef void (*GhosttySysLogFn)(
+typedef void (*XGhosttySysLogFn)(
     void* userdata,
-    GhosttySysLogLevel level,
+    XGhosttySysLogLevel level,
     const uint8_t* scope,
     size_t scope_len,
     const uint8_t* message,
@@ -117,12 +117,12 @@ typedef void (*GhosttySysLogFn)(
  * @param[out] out  On success, filled with the decoded image
  * @return true on success, false on failure
  */
-typedef bool (*GhosttySysDecodePngFn)(
+typedef bool (*XGhosttySysDecodePngFn)(
     void* userdata,
-    const GhosttyAllocator* allocator,
+    const XGhosttyAllocator* allocator,
     const uint8_t* data,
     size_t data_len,
-    GhosttySysImage* out);
+    XGhosttySysImage* out);
 
 /**
  * System option identifiers for xghostty_sys_set().
@@ -142,7 +142,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
      * Graphics Protocol. When cleared (NULL value), PNG decoding is
      * unsupported and PNG image data will be rejected.
      *
-     * Input type: GhosttySysDecodePngFn (function pointer, or NULL)
+     * Input type: XGhosttySysDecodePngFn (function pointer, or NULL)
      */
     XGHOSTTY_SYS_OPT_DECODE_PNG = 1,
 
@@ -162,11 +162,11 @@ typedef enum XGHOSTTY_ENUM_TYPED {
      * above; debug-level messages are compiled out entirely and will
      * never reach the callback.
      *
-     * Input type: GhosttySysLogFn (function pointer, or NULL)
+     * Input type: XGhosttySysLogFn (function pointer, or NULL)
      */
     XGHOSTTY_SYS_OPT_LOG = 2,
     XGHOSTTY_SYS_OPT_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttySysOption;
+} XGhosttySysOption;
 
 /**
  * Set a system-level option.
@@ -181,7 +181,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @return XGHOSTTY_SUCCESS on success, XGHOSTTY_INVALID_VALUE if the
  *         option is not recognized
  */
-XGHOSTTY_API GhosttyResult xghostty_sys_set(GhosttySysOption option,
+XGHOSTTY_API XGhosttyResult xghostty_sys_set(XGhosttySysOption option,
                                            const void* value);
 
 /**
@@ -195,7 +195,7 @@ XGHOSTTY_API GhosttyResult xghostty_sys_set(GhosttySysOption option,
  * @endcode
  */
 XGHOSTTY_API void xghostty_sys_log_stderr(void* userdata,
-                                         GhosttySysLogLevel level,
+                                         XGhosttySysLogLevel level,
                                          const uint8_t* scope,
                                          size_t scope_len,
                                          const uint8_t* message,

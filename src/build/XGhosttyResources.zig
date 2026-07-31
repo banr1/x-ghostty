@@ -39,7 +39,7 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
         const run = b.addRunArtifact(build_data_exe);
         run.addArg("+terminfo");
         const wf = b.addWriteFiles();
-        const source = wf.addCopyFile(run.captureStdOut(), "ghostty.terminfo");
+        const source = wf.addCopyFile(run.captureStdOut(), "xghostty.terminfo");
 
         if (cfg.emit_terminfo) {
             const source_install = b.addInstallFile(
@@ -143,7 +143,7 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
         const run = b.addRunArtifact(build_data_exe);
         run.addArg("+fish");
         const wf = b.addWriteFiles();
-        _ = wf.addCopyFile(run.captureStdOut(), "ghostty.fish");
+        _ = wf.addCopyFile(run.captureStdOut(), "xghostty.fish");
 
         const install_step = b.addInstallDirectory(.{
             .source_dir = wf.getDirectory(),
@@ -158,7 +158,7 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
         const run = b.addRunArtifact(build_data_exe);
         run.addArg("+zsh");
         const wf = b.addWriteFiles();
-        _ = wf.addCopyFile(run.captureStdOut(), "_ghostty");
+        _ = wf.addCopyFile(run.captureStdOut(), "_xghostty");
 
         const install_step = b.addInstallDirectory(.{
             .source_dir = wf.getDirectory(),
@@ -190,22 +190,22 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
         {
             const run = b.addRunArtifact(build_data_exe);
             run.addArg("+vim-syntax");
-            _ = wf.addCopyFile(run.captureStdOut(), "syntax/ghostty.vim");
+            _ = wf.addCopyFile(run.captureStdOut(), "syntax/xghostty.vim");
         }
         {
             const run = b.addRunArtifact(build_data_exe);
             run.addArg("+vim-ftdetect");
-            _ = wf.addCopyFile(run.captureStdOut(), "ftdetect/ghostty.vim");
+            _ = wf.addCopyFile(run.captureStdOut(), "ftdetect/xghostty.vim");
         }
         {
             const run = b.addRunArtifact(build_data_exe);
             run.addArg("+vim-ftplugin");
-            _ = wf.addCopyFile(run.captureStdOut(), "ftplugin/ghostty.vim");
+            _ = wf.addCopyFile(run.captureStdOut(), "ftplugin/xghostty.vim");
         }
         {
             const run = b.addRunArtifact(build_data_exe);
             run.addArg("+vim-compiler");
-            _ = wf.addCopyFile(run.captureStdOut(), "compiler/ghostty.vim");
+            _ = wf.addCopyFile(run.captureStdOut(), "compiler/xghostty.vim");
         }
 
         const vim_step = b.addInstallDirectory(.{
@@ -225,15 +225,15 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
 
     // Sublime syntax highlighting for bat cli tool
     // NOTE: The current implementation requires symlinking the generated
-    // 'ghostty.sublime-syntax' file from zig-out to the '~.config/bat/syntaxes'
+    // 'xghostty.sublime-syntax' file from zig-out to the '~.config/bat/syntaxes'
     // directory. The syntax then needs to be mapped to the correct language in
     // the config file within the '~.config/bat' directory
-    // (ex: --map-syntax "/Users/user/.config/ghostty/config.ghostty:XGhostty Config").
+    // (ex: --map-syntax "/Users/user/.config/xghostty/config.xghostty:XGhostty Config").
     {
         const run = b.addRunArtifact(build_data_exe);
         run.addArg("+sublime");
         const wf = b.addWriteFiles();
-        _ = wf.addCopyFile(run.captureStdOut(), "ghostty.sublime-syntax");
+        _ = wf.addCopyFile(run.captureStdOut(), "xxghostty.sublime-syntax");
 
         const install_step = b.addInstallDirectory(.{
             .source_dir = wf.getDirectory(),
@@ -280,7 +280,7 @@ fn addLinuxAppResources(
     });
 
     const exe_abs_path = b.fmt(
-        "{s}/bin/ghostty",
+        "{s}/bin/xghostty",
         .{b.install_prefix},
     );
 

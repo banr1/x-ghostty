@@ -84,7 +84,7 @@ XGHOSTTY_API bool xghostty_paste_is_safe(const char* data, size_t len);
  * @return XGHOSTTY_SUCCESS on success, XGHOSTTY_OUT_OF_SPACE if the buffer
  *         is too small
  */
-XGHOSTTY_API GhosttyResult xghostty_paste_encode(
+XGHOSTTY_API XGhosttyResult xghostty_paste_encode(
     char* data,
     size_t data_len,
     bool bracketed,

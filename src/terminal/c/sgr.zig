@@ -14,7 +14,7 @@ const ParserWrapper = struct {
     alloc: Allocator,
 };
 
-/// C: GhosttySgrParser
+/// C: XGhosttySgrParser
 pub const Parser = ?*ParserWrapper;
 
 pub fn new(

@@ -96,7 +96,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Global state changed; renderer should redraw everything. */
   XGHOSTTY_RENDER_STATE_DIRTY_FULL = 2,
   XGHOSTTY_RENDER_STATE_DIRTY_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateDirty;
+} XGhosttyRenderStateDirty;
 
 /**
  * Visual style of the cursor.
@@ -116,7 +116,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Hollow block cursor. */
   XGHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_BLOCK_HOLLOW = 3,
   XGHOSTTY_RENDER_STATE_CURSOR_VISUAL_STYLE_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateCursorVisualStyle;
+} XGhosttyRenderStateCursorVisualStyle;
 
 /**
  * Queryable data kinds for xghostty_render_state_get().
@@ -133,23 +133,23 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Viewport height in cells (uint16_t). */
   XGHOSTTY_RENDER_STATE_DATA_ROWS = 2,
 
-  /** Current dirty state (GhosttyRenderStateDirty). */
+  /** Current dirty state (XGhosttyRenderStateDirty). */
   XGHOSTTY_RENDER_STATE_DATA_DIRTY = 3,
 
-  /** Populate a pre-allocated GhosttyRenderStateRowIterator with row data
-   *  from the render state (GhosttyRenderStateRowIterator). Row data is
+  /** Populate a pre-allocated XGhosttyRenderStateRowIterator with row data
+   *  from the render state (XGhosttyRenderStateRowIterator). Row data is
    *  only valid as long as the underlying render state is not updated.
    *  It is unsafe to use row data after updating the render state.
    *  */
   XGHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR = 4,
 
-  /** Default/current background color (GhosttyColorRgb). */
+  /** Default/current background color (XGhosttyColorRgb). */
   XGHOSTTY_RENDER_STATE_DATA_COLOR_BACKGROUND = 5,
 
-  /** Default/current foreground color (GhosttyColorRgb). */
+  /** Default/current foreground color (XGhosttyColorRgb). */
   XGHOSTTY_RENDER_STATE_DATA_COLOR_FOREGROUND = 6,
 
-  /** Cursor color when explicitly set by terminal state (GhosttyColorRgb).
+  /** Cursor color when explicitly set by terminal state (XGhosttyColorRgb).
    *  Returns XGHOSTTY_INVALID_VALUE if no explicit cursor color is set;
    *  use COLOR_CURSOR_HAS_VALUE to check first. */
   XGHOSTTY_RENDER_STATE_DATA_COLOR_CURSOR = 7,
@@ -157,10 +157,10 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Whether an explicit cursor color is set (bool). */
   XGHOSTTY_RENDER_STATE_DATA_COLOR_CURSOR_HAS_VALUE = 8,
 
-  /** The active 256-color palette (GhosttyColorRgb[256]). */
+  /** The active 256-color palette (XGhosttyColorRgb[256]). */
   XGHOSTTY_RENDER_STATE_DATA_COLOR_PALETTE = 9,
 
-  /** The visual style of the cursor (GhosttyRenderStateCursorVisualStyle). */
+  /** The visual style of the cursor (XGhosttyRenderStateCursorVisualStyle). */
   XGHOSTTY_RENDER_STATE_DATA_CURSOR_VISUAL_STYLE = 10,
 
   /** Whether the cursor is visible based on terminal modes (bool). */
@@ -188,7 +188,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *  Only valid when CURSOR_VIEWPORT_HAS_VALUE is true. */
   XGHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_WIDE_TAIL = 17,
   XGHOSTTY_RENDER_STATE_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateData;
+} XGhosttyRenderStateData;
 
 /**
  * Settable options for xghostty_render_state_set().
@@ -196,10 +196,10 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @ingroup render
  */
 typedef enum XGHOSTTY_ENUM_TYPED {
-  /** Set dirty state (GhosttyRenderStateDirty). */
+  /** Set dirty state (XGhosttyRenderStateDirty). */
   XGHOSTTY_RENDER_STATE_OPTION_DIRTY = 0,
   XGHOSTTY_RENDER_STATE_OPTION_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateOption;
+} XGhosttyRenderStateOption;
 
 /**
  * Queryable data kinds for xghostty_render_state_row_get().
@@ -213,19 +213,19 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Whether the current row is dirty (bool). */
   XGHOSTTY_RENDER_STATE_ROW_DATA_DIRTY = 1,
 
-  /** The raw row value (GhosttyRow). */
+  /** The raw row value (XGhosttyRow). */
   XGHOSTTY_RENDER_STATE_ROW_DATA_RAW = 2,
 
-  /** Populate a pre-allocated GhosttyRenderStateRowCells with cell data for
-   *  the current row (GhosttyRenderStateRowCells). Cell data is only 
+  /** Populate a pre-allocated XGhosttyRenderStateRowCells with cell data for
+   *  the current row (XGhosttyRenderStateRowCells). Cell data is only 
    *  valid as long as the underlying render state is not updated. 
    *  It is unsafe to use cell data after updating the render state. */
   XGHOSTTY_RENDER_STATE_ROW_DATA_CELLS = 3,
 
-  /** Row-local selected cell range (GhosttyRenderStateRowSelection). */
+  /** Row-local selected cell range (XGhosttyRenderStateRowSelection). */
   XGHOSTTY_RENDER_STATE_ROW_DATA_SELECTION = 4,
   XGHOSTTY_RENDER_STATE_ROW_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateRowData;
+} XGhosttyRenderStateRowData;
 
 /**
  * Settable options for xghostty_render_state_row_set().
@@ -236,13 +236,13 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Set dirty state for the current row (bool). */
   XGHOSTTY_RENDER_STATE_ROW_OPTION_DIRTY = 0,
   XGHOSTTY_RENDER_STATE_ROW_OPTION_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateRowOption;
+} XGhosttyRenderStateRowOption;
 
 /**
  * Row-local selection range.
  *
  * This struct uses the sized-struct ABI pattern. Initialize with
- * XGHOSTTY_INIT_SIZED(GhosttyRenderStateRowSelection) before querying
+ * XGHOSTTY_INIT_SIZED(XGhosttyRenderStateRowSelection) before querying
  * XGHOSTTY_RENDER_STATE_ROW_DATA_SELECTION.
  *
  * Querying XGHOSTTY_RENDER_STATE_ROW_DATA_SELECTION returns XGHOSTTY_NO_VALUE
@@ -251,7 +251,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  * @ingroup render
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyRenderStateRowSelection). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyRenderStateRowSelection). */
   size_t size;
 
   /** Start column of the row-local selection range, inclusive. */
@@ -259,35 +259,35 @@ typedef struct {
 
   /** End column of the row-local selection range, inclusive. */
   uint16_t end_x;
-} GhosttyRenderStateRowSelection;
+} XGhosttyRenderStateRowSelection;
 
 /**
  * Render-state color information.
  *
  * This struct uses the sized-struct ABI pattern. Initialize with
- * XGHOSTTY_INIT_SIZED(GhosttyRenderStateColors) before calling
+ * XGHOSTTY_INIT_SIZED(XGhosttyRenderStateColors) before calling
  * xghostty_render_state_colors_get().
  *
  * Example:
  * @code
- * GhosttyRenderStateColors colors = XGHOSTTY_INIT_SIZED(GhosttyRenderStateColors);
- * GhosttyResult result = xghostty_render_state_colors_get(state, &colors);
+ * XGhosttyRenderStateColors colors = XGHOSTTY_INIT_SIZED(XGhosttyRenderStateColors);
+ * XGhosttyResult result = xghostty_render_state_colors_get(state, &colors);
  * @endcode
  *
  * @ingroup render
  */
 typedef struct {
-  /** Size of this struct in bytes. Must be set to sizeof(GhosttyRenderStateColors). */
+  /** Size of this struct in bytes. Must be set to sizeof(XGhosttyRenderStateColors). */
   size_t size;
 
   /** The default/current background color for the render state. */
-  GhosttyColorRgb background;
+  XGhosttyColorRgb background;
 
   /** The default/current foreground color for the render state. */
-  GhosttyColorRgb foreground;
+  XGhosttyColorRgb foreground;
 
   /** The cursor color when explicitly set by terminal state. */
-  GhosttyColorRgb cursor;
+  XGhosttyColorRgb cursor;
 
   /** 
    * True when cursor contains a valid explicit cursor color value. 
@@ -297,8 +297,8 @@ typedef struct {
   bool cursor_has_value;
 
   /** The active 256-color palette for this render state. */
-  GhosttyColorRgb palette[256];
-} GhosttyRenderStateColors;
+  XGhosttyColorRgb palette[256];
+} XGhosttyRenderStateColors;
 
 /**
  * Create a new render state instance.
@@ -310,8 +310,8 @@ typedef struct {
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_new(const GhosttyAllocator* allocator,
-                                       GhosttyRenderState* state);
+XGHOSTTY_API XGhosttyResult xghostty_render_state_new(const XGhosttyAllocator* allocator,
+                                       XGhosttyRenderState* state);
 
 /**
  * Free a render state instance.
@@ -323,7 +323,7 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_new(const GhosttyAllocator* all
  *
  * @ingroup render
  */
-XGHOSTTY_API void xghostty_render_state_free(GhosttyRenderState state);
+XGHOSTTY_API void xghostty_render_state_free(XGhosttyRenderState state);
 
 /**
  * Update a render state instance from a terminal.
@@ -339,14 +339,14 @@ XGHOSTTY_API void xghostty_render_state_free(GhosttyRenderState state);
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_update(GhosttyRenderState state,
-                                          GhosttyTerminal terminal);
+XGHOSTTY_API XGhosttyResult xghostty_render_state_update(XGhosttyRenderState state,
+                                          XGhosttyTerminal terminal);
 
 /**
  * Get a value from a render state.
  *
  * The `out` pointer must point to a value of the type corresponding to the
- * requested data kind (see GhosttyRenderStateData).
+ * requested data kind (see XGhosttyRenderStateData).
  *
  * @param state The render state handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param data The data kind to query
@@ -356,8 +356,8 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_update(GhosttyRenderState state
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_get(GhosttyRenderState state,
-                                        GhosttyRenderStateData data,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_get(XGhosttyRenderState state,
+                                        XGhosttyRenderStateData data,
                                         void* out);
 
 /**
@@ -381,10 +381,10 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_get(GhosttyRenderState state,
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_get_multi(
-    GhosttyRenderState state,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_get_multi(
+    XGhosttyRenderState state,
     size_t count,
-    const GhosttyRenderStateData* keys,
+    const XGhosttyRenderStateData* keys,
     void** values,
     size_t* out_written);
 
@@ -392,7 +392,7 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_get_multi(
  * Set an option on a render state.
  *
  * The `value` pointer must point to a value of the type corresponding to the
- * requested option kind (see GhosttyRenderStateOption).
+ * requested option kind (see XGhosttyRenderStateOption).
  *
  * @param state The render state handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param option The option to set
@@ -403,8 +403,8 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_get_multi(
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_set(GhosttyRenderState state,
-                                       GhosttyRenderStateOption option,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_set(XGhosttyRenderState state,
+                                       XGhosttyRenderStateOption option,
                                        const void* value);
 
 /**
@@ -412,7 +412,7 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_set(GhosttyRenderState state,
  *
  * This writes as many fields as fit in the caller-provided sized struct.
  * `out_colors->size` must be set by the caller (typically via
- * XGHOSTTY_INIT_SIZED(GhosttyRenderStateColors)).
+ * XGHOSTTY_INIT_SIZED(XGhosttyRenderStateColors)).
  *
  * @param state The render state handle (NULL returns XGHOSTTY_INVALID_VALUE)
  * @param[out] out_colors Sized output struct to receive render-state colors
@@ -422,8 +422,8 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_set(GhosttyRenderState state,
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_colors_get(GhosttyRenderState state,
-                                              GhosttyRenderStateColors* out_colors);
+XGHOSTTY_API XGhosttyResult xghostty_render_state_colors_get(XGhosttyRenderState state,
+                                              XGhosttyRenderStateColors* out_colors);
 
 /**
  * Create a new row iterator instance.
@@ -439,9 +439,9 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_colors_get(GhosttyRenderState s
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_iterator_new(
-    const GhosttyAllocator* allocator,
-    GhosttyRenderStateRowIterator* out_iterator);
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_iterator_new(
+    const XGhosttyAllocator* allocator,
+    XGhosttyRenderStateRowIterator* out_iterator);
 
 /**
  * Free a render-state row iterator.
@@ -450,7 +450,7 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_iterator_new(
  *
  * @ingroup render
  */
-XGHOSTTY_API void xghostty_render_state_row_iterator_free(GhosttyRenderStateRowIterator iterator);
+XGHOSTTY_API void xghostty_render_state_row_iterator_free(XGhosttyRenderStateRowIterator iterator);
 
 /**
  * Move a render-state row iterator to the next row.
@@ -464,13 +464,13 @@ XGHOSTTY_API void xghostty_render_state_row_iterator_free(GhosttyRenderStateRowI
  *
  * @ingroup render
  */
-XGHOSTTY_API bool xghostty_render_state_row_iterator_next(GhosttyRenderStateRowIterator iterator);
+XGHOSTTY_API bool xghostty_render_state_row_iterator_next(XGhosttyRenderStateRowIterator iterator);
 
 /**
  * Get a value from the current row in a render-state row iterator.
  *
  * The `out` pointer must point to a value of the type corresponding to the
- * requested data kind (see GhosttyRenderStateRowData).
+ * requested data kind (see XGhosttyRenderStateRowData).
  * Call xghostty_render_state_row_iterator_next() at least once before
  * calling this function.
  *
@@ -482,9 +482,9 @@ XGHOSTTY_API bool xghostty_render_state_row_iterator_next(GhosttyRenderStateRowI
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_get(
-    GhosttyRenderStateRowIterator iterator,
-    GhosttyRenderStateRowData data,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_get(
+    XGhosttyRenderStateRowIterator iterator,
+    XGhosttyRenderStateRowData data,
     void* out);
 
 /**
@@ -508,10 +508,10 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_get(
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_get_multi(
-    GhosttyRenderStateRowIterator iterator,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_get_multi(
+    XGhosttyRenderStateRowIterator iterator,
     size_t count,
-    const GhosttyRenderStateRowData* keys,
+    const XGhosttyRenderStateRowData* keys,
     void** values,
     size_t* out_written);
 
@@ -519,7 +519,7 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_get_multi(
  * Set an option on the current row in a render-state row iterator.
  *
  * The `value` pointer must point to a value of the type corresponding to the
- * requested option kind (see GhosttyRenderStateRowOption).
+ * requested option kind (see XGhosttyRenderStateRowOption).
  * Call xghostty_render_state_row_iterator_next() at least once before
  * calling this function.
  *
@@ -532,9 +532,9 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_get_multi(
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_set(
-    GhosttyRenderStateRowIterator iterator,
-    GhosttyRenderStateRowOption option,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_set(
+    XGhosttyRenderStateRowIterator iterator,
+    XGhosttyRenderStateRowOption option,
     const void* value);
 
 /**
@@ -554,9 +554,9 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_set(
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_new(
-    const GhosttyAllocator* allocator,
-    GhosttyRenderStateRowCells* out_cells);
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_cells_new(
+    const XGhosttyAllocator* allocator,
+    XGhosttyRenderStateRowCells* out_cells);
 
 /**
  * Queryable data kinds for xghostty_render_state_row_cells_get().
@@ -567,10 +567,10 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Invalid / sentinel value. */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_INVALID = 0,
 
-  /** The raw cell value (GhosttyCell). */
+  /** The raw cell value (XGhosttyCell). */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW = 1,
 
-  /** The style for the current cell (GhosttyStyle). */
+  /** The style for the current cell (XGhosttyStyle). */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE = 2,
 
   /** The total number of grapheme codepoints including the base codepoint
@@ -582,7 +582,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *  is written first, followed by any extra codepoints. */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF = 4,
 
-  /** The resolved background color of the cell (GhosttyColorRgb).
+  /** The resolved background color of the cell (XGhosttyColorRgb).
    *  Flattens the three possible sources: content-tag bg_color_rgb,
    *  content-tag bg_color_palette (looked up in the palette), or the
    *  style's bg_color. Returns XGHOSTTY_INVALID_VALUE if the cell has
@@ -590,7 +590,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    *  default background color it wants (e.g. the terminal background). */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_BG_COLOR = 5,
 
-  /** The resolved foreground color of the cell (GhosttyColorRgb).
+  /** The resolved foreground color of the cell (XGhosttyColorRgb).
    *  Resolves palette indices through the palette. Bold color handling
    *  is not applied; the caller should handle bold styling separately.
    *  Returns XGHOSTTY_INVALID_VALUE if the cell has no explicit foreground
@@ -611,13 +611,13 @@ typedef enum XGHOSTTY_ENUM_TYPED {
   /** Whether the cell has any explicit styling (bool).
    *  This is equivalent to querying the raw cell's
    *  XGHOSTTY_CELL_DATA_HAS_STYLING value, but avoids materializing the raw
-   *  GhosttyCell for renderers that only need to know whether fetching the
+   *  XGhosttyCell for renderers that only need to know whether fetching the
    *  full style is necessary. */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_HAS_STYLING = 8,
 
   /**
    * Encode the current cell's full grapheme cluster as UTF-8 into a
-   * caller-provided buffer (GhosttyBuffer).
+   * caller-provided buffer (XGhosttyBuffer).
    *
    * The base codepoint is encoded first, followed by any extra grapheme
    * codepoints. Returns XGHOSTTY_SUCCESS with len=0 when the cell has no text.
@@ -628,7 +628,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
    */
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_UTF8 = 9,
   XGHOSTTY_RENDER_STATE_ROW_CELLS_DATA_MAX_VALUE = XGHOSTTY_ENUM_MAX_VALUE,
-} GhosttyRenderStateRowCellsData;
+} XGhosttyRenderStateRowCellsData;
 
 /**
  * Move a render-state row cells iterator to the next cell.
@@ -642,7 +642,7 @@ typedef enum XGHOSTTY_ENUM_TYPED {
  *
  * @ingroup render
  */
-XGHOSTTY_API bool xghostty_render_state_row_cells_next(GhosttyRenderStateRowCells cells);
+XGHOSTTY_API bool xghostty_render_state_row_cells_next(XGhosttyRenderStateRowCells cells);
 
 /**
  * Move a render-state row cells iterator to a specific column.
@@ -658,14 +658,14 @@ XGHOSTTY_API bool xghostty_render_state_row_cells_next(GhosttyRenderStateRowCell
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_select(
-    GhosttyRenderStateRowCells cells, uint16_t x);
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_cells_select(
+    XGhosttyRenderStateRowCells cells, uint16_t x);
 
 /**
  * Get a value from the current cell in a render-state row cells iterator.
  *
  * The `out` pointer must point to a value of the type corresponding to the
- * requested data kind (see GhosttyRenderStateRowCellsData).
+ * requested data kind (see XGhosttyRenderStateRowCellsData).
  * Call xghostty_render_state_row_cells_next() or
  * xghostty_render_state_row_cells_select() at least once before
  * calling this function.
@@ -678,9 +678,9 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_select(
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_get(
-    GhosttyRenderStateRowCells cells,
-    GhosttyRenderStateRowCellsData data,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_cells_get(
+    XGhosttyRenderStateRowCells cells,
+    XGhosttyRenderStateRowCellsData data,
     void* out);
 
 /**
@@ -704,10 +704,10 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_get(
  *
  * @ingroup render
  */
-XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_get_multi(
-    GhosttyRenderStateRowCells cells,
+XGHOSTTY_API XGhosttyResult xghostty_render_state_row_cells_get_multi(
+    XGhosttyRenderStateRowCells cells,
     size_t count,
-    const GhosttyRenderStateRowCellsData* keys,
+    const XGhosttyRenderStateRowCellsData* keys,
     void** values,
     size_t* out_written);
 
@@ -718,7 +718,7 @@ XGHOSTTY_API GhosttyResult xghostty_render_state_row_cells_get_multi(
  *
  * @ingroup render
  */
-XGHOSTTY_API void xghostty_render_state_row_cells_free(GhosttyRenderStateRowCells cells);
+XGHOSTTY_API void xghostty_render_state_row_cells_free(XGhosttyRenderStateRowCells cells);
 
 /** @} */
 
