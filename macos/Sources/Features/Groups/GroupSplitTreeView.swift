@@ -31,6 +31,9 @@ struct GroupSplitTreeView: View {
     /// Label focus / rename callbacks.
     let labelActions: GroupLabelActions
 
+    /// Double-click on a group divider (`equalize_groups`, `SPEC.md` §11.5).
+    let onEqualize: () -> Void
+
     /// Group-boundary resize. Wired up in Phase 4; `nil` until then.
     var groupAction: ((GroupSplitOperation) -> Void)?
 
@@ -43,6 +46,7 @@ struct GroupSplitTreeView: View {
                 renamingGroup: renamingGroup,
                 paneAction: paneAction,
                 labelActions: labelActions,
+                onEqualize: onEqualize,
                 groupAction: groupAction)
             // Like `TerminalSplitTreeView`, we can't rely on SwiftUI's implicit
             // structural identity across the split tree. Keying on the group
@@ -63,6 +67,7 @@ private struct GroupSplitSubtreeView: View {
     let renamingGroup: GroupID?
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: GroupLabelActions
+    let onEqualize: () -> Void
     let groupAction: ((GroupSplitOperation) -> Void)?
 
     var body: some View {
@@ -102,6 +107,7 @@ private struct GroupSplitSubtreeView: View {
                         renamingGroup: renamingGroup,
                         paneAction: paneAction,
                         labelActions: labelActions,
+                        onEqualize: onEqualize,
                         groupAction: groupAction)
                 },
                 right: {
@@ -112,12 +118,12 @@ private struct GroupSplitSubtreeView: View {
                         renamingGroup: renamingGroup,
                         paneAction: paneAction,
                         labelActions: labelActions,
+                        onEqualize: onEqualize,
                         groupAction: groupAction)
                 },
-                onEqualize: {
-                    // Group-boundary equalize arrives in Phase 4
-                    // (`equalize_groups`).
-                }
+                // Double-clicking any group divider equalizes the whole group
+                // layout, exactly like the `equalize_groups` keybind.
+                onEqualize: onEqualize
             )
         }
     }

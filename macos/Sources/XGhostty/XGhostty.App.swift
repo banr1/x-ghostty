@@ -515,11 +515,14 @@ extension XGhostty {
             case XGHOSTTY_ACTION_GOTO_GROUP:
                 return gotoGroup(app, target: target, direction: action.action.goto_group)
 
+            case XGHOSTTY_ACTION_MOVE_GROUP:
+                return moveGroup(app, target: target, direction: action.action.move_group)
+
             case XGHOSTTY_ACTION_RESIZE_GROUP:
                 return resizeGroup(app, target: target, resize: action.action.resize_group)
 
             case XGHOSTTY_ACTION_EQUALIZE_GROUPS:
-                equalizeGroups(app, target: target)
+                return equalizeGroups(app, target: target)
 
             case XGHOSTTY_ACTION_TOGGLE_GROUP_ZOOM:
                 return toggleGroupZoom(app, target: target)
@@ -1018,6 +1021,42 @@ extension XGhostty {
             }
         }
 
+        private static func moveGroup(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s,
+            direction: xghostty_action_goto_split_e) -> Bool {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("move group does nothing with an app target")
+                return false
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Convert the C API direction to our Swift type.
+                guard let focusDirection = SplitFocusDirection.from(direction: direction) else { return false }
+
+                // Only performable when there is actually a neighbor group to
+                // swap with; this keeps the keybind from consuming the key event
+                // when nothing would happen (mirrors `goto_group`).
+                let treeDirection: SplitTree<GroupRef>.FocusDirection =
+                    focusDirection.toSplitTreeFocusDirection()
+                guard controller.workspace.canMoveFocusedGroup(treeDirection) else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyMoveGroup,
+                    object: surfaceView,
+                    userInfo: [Notification.MoveGroupDirectionKey: focusDirection])
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
         private static func resizeGroup(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
@@ -1055,21 +1094,30 @@ extension XGhostty {
 
         private static func equalizeGroups(
             _ app: xghostty_app_t,
-            target: xghostty_target_s) {
+            target: xghostty_target_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
                 XGhostty.logger.warning("equalize groups does nothing with an app target")
-                return
+                return false
 
             case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return }
-                guard let surfaceView = self.surfaceView(from: surface) else { return }
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable when more than one group is visible (mirrors
+                // resize_group's gate); a single group has nothing to equalize, so
+                // let the key fall through instead of consuming it.
+                guard controller.workspace.state.effectiveVisibleGroupTree?.isSplit ?? false else { return false }
+
                 NotificationCenter.default.post(
                     name: Notification.ghosttyEqualizeGroups,
                     object: surfaceView)
+                return true
 
             default:
                 assertionFailure()
+                return false
             }
         }
 

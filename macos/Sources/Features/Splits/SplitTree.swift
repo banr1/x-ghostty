@@ -1232,6 +1232,51 @@ extension SplitTree {
         subtreeContainingOnly(element)
     }
 
+    /// Returns a copy of the tree with the leaves holding `a` and `b` exchanged.
+    ///
+    /// Only the two leaves' payloads trade places: the tree's shape and every
+    /// split's direction/ratio are untouched, so a swap never reflows the
+    /// layout. The zoomed node is left as-is — it identifies a node by value, so
+    /// a zoomed leaf keeps following its element to the element's new position.
+    ///
+    /// The group layer uses this for `move_group` (swap the focused group with a
+    /// neighbor); it is element-agnostic so pane-level callers can reuse it.
+    ///
+    /// - Returns: the swapped tree, or nil when `a` and `b` are the same element
+    ///   or either is not a leaf of this tree.
+    func swappingLeaves(_ a: Element, _ b: Element) -> Self? {
+        guard a.id != b.id else { return nil }
+        guard let root,
+              let pathA = root.path(to: .leaf(view: a)),
+              let pathB = root.path(to: .leaf(view: b)) else { return nil }
+
+        // Replacing a leaf with another leaf keeps the structure identical, so
+        // `pathB` stays valid after the first replacement.
+        guard let swapped = try? root
+            .replacingNode(at: pathA, with: .leaf(view: b))
+            .replacingNode(at: pathB, with: .leaf(view: a)) else { return nil }
+
+        return .init(root: swapped, zoomed: zoomed)
+    }
+
+    /// Returns a copy of the tree with `element` appended as a new leaf along the
+    /// right edge: a fresh root split with the existing tree on the left and
+    /// `element` on the right, laid out side by side.
+    ///
+    /// Used when a hidden group is shown again (`SPEC.md` §11.8): it does not
+    /// return to its old position, it lands at the right edge. An empty tree
+    /// simply becomes a single leaf.
+    func appendingAtRightEdge(_ element: Element) -> Self {
+        guard let root else { return .init(view: element) }
+        return .init(
+            root: .split(.init(
+                direction: .horizontal,
+                ratio: 0.5,
+                left: root,
+                right: .leaf(view: element))),
+            zoomed: zoomed)
+    }
+
     /// Returns the leaf element spatially nearest to `element` that satisfies
     /// `matching`, always excluding `element` itself. Returns nil if none
     /// qualifies.

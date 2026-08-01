@@ -384,6 +384,12 @@ pub const Action = union(Key) {
     /// Close the current group, terminating the processes of all its panes.
     close_group,
 
+    /// Swap the current group with an adjacent group. Mirrors `goto_group`
+    /// but exchanges the two groups' contents instead of moving focus.
+    /// Appended last (rather than next to `goto_group`) to preserve C ABI
+    /// compatibility; see the note above.
+    move_group: GotoSplit,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -466,6 +472,7 @@ pub const Action = union(Key) {
         rename_group,
         set_group_title,
         close_group,
+        move_group,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

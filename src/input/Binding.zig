@@ -680,6 +680,14 @@ pub const Action = union(enum) {
     /// (`previous` and `next`). Mirrors `goto_split` one layer up.
     goto_group: SplitFocusDirection,
 
+    /// Swap the current group with an adjacent group. Directional arguments
+    /// (`right`, `down`, `left`, `up`) swap with the spatially adjacent
+    /// group, preserving the layout structure and split ratios — only the
+    /// contents exchange places. `previous` and `next` swap with the
+    /// adjacent group in left-to-right traversal order. Mirrors `goto_group`
+    /// one layer up.
+    move_group: SplitFocusDirection,
+
     /// Resize the current group in the specified direction and amount in
     /// pixels. The two arguments should be joined with a comma (`,`), like
     /// `resize_group:up,10`. Mirrors `resize_split`.
@@ -1477,6 +1485,7 @@ pub const Action = union(enum) {
             .equalize_splits,
             .new_group_split,
             .goto_group,
+            .move_group,
             .resize_group,
             .equalize_groups,
             .toggle_group_zoom,
@@ -3507,6 +3516,18 @@ test "parse: group split actions" {
         const binding = try parseSingle("a=goto_group:next");
         try testing.expect(binding.action == .goto_group);
         try testing.expectEqual(Action.SplitFocusDirection.next, binding.action.goto_group);
+    }
+
+    // move_group: focus-direction enum, mirrors goto_group
+    {
+        const binding = try parseSingle("a=move_group:next");
+        try testing.expect(binding.action == .move_group);
+        try testing.expectEqual(Action.SplitFocusDirection.next, binding.action.move_group);
+    }
+    {
+        const binding = try parseSingle("a=move_group:left");
+        try testing.expect(binding.action == .move_group);
+        try testing.expectEqual(Action.SplitFocusDirection.left, binding.action.move_group);
     }
 
     // resize_group: tuple, mirrors resize_split

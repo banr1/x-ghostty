@@ -919,4 +919,110 @@ struct SplitTreeTests {
         // No leaf other than a satisfies the predicate.
         #expect(tree.nearestLeaf(to: a, matching: { $0.id == a.id }) == nil)
     }
+
+    // --- swappingLeaves ---
+
+    @Test func swappingLeavesExchangesPayloadsOnly() throws {
+        let (tree, refs) = try Self.makeRefRow() // a | b | c
+        let (a, b, c) = (refs[0], refs[1], refs[2])
+        // Skew the ratios so a structure/ratio-preserving swap is observable.
+        let skewed = tree.adjustRatio(at: .init(path: []), direction: .right, amount: 0.2)
+        let before = Self.splitRatios(skewed)
+
+        let swapped = try #require(skewed.swappingLeaves(a, c))
+
+        // In-order leaves trade places; everything else is identical.
+        #expect(swapped.map(\.id) == [c.id, b.id, a.id])
+        #expect(Self.splitRatios(swapped) == before)
+        #expect(swapped.structuralIdentity != skewed.structuralIdentity)
+    }
+
+    @Test func swappingAdjacentLeavesKeepsRatios() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        let skewed = tree.adjustRatio(at: .init(path: []), direction: .right, amount: 0.25)
+
+        let swapped = try #require(skewed.swappingLeaves(a, b))
+
+        #expect(swapped.map(\.id) == [b.id, a.id])
+        #expect(Self.splitRatios(swapped) == Self.splitRatios(skewed))
+    }
+
+    @Test func swappingLeavesReturnsNilForSameElement() throws {
+        let (tree, a, _) = try Self.makeRefSplit()
+        #expect(tree.swappingLeaves(a, a) == nil)
+    }
+
+    @Test func swappingLeavesReturnsNilForAbsentElement() throws {
+        let (tree, a, _) = try Self.makeRefSplit()
+        #expect(tree.swappingLeaves(a, MockRef()) == nil)
+    }
+
+    @Test func swappingLeavesReturnsNilForEmptyTree() {
+        let tree = SplitTree<MockRef>()
+        #expect(tree.swappingLeaves(MockRef(), MockRef()) == nil)
+    }
+
+    @Test func swappingLeavesKeepsZoomFollowingItsElement() throws {
+        let (tree, a, b) = try Self.makeRefSplit()
+        let zoomedNode = try #require(tree.find(id: a.id))
+        let zoomedTree = SplitTree<MockRef>(root: tree.root, zoomed: zoomedNode)
+
+        let swapped = try #require(zoomedTree.swappingLeaves(a, b))
+
+        // The zoomed node still identifies `a`, which is now the right leaf.
+        #expect(swapped.zoomed == .leaf(view: a))
+        #expect(swapped.map(\.id) == [b.id, a.id])
+    }
+
+    // --- appendingAtRightEdge ---
+
+    @Test func appendingAtRightEdgeAddsNewRootSplit() throws {
+        let (tree, refs) = try Self.makeRefRow() // a | b | c
+        let d = MockRef()
+
+        let appended = tree.appendingAtRightEdge(d)
+
+        #expect(appended.map(\.id) == refs.map(\.id) + [d.id])
+        // The new root is a horizontal split with the old tree on the left.
+        let split = try #require(Self.rootSplit(appended))
+        #expect(split.direction == .horizontal)
+        #expect(split.left == tree.root)
+        #expect(split.right == .leaf(view: d))
+    }
+
+    @Test func appendingAtRightEdgeOnEmptyTreeYieldsSingleLeaf() {
+        let a = MockRef()
+        let appended = SplitTree<MockRef>().appendingAtRightEdge(a)
+        #expect(appended.map(\.id) == [a.id])
+        #expect(!appended.isSplit)
+    }
+
+    @Test func appendingAtRightEdgeThenEqualizingBalancesEveryLeaf() throws {
+        let (tree, refs) = try Self.makeRefRow() // a | b | c
+        let d = MockRef()
+
+        let appended = tree.appendingAtRightEdge(d).equalized()
+
+        // Three leaves on the left, one on the right: 3/4 vs 1/4.
+        let split = try #require(Self.rootSplit(appended))
+        #expect(abs(split.ratio - 0.75) < 1e-9)
+        #expect(appended.map(\.id) == refs.map(\.id) + [d.id])
+    }
+
+    /// The root split of `tree`, or nil when the root is a leaf/empty.
+    private static func rootSplit(_ tree: SplitTree<MockRef>) -> SplitTree<MockRef>.Node.Split? {
+        guard case .split(let split) = tree.root else { return nil }
+        return split
+    }
+
+    /// Every split ratio in the tree, in depth-first order. Used to assert that
+    /// an operation leaves the layout untouched.
+    private static func splitRatios(_ tree: SplitTree<MockRef>) -> [Double] {
+        func walk(_ node: SplitTree<MockRef>.Node) -> [Double] {
+            guard case .split(let split) = node else { return [] }
+            return [split.ratio] + walk(split.left) + walk(split.right)
+        }
+        guard let root = tree.root else { return [] }
+        return walk(root)
+    }
 }

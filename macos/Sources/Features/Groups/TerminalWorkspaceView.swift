@@ -26,6 +26,12 @@ struct TerminalWorkspaceView: View {
     /// `onFocusGroup` this swaps `surfaceTree`, so the controller handles it.
     let onShowGroup: (GroupID) -> Void
 
+    /// Equalize the group layout (a group-divider double-click, `SPEC.md` §11.5).
+    /// The pane-level equivalent routes through `XGhostty.App` because the pane
+    /// tree's owner is the controller's `surfaceTree`; the group tree's owner is
+    /// the controller too, so this is injected the same way as `onFocusGroup`.
+    let onEqualizeGroups: () -> Void
+
     /// Hidden groups in a stable display order for the shelf. Sorted by creation
     /// time (then id) so the pill order does not jump as visibility changes.
     private var hiddenGroups: [GroupState] {
@@ -51,7 +57,8 @@ struct TerminalWorkspaceView: View {
                     focusedGroup: workspace.state.focusedGroup,
                     renamingGroup: workspace.renamingGroup,
                     paneAction: paneAction,
-                    labelActions: labelActions)
+                    labelActions: labelActions,
+                    onEqualize: onEqualizeGroups)
             }
 
             // Hidden-group shelf overlay (`SPEC.md` §7.2). Only rendered when
