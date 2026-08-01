@@ -1259,22 +1259,28 @@ extension SplitTree {
         return .init(root: swapped, zoomed: zoomed)
     }
 
-    /// Returns a copy of the tree with `element` appended as a new leaf along the
-    /// right edge: a fresh root split with the existing tree on the left and
-    /// `element` on the right, laid out side by side.
+    /// Returns a copy of the tree with `element` appended by splitting the
+    /// trailing leaf — the last leaf in traversal order — in half horizontally:
+    /// the trailing leaf keeps the left half of its own space and `element`
+    /// takes the right half. Every other leaf's size is untouched.
     ///
     /// Used when a hidden group is shown again (`SPEC.md` §11.8): it does not
-    /// return to its old position, it lands at the right edge. An empty tree
-    /// simply becomes a single leaf.
-    func appendingAtRightEdge(_ element: Element) -> Self {
+    /// return to its old position, it takes the right half of the trailing
+    /// group's space. An empty tree simply becomes a single leaf.
+    func appendingAtTrailingLeaf(_ element: Element) -> Self {
         guard let root else { return .init(view: element) }
-        return .init(
-            root: .split(.init(
-                direction: .horizontal,
-                ratio: 0.5,
-                left: root,
-                right: .leaf(view: element))),
-            zoomed: zoomed)
+
+        // The trailing leaf always exists in a non-empty tree, so the path
+        // lookup and replacement cannot fail; fall back to self defensively.
+        let trailing: Node = .leaf(view: root.rightmostLeaf())
+        guard let path = root.path(to: trailing),
+              let newRoot = try? root.replacingNode(at: path, with: .split(.init(
+                  direction: .horizontal,
+                  ratio: 0.5,
+                  left: trailing,
+                  right: .leaf(view: element)))) else { return self }
+
+        return .init(root: newRoot, zoomed: zoomed)
     }
 
     /// Returns the leaf element spatially nearest to `element` that satisfies

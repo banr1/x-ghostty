@@ -90,27 +90,25 @@ struct WorkspaceState {
     /// Hiding removes a group's leaf from the canonical tree (`SPEC.md` §11.7)
     /// and `hiddenGroupIDs` is never persisted (§12.2), so quitting with hidden
     /// groups would otherwise leave them orphaned in `groups`: alive, restored,
-    /// but unreachable. They are appended at the right edge in creation order and
-    /// the whole tree is equalized, matching where `show_group` puts them
-    /// (§11.8), so a restore still brings everything back visible (§12.3).
+    /// but unreachable. Each one splits the trailing leaf in creation order,
+    /// matching where `show_group` puts them (§11.8), so a restore still brings
+    /// everything back visible (§12.3).
     private mutating func reconcileOrphanedGroups() {
         let placed = Set(canonicalGroupTree.map(\.id))
         let orphans = groups
             .filter { !placed.contains($0.key) }
             .sorted { ($0.value.createdAt, $0.key.rawValue.uuidString) <
                       ($1.value.createdAt, $1.key.rawValue.uuidString) }
-        guard !orphans.isEmpty else { return }
 
         for (id, _) in orphans {
-            canonicalGroupTree = canonicalGroupTree.appendingAtRightEdge(GroupRef(id: id))
+            canonicalGroupTree = canonicalGroupTree.appendingAtTrailingLeaf(GroupRef(id: id))
         }
-        canonicalGroupTree = canonicalGroupTree.equalized()
     }
 
     /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3).
     ///
     /// Everything comes back visible and non-zoomed; groups that were hidden when
-    /// the state was saved are re-attached at the right edge (see
+    /// the state was saved are re-attached by splitting the trailing leaf (see
     /// `reconcileOrphanedGroups`). `focusedGroup` is validated against the
     /// surviving groups and the canonical tree; if it no longer points at a real
     /// group it falls back to the canonical tree's first leaf.

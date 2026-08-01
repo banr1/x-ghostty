@@ -974,39 +974,60 @@ struct SplitTreeTests {
         #expect(swapped.map(\.id) == [b.id, a.id])
     }
 
-    // --- appendingAtRightEdge ---
+    // --- appendingAtTrailingLeaf ---
 
-    @Test func appendingAtRightEdgeAddsNewRootSplit() throws {
+    @Test func appendingAtTrailingLeafSplitsTrailingLeafInHalf() throws {
         let (tree, refs) = try Self.makeRefRow() // a | b | c
         let d = MockRef()
 
-        let appended = tree.appendingAtRightEdge(d)
+        let appended = tree.appendingAtTrailingLeaf(d)
 
         #expect(appended.map(\.id) == refs.map(\.id) + [d.id])
-        // The new root is a horizontal split with the old tree on the left.
-        let split = try #require(Self.rootSplit(appended))
-        #expect(split.direction == .horizontal)
-        #expect(split.left == tree.root)
-        #expect(split.right == .leaf(view: d))
+        // Only the trailing leaf (c) changed: it became a 50/50 horizontal
+        // split with c keeping the left half and d taking the right.
+        let root = try #require(Self.rootSplit(appended))
+        #expect(root.left == .leaf(view: refs[0]))
+        guard case .split(let inner) = root.right else {
+            Issue.record("expected inner split")
+            return
+        }
+        #expect(inner.left == .leaf(view: refs[1]))
+        #expect(inner.right == .split(.init(
+            direction: .horizontal,
+            ratio: 0.5,
+            left: .leaf(view: refs[2]),
+            right: .leaf(view: d))))
     }
 
-    @Test func appendingAtRightEdgeOnEmptyTreeYieldsSingleLeaf() {
+    @Test func appendingAtTrailingLeafOnEmptyTreeYieldsSingleLeaf() {
         let a = MockRef()
-        let appended = SplitTree<MockRef>().appendingAtRightEdge(a)
+        let appended = SplitTree<MockRef>().appendingAtTrailingLeaf(a)
         #expect(appended.map(\.id) == [a.id])
         #expect(!appended.isSplit)
     }
 
-    @Test func appendingAtRightEdgeThenEqualizingBalancesEveryLeaf() throws {
-        let (tree, refs) = try Self.makeRefRow() // a | b | c
+    @Test func appendingAtTrailingLeafLeavesOtherRatiosUntouched() throws {
+        // Skewed tree with a vertical split: a | (b / c). The trailing leaf in
+        // traversal order is c (the bottom-right one).
+        let a = MockRef(), b = MockRef(), c = MockRef()
+        let tree = SplitTree<MockRef>(
+            root: .split(.init(
+                direction: .horizontal,
+                ratio: 0.3,
+                left: .leaf(view: a),
+                right: .split(.init(
+                    direction: .vertical,
+                    ratio: 0.7,
+                    left: .leaf(view: b),
+                    right: .leaf(view: c))))),
+            zoomed: nil)
         let d = MockRef()
 
-        let appended = tree.appendingAtRightEdge(d).equalized()
+        let appended = tree.appendingAtTrailingLeaf(d)
 
-        // Three leaves on the left, one on the right: 3/4 vs 1/4.
-        let split = try #require(Self.rootSplit(appended))
-        #expect(abs(split.ratio - 0.75) < 1e-9)
-        #expect(appended.map(\.id) == refs.map(\.id) + [d.id])
+        // c's slot is halved for d; every pre-existing ratio survives.
+        #expect(appended.map(\.id) == [a.id, b.id, c.id, d.id])
+        #expect(Self.splitRatios(appended) == [0.3, 0.7, 0.5])
     }
 
     /// The root split of `tree`, or nil when the root is a leaf/empty.

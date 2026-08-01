@@ -171,7 +171,8 @@ struct WorkspaceStateTests {
 
         let restored = WorkspaceState.restoring(state)
 
-        // Re-attached at the right edge, everything visible again (§12.3).
+        // Re-attached by splitting the trailing leaf, everything visible again
+        // (§12.3).
         #expect(restored.canonicalGroupTree.map(\.id) == [ids.0, ids.1])
         #expect(restored.hiddenGroupIDs.isEmpty)
         #expect(Set(restored.groups.keys) == Set([ids.0, ids.1]))

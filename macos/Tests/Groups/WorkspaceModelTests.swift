@@ -603,27 +603,28 @@ struct WorkspaceModelTests {
         #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
     }
 
-    @Test func showGroupAppendsAtRightEdgeAndEqualizes() throws {
+    @Test func showGroupSplitsTrailingGroupAndTakesRightHalf() throws {
         // Hide the *leftmost* of three groups: showing it again does not put it
-        // back on the left, it lands at the right edge with an equal share.
+        // back on the left, it takes the right half of the trailing group.
         let (model, ids) = try Self.makeThreeGroupRow()
         model.switchFocusedGroup(to: ids.left, savingOutgoingPaneTree: .init())
         try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
         #expect(model.state.canonicalGroupTree.map(\.id) == [ids.middle, ids.right])
 
-        // Skew what is left so the equalize pass is observable.
+        // Skew the surviving split to check the show leaves it untouched.
         model.resizeFocusedGroup(.left, ratioDelta: 0.2)
 
         model.showGroup(ids.left, savingOutgoingPaneTree: .init())
 
-        // Right edge, in-order last.
+        // The trailing group (in-order last) was split; the shown group is the
+        // new in-order last.
         #expect(model.state.canonicalGroupTree.map(\.id) == [ids.middle, ids.right, ids.left])
         #expect(model.state.focusedGroup == ids.left)
         #expect(model.state.hiddenGroupIDs.isEmpty)
-        // Equalized: two leaves on the left of the new root, one on the right.
+        // The skewed split survives; the new trailing split is 50/50.
         let ratios = Self.canonicalRatios(model)
         #expect(ratios.count == 2)
-        #expect(abs(ratios[0] - 2.0 / 3.0) < 1e-9)
+        #expect(abs(ratios[0] - 0.3) < 1e-9)
         #expect(abs(ratios[1] - 0.5) < 1e-9)
     }
 

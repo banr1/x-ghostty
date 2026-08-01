@@ -362,8 +362,8 @@ final class WorkspaceModel: ObservableObject {
     /// its pane tree and live surfaces — stays in `groups`, so the processes stay
     /// alive (invariant §14.7).
     ///
-    /// Hiding is therefore not positional: `show_group` re-attaches the group at
-    /// the right edge rather than where it used to be.
+    /// Hiding is therefore not positional: `show_group` re-attaches the group
+    /// next to the trailing group rather than where it used to be.
     ///
     /// The caller passes the outgoing focused group's live panes; they are
     /// persisted into `groups` (the hidden group keeps its layout) before focus
@@ -411,10 +411,9 @@ final class WorkspaceModel: ObservableObject {
     /// it from the hidden set, clear any zoom, and focus it.
     ///
     /// The group does *not* return to where it was before it was hidden — hiding
-    /// removed its leaf entirely. It is appended at the right edge of the whole
-    /// group tree (side by side with everything that is already visible) and the
-    /// tree is then equalized, so every visible group ends up with an equal
-    /// share.
+    /// removed its leaf entirely. The trailing group (the last leaf in traversal
+    /// order) is split in half horizontally and the shown group takes the right
+    /// half, so every other visible group keeps its current size.
     ///
     /// Like `switchFocusedGroup`, the caller passes the outgoing focused group's
     /// live panes so they are persisted before focus moves away.
@@ -433,8 +432,7 @@ final class WorkspaceModel: ObservableObject {
         next.saveOutgoingPaneTree(outgoing)
         next.hiddenGroupIDs.remove(id)
         next.canonicalGroupTree = next.canonicalGroupTree
-            .appendingAtRightEdge(GroupRef(id: id))
-            .equalized()
+            .appendingAtTrailingLeaf(GroupRef(id: id))
         next.zoomedGroup = nil
         next.focusedGroup = id
         state = next
@@ -452,8 +450,8 @@ final class WorkspaceModel: ObservableObject {
     /// responsibility; this only mutates the group structure. The focus target is
     /// resolved on the pre-mutation canonical tree, which holds only the visible
     /// groups; if the closing group is the last visible one it falls back to a
-    /// hidden group, which is then revealed at the right edge so the focused
-    /// group stays visible (invariant §14.6).
+    /// hidden group, which is then revealed via the same trailing-leaf re-attach
+    /// as `show_group` so the focused group stays visible (invariant §14.6).
     ///
     /// - Returns: `.switched` after a successful close, `.closedLast` when the
     ///   focused group was the only group (the model is left unchanged so the
@@ -484,8 +482,7 @@ final class WorkspaceModel: ObservableObject {
         // no leaf while hidden, so it is re-attached like `show_group` does.
         if next.hiddenGroupIDs.remove(targetID) != nil {
             next.canonicalGroupTree = next.canonicalGroupTree
-                .appendingAtRightEdge(GroupRef(id: targetID))
-                .equalized()
+                .appendingAtTrailingLeaf(GroupRef(id: targetID))
         }
         next.focusedGroup = targetID
         state = next
