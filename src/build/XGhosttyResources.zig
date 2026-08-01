@@ -232,7 +232,7 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
         const run = b.addRunArtifact(build_data_exe);
         run.addArg("+sublime");
         const wf = b.addWriteFiles();
-        _ = wf.addCopyFile(run.captureStdOut(), "xxghostty.sublime-syntax");
+        _ = wf.addCopyFile(run.captureStdOut(), "xghostty.sublime-syntax");
 
         const install_step = b.addInstallDirectory(.{
             .source_dir = wf.getDirectory(),
