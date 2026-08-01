@@ -408,6 +408,12 @@ extension XGhostty.Notification {
     static let ghosttyGotoGroup = Notification.Name("com.mitchellh.xghostty.gotoGroup")
     static let GroupDirectionKey = ghosttyGotoGroup.rawValue + ".direction"
 
+    /// Posted when `move_group` is requested. The sending object is the surface that had focus;
+    /// the userinfo carries a `MoveGroupDirectionKey` (a `SplitFocusDirection`). The focused group
+    /// swaps places with its neighbor in that direction (`SPEC.md` §11.3).
+    static let ghosttyMoveGroup = Notification.Name("com.mitchellh.xghostty.moveGroup")
+    static let MoveGroupDirectionKey = ghosttyMoveGroup.rawValue + ".direction"
+
     /// Posted when `resize_group` is requested. The sending object is the surface that had focus;
     /// the userinfo carries a `ResizeGroupDirectionKey` (a `SplitResizeDirection`) and a
     /// `ResizeGroupAmountKey` (a `UInt16` pixel amount). Resizes the canonical split between the

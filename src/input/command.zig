@@ -537,6 +537,12 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = "Equalize the size of all splits.",
         }},
 
+        .equalize_groups => comptime &.{.{
+            .action = .equalize_groups,
+            .title = "Equalize Groups",
+            .description = "Equalize the size of all visible groups.",
+        }},
+
         .reset_window_size => comptime &.{.{
             .action = .reset_window_size,
             .title = "Reset Window Size",
@@ -718,14 +724,16 @@ fn actionCommands(action: Action.Key) []const Command {
         .last_tab,
         => comptime &.{},
 
-        // Group-layer actions are plumbed through the core, but their behavior
-        // is not yet implemented on the apprt side. Command-palette entries are
-        // added together with the behavior in the phases that implement each
-        // group action, so they have no commands for now.
+        // Group-layer actions are plumbed through the core and implemented
+        // apprt-side (macOS). Most of the ones excluded here take arguments
+        // that don't have a sensible palette default (a direction, an
+        // amount, or a group name/title). Palette entries for the rest are
+        // added per-action as they become useful, mirroring how equalize_groups
+        // was added above.
         .new_group_split,
         .goto_group,
+        .move_group,
         .resize_group,
-        .equalize_groups,
         .toggle_group_zoom,
         .hide_group,
         .show_group,

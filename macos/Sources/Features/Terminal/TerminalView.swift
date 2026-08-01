@@ -26,6 +26,9 @@ protocol TerminalViewDelegate: AnyObject {
 
     /// Show a hidden group (a shelf pill click, `SPEC.md` §11.8, §7.2).
     func showGroup(_ id: GroupID)
+
+    /// Equalize the group layout (a group-divider double-click, `SPEC.md` §11.5).
+    func equalizeGroups()
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -96,7 +99,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         workspace: viewModel.workspace,
                         paneAction: { delegate?.performSplitAction($0) },
                         onFocusGroup: { delegate?.focusGroup($0) },
-                        onShowGroup: { delegate?.showGroup($0) })
+                        onShowGroup: { delegate?.showGroup($0) },
+                        onEqualizeGroups: { delegate?.equalizeGroups() })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

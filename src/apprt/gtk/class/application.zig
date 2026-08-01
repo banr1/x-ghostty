@@ -790,6 +790,7 @@ pub const Application = extern struct {
             // Group-layer actions are macOS-only for now (no GTK group layer).
             .new_group_split,
             .goto_group,
+            .move_group,
             .resize_group,
             .equalize_groups,
             .toggle_group_zoom,

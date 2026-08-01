@@ -259,20 +259,50 @@ final class WorkspaceModel: ObservableObject {
             amount: ratioDelta)
     }
 
-    /// Equalize the visible group layout (`SPEC.md` §11.5).
+    /// Whether `move_group` in `direction` would swap anything. Shares
+    /// `gotoGroupTarget`'s resolution, so the two actions always agree on what
+    /// counts as a neighbor.
+    func canMoveFocusedGroup(_ direction: SplitTree<GroupRef>.FocusDirection) -> Bool {
+        gotoGroupTarget(direction) != nil
+    }
+
+    /// Swap the focused group with its neighbor in `direction` (`move_group`).
     ///
-    /// MVP scope: only runs when no groups are hidden, in which case the visible
-    /// tree is the canonical tree and equalizing the whole canonical tree is
-    /// exactly right. With hidden groups present this would also rebalance their
-    /// (invisible) splits, so it declines and logs instead. The recommended
-    /// per-visible-split approach arrives with Phase 5, when hidden groups become
-    /// reachable (`SPEC.md` §11.5).
+    /// The neighbor is resolved exactly like `goto_group` (spatial for
+    /// up/down/left/right, in-order traversal for previous/next), then the two
+    /// leaves exchange payloads in the canonical tree. The tree's shape and every
+    /// split ratio stay put, so the layout does not reflow — the two groups
+    /// simply trade slots. Focus follows the moved group to its new slot, so
+    /// `focusedGroup` is unchanged.
     ///
-    /// - Returns: `true` if the layout was equalized, `false` if it declined.
+    /// - Returns: `true` if the groups were swapped, `false` when the move is a
+    ///   no-op (zoomed, no focused group, or no neighbor in that direction), so
+    ///   the caller can leave the keybind unconsumed.
+    @discardableResult
+    func moveFocusedGroup(_ direction: SplitTree<GroupRef>.FocusDirection) -> Bool {
+        guard let focusedID = state.focusedGroup else { return false }
+        guard let targetID = gotoGroupTarget(direction) else { return false }
+        guard let swapped = state.canonicalGroupTree.swappingLeaves(
+            GroupRef(id: focusedID),
+            GroupRef(id: targetID)) else { return false }
+
+        state.canonicalGroupTree = swapped
+        return true
+    }
+
+    /// Equalize the group layout (`SPEC.md` §11.5).
+    ///
+    /// Hidden groups are not in `canonicalGroupTree` at all — hiding removes the
+    /// leaf (§11.7) — so equalizing the canonical tree only ever rebalances
+    /// splits between visible groups. Zoom is a pure display state and does not
+    /// affect the canonical ratios being equalized.
+    ///
+    /// - Returns: `true` if the layout was equalized, `false` when there is
+    ///   nothing to equalize (a single group, or no groups at all).
     @discardableResult
     func equalizeGroups() -> Bool {
-        guard state.hiddenGroupIDs.isEmpty else {
-            XGhostty.logger.warning("equalize_groups skipped: hidden groups present (Phase 5)")
+        guard state.canonicalGroupTree.isSplit else {
+            XGhostty.logger.debug("equalize_groups skipped: no group split to equalize")
             return false
         }
 
@@ -304,14 +334,18 @@ final class WorkspaceModel: ObservableObject {
         state.zoomedGroup = (state.zoomedGroup == focusedID) ? nil : focusedID
     }
 
-    /// The group that would receive focus if `id` were hidden: the nearest
-    /// canonical-tree leaf that stays visible once `id` joins the hidden set, or
-    /// `nil` when `id` is the last visible group (`SPEC.md` §18.2). Computed on
-    /// the canonical tree (ignoring zoom) because a hide un-zooms first (§18.3).
+    /// The group that would receive focus if `id` were hidden: the nearest other
+    /// leaf in the canonical tree, or `nil` when `id` is the last visible group
+    /// (`SPEC.md` §18.2). Computed on the canonical tree (ignoring zoom) because
+    /// a hide un-zooms first (§18.3), and *before* the hide removes `id`'s leaf
+    /// so "nearest" is still measured from where `id` actually sits.
+    ///
+    /// Every canonical leaf is a visible group (hidden ones have no leaf), so no
+    /// extra visibility filter is needed; `nearestLeaf` already excludes `id`.
     private func neighborAfterHiding(_ id: GroupID) -> GroupRef? {
         state.canonicalGroupTree.nearestLeaf(
             to: GroupRef(id: id),
-            matching: { $0.id != id && !state.hiddenGroupIDs.contains($0.id) })
+            matching: { !state.hiddenGroupIDs.contains($0.id) })
     }
 
     /// Whether `hide_group` would succeed for the focused group (`SPEC.md`
@@ -321,10 +355,15 @@ final class WorkspaceModel: ObservableObject {
         return neighborAfterHiding(id) != nil
     }
 
-    /// Hide the focused group (`SPEC.md` §11.7, §18.2–3). The group's processes
-    /// stay alive (invariant §14.7): only `hiddenGroupIDs` changes, plus a focus
-    /// move to a visible neighbor. `canonicalGroupTree` and `groups` are
-    /// unchanged, so `show_group` restores it in place.
+    /// Hide the focused group (`SPEC.md` §11.7, §18.2–3). The group's leaf is
+    /// removed from `canonicalGroupTree` so the remaining groups reclaim its
+    /// space, its id joins `hiddenGroupIDs` (the shelf's source of truth), and
+    /// focus moves to the nearest remaining group. Its `GroupState` — including
+    /// its pane tree and live surfaces — stays in `groups`, so the processes stay
+    /// alive (invariant §14.7).
+    ///
+    /// Hiding is therefore not positional: `show_group` re-attaches the group at
+    /// the right edge rather than where it used to be.
     ///
     /// The caller passes the outgoing focused group's live panes; they are
     /// persisted into `groups` (the hidden group keeps its layout) before focus
@@ -347,6 +386,9 @@ final class WorkspaceModel: ObservableObject {
         // The hidden group keeps its current layout alive in `groups`.
         next.saveOutgoingPaneTree(outgoing)
 
+        // Drop the leaf so the visible groups reclaim its space; `groups` keeps
+        // the state (and the running panes) behind the shelf entry.
+        next.canonicalGroupTree = next.canonicalGroupTree.removing(.leaf(view: GroupRef(id: hideID)))
         next.hiddenGroupIDs.insert(hideID)
         // §18.3: a hidden group cannot remain zoomed.
         if next.zoomedGroup == hideID { next.zoomedGroup = nil }
@@ -365,9 +407,14 @@ final class WorkspaceModel: ObservableObject {
         }?.key
     }
 
-    /// Show the hidden group `id` (`SPEC.md` §11.8): remove it from the hidden
-    /// set, clear any zoom, and focus it. The canonical tree is unchanged, so it
-    /// reappears in its original place.
+    /// Show the hidden group `id` (`SPEC.md` §11.8): re-attach its leaf, remove
+    /// it from the hidden set, clear any zoom, and focus it.
+    ///
+    /// The group does *not* return to where it was before it was hidden — hiding
+    /// removed its leaf entirely. It is appended at the right edge of the whole
+    /// group tree (side by side with everything that is already visible) and the
+    /// tree is then equalized, so every visible group ends up with an equal
+    /// share.
     ///
     /// Like `switchFocusedGroup`, the caller passes the outgoing focused group's
     /// live panes so they are persisted before focus moves away.
@@ -380,10 +427,14 @@ final class WorkspaceModel: ObservableObject {
         savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) -> SurfaceID? {
         guard state.hiddenGroupIDs.contains(id) else { return nil }
+        guard state.groups[id] != nil else { return nil }
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
         next.hiddenGroupIDs.remove(id)
+        next.canonicalGroupTree = next.canonicalGroupTree
+            .appendingAtRightEdge(GroupRef(id: id))
+            .equalized()
         next.zoomedGroup = nil
         next.focusedGroup = id
         state = next
@@ -398,12 +449,11 @@ final class WorkspaceModel: ObservableObject {
     /// and moves focus to the nearest remaining group.
     ///
     /// Confirmation and terminating the group's surfaces are the caller's
-    /// responsibility; this only mutates the group structure. The focus target
-    /// is resolved on the pre-mutation canonical tree, preferring a visible
-    /// neighbor and falling back to any remaining group — which is then revealed
-    /// (un-hidden) so the focused group stays visible (invariant §14.6). This
-    /// fallback only matters in the unusual case where the focused group is the
-    /// last *visible* one but hidden groups remain.
+    /// responsibility; this only mutates the group structure. The focus target is
+    /// resolved on the pre-mutation canonical tree, which holds only the visible
+    /// groups; if the closing group is the last visible one it falls back to a
+    /// hidden group, which is then revealed at the right edge so the focused
+    /// group stays visible (invariant §14.6).
     ///
     /// - Returns: `.switched` after a successful close, `.closedLast` when the
     ///   focused group was the only group (the model is left unchanged so the
@@ -415,27 +465,42 @@ final class WorkspaceModel: ObservableObject {
         let closeRef = GroupRef(id: closeID)
 
         // Resolve the next focus target before mutating. `nearestLeaf` already
-        // excludes `closeRef` itself; prefer a still-visible group, otherwise
-        // take any remaining group.
-        let target = state.canonicalGroupTree.nearestLeaf(
+        // excludes `closeRef` itself, and every canonical leaf is a visible
+        // group; only when none remains do we fall back to a hidden one.
+        let visibleTarget = state.canonicalGroupTree.nearestLeaf(
             to: closeRef,
-            matching: { !state.hiddenGroupIDs.contains($0.id) })
-            ?? state.canonicalGroupTree.nearestLeaf(to: closeRef, matching: { _ in true })
+            matching: { _ in true })
+        let targetID = visibleTarget?.id ?? oldestHiddenGroupID()
 
         // §18.5: the only group's close is delegated to tab/window close.
-        guard let target else { return .closedLast }
+        guard let targetID else { return .closedLast }
 
         var next = state
         next.canonicalGroupTree = state.canonicalGroupTree.removing(.leaf(view: closeRef))
         next.groups.removeValue(forKey: closeID)
         next.hiddenGroupIDs.remove(closeID)
         if next.zoomedGroup == closeID { next.zoomedGroup = nil }
-        // Reveal the target if it was hidden (no visible group remained).
-        next.hiddenGroupIDs.remove(target.id)
-        next.focusedGroup = target.id
+        // Reveal the target if it was hidden (no visible group remained). It has
+        // no leaf while hidden, so it is re-attached like `show_group` does.
+        if next.hiddenGroupIDs.remove(targetID) != nil {
+            next.canonicalGroupTree = next.canonicalGroupTree
+                .appendingAtRightEdge(GroupRef(id: targetID))
+                .equalized()
+        }
+        next.focusedGroup = targetID
         state = next
 
-        return .switched(target: target.id, focus: state.groups[target.id]?.focusedSurface)
+        return .switched(target: targetID, focus: state.groups[targetID]?.focusedSurface)
+    }
+
+    /// The hidden group to reveal when the last visible group is closed: the
+    /// oldest one, matching the shelf's creation-time ordering.
+    private func oldestHiddenGroupID() -> GroupID? {
+        state.hiddenGroupIDs
+            .compactMap { state.groups[$0] }
+            .min { ($0.createdAt, $0.id.rawValue.uuidString) <
+                   ($1.createdAt, $1.id.rawValue.uuidString) }?
+            .id
     }
 
     // MARK: Rename (Phase 3)

@@ -150,4 +150,63 @@ struct WorkspaceStateTests {
         let restored = WorkspaceState.restoring(state)
         #expect(restored.focusedGroup == state.canonicalGroupTree.firstLeaf?.id)
     }
+
+    // MARK: Orphan reconciliation (SPEC §12.3)
+
+    /// Removes `id`'s leaf from the canonical tree, reproducing what `hide_group`
+    /// leaves behind: the `GroupState` survives in `groups` with no leaf.
+    private static func hiding(_ id: GroupID, in state: WorkspaceState) -> WorkspaceState {
+        var next = state
+        next.canonicalGroupTree = next.canonicalGroupTree.removing(.leaf(view: GroupRef(id: id)))
+        next.hiddenGroupIDs.insert(id)
+        return next
+    }
+
+    @Test func restoringReattachesGroupsMissingFromTree() throws {
+        // Saved while g2 was hidden: `hiddenGroupIDs` is not persisted, so
+        // without reconciliation g2 would come back alive but unreachable.
+        let (base, ids) = try Self.makeTwoGroupState()
+        let state = Self.hiding(ids.1, in: base)
+        #expect(state.canonicalGroupTree.map(\.id) == [ids.0])
+
+        let restored = WorkspaceState.restoring(state)
+
+        // Re-attached at the right edge, everything visible again (§12.3).
+        #expect(restored.canonicalGroupTree.map(\.id) == [ids.0, ids.1])
+        #expect(restored.hiddenGroupIDs.isEmpty)
+        #expect(Set(restored.groups.keys) == Set([ids.0, ids.1]))
+        #expect(restored.effectiveVisibleGroupTree?.map(\.id) == [ids.0, ids.1])
+    }
+
+    @Test func restoringKeepsFocusValidAfterReattaching() throws {
+        // The focused group is the one that was hidden: reconciliation runs
+        // before the focus check, so it stays focused rather than being reset.
+        let (base, ids) = try Self.makeTwoGroupState()
+        var state = Self.hiding(ids.1, in: base)
+        state.focusedGroup = ids.1
+
+        let restored = WorkspaceState.restoring(state)
+
+        #expect(restored.focusedGroup == ids.1)
+        #expect(restored.canonicalGroupTree.find(id: ids.1) != nil)
+    }
+
+    @Test func restoringLeavesAConsistentTreeUntouched() throws {
+        let (state, _) = try Self.makeTwoGroupState()
+        let restored = WorkspaceState.restoring(state)
+        #expect(restored.canonicalGroupTree.structuralIdentity == state.canonicalGroupTree.structuralIdentity)
+    }
+
+    @Test func decodingReattachesGroupsMissingFromTree() throws {
+        let (base, ids) = try Self.makeTwoGroupState()
+        let state = Self.hiding(ids.1, in: base)
+
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(WorkspaceState.self, from: data)
+
+        // Both groups persist; the orphan is re-attached so nothing leaks.
+        #expect(Set(decoded.groups.keys) == Set([ids.0, ids.1]))
+        #expect(Set(decoded.canonicalGroupTree.map(\.id)) == Set([ids.0, ids.1]))
+        #expect(decoded.hiddenGroupIDs.isEmpty)
+    }
 }

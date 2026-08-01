@@ -275,6 +275,100 @@ struct WorkspaceModelTests {
         #expect(Self.rootSplitRatio(zoomedModel) == before)
     }
 
+    // MARK: moveFocusedGroup (move_group)
+
+    /// Builds a horizontal row of three groups `[left, middle, right]` with
+    /// `middle` focused.
+    private static func makeThreeGroupRow() throws
+        -> (model: WorkspaceModel, ids: (left: GroupID, middle: GroupID, right: GroupID)) {
+        let model = WorkspaceModel(wrapping: .init())
+        let left = try #require(model.state.focusedGroup)
+        let middle = makeEmptyGroup(name: "amber-owl")
+        try model.openNewGroup(middle, direction: .right, savingOutgoingPaneTree: .init())
+        let right = makeEmptyGroup(name: "coral-fox")
+        try model.openNewGroup(right, direction: .right, savingOutgoingPaneTree: .init())
+        model.switchFocusedGroup(to: middle.id, savingOutgoingPaneTree: .init())
+        return (model, (left, middle.id, right.id))
+    }
+
+    /// Every split ratio in the canonical group tree, depth-first.
+    private static func canonicalRatios(_ model: WorkspaceModel) -> [Double] {
+        func walk(_ node: SplitTree<GroupRef>.Node) -> [Double] {
+            guard case .split(let split) = node else { return [] }
+            return [split.ratio] + walk(split.left) + walk(split.right)
+        }
+        guard let root = model.state.canonicalGroupTree.root else { return [] }
+        return walk(root)
+    }
+
+    @Test func moveFocusedGroupSwapsWithSpatialNeighbor() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        // Skew the split so a structure/ratio-preserving swap is observable.
+        model.resizeFocusedGroup(.left, ratioDelta: 0.2)
+        let ratios = Self.canonicalRatios(model)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [left, right])
+
+        #expect(model.moveFocusedGroup(.spatial(.left)) == true)
+
+        // The two leaves traded places; ratios (and so the layout) are identical
+        // and focus followed the moved group to its new slot.
+        #expect(model.state.canonicalGroupTree.map(\.id) == [right, left])
+        #expect(Self.canonicalRatios(model) == ratios)
+        #expect(model.state.focusedGroup == right)
+    }
+
+    @Test func moveFocusedGroupIsNotPerformableAtTheEdge() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        // The focused group is the rightmost, so right/up/down have no neighbor.
+        #expect(model.canMoveFocusedGroup(.spatial(.right)) == false)
+        #expect(model.canMoveFocusedGroup(.spatial(.up)) == false)
+        #expect(model.moveFocusedGroup(.spatial(.right)) == false)
+
+        #expect(model.state.canonicalGroupTree.map(\.id) == [left, right])
+        #expect(model.state.focusedGroup == right)
+    }
+
+    @Test func moveFocusedGroupPreviousSwapsInOrderNeighbor() throws {
+        let (model, ids) = try Self.makeThreeGroupRow()
+
+        #expect(model.moveFocusedGroup(.previous) == true)
+
+        #expect(model.state.canonicalGroupTree.map(\.id) == [ids.middle, ids.left, ids.right])
+        #expect(model.state.focusedGroup == ids.middle)
+    }
+
+    @Test func moveFocusedGroupNextSwapsInOrderNeighbor() throws {
+        let (model, ids) = try Self.makeThreeGroupRow()
+
+        #expect(model.moveFocusedGroup(.next) == true)
+
+        #expect(model.state.canonicalGroupTree.map(\.id) == [ids.left, ids.right, ids.middle])
+        #expect(model.state.focusedGroup == ids.middle)
+    }
+
+    @Test func moveFocusedGroupSingleGroupIsNoOp() {
+        let model = WorkspaceModel(wrapping: .init())
+        #expect(model.moveFocusedGroup(.next) == false)
+        #expect(model.moveFocusedGroup(.previous) == false)
+        #expect(model.moveFocusedGroup(.spatial(.left)) == false)
+    }
+
+    @Test func moveFocusedGroupIsNoOpWhenZoomed() throws {
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        var zoomed = model.state
+        zoomed.zoomedGroup = right
+        let zoomedModel = WorkspaceModel(zoomed)
+
+        #expect(zoomedModel.canMoveFocusedGroup(.spatial(.left)) == false)
+        #expect(zoomedModel.moveFocusedGroup(.spatial(.left)) == false)
+        #expect(zoomedModel.state.canonicalGroupTree.map(\.id) == [left, right])
+    }
+
+    @Test func moveFocusedGroupWithoutFocusedGroupIsNoOp() {
+        let model = WorkspaceModel()
+        #expect(model.moveFocusedGroup(.next) == false)
+    }
+
     // MARK: equalizeGroups (SPEC §11.5)
 
     @Test func equalizeGroupsRebalancesWhenNoHidden() throws {
@@ -288,19 +382,31 @@ struct WorkspaceModelTests {
         #expect(abs(ratio - 0.5) < 1e-9)
     }
 
-    @Test func equalizeGroupsDeclinesWithHiddenGroups() throws {
-        let (model, _, right) = try Self.makeTwoGroupHorizontal()
+    @Test func equalizeGroupsRebalancesVisibleGroupsWithHiddenPresent() throws {
+        // Hidden groups have no leaf in the canonical tree, so equalizing it
+        // inherently ignores them — no guard needed.
+        let (model, ids) = try Self.makeThreeGroupRow()
+        model.switchFocusedGroup(to: ids.right, savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.hiddenGroupIDs == [ids.right])
+
         model.resizeFocusedGroup(.left, ratioDelta: 0.2)
-        let skewed = try #require(Self.rootSplitRatio(model))
+        #expect(Self.rootSplitRatio(model) != 0.5)
 
-        // Hidden groups are Phase 5; construct the state directly to exercise the
-        // MVP guard (§11.5): equalize declines and leaves the tree untouched.
-        var hidden = model.state
-        hidden.hiddenGroupIDs = [right]
-        let hiddenModel = WorkspaceModel(hidden)
+        #expect(model.equalizeGroups() == true)
 
-        #expect(hiddenModel.equalizeGroups() == false)
-        #expect(Self.rootSplitRatio(hiddenModel) == skewed)
+        let ratio = try #require(Self.rootSplitRatio(model))
+        #expect(abs(ratio - 0.5) < 1e-9)
+        // The hidden group stays hidden and out of the tree.
+        #expect(model.state.hiddenGroupIDs == [ids.right])
+        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([ids.left, ids.middle]))
+    }
+
+    @Test func equalizeGroupsDeclinesWithNothingToEqualize() {
+        // A single group has no split; the keybind should stay unconsumed.
+        let model = WorkspaceModel(wrapping: .init())
+        #expect(model.equalizeGroups() == false)
+        #expect(WorkspaceModel().equalizeGroups() == false)
     }
 
     // MARK: Rename (SPEC §7.1, §9.1)
@@ -421,10 +527,13 @@ struct WorkspaceModelTests {
         #expect(result.target == left)
         #expect(model.state.hiddenGroupIDs == [right])
         #expect(model.state.focusedGroup == left)
-        // §14.7 (proxy): the group stays alive — `groups` and the canonical tree
-        // are unchanged, so its processes/panes persist for `show_group`.
+        // Its leaf leaves the canonical tree so the visible groups reclaim the
+        // space, but §14.7: the group stays alive in `groups`, so its
+        // processes/panes persist for `show_group`.
         #expect(model.state.groups.count == 2)
-        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
+        #expect(model.state.groups[right] != nil)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [left])
+        #expect(model.state.canonicalGroupTree.isSplit == false)
     }
 
     @Test func hideFocusedGroupRejectsLastVisibleGroup() {
@@ -443,15 +552,16 @@ struct WorkspaceModelTests {
         // Two groups, the left already hidden, the right focused. Hiding the
         // right would leave nothing visible → rejected (§18.2).
         let (model, left, right) = try Self.makeTwoGroupHorizontal()
-        var state = model.state
-        state.hiddenGroupIDs = [left]
-        state.focusedGroup = right
-        let hiddenModel = WorkspaceModel(state)
+        model.switchFocusedGroup(to: left, savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.hiddenGroupIDs == [left])
+        #expect(model.state.focusedGroup == right)
 
-        #expect(hiddenModel.canHideFocusedGroup == false)
-        #expect(hiddenModel.hideFocusedGroup(savingOutgoingPaneTree: .init()) == nil)
-        #expect(hiddenModel.state.hiddenGroupIDs == [left])
-        #expect(hiddenModel.state.focusedGroup == right)
+        #expect(model.canHideFocusedGroup == false)
+        #expect(model.hideFocusedGroup(savingOutgoingPaneTree: .init()) == nil)
+        #expect(model.state.hiddenGroupIDs == [left])
+        #expect(model.state.focusedGroup == right)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [right])
     }
 
     @Test func hideFocusedGroupClearsZoom() throws {
@@ -485,7 +595,7 @@ struct WorkspaceModelTests {
         try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
         #expect(model.state.focusedGroup == left)
 
-        // Showing it again un-hides and focuses it; canonical/groups unchanged.
+        // Showing it again un-hides and focuses it, re-attaching its leaf.
         model.showGroup(right, savingOutgoingPaneTree: .init())
 
         #expect(model.state.hiddenGroupIDs.isEmpty)
@@ -493,13 +603,38 @@ struct WorkspaceModelTests {
         #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
     }
 
+    @Test func showGroupAppendsAtRightEdgeAndEqualizes() throws {
+        // Hide the *leftmost* of three groups: showing it again does not put it
+        // back on the left, it lands at the right edge with an equal share.
+        let (model, ids) = try Self.makeThreeGroupRow()
+        model.switchFocusedGroup(to: ids.left, savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.canonicalGroupTree.map(\.id) == [ids.middle, ids.right])
+
+        // Skew what is left so the equalize pass is observable.
+        model.resizeFocusedGroup(.left, ratioDelta: 0.2)
+
+        model.showGroup(ids.left, savingOutgoingPaneTree: .init())
+
+        // Right edge, in-order last.
+        #expect(model.state.canonicalGroupTree.map(\.id) == [ids.middle, ids.right, ids.left])
+        #expect(model.state.focusedGroup == ids.left)
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        // Equalized: two leaves on the left of the new root, one on the right.
+        let ratios = Self.canonicalRatios(model)
+        #expect(ratios.count == 2)
+        #expect(abs(ratios[0] - 2.0 / 3.0) < 1e-9)
+        #expect(abs(ratios[1] - 0.5) < 1e-9)
+    }
+
     @Test func showGroupClearsZoom() throws {
         // A group hidden while another is zoomed: showing it clears the zoom.
         let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.focusedGroup == left)
+
         var state = model.state
-        state.hiddenGroupIDs = [right]
         state.zoomedGroup = left
-        state.focusedGroup = left
         let staged = WorkspaceModel(state)
 
         staged.showGroup(right, savingOutgoingPaneTree: .init())
@@ -507,6 +642,19 @@ struct WorkspaceModelTests {
         #expect(staged.state.zoomedGroup == nil)
         #expect(staged.state.hiddenGroupIDs.isEmpty)
         #expect(staged.state.focusedGroup == right)
+    }
+
+    @Test func showGroupIsNoOpForUnknownGroup() throws {
+        // A stale hidden id with no `GroupState` must not add a dangling leaf.
+        let (model, left, _) = try Self.makeTwoGroupHorizontal()
+        var state = model.state
+        let ghost = GroupID()
+        state.hiddenGroupIDs = [ghost]
+        let staged = WorkspaceModel(state)
+
+        #expect(staged.showGroup(ghost, savingOutgoingPaneTree: .init()) == nil)
+        #expect(staged.state.canonicalGroupTree.find(id: ghost) == nil)
+        #expect(staged.state.canonicalGroupTree.find(id: left) != nil)
     }
 
     @Test func showGroupIsNoOpForNonHiddenGroup() throws {
@@ -586,46 +734,41 @@ struct WorkspaceModelTests {
 
     @Test func closeFocusedGroupRevealsHiddenGroupWhenNoVisibleNeighbor() throws {
         // The left group is hidden and the right is focused. Closing the right
-        // leaves no visible neighbor, so the hidden left is revealed and focused
-        // — the focused group must always be visible (invariant §14.6).
+        // leaves no visible neighbor, so the hidden left is revealed (re-attached
+        // to the tree) and focused — the focused group must always be visible
+        // (invariant §14.6).
         let (model, left, right) = try Self.makeTwoGroupHorizontal()
-        var state = model.state
-        state.hiddenGroupIDs = [left]
-        state.focusedGroup = right
-        let staged = WorkspaceModel(state)
+        model.switchFocusedGroup(to: left, savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.focusedGroup == right)
 
-        let outcome = staged.closeFocusedGroup()
+        let outcome = model.closeFocusedGroup()
 
         #expect(outcome == .switched(target: left, focus: nil))
-        #expect(staged.state.focusedGroup == left)
-        #expect(staged.state.hiddenGroupIDs.isEmpty)
-        #expect(staged.state.groups[right] == nil)
-        #expect(Set(staged.state.canonicalGroupTree.map(\.id)) == Set([left]))
+        #expect(model.state.focusedGroup == left)
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(model.state.groups[right] == nil)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [left])
     }
 
     @Test func closeFocusedGroupKeepsOtherHiddenGroupHidden() throws {
         // Three groups, the middle hidden, the rightmost focused. Closing the
-        // focused group moves focus to the nearest *visible* group (the left),
+        // focused group moves focus to the remaining visible group (the left),
         // never to the hidden middle, which stays hidden.
-        let model = WorkspaceModel(wrapping: .init())
-        let left = try #require(model.state.focusedGroup)
-        let middle = Self.makeEmptyGroup(name: "amber-owl")
-        try model.openNewGroup(middle, direction: .right, savingOutgoingPaneTree: .init())
-        let right = Self.makeEmptyGroup(name: "coral-fox")
-        try model.openNewGroup(right, direction: .right, savingOutgoingPaneTree: .init())
+        let (model, ids) = try Self.makeThreeGroupRow()
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.hiddenGroupIDs == [ids.middle])
+        model.switchFocusedGroup(to: ids.right, savingOutgoingPaneTree: .init())
 
-        var state = model.state
-        state.hiddenGroupIDs = [middle.id]
-        state.focusedGroup = right.id
-        let staged = WorkspaceModel(state)
+        let outcome = model.closeFocusedGroup()
 
-        let outcome = staged.closeFocusedGroup()
-
-        #expect(outcome == .switched(target: left, focus: nil))
-        #expect(staged.state.focusedGroup == left)
-        #expect(staged.state.hiddenGroupIDs == [middle.id])
-        #expect(staged.state.groups[right.id] == nil)
-        #expect(Set(staged.state.canonicalGroupTree.map(\.id)) == Set([left, middle.id]))
+        #expect(outcome == .switched(target: ids.left, focus: nil))
+        #expect(model.state.focusedGroup == ids.left)
+        #expect(model.state.hiddenGroupIDs == [ids.middle])
+        #expect(model.state.groups[ids.right] == nil)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [ids.left])
+        // The hidden group is still alive in `groups`, just not in the tree.
+        #expect(model.state.groups[ids.middle] != nil)
     }
 
     // MARK: restoreState (group-aware undo)
@@ -661,13 +804,16 @@ struct WorkspaceModelTests {
         #expect(hidden?.target == left)
         #expect(model.state.hiddenGroupIDs == [right])
         #expect(model.state.focusedGroup == left)
+        #expect(model.state.canonicalGroupTree.map(\.id) == [left])
 
         model.restoreState(before)
 
         #expect(model.state.focusedGroup == right)
         #expect(model.state.hiddenGroupIDs.isEmpty)
         #expect(Set(model.state.groups.keys) == Set([left, right]))
-        #expect(Set(model.state.canonicalGroupTree.map(\.id)) == Set([left, right]))
+        // The snapshot carries the pre-hide tree, so the leaf comes back exactly
+        // where it was rather than at the right edge.
+        #expect(model.state.canonicalGroupTree.map(\.id) == [left, right])
     }
 
     @Test func restoreStateCancelsRenameForMissingGroup() throws {

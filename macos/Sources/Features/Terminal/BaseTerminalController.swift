@@ -294,6 +294,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidMoveGroup(_:)),
+            name: XGhostty.Notification.ghosttyMoveGroup,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidResizeGroup(_:)),
             name: XGhostty.Notification.ghosttyResizeGroup,
             object: nil)
@@ -995,6 +1000,18 @@ class BaseTerminalController: NSWindowController,
         focusGroup(target)
     }
 
+    @objc private func ghosttyDidMoveGroup(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        guard let direction = notification.userInfo?[
+            XGhostty.Notification.MoveGroupDirectionKey] as? XGhostty.SplitFocusDirection else { return }
+
+        moveFocusedGroup(direction.toSplitTreeFocusDirection())
+    }
+
     @objc private func ghosttyDidResizeGroup(_ notification: Notification) {
         // The triggering surface must be within our workspace (not just the
         // currently focused group's tree, to survive the async focus window).
@@ -1037,7 +1054,7 @@ class BaseTerminalController: NSWindowController,
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(view) else { return }
 
-        workspace.equalizeGroups()
+        equalizeGroups()
     }
 
     @objc private func ghosttyDidToggleGroupZoom(_ notification: Notification) {
@@ -1385,6 +1402,28 @@ class BaseTerminalController: NSWindowController,
         surfaceTree = workspace.focusedPaneTree
 
         moveKeyboardFocus(toGroupSurface: targetFocus)
+    }
+
+    /// Swap the focused group with its neighbor in `direction` in response to
+    /// `move_group`. Only the canonical group tree changes: the focused group and
+    /// its panes are untouched (it simply occupies its neighbor's slot), so there
+    /// is no `surfaceTree` swap and no keyboard-focus move.
+    ///
+    /// Registers a group-aware undo ("Move Group") like the other structural
+    /// group mutations. No-op when there is no neighbor in that direction.
+    func moveFocusedGroup(_ direction: SplitTree<GroupRef>.FocusDirection) {
+        let before = workspace.state
+        guard workspace.moveFocusedGroup(direction) else { return }
+        registerWorkspaceUndo("Move Group", undo: before, redo: workspace.state)
+    }
+
+    /// Equalize the group layout in response to `equalize_groups` or a
+    /// double-click on a group divider (`SPEC.md` §11.5).
+    ///
+    /// Both entry points land here so they behave identically. Like
+    /// `equalize_splits`, this is a ratio-only change and registers no undo.
+    func equalizeGroups() {
+        workspace.equalizeGroups()
     }
 
     /// Hide the focused group in response to `hide_group` (`SPEC.md` §11.7). The

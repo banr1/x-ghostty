@@ -15,14 +15,17 @@ struct WorkspaceState {
     var canonicalGroupTree: SplitTree<GroupRef>
 
     /// All groups keyed by id. Invariant: every leaf in `canonicalGroupTree`
-    /// has a matching entry here, and vice versa (`SPEC.md` §14.1–2).
+    /// has a matching entry here (`SPEC.md` §14.1). The converse holds only for
+    /// *visible* groups: hiding removes a group's leaf from the canonical tree
+    /// while its `GroupState` (and its live panes) stay here, so the entries not
+    /// covered by a leaf are exactly `hiddenGroupIDs` (§14.2).
     var groups: [GroupID: GroupState]
 
     // MARK: Runtime-only (never persisted; cleared on decode)
 
     var hiddenGroupIDs: Set<GroupID> = []
     var focusedGroup: GroupID?
-    var zoomedGroup: GroupID? = nil
+    var zoomedGroup: GroupID?
 
     init(
         canonicalGroupTree: SplitTree<GroupRef>,
@@ -41,7 +44,11 @@ struct WorkspaceState {
     }
 
     /// The tree used for rendering / focus / hit-testing. Derived from
-    /// `canonicalGroupTree`, applying zoom and hidden filtering (`SPEC.md` §13).
+    /// `canonicalGroupTree`, applying zoom (`SPEC.md` §13).
+    ///
+    /// Hidden groups are already absent from `canonicalGroupTree` (hiding removes
+    /// the leaf, §11.7), so the pruning pass below is only a defensive backstop
+    /// against a stale `hiddenGroupIDs` entry.
     ///
     /// - Returns `nil` when a zoomed group is no longer renderable (hidden or
     ///   missing from the canonical tree).
@@ -77,14 +84,40 @@ struct WorkspaceState {
         zoomedGroup = nil
     }
 
+    /// Re-attach every group that exists in `groups` but has no leaf in
+    /// `canonicalGroupTree`.
+    ///
+    /// Hiding removes a group's leaf from the canonical tree (`SPEC.md` §11.7)
+    /// and `hiddenGroupIDs` is never persisted (§12.2), so quitting with hidden
+    /// groups would otherwise leave them orphaned in `groups`: alive, restored,
+    /// but unreachable. They are appended at the right edge in creation order and
+    /// the whole tree is equalized, matching where `show_group` puts them
+    /// (§11.8), so a restore still brings everything back visible (§12.3).
+    private mutating func reconcileOrphanedGroups() {
+        let placed = Set(canonicalGroupTree.map(\.id))
+        let orphans = groups
+            .filter { !placed.contains($0.key) }
+            .sorted { ($0.value.createdAt, $0.key.rawValue.uuidString) <
+                      ($1.value.createdAt, $1.key.rawValue.uuidString) }
+        guard !orphans.isEmpty else { return }
+
+        for (id, _) in orphans {
+            canonicalGroupTree = canonicalGroupTree.appendingAtRightEdge(GroupRef(id: id))
+        }
+        canonicalGroupTree = canonicalGroupTree.equalized()
+    }
+
     /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3).
     ///
-    /// Everything comes back visible and non-zoomed. `focusedGroup` is validated
-    /// against the surviving groups and the canonical tree; if it no longer
-    /// points at a real group it falls back to the canonical tree's first leaf.
+    /// Everything comes back visible and non-zoomed; groups that were hidden when
+    /// the state was saved are re-attached at the right edge (see
+    /// `reconcileOrphanedGroups`). `focusedGroup` is validated against the
+    /// surviving groups and the canonical tree; if it no longer points at a real
+    /// group it falls back to the canonical tree's first leaf.
     static func restoring(_ saved: WorkspaceState) -> WorkspaceState {
         var restored = saved
         restored.clearRuntimeState()
+        restored.reconcileOrphanedGroups()
 
         let focusValid = restored.focusedGroup.map { id in
             restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
@@ -125,8 +158,11 @@ extension WorkspaceState: Codable {
 
         self.focusedGroup = try c.decodeIfPresent(GroupID.self, forKey: .focusedGroup)
 
-        // Runtime-only state is always reset on decode (`SPEC.md` §12.2).
+        // Runtime-only state is always reset on decode (`SPEC.md` §12.2), and
+        // groups that were hidden when this was encoded (so absent from the
+        // persisted tree) are re-attached so nothing is orphaned.
         self.clearRuntimeState()
+        self.reconcileOrphanedGroups()
     }
 
     func encode(to encoder: Encoder) throws {

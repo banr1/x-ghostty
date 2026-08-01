@@ -7076,6 +7076,26 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
+                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
+                .{ .move_group = .left },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
+                .{ .move_group = .right },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
+                .{ .move_group = .up },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
+                .{ .move_group = .down },
+            );
+            try self.set.put(
+                alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
                 .{ .resize_group = .{ .left, 10 } },
             );
@@ -7158,6 +7178,11 @@ pub const Keybinds = struct {
                 alloc,
                 .{ .key = .{ .unicode = '=' }, .mods = .{ .super = true, .ctrl = true } },
                 .{ .equalize_splits = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = '=' }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
+                .{ .equalize_groups = {} },
             );
 
             // Jump to prompt, matches Terminal.app
