@@ -68,24 +68,27 @@ Ghostty macOS 側の `SplitTree.swift` は、leaf/split 構造、zoom tracking�
 
 ### 4.1 `canonicalGroupTree` と `effectiveVisibleGroupTree` を分ける
 
-グループの本来の配置は常に `canonicalGroupTree` に保持する。
+グループの配置は常に `canonicalGroupTree` に保持する。
+canonical tree の leaf 集合 = visible group の集合であり、
+hidden group は leaf を持たず、`groups` の `GroupState` としてのみ生存する。
 
 ```text
 canonicalGroupTree:
-  calm-river | logs | agent | server
+  calm-river | server
 
 hiddenGroupIDs:
-  logs, agent
+  logs, agent        ← groups には残るが leaf は持たない
 
 effectiveVisibleGroupTree:
-  calm-river | server
+  canonicalGroupTree に zoom を適用した派生tree
 ```
 
-`hide_group` は tree を破壊しない。
-`show_group` は `hiddenGroupIDs` から除外するだけ。
-`close_group` だけが `canonicalGroupTree` と `groups` を破壊する。
+`hide_group` は対象の leaf を canonical tree から削除する(process は生存)。
+`show_group` は末尾 leaf を左右分割して右側に再接続する(位置は復元しない)。
+`close_group` だけが `groups` からも削除して process を終了する。
 
-これにより、非表示グループを元の場所に戻すための path 復元ロジックが不要になる。
+これにより、非表示グループを元の場所に戻すための path 復元ロジックが不要になり、
+hide 中は残りの visible group がスペースを回収できる。
 
 ### 4.2 グループは最上位レイアウト単位
 
@@ -566,23 +569,20 @@ func resizeGroup(_ direction: Direction, amount: CGFloat) {
 
 `equalize_groups` は visible group のレイアウトを均等化する。
 
-ただし実装上は、単に `effectiveVisibleGroupTree.equalized()` の結果を保存してはいけない。
-canonical tree に hidden group が残っているため、以下のどちらかを採用する。
+hidden group は canonical tree に leaf を持たない(§11.7)ため、
+`canonicalGroupTree.equalized()` をそのまま保存すればよい。
+均等化されるのは visible group 間の split ratio だけである。
 
-推奨:
-
-```text
-visible group のみを対象に、対応する canonical tree 上の relevant split ratios を均等化する
+```swift
+func equalizeGroups() -> Bool {
+    guard canonicalGroupTree.isSplit else { return false }
+    canonicalGroupTree = canonicalGroupTree.equalized()
+    return true
+}
 ```
 
-MVPで難しい場合:
-
-```text
-hiddenGroupIDs が空の場合のみ equalize_groups を実行
-hidden がある場合は no-op または warning
-```
-
-自分用forkでも最適設計を狙うなら、前者を実装する。
+group が1つ以下で split が存在しない場合は no-op。
+hidden group の有無で実行を拒否してはいけない。
 
 ### 11.6 `toggle_group_zoom`
 
@@ -617,28 +617,30 @@ group zoom と inner split zoom は共存可能。
 ### 11.7 `hide_group`
 
 ```text
-1. focusedGroup を hiddenGroupIDs に追加
-2. process / PTY / surface は生存
-3. canonicalGroupTree は変更しない
-4. groups は変更しない
+1. focus の移動先を hide 前の canonical tree 上で解決(nearest leaf)
+2. focusedGroup の leaf を canonicalGroupTree から削除
+   → 残りの visible group がスペースを回収する
+3. focusedGroup を hiddenGroupIDs に追加(shelf の source of truth)
+4. process / PTY / surface は生存(GroupState は groups に残る)
 5. zoomedGroup == hidden target なら zoom解除
-6. focus は visible neighbor へ移す
+6. focus を 1 で解決した neighbor へ移す
 7. hidden shelf に pill 表示
 ```
 
 ```swift
 func hideGroup(_ id: GroupID) {
     guard groups[id] != nil else { return }
+    // 最後の visible group は hide できない
+    guard let neighbor = canonicalGroupTree.nearestLeaf(to: id) else { return }
 
+    canonicalGroupTree = canonicalGroupTree.removing(.leaf(view: GroupRef(id: id)))
     hiddenGroupIDs.insert(id)
 
     if zoomedGroup == id {
         zoomedGroup = nil
     }
 
-    if focusedGroup == id {
-        focusedGroup = effectiveVisibleGroupTree?.nearestVisibleGroup(to: id)
-    }
+    focusedGroup = neighbor
 }
 ```
 
@@ -654,9 +656,11 @@ func hideGroup(_ id: GroupID) {
 
 ```text
 1. hiddenGroupIDs から除外
-2. zoomedGroup を解除
-3. focus をそのgroupへ移す
-4. group内では最後にfocusしていたpaneへ戻す
+2. 末尾グループ(走査順の最後の leaf)を 50/50 で左右分割し、
+   その右側に leaf を再接続
+3. zoomedGroup を解除
+4. focus をそのgroupへ移す
+5. group内では最後にfocusしていたpaneへ戻す
 ```
 
 ```swift
@@ -664,13 +668,17 @@ func showGroup(_ id: GroupID) {
     guard hiddenGroupIDs.contains(id) else { return }
 
     hiddenGroupIDs.remove(id)
+    canonicalGroupTree = canonicalGroupTree.appendingAtTrailingLeaf(GroupRef(id: id))
     zoomedGroup = nil
     focusedGroup = id
     focusLastPane(in: id)
 }
 ```
 
-canonical tree を変えていないため、元の場所に自然に戻る。
+hide が leaf を削除しているため、show は元の位置を復元しない。
+再表示された group は末尾グループのスペースを半分もらうだけで、
+他の visible group のサイズと split ratio は一切変わらない。
+空 tree への再接続は単一 leaf になる。
 
 ### 11.9 `close_group`
 
@@ -696,6 +704,8 @@ This will close 4 panes and terminate their processes.
 5. hiddenGroupIDs から削除
 6. zoomedGroup が対象なら解除
 7. focus を nearest visible group に移す
+8. visible group が残らない場合は最古の hidden group を
+   §11.8 と同じ末尾分割で再表示してから focus する(§14.6)
 ```
 
 既存 `close_surface` は close confirmation popup を出し得る action として定義されているため、`close_group` も同じく破壊的操作として確認を持つ。([Ghostty][1])
@@ -733,18 +743,27 @@ else:
 
 復元時はすべて visible、非zoom状態に戻す。
 
+保存時に hidden だった group は canonical tree に leaf を持たないまま
+`groups` に残っている(§11.7)。そのまま復元すると生存しているのに
+到達不能になるため、作成順に末尾 leaf を分割して再接続する
+(§11.8 と同じ配置)。
+
 ```swift
-func restoreWorkspace(_ saved: SavedWorkspaceState) -> WorkspaceState {
-    WorkspaceState(
-        version: saved.version,
-        canonicalGroupTree: saved.canonicalGroupTree,
-        groups: saved.groups,
-        hiddenGroupIDs: [],
-        focusedGroup: saved.focusedGroup.validIn(saved.groups)
-            ? saved.focusedGroup
-            : saved.canonicalGroupTree.firstLeaf?.id,
-        zoomedGroup: nil
-    )
+func restoreWorkspace(_ saved: WorkspaceState) -> WorkspaceState {
+    var restored = saved
+    restored.hiddenGroupIDs = []
+    restored.zoomedGroup = nil
+
+    // groups にはあるが leaf が無い group を作成順に再接続する
+    restored.reconcileOrphanedGroups()
+
+    let focusValid = restored.focusedGroup.map { id in
+        restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
+    } ?? false
+    if !focusValid {
+        restored.focusedGroup = restored.canonicalGroupTree.firstLeaf?.id
+    }
+    return restored
 }
 ```
 
@@ -769,10 +788,14 @@ live process / scrollback / PTY状態は復元しない。
 ```swift
 var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
     if let zoomedGroup {
-        guard !hiddenGroupIDs.contains(zoomedGroup) else { return nil }
+        guard !hiddenGroupIDs.contains(zoomedGroup),
+              canonicalGroupTree.find(id: zoomedGroup) != nil
+        else { return nil }
         return canonicalGroupTree.treeContainingOnly(zoomedGroup)
     }
 
+    // hidden group は canonical tree に leaf を持たない(§11.7)ため、
+    // この pruning は stale な hiddenGroupIDs に対する防御でしかない。
     return canonicalGroupTree.pruningLeaves { ref in
         hiddenGroupIDs.contains(ref.id)
     }
@@ -789,7 +812,8 @@ var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
 ```text
 1. canonicalGroupTree の leaf は必ず groups に存在する
 2. groups に存在しない GroupID は canonicalGroupTree に存在しない
-3. hiddenGroupIDs は groups.keys の部分集合
+3. hiddenGroupIDs は groups.keys の部分集合であり、hidden group は
+   canonicalGroupTree に leaf を持たない(leaf 集合 = visible group 集合)
 4. hiddenGroupIDs は永続復元しない
 5. zoomedGroup は visible group のみ
 6. focusedGroup は visible group のみ
@@ -988,8 +1012,8 @@ MVPでは visible focused group のみ close 対象。
 ### 18.2 focused group を hide
 
 ```text
-1. 対象を hiddenGroupIDs に追加
-2. nearest visible group にfocus
+1. 対象の leaf を canonicalGroupTree から削除し、hiddenGroupIDs に追加
+2. nearest group にfocus(削除前の tree 上で解決する)
 3. visible group が残らないなら hide を拒否
 ```
 
