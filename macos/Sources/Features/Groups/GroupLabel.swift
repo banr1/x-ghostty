@@ -22,10 +22,20 @@ import SwiftUI
 /// one editing UI. The text field commits on Return or when it loses focus, and
 /// cancels on Escape. To keep Escape unambiguous, Escape reverts the draft to
 /// the current title first, so the trailing focus-loss commit becomes a no-op.
+/// The header shows `"{ordinal}. {name}"` (e.g. `3. calm-river`) so the group's
+/// `goto_group:<N>` / Cmd+N number is visible where the group is. The ordinal is
+/// a display prefix only: it is never stored in the name, and the inline editor
+/// below edits `name` alone.
 struct GroupLabel: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
-    let title: String
+    /// The group's bare name — what rename edits and `show_group:<name>` matches.
+    let name: String
+
+    /// The group's 1-based display number, or `nil` when it has none (it is not
+    /// a visible group). Rendered as a prefix, never merged into `name`.
+    let ordinal: Int?
+
     let isFocused: Bool
     let isRenaming: Bool
 
@@ -66,6 +76,13 @@ struct GroupLabel: View {
         .system(size: 11, weight: isFocused ? .medium : .regular, design: .monospaced)
     }
 
+    /// The displayed header text: the group's number, then its name. Falls back
+    /// to the bare name when the group has no number.
+    private var title: String {
+        guard let ordinal else { return name }
+        return "\(ordinal). \(name)"
+    }
+
     @ViewBuilder
     private var content: some View {
         if isRenaming {
@@ -85,6 +102,9 @@ struct GroupLabel: View {
             .accessibilityLabel(Text("Group \(title)"))
     }
 
+    /// The inline editor works on the bare `name`: the ordinal prefix is display
+    /// only, so it must never end up in the draft (and from there in the stored
+    /// name) — the user edits `calm-river`, not `3. calm-river`.
     private var renameField: some View {
         TextField("", text: $draft)
             .textFieldStyle(.plain)
@@ -94,17 +114,17 @@ struct GroupLabel: View {
             .onExitCommand {
                 // Revert the draft so the focus-loss commit below is a no-op,
                 // then exit edit mode without changing the name.
-                draft = title
+                draft = name
                 onCancelRename()
             }
             .onChange(of: fieldFocused) { focused in
                 // Clicking elsewhere commits the current draft (macOS rename
-                // convention). After Escape the draft equals the title, so this
+                // convention). After Escape the draft equals the name, so this
                 // commit changes nothing.
                 if !focused { onCommitRename(draft) }
             }
             .onAppear {
-                draft = title
+                draft = name
                 fieldFocused = true
             }
     }

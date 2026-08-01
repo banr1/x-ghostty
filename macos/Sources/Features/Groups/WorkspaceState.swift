@@ -9,6 +9,15 @@ import Foundation
 struct WorkspaceState {
     static let currentVersion = 1
 
+    /// The maximum number of simultaneously *visible* groups.
+    ///
+    /// Visible groups are numbered 1..9 in the header (`ordinal(of:)`) and are
+    /// addressed directly by `goto_group:<1-9>` (Cmd+1..9), so nine is the
+    /// hard ceiling: `new_group_split` and `show_group` are silently rejected
+    /// once it is reached, and a restore caps the visible set at this many
+    /// (the extras stay alive on the hidden shelf).
+    static let maxVisibleGroups = 9
+
     var version: Int
 
     /// Canonical placement of every group. Always the source of truth.
@@ -63,6 +72,53 @@ struct WorkspaceState {
         return canonicalGroupTree.pruningLeaves { hiddenGroupIDs.contains($0.id) }
     }
 
+    // MARK: Group numbering (SPEC §4.1)
+
+    /// Every visible group in canonical traversal order.
+    ///
+    /// Canonical leaves *are* the visible groups (hiding removes the leaf,
+    /// §11.7 / §14.3), so iterating `canonicalGroupTree` yields exactly the
+    /// visible set. The order is `SplitTree`'s in-order leaf traversal — the
+    /// same order `previous`/`next` focus uses — so the numbering matches how
+    /// the groups read on screen, left-to-right / top-to-bottom.
+    ///
+    /// Deliberately derived from the *canonical* tree rather than
+    /// `effectiveVisibleGroupTree`: a zoomed group keeps the number it has in
+    /// the full layout instead of collapsing to `1`.
+    var visibleGroupIDs: [GroupID] {
+        canonicalGroupTree.map(\.id)
+    }
+
+    /// The number of currently visible groups. Capped at `maxVisibleGroups`.
+    var visibleGroupCount: Int {
+        canonicalGroupTree.count
+    }
+
+    /// The 1-based display number of `id`, or `nil` when it is not visible.
+    /// This is a pure display/addressing derivation — it is never stored into
+    /// `GroupState.name`.
+    func ordinal(of id: GroupID) -> Int? {
+        visibleGroupIDs.firstIndex(of: id).map { $0 + 1 }
+    }
+
+    /// The visible group with 1-based number `ordinal`, or `nil` when there are
+    /// fewer than `ordinal` visible groups. The inverse of `ordinal(of:)`.
+    func visibleGroupID(ordinal: Int) -> GroupID? {
+        let ids = visibleGroupIDs
+        guard ordinal >= 1, ordinal <= ids.count else { return nil }
+        return ids[ordinal - 1]
+    }
+
+    /// Every visible group's display number, keyed by id. Computed once per
+    /// render pass so the view tree does not do a linear scan per group.
+    var groupOrdinals: [GroupID: Int] {
+        var result: [GroupID: Int] = [:]
+        for (index, id) in visibleGroupIDs.enumerated() {
+            result[id] = index + 1
+        }
+        return result
+    }
+
     // MARK: Mutations
 
     /// Persist `paneTree` into the focused group. No-op when nothing is focused.
@@ -84,38 +140,80 @@ struct WorkspaceState {
         zoomedGroup = nil
     }
 
-    /// Re-attach every group that exists in `groups` but has no leaf in
-    /// `canonicalGroupTree`.
+    /// Prune the canonical tree down to `maxVisibleGroups` leaves, moving the
+    /// extras onto the hidden shelf.
+    ///
+    /// Only a legacy save (written before the cap existed) can carry more than
+    /// nine canonical leaves. The first nine in traversal order keep their slot
+    /// — and therefore their numbers 1..9 — and everything after them becomes a
+    /// hidden group: still alive in `groups`, reachable from the shelf, and
+    /// with no canonical leaf so invariant §14.3 keeps holding.
+    private mutating func capVisibleGroups() {
+        let visible = visibleGroupIDs
+        guard visible.count > Self.maxVisibleGroups else { return }
+
+        for id in visible.dropFirst(Self.maxVisibleGroups) {
+            canonicalGroupTree = canonicalGroupTree.removing(.leaf(view: GroupRef(id: id)))
+            hiddenGroupIDs.insert(id)
+        }
+    }
+
+    /// Re-attach groups that exist in `groups` but have no leaf in
+    /// `canonicalGroupTree`, up to the `maxVisibleGroups` cap.
     ///
     /// Hiding removes a group's leaf from the canonical tree (`SPEC.md` §11.7)
     /// and `hiddenGroupIDs` is never persisted (§12.2), so quitting with hidden
     /// groups would otherwise leave them orphaned in `groups`: alive, restored,
     /// but unreachable. Each one splits the trailing leaf in creation order,
-    /// matching where `show_group` puts them (§11.8), so a restore still brings
-    /// everything back visible (§12.3).
+    /// matching where `show_group` puts them (§11.8).
+    ///
+    /// Only as many orphans as fit under the visible cap are re-attached; the
+    /// rest stay hidden and reachable from the shelf, exactly as if the user
+    /// had hit the cap interactively.
     private mutating func reconcileOrphanedGroups() {
-        let placed = Set(canonicalGroupTree.map(\.id))
+        let placed = Set(visibleGroupIDs)
         let orphans = groups
             .filter { !placed.contains($0.key) }
             .sorted { ($0.value.createdAt, $0.key.rawValue.uuidString) <
                       ($1.value.createdAt, $1.key.rawValue.uuidString) }
 
+        var visibleCount = placed.count
         for (id, _) in orphans {
+            guard visibleCount < Self.maxVisibleGroups else {
+                hiddenGroupIDs.insert(id)
+                continue
+            }
+
             canonicalGroupTree = canonicalGroupTree.appendingAtTrailingLeaf(GroupRef(id: id))
+            visibleCount += 1
         }
+    }
+
+    /// The structural half of a restore, shared by `restoring(_:)` and the
+    /// `Codable` init so both paths land on the same shape: runtime state is
+    /// zeroed, at most `maxVisibleGroups` groups are visible, and every group
+    /// is either a canonical leaf or on the hidden shelf.
+    ///
+    /// It is deterministic (traversal order, then creation order), so running it
+    /// twice — decode then `restoring(_:)` — produces the same result.
+    private mutating func applyRestoreLayout() {
+        clearRuntimeState()
+        capVisibleGroups()
+        reconcileOrphanedGroups()
     }
 
     /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3).
     ///
-    /// Everything comes back visible and non-zoomed; groups that were hidden when
-    /// the state was saved are re-attached by splitting the trailing leaf (see
-    /// `reconcileOrphanedGroups`). `focusedGroup` is validated against the
-    /// surviving groups and the canonical tree; if it no longer points at a real
-    /// group it falls back to the canonical tree's first leaf.
+    /// Nothing comes back zoomed, and up to `maxVisibleGroups` groups come back
+    /// visible: groups that were hidden when the state was saved are re-attached
+    /// by splitting the trailing leaf while there is room under the cap, and any
+    /// beyond it stay on the hidden shelf (see `applyRestoreLayout`).
+    /// `focusedGroup` is validated against the surviving groups and the canonical
+    /// tree; if it no longer points at a *visible* group — including when the cap
+    /// pushed it onto the shelf — it falls back to the canonical tree's first leaf.
     static func restoring(_ saved: WorkspaceState) -> WorkspaceState {
         var restored = saved
-        restored.clearRuntimeState()
-        restored.reconcileOrphanedGroups()
+        restored.applyRestoreLayout()
 
         let focusValid = restored.focusedGroup.map { id in
             restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
@@ -158,9 +256,10 @@ extension WorkspaceState: Codable {
 
         // Runtime-only state is always reset on decode (`SPEC.md` §12.2), and
         // groups that were hidden when this was encoded (so absent from the
-        // persisted tree) are re-attached so nothing is orphaned.
-        self.clearRuntimeState()
-        self.reconcileOrphanedGroups()
+        // persisted tree) are re-attached — up to the visible cap — so nothing
+        // is orphaned. `hiddenGroupIDs` is re-derived here rather than decoded:
+        // it stays runtime-only, it is just recomputed from the cap.
+        self.applyRestoreLayout()
     }
 
     func encode(to encoder: Encoder) throws {

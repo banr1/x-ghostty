@@ -960,6 +960,7 @@ typedef enum {
   XGHOSTTY_ACTION_SET_GROUP_TITLE,
   XGHOSTTY_ACTION_CLOSE_GROUP,
   XGHOSTTY_ACTION_MOVE_GROUP,
+  XGHOSTTY_ACTION_GOTO_GROUP_INDEX,
 } xghostty_action_tag_e;
 
 typedef union {
@@ -1007,6 +1008,7 @@ typedef union {
   xghostty_action_set_title_s show_group;
   xghostty_action_set_title_s set_group_title;
   xghostty_action_goto_split_e move_group;
+  xghostty_action_goto_tab_e goto_group_index;
 } xghostty_action_u;
 
 typedef struct {

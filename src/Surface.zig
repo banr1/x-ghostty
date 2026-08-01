@@ -5380,16 +5380,24 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             },
         ),
 
-        .goto_group => |direction| return try self.rt_app.performAction(
-            .{ .surface = self },
-            .goto_group,
-            switch (direction) {
-                inline else => |tag| @field(
-                    apprt.action.GotoSplit,
-                    @tagName(tag),
-                ),
-            },
-        ),
+        .goto_group => |target| switch (target) {
+            .direction => |direction| return try self.rt_app.performAction(
+                .{ .surface = self },
+                .goto_group,
+                switch (direction) {
+                    inline else => |tag| @field(
+                        apprt.action.GotoSplit,
+                        @tagName(tag),
+                    ),
+                },
+            ),
+
+            .index => |index| return try self.rt_app.performAction(
+                .{ .surface = self },
+                .goto_group_index,
+                @enumFromInt(index),
+            ),
+        },
 
         .move_group => |direction| return try self.rt_app.performAction(
             .{ .surface = self },

@@ -882,4 +882,286 @@ struct WorkspaceModelTests {
         #expect(model.state.hiddenGroupIDs.isEmpty)
         #expect(model.state.zoomedGroup == nil)
     }
+
+    // MARK: Group numbering (SPEC §4.1)
+
+    /// Builds a horizontal row of `count` groups (1 ≤ count ≤ 9) in traversal
+    /// order, with the *first* one focused so the tests can hide/close from a
+    /// known slot. Returns the ids in traversal order.
+    private static func makeRow(_ count: Int) throws -> (model: WorkspaceModel, ids: [GroupID]) {
+        let model = WorkspaceModel(wrapping: .init(), name: "group-1")
+        var ids = [try #require(model.state.focusedGroup)]
+
+        for index in 1..<count {
+            let group = makeEmptyGroup(name: "group-\(index + 1)")
+            try model.openNewGroup(group, direction: .right, savingOutgoingPaneTree: .init())
+            ids.append(group.id)
+        }
+
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+        #expect(model.state.canonicalGroupTree.map(\.id) == ids)
+        return (model, ids)
+    }
+
+    @Test func ordinalsFollowCanonicalTraversalOrder() throws {
+        let (model, ids) = try Self.makeRow(3)
+
+        #expect(ids.map { model.ordinal(of: $0) } == [1, 2, 3])
+        #expect(model.state.visibleGroupIDs == ids)
+        #expect(model.state.visibleGroupCount == 3)
+        #expect(model.state.groupOrdinals == [ids[0]: 1, ids[1]: 2, ids[2]: 3])
+        // The inverse lookup agrees, and stops at the end of the row.
+        #expect(model.state.visibleGroupID(ordinal: 2) == ids[1])
+        #expect(model.state.visibleGroupID(ordinal: 4) == nil)
+        #expect(model.state.visibleGroupID(ordinal: 0) == nil)
+    }
+
+    @Test func ordinalsFollowInOrderTraversalUsedByNextFocus() throws {
+        // The numbering must match what `previous`/`next` walk, so the numbers
+        // read in the same order as group-to-group navigation.
+        let (model, ids) = try Self.makeRow(3)
+        var walked = [ids[0]]
+        for _ in 1..<3 {
+            let next = try #require(model.gotoGroupTarget(.next))
+            model.switchFocusedGroup(to: next, savingOutgoingPaneTree: .init())
+            walked.append(next)
+        }
+
+        #expect(walked == ids)
+        #expect(walked.map { model.ordinal(of: $0) } == [1, 2, 3])
+    }
+
+    @Test func ordinalsRepackAfterHide() throws {
+        let (model, ids) = try Self.makeRow(3)
+        // Hide the middle group: the trailing group moves up to number 2.
+        model.switchFocusedGroup(to: ids[1], savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+
+        #expect(model.ordinal(of: ids[0]) == 1)
+        #expect(model.ordinal(of: ids[2]) == 2)
+        // A hidden group has no number at all (the shelf shows bare names).
+        #expect(model.ordinal(of: ids[1]) == nil)
+        #expect(model.state.visibleGroupCount == 2)
+    }
+
+    @Test func ordinalsRepackAfterClose() throws {
+        let (model, ids) = try Self.makeRow(3)
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+        #expect(model.closeFocusedGroup() != nil)
+
+        // The survivors slide down to 1 and 2.
+        #expect(model.ordinal(of: ids[1]) == 1)
+        #expect(model.ordinal(of: ids[2]) == 2)
+        #expect(model.ordinal(of: ids[0]) == nil)
+    }
+
+    @Test func ordinalsRepackAfterMoveGroup() throws {
+        let (model, ids) = try Self.makeRow(3)
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+
+        #expect(model.moveFocusedGroup(.next) == true)
+
+        // The two leaves traded slots, so their numbers traded too.
+        #expect(model.ordinal(of: ids[1]) == 1)
+        #expect(model.ordinal(of: ids[0]) == 2)
+        #expect(model.ordinal(of: ids[2]) == 3)
+    }
+
+    @Test func ordinalsRepackAfterShowGroup() throws {
+        let (model, ids) = try Self.makeRow(3)
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.ordinal(of: ids[1]) == 1)
+
+        // `show_group` re-attaches at the trailing leaf, so it takes the last
+        // number rather than its old one.
+        model.showGroup(ids[0], savingOutgoingPaneTree: .init())
+
+        #expect(model.ordinal(of: ids[1]) == 1)
+        #expect(model.ordinal(of: ids[2]) == 2)
+        #expect(model.ordinal(of: ids[0]) == 3)
+    }
+
+    @Test func zoomedGroupKeepsItsCanonicalOrdinal() throws {
+        // Zoom is a display state over the canonical tree, so the zoomed group
+        // keeps the number it has in the full layout instead of showing `1`.
+        let (model, ids) = try Self.makeRow(3)
+        var state = model.state
+        state.focusedGroup = ids[2]
+        state.zoomedGroup = ids[2]
+        let zoomed = WorkspaceModel(state)
+
+        #expect(zoomed.ordinal(of: ids[2]) == 3)
+        #expect(zoomed.state.groupOrdinals == [ids[0]: 1, ids[1]: 2, ids[2]: 3])
+        // The effective (rendered) tree really is just the one group.
+        #expect(zoomed.state.effectiveVisibleGroupTree?.map(\.id) == [ids[2]])
+    }
+
+    // MARK: Visible-group cap (max 9)
+
+    @Test func openNewGroupSucceedsBelowTheVisibleCap() throws {
+        let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleGroups - 1)
+        #expect(model.canAddVisibleGroup == true)
+
+        let extra = Self.makeEmptyGroup(name: "ninth")
+        model.switchFocusedGroup(to: ids.last!, savingOutgoingPaneTree: .init())
+        try model.openNewGroup(extra, direction: .right, savingOutgoingPaneTree: .init())
+
+        #expect(model.state.visibleGroupCount == WorkspaceState.maxVisibleGroups)
+        #expect(model.ordinal(of: extra.id) == WorkspaceState.maxVisibleGroups)
+    }
+
+    @Test func openNewGroupIsRejectedAtTheVisibleCap() throws {
+        let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleGroups)
+        #expect(model.canAddVisibleGroup == false)
+        let before = model.state
+
+        #expect(throws: WorkspaceModel.WorkspaceError.visibleGroupLimitReached) {
+            try model.openNewGroup(
+                Self.makeEmptyGroup(name: "tenth"),
+                direction: .right,
+                savingOutgoingPaneTree: .init())
+        }
+
+        // Silently rejected: the state is byte-for-byte unchanged.
+        #expect(model.state.visibleGroupCount == WorkspaceState.maxVisibleGroups)
+        #expect(model.state.canonicalGroupTree.map(\.id) == ids)
+        #expect(Set(model.state.groups.keys) == Set(before.groups.keys))
+        #expect(model.state.focusedGroup == before.focusedGroup)
+    }
+
+    @Test func showGroupSucceedsBelowTheVisibleCap() throws {
+        // 9 groups with one hidden → 8 visible, so the reveal fits.
+        let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleGroups)
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(model.state.visibleGroupCount == WorkspaceState.maxVisibleGroups - 1)
+        #expect(model.canShowGroup(ids[0]) == true)
+
+        model.showGroup(ids[0], savingOutgoingPaneTree: .init())
+
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(model.state.visibleGroupCount == WorkspaceState.maxVisibleGroups)
+        #expect(model.state.focusedGroup == ids[0])
+    }
+
+    @Test func showGroupIsRejectedAtTheVisibleCap() throws {
+        // 9 visible groups plus a hidden 10th: the pill must stay on the shelf.
+        let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleGroups)
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        let extra = Self.makeEmptyGroup(name: "tenth")
+        try model.openNewGroup(extra, direction: .right, savingOutgoingPaneTree: .init())
+        #expect(model.state.visibleGroupCount == WorkspaceState.maxVisibleGroups)
+
+        let before = model.state
+        #expect(model.canShowGroup(ids[0]) == false)
+        #expect(model.showGroup(ids[0], savingOutgoingPaneTree: .init()) == nil)
+
+        #expect(model.state.hiddenGroupIDs == [ids[0]])
+        #expect(model.state.canonicalGroupTree.map(\.id) == before.canonicalGroupTree.map(\.id))
+        #expect(model.state.focusedGroup == before.focusedGroup)
+    }
+
+    @Test func closeGroupStillRevealsAHiddenGroupAtTheCap() throws {
+        // §14.6 is unaffected by the cap: closing only ever frees a slot, so the
+        // "no visible neighbor left" reveal can always run.
+        let (model, left, right) = try Self.makeTwoGroupHorizontal()
+        model.switchFocusedGroup(to: left, savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+
+        #expect(model.closeFocusedGroup() == .switched(target: left, focus: nil))
+        #expect(model.state.hiddenGroupIDs.isEmpty)
+        #expect(model.ordinal(of: left) == 1)
+        #expect(model.state.groups[right] == nil)
+    }
+
+    // MARK: goto_group:<1-9> (index jump)
+
+    @Test func gotoGroupIndexResolvesNthVisibleGroup() throws {
+        let (model, ids) = try Self.makeRow(3)
+        // Focused is the first group, so 2 and 3 resolve.
+        #expect(model.gotoGroupIndexTarget(2) == ids[1])
+        #expect(model.gotoGroupIndexTarget(3) == ids[2])
+    }
+
+    @Test func gotoGroupIndexBeyondVisibleCountIsNil() throws {
+        let (model, _) = try Self.makeRow(3)
+        #expect(model.gotoGroupIndexTarget(4) == nil)
+        #expect(model.gotoGroupIndexTarget(9) == nil)
+        #expect(model.gotoGroupIndexTarget(0) == nil)
+    }
+
+    @Test func gotoGroupIndexToSelfIsNil() throws {
+        let (model, ids) = try Self.makeRow(3)
+        // The focused group is number 1; jumping to it changes nothing, so the
+        // keybind stays unconsumed.
+        #expect(model.state.focusedGroup == ids[0])
+        #expect(model.gotoGroupIndexTarget(1) == nil)
+        #expect(model.gotoGroup(index: 1, savingOutgoingPaneTree: .init()) == nil)
+    }
+
+    @Test func gotoGroupIndexSkipsHiddenGroups() throws {
+        // Hidden groups have no number, so the numbering re-packs and index 2
+        // lands on what used to be number 3.
+        let (model, ids) = try Self.makeRow(3)
+        model.switchFocusedGroup(to: ids[1], savingOutgoingPaneTree: .init())
+        try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        model.switchFocusedGroup(to: ids[0], savingOutgoingPaneTree: .init())
+
+        #expect(model.gotoGroupIndexTarget(2) == ids[2])
+        #expect(model.gotoGroupIndexTarget(3) == nil)
+    }
+
+    @Test func gotoGroupIndexSwitchesFocusToTarget() throws {
+        let (model, ids) = try Self.makeRow(3)
+
+        let result = try #require(model.gotoGroup(index: 3, savingOutgoingPaneTree: .init()))
+
+        #expect(result.target == ids[2])
+        #expect(model.state.focusedGroup == ids[2])
+        // A pure focus change: the layout and the group set are untouched.
+        #expect(model.state.canonicalGroupTree.map(\.id) == ids)
+        #expect(model.state.zoomedGroup == nil)
+    }
+
+    @Test func gotoGroupIndexClearsZoomAndJumps() throws {
+        // Unlike the directional `goto_group`, an index jump works while zoomed:
+        // it clears the zoom and lands on the target in one operation.
+        let (model, ids) = try Self.makeRow(3)
+        var state = model.state
+        state.focusedGroup = ids[0]
+        state.zoomedGroup = ids[0]
+        let zoomed = WorkspaceModel(state)
+
+        #expect(zoomed.gotoGroupIndexTarget(3) == ids[2])
+        let result = try #require(zoomed.gotoGroup(index: 3, savingOutgoingPaneTree: .init()))
+
+        #expect(result.target == ids[2])
+        #expect(zoomed.state.zoomedGroup == nil)
+        #expect(zoomed.state.focusedGroup == ids[2])
+        // The un-zoomed multi-group layout is what renders again.
+        #expect(zoomed.state.effectiveVisibleGroupTree?.map(\.id) == ids)
+    }
+
+    @Test func gotoGroupIndexToZoomedGroupKeepsZoom() throws {
+        // Asking for the group you are already zoomed into is a no-op — the zoom
+        // survives, so Cmd+N doesn't accidentally un-zoom.
+        let (model, ids) = try Self.makeRow(3)
+        var state = model.state
+        state.focusedGroup = ids[1]
+        state.zoomedGroup = ids[1]
+        let zoomed = WorkspaceModel(state)
+
+        #expect(zoomed.gotoGroupIndexTarget(2) == nil)
+        #expect(zoomed.gotoGroup(index: 2, savingOutgoingPaneTree: .init()) == nil)
+        #expect(zoomed.state.zoomedGroup == ids[1])
+        #expect(zoomed.state.focusedGroup == ids[1])
+    }
+
+    @Test func gotoGroupIndexOnEmptyModelIsNil() {
+        let model = WorkspaceModel()
+        #expect(model.gotoGroupIndexTarget(1) == nil)
+        #expect(model.gotoGroup(index: 1, savingOutgoingPaneTree: .init()) == nil)
+    }
 }

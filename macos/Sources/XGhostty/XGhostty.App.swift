@@ -515,6 +515,9 @@ extension XGhostty {
             case XGHOSTTY_ACTION_GOTO_GROUP:
                 return gotoGroup(app, target: target, direction: action.action.goto_group)
 
+            case XGHOSTTY_ACTION_GOTO_GROUP_INDEX:
+                return gotoGroupIndex(app, target: target, index: action.action.goto_group_index)
+
             case XGHOSTTY_ACTION_MOVE_GROUP:
                 return moveGroup(app, target: target, direction: action.action.move_group)
 
@@ -1021,6 +1024,43 @@ extension XGhostty {
             }
         }
 
+        private static func gotoGroupIndex(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s,
+            index: xghostty_action_goto_tab_e) -> Bool {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("goto group index does nothing with an app target")
+                return false
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // The action reuses the `goto_tab` C type but the value is always
+                // a 1-based group number (libghostty rejects anything outside
+                // 1..9 at parse time), so the negative sentinels never apply.
+                let ordinal = Int(index.rawValue)
+
+                // The Cmd+1..9 binding is `performable`, so only consume the key
+                // when the jump would actually change something: the number must
+                // resolve to a visible group that isn't already the zoomed one
+                // (or, when nothing is zoomed, the focused one).
+                guard controller.workspace.gotoGroupIndexTarget(ordinal) != nil else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyGotoGroupIndex,
+                    object: surfaceView,
+                    userInfo: [Notification.GotoGroupIndexKey: ordinal])
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
         private static func moveGroup(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
@@ -1193,8 +1233,11 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
                 guard let name = String(cString: v.title!, encoding: .utf8) else { return false }
 
-                // Only performable when a hidden group with that name exists.
-                guard controller.workspace.hiddenGroupID(named: name) != nil else { return false }
+                // Only performable when a hidden group with that name exists and
+                // there is room for it under the visible-group cap; at the cap
+                // the reveal is a silent no-op, so leave the key unconsumed.
+                guard let id = controller.workspace.hiddenGroupID(named: name),
+                      controller.workspace.canShowGroup(id) else { return false }
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyShowGroup,

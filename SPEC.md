@@ -252,16 +252,20 @@ struct GroupView: View {
 
 ### 7.1 グループラベル
 
-各 group 上部のヘッダー帯に、名前を左寄せで表示する。帯はターミナルに馴染ませる
+各 group 上部のヘッダー帯に、序数と名前を左寄せで表示する。帯はターミナルに馴染ませる
 （ターミナル背景色フィル + 下端に split-divider 色のヘアライン、monospace フォント）。
 
 ```text
 ┌────────────────────────────┐
-│ calm-river                 │  ← ヘッダー帯（bg 色 + 下罫線）
+│ 3. calm-river              │  ← ヘッダー帯（序数 + 名前、bg 色 + 下罫線）
 ├────────────────────────────┤
 │ terminal panes             │
 └────────────────────────────┘
 ```
+
+ラベル表示形式は `"{ordinal}. {name}"` 。序数は表示専用（1～9、canonical tree の葉走査順で動的決定）で、
+`GroupState.name` には保存されない。inline rename 時は裸の名前を編集し、`show_group:<name>` の引数も裸の名前とマッチする。
+zoom 中のグループは canonical 序数をそのまま表示する。
 
 表示ルール（material ピル等の浮いた装飾は用いず、フラットに馴染ませる）:
 
@@ -296,9 +300,9 @@ rename_group action:
 非表示groupは右上固定の shelf に表示する。
 
 ```text
-┌─ main ──────────────┬─ server ───── hidden: [logs] [agent] ┐
-│                     │                                      │
-└─────────────────────┴──────────────────────────────────────┘
+┌─ 1. main ────┬─ 2. server ─── hidden: [logs] [agent] ┐
+│              │                                        │
+└──────────────┴────────────────────────────────────────┘
 ```
 
 仕様:
@@ -314,11 +318,13 @@ hidden 5個以上:
   hidden: [a] [b] [c] [+N]
 ```
 
+hidden shelf の pill は裸の名前を表示する（序数なし）。
+
 操作:
 
 ```text
 pill click:
-  即 show_group
+  即 show_group（ただし visible が既に 9 個の場合は no-op・toast/beep なし）
 
 +N click:
   hidden group menu を開く
@@ -326,6 +332,56 @@ pill click:
 
 Hidden shelf は `TerminalWorkspaceView` の overlay。
 個別 `GroupView` の責務ではない。
+
+### 7.3 グループ番号（1～9）と表示上限
+
+visible group は最大 9 個まで。`WorkspaceState.maxVisibleGroups = 9` として実装。
+
+#### 動的序数
+
+visible group は canonical tree の **葉走査順序**（in-order、前後 focus 移動と同じ順）で
+1～N（N = visible count）の序数を自動付与する。序数は display-only で内部保持しない。
+
+枚数変化時（hide / close / show / move_group）、序数は自動的に再計算・再配置される。
+
+```text
+canon: [group-A | group-B | group-C]  (3 visible)
+
+序数: 1. group-A | 2. group-B | 3. group-C
+
+group-B を hide:
+
+canon: [group-A | group-C]  (2 visible)
+
+序数: 1. group-A | 2. group-C  ← 自動 re-pack
+```
+
+zoom 中のグループは canonical tree 上の序数をそのまま表示する（zoom は派生表示で canonical 不変のため）。
+
+```text
+canon: [group-A | group-B | group-C]  (3 visible)
+zoom: group-B
+
+表示: 2. group-B  (canonical 上の序数 2)
+```
+
+#### 表示上限 9 と no-op 挙動
+
+visible group が既に 9 個のとき:
+
+- `new_group_split` ... quietly no-op（モデル・UI 変化なし）
+- `show_group`（shelf pill click と `show_group:<name>` action 両方） ... quietly no-op（pill は表示されたまま）
+- `goto_group` index form（`goto_group:1`～`goto_group:9`）... 無効な index は no-op、performability gate あり
+- `goto_group` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
+
+performability gate の扱い：
+
+- `show_group` ... 上限到達時（または対象が hidden でないとき）は performable = false で
+  keybind を消費しない
+- `goto_group` index form ... 対象 index が解決できない・focused と同じ
+  （zoom 中は zoomed group 自身と同じ）とき performable = false で keybind を消費しない
+- `new_group_split` ... performability 配線が無いため keybind は消費されるが、
+  controller/model 側の gate（`canAddVisibleGroup`）で静かに no-op
 
 ## 8. グループ名生成
 
@@ -377,6 +433,15 @@ goto_group:left
 goto_group:up
 goto_group:next
 goto_group:previous
+goto_group:1
+goto_group:2
+goto_group:3
+goto_group:4
+goto_group:5
+goto_group:6
+goto_group:7
+goto_group:8
+goto_group:9
 
 resize_group:right,10
 resize_group:left,10
@@ -427,12 +492,32 @@ Cmd+Opt+Shift+D       -> new_group_split:down
 
 ### 10.3 グループ移動
 
+方向移動:
+
 ```text
 Cmd+Ctrl+Opt+Left     -> goto_group:left
 Cmd+Ctrl+Opt+Right    -> goto_group:right
 Cmd+Ctrl+Opt+Up       -> goto_group:up
 Cmd+Ctrl+Opt+Down     -> goto_group:down
 ```
+
+序数ジャンプ（macOS/Darwin のみ）:
+
+```text
+Cmd+1                 -> goto_group:1
+Cmd+2                 -> goto_group:2
+Cmd+3                 -> goto_group:3
+Cmd+4                 -> goto_group:4
+Cmd+5                 -> goto_group:5
+Cmd+6                 -> goto_group:6
+Cmd+7                 -> goto_group:7
+Cmd+8                 -> goto_group:8
+Cmd+9                 -> goto_group:9
+```
+
+**macOS のみ**: Cmd+1～9（Unicode digits 等も同時登録）は `goto_group:1`～`goto_group:9` にバインドされ、
+古い `goto_tab:1`～`goto_tab:8` と `last_tab` の keybind は削除される。
+非 macOS（Linux / FreeBSD）は Alt+1～8 → `goto_tab` / Alt+9 → `last_tab` が従来通り。
 
 ### 10.4 グループリサイズ
 
@@ -457,15 +542,18 @@ Cmd+Opt+R             -> rename_group
 
 ### 11.1 `new_group_split`
 
+表示上限到達時は no-op（§7.3）。
+
 挙動:
 
 ```text
-1. focusedGroup を基準groupにする
-2. zoomedGroup がある場合は、まず zoom を解除する
-3. 新規 GroupState を作る
-4. 新規 group 内に初期paneを1つ作る
-5. canonicalGroupTree に GroupRef を挿入する
-6. focus を新group内の初期paneへ移す
+1. visible group 数が既に 9 個の場合は no-op（§7.3 の上限 gate）
+2. focusedGroup を基準groupにする
+3. zoomedGroup がある場合は、まず zoom を解除する
+4. 新規 GroupState を作る
+5. 新規 group 内に初期paneを1つ作る
+6. canonicalGroupTree に GroupRef を挿入する
+7. focus を新group内の初期paneへ移す
 ```
 
 ズーム中に実行した場合:
@@ -498,6 +586,8 @@ Cmd+D:
 
 ### 11.3 `goto_group`
 
+#### 方向移動形式（`goto_group:right` 等）
+
 方向移動は `effectiveVisibleGroupTree` に対して行う。
 
 ```swift
@@ -526,7 +616,50 @@ goto_group:right:
 ```
 
 hidden group は focus 対象にしない。
-zoom中の `goto_group` は no-op でよい。
+zoom中の `goto_group` 方向移動は no-op でよい。
+
+#### 序数ジャンプ形式（`goto_group:1`～`goto_group:9`）
+
+N 番目の visible group にジャンプする（traversal order の序数 1～9）。
+
+```swift
+func gotoGroup(index: UInt8) {
+    // index が resolveしないか focusedGroup と同じならno-op
+    guard let target = visibleGroupID(ordinal: index),
+          target != focusedGroup
+    else { return }
+
+    zoomedGroup = nil  // zoom を解除してからジャンプ
+    focusedGroup = target
+    focusLastPane(in: target)
+}
+```
+
+**zoom中の特別ルール**: zoom 中に index form を実行するとまず **zoom を解除してからジャンプ** する。
+ただし zoomed group 自身の序数を指定した場合（e.g. zoomed = 2. server、Cmd+2 押下）は、
+no-op で zoom は保持される。
+
+```text
+Before:
+  visible: [1. calm-river | 2. server | 3. logs]
+  focused: 2. server
+  zoomed: 2. server
+
+Cmd+3 (goto_group:3):
+  zoom解除 → focus 移動 → last pane focus
+
+  After:
+    focused: 3. logs
+    zoomed: nil
+
+Cmd+2 (goto_group:2,自 group):
+  no-op、zoom 保持
+
+  Before の状態のまま
+```
+
+hidden group は jump 対象にならない（序数は visible only）。
+無効な index（0、10+、目標が hidden 等）は no-op。
 
 ### 11.4 `resize_group`
 
@@ -654,18 +787,22 @@ func hideGroup(_ id: GroupID) {
 
 ### 11.8 `show_group`
 
+表示上限到達時は no-op（§7.3）。
+
 ```text
-1. hiddenGroupIDs から除外
-2. 末尾グループ(走査順の最後の leaf)を 50/50 で左右分割し、
+1. visible group 数が既に 9 個の場合は no-op（pill は表示のまま、toast/beep なし）
+2. hiddenGroupIDs から除外
+3. 末尾グループ(走査順の最後の leaf)を 50/50 で左右分割し、
    その右側に leaf を再接続
-3. zoomedGroup を解除
-4. focus をそのgroupへ移す
-5. group内では最後にfocusしていたpaneへ戻す
+4. zoomedGroup を解除
+5. focus をそのgroupへ移す
+6. group内では最後にfocusしていたpaneへ戻す
 ```
 
 ```swift
 func showGroup(_ id: GroupID) {
-    guard hiddenGroupIDs.contains(id) else { return }
+    guard !hiddenGroupIDs.contains(id) else { return }
+    guard visibleGroupCount < 9 else { return }  // cap gate
 
     hiddenGroupIDs.remove(id)
     canonicalGroupTree = canonicalGroupTree.appendingAtTrailingLeaf(GroupRef(id: id))
@@ -741,31 +878,7 @@ else:
 - zoomedGroup
 ```
 
-復元時はすべて visible、非zoom状態に戻す。
-
-保存時に hidden だった group は canonical tree に leaf を持たないまま
-`groups` に残っている(§11.7)。そのまま復元すると生存しているのに
-到達不能になるため、作成順に末尾 leaf を分割して再接続する
-(§11.8 と同じ配置)。
-
-```swift
-func restoreWorkspace(_ saved: WorkspaceState) -> WorkspaceState {
-    var restored = saved
-    restored.hiddenGroupIDs = []
-    restored.zoomedGroup = nil
-
-    // groups にはあるが leaf が無い group を作成順に再接続する
-    restored.reconcileOrphanedGroups()
-
-    let focusValid = restored.focusedGroup.map { id in
-        restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
-    } ?? false
-    if !focusValid {
-        restored.focusedGroup = restored.canonicalGroupTree.firstLeaf?.id
-    }
-    return restored
-}
-```
+復元時はすべて visible、非zoom状態に戻す。ただし §7.3 の表示上限 9 を適用する。
 
 ### 12.3 起動時pane復元
 
@@ -780,6 +893,39 @@ After launch:
 ```
 
 live process / scrollback / PTY状態は復元しない。
+
+### 12.4 表示上限による pruning
+
+保存時の canonical tree に 9 個を超える leaf がある場合は、復元時に **先頭 9 個のみを visible のまま、
+超過分を hiddenGroupIDs に移す**（alive・shelf に表示されるが leaf なし）。
+
+保存時に hidden だった group は canonical tree に leaf を持たないまま
+`groups` に残っている(§11.7)。復元時はまず canonical 上限 9 個の枠に収めてから、
+orphaned group（leaf なし・creation order 順）を末尾に再接続する。枠内に収まる orphaned のみ
+再接続し、超過分は hidden のまま。
+
+```swift
+func applyRestoreLayout() -> WorkspaceState {
+    var restored = self
+    restored.hiddenGroupIDs = []
+    restored.zoomedGroup = nil
+
+    // canonical が 9 を超える場合は超過分を非表示化
+    restored.capVisibleGroups()  // 先頭 9 保持、以降を hiddenGroupIDs へ
+
+    // orphaned（leaf なし）group を末尾から順に再接続（枠内で止める）
+    restored.reconcileOrphanedGroups()  // 再接続可能な分のみ connect
+
+    // focusedGroup 検証・フォールバック
+    let focusValid = restored.focusedGroup.map { id in
+        restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
+    } ?? false
+    if !focusValid {
+        restored.focusedGroup = restored.canonicalGroupTree.firstLeaf?.id
+    }
+    return restored
+}
+```
 
 ## 13. effectiveVisibleGroupTree
 
@@ -829,6 +975,11 @@ var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
 16. hidden group は focus / resize / equalize の直接対象にならない
 17. 最後の visible group は hide できない
 18. 最後の pane で close_surface した場合は close_group confirmation に昇格する
+19. visible group 数は常に ≤ 9（§7.3）
+20. visible group の序数は canonical tree 葉走査順で 1～visibleCount となり、
+    hide/close/show/move 時に自動 re-pack される（表示のみ、保存しない）
+21. restore 時は canonical が 9 を超える場合は先頭 9 のみ visible、
+    超過分と orphaned group を hiddenGroupIDs に移す（§12.4）
 ```
 
 ## 15. 実装フェーズ
@@ -942,6 +1093,7 @@ Cmd+Opt+Shift+D
 - group names が復元される
 - pane layout が復元される
 - hidden 状態は復元されず全group visible
+  （後続変更: 表示上限 9 の cap を適用、超過分は hidden。§12.4）
 - zoom 状態は復元されず非zoom
 ```
 
@@ -996,6 +1148,7 @@ config syntax:
 keybind = cmd+opt+d=new_group_split:right
 keybind = cmd+opt+shift+d=new_group_split:down
 keybind = cmd+ctrl+opt+left=goto_group:left
+keybind = cmd+one=goto_group:1
 keybind = cmd+ctrl+opt+shift+left=resize_group:left,10
 keybind = cmd+opt+enter=toggle_group_zoom
 keybind = cmd+opt+h=hide_group
@@ -1097,28 +1250,40 @@ MVPでは:
   Cmd+D              pane split right
   Cmd+Shift+D        pane split down
 
-追加:
+追加（グループ分割）:
   Cmd+Opt+D          group split right
   Cmd+Opt+Shift+D    group split down
 
+追加（グループ番号・序数ジャンプ、macOS のみ）:
+  Cmd+1～9           goto_group:1～9（visible group の序数でジャンプ）
+  ※ 旧 goto_tab:1～8 / last_tab は削除
+
 group UI:
-  左上label
+  ヘッダー帯に "{序数}. {名前}" を表示
+  序数は表示のみ（canonical tree の葉走査順で動的）
   focus時だけ強調
-  double-click rename
+  double-click rename（裸の名前を編集）
   command prompt rename
 
 hidden UI:
   右上 fixed shelf
-  hidden: [name] [name]
-  pill clickで即show
+  hidden: [name] [name] （bare name、序数なし）
+  pill clickで即show（ただし visible が 9 個では no-op）
+
+表示上限:
+  visible group 最大 9 個
+  9 個で満杯のとき new_group_split / show_group は no-op
+  序数は自動的に 1～9 に re-pack（hide/close/show時）
 
 zoom:
   group単位
   zoom中 Cmd+D はgroup内pane split
   zoom中 new_group_split はzoom解除して隣に作成
+  goto_group:<N> で zoom 解除してジャンプ（自 group は no-op）
 
 focus:
-  goto_group方向移動
+  goto_group方向移動（zoom中は no-op）
+  goto_group序数ジャンプ（1～9）
   移動先groupのlast focused paneに戻る
 
 resize:
@@ -1132,12 +1297,14 @@ close:
 
 restore:
   layout/name/pane layout復元
-  hiddenは復元しない
-  zoomは復元しない
-  起動時は全group visible
+  canonical が 9 超える場合は先頭 9 のみ visible、超過分を hidden に移す
+  hidden は復元しない（runtime-only）
+  zoom は復元しない（runtime-only）
+  orphaned group は可能な限り再接続（9 cap内）
+  focusedGroup 無効時は firstLeaf へフォールバック
 ```
 
-この仕様の核は、**`canonicalGroupTree` を唯一のグループ配置source of truthにし、hide/zoomを派生表示状態として扱うこと**です。これにより、グループは第一級レイアウト単位になりつつ、既存のペイン分割・surface lifetime・GhosttyのSplitTree設計を壊さずに拡張できます。
+この仕様の核は、**`canonicalGroupTree` を唯一のグループ配置source of truthにし、hide/zoomを派生表示状態として扱うこと**です。これにより、グループは第一級レイアウト単位になりつつ、既存のペイン分割・surface lifetime・GhosttyのSplitTree設計を壊さずに拡張できます。また、**表示上限 9 と動的序数により、UI の安定性と操作性を両立**させています。
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"
 [2]: https://rexbrahh.github.io/ghostty-knowledge-base/reference/macos/Sources/Features/Splits/SplitTree.swift/ "macos/Sources/Features/Splits/SplitTree.swift | Ghostty Knowledge Base"

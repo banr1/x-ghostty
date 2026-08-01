@@ -742,6 +742,84 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
 
 ---
 
+## 横断: グループ番号（1～9）・表示上限 9・番号ジャンプ ✅ 完了
+
+visible group に **dynamic ordinal 1～9** を付与し、canonical tree leaf traversal 順で自動 re-pack。
+同時に表示上限を 9 group に制限し、`new_group_split` / `show_group` を cap で gate。
+`goto_group` に **index form**（`goto_group:1`～`goto_group:9`）を追加し、
+macOS default keybind を Cmd+1～9 に置き換え（`goto_tab` は削除）。
+zoom 中の index jump は zoom 解除してからジャンプ（自 group は no-op）。
+restore 時に canonical が 9 超える場合は先頭 9 のみ visible、超過分を hidden に移す。
+
+### グループ番号・表示上限・番号ジャンプ実装 ✅
+
+- [x] **Zig core**: `src/input/Binding.zig` に `GroupFocusTarget = union(enum) { direction: SplitFocusDirection, index: u8 }`
+      を追加。既存 `goto_group: SplitFocusDirection` を `goto_group: GroupFocusTarget` へ変更し、
+      generic `formatValue` / `cloneValue` に union case を追加（`goto_group:5` 形式で 1～9 を受け入れ、0 や 10+ は reject）。
+      tests に union 型ハンドリングと index parse の case 追加
+- [x] **apprt**: `src/apprt/action.zig` に `goto_group_index: GotoTab`（C tag `XGHOSTTY_ACTION_GOTO_GROUP_INDEX`）を追加。
+      `src/Surface.zig` で `.index(n)` を `goto_group_index` へ dispatch。`include/xghostty.h` 同期（`checkGhosttyHEnum`）
+- [x] **Swift Core**: `WorkspaceState` に `maxVisibleGroups = 9` を定数追加。`ordinal(of:)` と `visibleGroupID(ordinal:)` で
+      canonical tree 葉走査順による序数計算を実装（deterministic、traversal order は SplitTree.focusTarget の方向と一致）
+- [x] **Swift Model**: `WorkspaceModel` に `canAddVisibleGroup` / `canShowGroup` predicates、
+      `gotoGroup(index:)` / `gotoGroupIndexTarget(_:)` を追加。index jump は zoom 解除してから focus switch、
+      zoom 中に自己グループ番号を指定すると no-op（zoom 保持）。`newGroupSplit` と `showGroup` に 9-cap gate
+- [x] **UI**: `GroupLabel` に `ordinal` param を追加し `"{ordinal}. {name}"` を表示。`HiddenGroupShelf` pill は bare name のみ（序数なし）。
+      `GroupSplitTreeView` と `TerminalWorkspaceView` に ordinals dict をスレッド（view 側で参照可能に）
+- [x] **Restore**: `WorkspaceState.applyRestoreLayout()` で canonical が 9 超える場合は先頭 9 を visible に、
+      超過分を hiddenGroupIDs へ移す（deterministic）。orphaned group は可能な限り再接続（9 cap 内で止める）。
+      `focusedGroup` 無効時は firstLeaf へフォールバック。restore 経路（restoring(_:) と Codable init）で統一
+- [x] **Keybind**: `src/config/Config.zig` で Darwin/non-Darwin comptime split。macOS では Cmd+1～9（physical digit + unicode digit の dual-register）を
+      `goto_group:1`～`goto_group:9` にバインド、旧 `goto_tab:1`～`goto_tab:8` / `last_tab` keybind を削除。
+      non-Darwin は Alt+1～8 / Alt+9 をそのまま（`goto_tab` / `last_tab`）
+- [x] **Performability**: `goto_group` index form と `show_group` に performability gate
+      （`canShowGroup` / index が resolve しない・focused と同じとき false → key 非消費）。
+      `new_group_split` は performability 配線が無いため key は消費されるが、
+      controller (`newGroupSplit`) と model (`openNewGroup` throws) の 2 段 gate で静かに no-op
+
+**テスト**: `zig build -Demit-macos-app=false` exit 0、`zig build test`（full suite 2844 パス。
+`-Dtest-filter="goto_group"` 68 件 / `-Dtest-filter="xghostty.h"` 89 件〔`Action.Key` header 同期含む〕）、
+`zig fmt` 無差分、`swiftlint --strict` 0 violations、
+`xcodebuild test` 26 新規 case 全パス:
+
+- Ordinals: traversal order repack on hide/close/show / zoomed group canonical ordinal / 1～N re-pack
+- Cap: new_group_split at 9 rejected / show_group at 9 rejected / can add when < 9 / can show when < 9
+- Index jump: resolve valid/invalid ordinal / self-group no-op / zoom un-zoom on non-self / first leaf fallback
+- Restore: canonical > 9 → prune first 9 visible / orphaned partial reattach / focusedGroup fallback / idempotence (no re-run)
+- `WorkspaceState`/`SplitTree`/`TerminalRestorable` 回帰なし `** TEST SUCCEEDED **`
+
+- [x] 実機での目視確認（ラベルに序数表示・序数自動 re-pack / Cmd+1～9 で group jump / zoom中 Cmd+自 group no-op /
+      9 個で満杯のとき new_group_split と show_group が no-op / restore 時 orphaned group の再接続）実施済み
+
+### グループ番号・表示上限実装メモ（レビュー観点）
+
+- **GroupFocusTarget union 設計**: 既存 `goto_group: SplitFocusDirection` を
+  `union(enum) { direction, index: u8 }` へ変更し、custom `parse`/`clone`/`format` を実装
+  （`WriteScreen` の前例を踏襲、format は parse と round-trip）。parse は数値なら 1～9 のみ採択
+  （0 / 10+ / 非方向文字列は `Error.InvalidFormat`）、それ以外は `SplitFocusDirection.parse` へ委譲
+  （top/bottom エイリアス維持）。generic な `formatValue` / `cloneValue` に `.@"union"` case を追加
+  （従来は enum/int/float/struct のみで union payload は `@compileError` になっていた）
+- **ordinal (序数) は算出時 query**: `WorkspaceState.ordinal(of:)` / `visibleGroupID(ordinal:)` は
+  canonical tree の**葉走査順**（in-order、previous/next focus と同順）から都度導出する。
+  canonical tree 変更（hide/close/show/move）で自動的に値が変わるため、明示的な re-pack 処理や
+  保存フィールドは不要。view へは `groupOrdinals`（dict、render pass ごとに 1 回算出）で受け渡し
+- **Cmd+1～9 は Darwin 限定の comptime 分岐**: 旧 goto_tab ブロックと同じく physical `digit_N` キーと
+  unicode `'1'`～`'9'` を dual-register（AZERTY 等対応、unicode 側を後勝ち登録）。非 Darwin は
+  Alt+1～8 → goto_tab / Alt+9 → last_tab を従来通り維持（挙動不変）
+- **goto_group_index の zoom 動作**: zoom 中に別 group の番号 → zoom 解除 + focus 切替を
+  **単一 state 書き込み**で原子的に実行（`gotoGroup(index:savingOutgoingPaneTree:)`）。
+  zoomed group 自身の番号 → no-op（zoom 保持）。判定は `gotoGroupIndexTarget` に一本化し、
+  performability gate と実行が常に同じ述語を共有する（gate と効果の不一致が起きない）
+- **restore cap の determinism / idempotence**: `applyRestoreLayout()` = runtime state クリア →
+  `capVisibleGroups()`（canonical 先頭 9 保持、超過を hidden へ）→ `reconcileOrphanedGroups()`
+  （creation order、9 枠内のみ再接続）。`restoring(_:)` と Codable init の両経路から呼び、
+  2 度実行しても同結果（テスト `restoringIsIdempotent` で固定）
+- **performability の責務分担**: `goto_group_index` / `show_group` は performability gate が false を
+  返すと key event は消費されず次へ透過。`new_group_split` は既定 keybind が非 performable のため
+  key は消費されるが、controller/model の 2 段 gate で状態は不変（ユーザー体験としては静かな no-op）
+
+---
+
 ## テスト（§14 不変条件 / §19）
 
 - [ ] Unit（§19.1）: 名前一意性 / hide·show が canonical 不変 / close が canonical·groups 変更 /

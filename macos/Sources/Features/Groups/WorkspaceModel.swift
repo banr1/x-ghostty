@@ -13,6 +13,11 @@ final class WorkspaceModel: ObservableObject {
     enum WorkspaceError: Error {
         /// There is no focused group to anchor a new group split against.
         case noFocusedGroup
+
+        /// `WorkspaceState.maxVisibleGroups` groups are already visible, so
+        /// there is no number left to give a new one. Rejected silently (no
+        /// toast, no beep): the caller simply does nothing.
+        case visibleGroupLimitReached
     }
 
     /// The result of closing the focused group (`SPEC.md` §11.9).
@@ -126,6 +131,22 @@ final class WorkspaceModel: ObservableObject {
         state.groups[groupID] = group
     }
 
+    // MARK: Group numbering & the visible-group cap (SPEC §4.1)
+
+    /// The 1-based display number of `id`, or `nil` when it is not visible.
+    /// Convenience over `WorkspaceState.ordinal(of:)` for call sites that only
+    /// hold the model.
+    func ordinal(of id: GroupID) -> Int? {
+        state.ordinal(of: id)
+    }
+
+    /// Whether another group can become visible, i.e. whether fewer than
+    /// `WorkspaceState.maxVisibleGroups` are visible right now. Gates both
+    /// `new_group_split` and `show_group`; at the cap both are silent no-ops.
+    var canAddVisibleGroup: Bool {
+        state.visibleGroupCount < WorkspaceState.maxVisibleGroups
+    }
+
     // MARK: Group structure
 
     /// Open `newGroup` as a sibling of the currently focused group and switch
@@ -142,7 +163,9 @@ final class WorkspaceModel: ObservableObject {
     /// The caller is then responsible for swapping `surfaceTree` to
     /// `newGroup.paneTree` and moving keyboard focus into its initial pane.
     ///
-    /// - Throws: `WorkspaceError.noFocusedGroup` if nothing is focused, or a
+    /// - Throws: `WorkspaceError.noFocusedGroup` if nothing is focused,
+    ///   `WorkspaceError.visibleGroupLimitReached` when
+    ///   `WorkspaceState.maxVisibleGroups` are already visible, or a
     ///   `SplitTree.SplitError` if the canonical insert fails. The model is left
     ///   unchanged on throw.
     func openNewGroup(
@@ -152,6 +175,11 @@ final class WorkspaceModel: ObservableObject {
     ) throws {
         guard let anchorID = state.focusedGroup else {
             throw WorkspaceError.noFocusedGroup
+        }
+        // At the cap the new group would have no number, so refuse. Callers
+        // gate on `canAddVisibleGroup` first; this is the backstop.
+        guard canAddVisibleGroup else {
+            throw WorkspaceError.visibleGroupLimitReached
         }
 
         // Build the next state in a local copy so a failed insert leaves the
@@ -221,6 +249,60 @@ final class WorkspaceModel: ObservableObject {
         guard let target = visibleTree.focusTarget(for: direction, from: node),
               target.id != focusedID else { return nil }
         return target.id
+    }
+
+    /// Resolve the group that `goto_group:<N>` should focus: the `index`-th
+    /// visible group in canonical traversal order (1-based), or `nil` when the
+    /// jump would do nothing.
+    ///
+    /// Unlike the directional `goto_group`, an index jump is *not* a no-op while
+    /// zoomed (`SPEC.md` §11.3 only pins the directional form): jumping to a
+    /// different group clears the zoom and lands there, so Cmd+1..9 always gets
+    /// you to the group you asked for. Jumping to the zoomed group itself keeps
+    /// the zoom.
+    ///
+    /// - Returns: `nil` when there is no `index`-th visible group, when it is
+    ///   already the zoomed group, or — when nothing is zoomed — when it is
+    ///   already the focused group. Callers use this both to perform the jump
+    ///   and to answer the keybind's performability check, so the two always
+    ///   agree on what counts as a no-op.
+    func gotoGroupIndexTarget(_ index: Int) -> GroupID? {
+        guard let target = state.visibleGroupID(ordinal: index) else { return nil }
+
+        if let zoomedGroup = state.zoomedGroup {
+            return target == zoomedGroup ? nil : target
+        }
+        return target == state.focusedGroup ? nil : target
+    }
+
+    /// Jump to the `index`-th visible group (`goto_group:<N>`, 1-based).
+    ///
+    /// Un-zoom and switch are applied together in one state write so the
+    /// un-zoomed multi-group layout and the new focused group land in the same
+    /// render pass. The outgoing focused group's live panes are persisted first,
+    /// exactly like `switchFocusedGroup`.
+    ///
+    /// - Returns: the target group and its stored last-focused surface so the
+    ///   caller can swap `surfaceTree` and move keyboard focus, or `nil` when the
+    ///   jump is a no-op (see `gotoGroupIndexTarget`).
+    @discardableResult
+    func gotoGroup(
+        index: Int,
+        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
+    ) -> (target: GroupID, focus: SurfaceID?)? {
+        guard let target = gotoGroupIndexTarget(index) else { return nil }
+
+        var next = state
+        // Any zoom is cleared: the target is (usually) a different group, and a
+        // zoomed group is the only one rendered.
+        next.zoomedGroup = nil
+        if target != next.focusedGroup {
+            next.saveOutgoingPaneTree(outgoing)
+            next.focusedGroup = target
+        }
+        state = next
+
+        return (target, state.groups[target]?.focusedSurface)
     }
 
     /// Resize the canonical split nearest to the focused group along the axis
@@ -407,6 +489,16 @@ final class WorkspaceModel: ObservableObject {
         }?.key
     }
 
+    /// Whether `show_group` would actually reveal `id`: it must be a live hidden
+    /// group, and there must be room under the `WorkspaceState.maxVisibleGroups`
+    /// cap. At the cap the reveal is rejected silently and the pill stays on the
+    /// shelf, so callers check this before touching `surfaceTree` or registering
+    /// an undo.
+    func canShowGroup(_ id: GroupID) -> Bool {
+        guard state.hiddenGroupIDs.contains(id), state.groups[id] != nil else { return false }
+        return canAddVisibleGroup
+    }
+
     /// Show the hidden group `id` (`SPEC.md` §11.8): re-attach its leaf, remove
     /// it from the hidden set, clear any zoom, and focus it.
     ///
@@ -419,14 +511,14 @@ final class WorkspaceModel: ObservableObject {
     /// live panes so they are persisted before focus moves away.
     ///
     /// - Returns: the shown group's last-focused surface so the caller can move
-    ///   keyboard focus into it, or `nil` when `id` is not currently hidden.
+    ///   keyboard focus into it, or `nil` when the reveal is rejected — `id` is
+    ///   not currently hidden, or the visible-group cap is already reached.
     @discardableResult
     func showGroup(
         _ id: GroupID,
         savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) -> SurfaceID? {
-        guard state.hiddenGroupIDs.contains(id) else { return nil }
-        guard state.groups[id] != nil else { return nil }
+        guard canShowGroup(id) else { return nil }
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)

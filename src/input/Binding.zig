@@ -677,8 +677,10 @@ pub const Action = union(enum) {
 
     /// Focus on a group either in the specified direction (`right`, `down`,
     /// `left`, `up`), or in the adjacent group in the order of creation
-    /// (`previous` and `next`). Mirrors `goto_split` one layer up.
-    goto_group: SplitFocusDirection,
+    /// (`previous` and `next`), or by a 1-based index (`1` through `9`)
+    /// that focuses the Nth visible group in tree traversal order. Mirrors
+    /// `goto_split` one layer up.
+    goto_group: GroupFocusTarget,
 
     /// Swap the current group with an adjacent group. Directional arguments
     /// (`right`, `down`, `left`, `up`) swap with the spatially adjacent
@@ -1135,6 +1137,66 @@ pub const Action = union(enum) {
 
             try testing.expectError(error.InvalidFormat, SplitFocusDirection.parse(""));
             try testing.expectError(error.InvalidFormat, SplitFocusDirection.parse("green"));
+        }
+    };
+
+    /// The target of a `goto_group` action: either a focus direction
+    /// (mirroring `SplitFocusDirection`, including its `top`/`bottom`
+    /// aliases) or a 1-based index (1 through 9) of the group to focus in
+    /// tree traversal order.
+    pub const GroupFocusTarget = union(enum) {
+        direction: SplitFocusDirection,
+        index: u8,
+
+        pub fn parse(input: []const u8) !GroupFocusTarget {
+            // If the input parses as an integer we only accept 1-9,
+            // matching the Cmd+1..9 group-index keybinds.
+            if (std.fmt.parseInt(u8, input, 10)) |index| {
+                if (index < 1 or index > 9) return Error.InvalidFormat;
+                return .{ .index = index };
+            } else |_| {}
+
+            return .{ .direction = try SplitFocusDirection.parse(input) };
+        }
+
+        pub fn clone(
+            self: GroupFocusTarget,
+            alloc: Allocator,
+        ) Allocator.Error!GroupFocusTarget {
+            _ = alloc;
+            return self;
+        }
+
+        pub fn format(
+            self: GroupFocusTarget,
+            writer: *std.Io.Writer,
+        ) std.Io.Writer.Error!void {
+            switch (self) {
+                .direction => |v| try writer.print("{t}", .{v}),
+                .index => |v| try writer.print("{d}", .{v}),
+            }
+        }
+
+        test "parse" {
+            const testing = std.testing;
+
+            try testing.expectEqual(
+                GroupFocusTarget{ .index = 5 },
+                try GroupFocusTarget.parse("5"),
+            );
+            try testing.expectEqual(
+                GroupFocusTarget{ .direction = .right },
+                try GroupFocusTarget.parse("right"),
+            );
+            try testing.expectEqual(
+                GroupFocusTarget{ .direction = .up },
+                try GroupFocusTarget.parse("top"),
+            );
+
+            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse("0"));
+            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse("10"));
+            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse(""));
+            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse("banana"));
         }
     };
 
@@ -1607,6 +1669,14 @@ pub const Action = union(enum) {
                         }
                     }
                 },
+                .@"union" => format: {
+                    if (@hasDecl(Value, "format")) {
+                        try value.format(writer);
+                        break :format;
+                    }
+
+                    @compileError("unhandled union type: " ++ @typeName(Value));
+                },
                 else => @compileError("unhandled type: " ++ @typeName(Value)),
             },
         }
@@ -1648,6 +1718,8 @@ pub const Action = union(enum) {
                 value
             else
                 try value.clone(alloc),
+
+            .@"union" => try value.clone(alloc),
 
             else => {
                 @compileLog(@TypeOf(value));
@@ -3515,7 +3587,56 @@ test "parse: group split actions" {
     {
         const binding = try parseSingle("a=goto_group:next");
         try testing.expect(binding.action == .goto_group);
-        try testing.expectEqual(Action.SplitFocusDirection.next, binding.action.goto_group);
+        try testing.expectEqual(
+            Action.GroupFocusTarget{ .direction = .next },
+            binding.action.goto_group,
+        );
+    }
+
+    // goto_group: 1-based group index
+    {
+        const binding = try parseSingle("a=goto_group:5");
+        try testing.expect(binding.action == .goto_group);
+        try testing.expectEqual(
+            Action.GroupFocusTarget{ .index = 5 },
+            binding.action.goto_group,
+        );
+    }
+
+    // goto_group: direction argument still parses after the index change
+    {
+        const binding = try parseSingle("a=goto_group:right");
+        try testing.expect(binding.action == .goto_group);
+        try testing.expectEqual(
+            Action.GroupFocusTarget{ .direction = .right },
+            binding.action.goto_group,
+        );
+    }
+
+    // goto_group: invalid index and inputs
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:0"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:10"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:banana"));
+
+    // goto_group: format round-trips back to the input syntax
+    {
+        const testing_alloc = testing.allocator;
+        var buf: std.Io.Writer.Allocating = .init(testing_alloc);
+        defer buf.deinit();
+
+        const binding = try parseSingle("a=goto_group:right");
+        try binding.action.format(&buf.writer);
+        try testing.expectEqualStrings("goto_group:right", buf.written());
+    }
+    {
+        const testing_alloc = testing.allocator;
+        var buf: std.Io.Writer.Allocating = .init(testing_alloc);
+        defer buf.deinit();
+
+        const binding = try parseSingle("a=goto_group:5");
+        try binding.action.format(&buf.writer);
+        try testing.expectEqualStrings("goto_group:5", buf.written());
     }
 
     // move_group: focus-direction enum, mirrors goto_group

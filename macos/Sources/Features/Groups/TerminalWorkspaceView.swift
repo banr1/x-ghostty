@@ -55,6 +55,9 @@ struct TerminalWorkspaceView: View {
                     tree: tree,
                     groups: workspace.state.groups,
                     focusedGroup: workspace.state.focusedGroup,
+                    // Numbers come from the canonical tree, so they stay stable
+                    // under zoom and re-pack on hide / show / close / move.
+                    ordinals: workspace.state.groupOrdinals,
                     renamingGroup: workspace.renamingGroup,
                     paneAction: paneAction,
                     labelActions: labelActions,

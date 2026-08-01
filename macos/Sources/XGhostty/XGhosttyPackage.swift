@@ -408,6 +408,14 @@ extension XGhostty.Notification {
     static let ghosttyGotoGroup = Notification.Name("com.mitchellh.xghostty.gotoGroup")
     static let GroupDirectionKey = ghosttyGotoGroup.rawValue + ".direction"
 
+    /// Posted when `goto_group:<1-9>` is requested. The sending object is the surface that had
+    /// focus; the userinfo carries a `GotoGroupIndexKey` with the 1-based group number (an `Int`).
+    /// Focus moves to that numbered visible group, clearing any group zoom on the way
+    /// (`SPEC.md` §11.3). Kept separate from `ghosttyGotoGroup` because the semantics differ:
+    /// the directional form is a no-op while zoomed, the indexed form un-zooms and jumps.
+    static let ghosttyGotoGroupIndex = Notification.Name("com.mitchellh.xghostty.gotoGroupIndex")
+    static let GotoGroupIndexKey = ghosttyGotoGroupIndex.rawValue + ".index"
+
     /// Posted when `move_group` is requested. The sending object is the surface that had focus;
     /// the userinfo carries a `MoveGroupDirectionKey` (a `SplitFocusDirection`). The focused group
     /// swaps places with its neighbor in that direction (`SPEC.md` §11.3).

@@ -23,6 +23,11 @@ struct GroupSplitTreeView: View {
     let groups: [GroupID: GroupState]
     let focusedGroup: GroupID?
 
+    /// Every visible group's 1-based display number, keyed by id
+    /// (`WorkspaceState.groupOrdinals`). Derived from the *canonical* tree, so a
+    /// zoomed group keeps its number in the full layout instead of showing `1`.
+    let ordinals: [GroupID: Int]
+
     /// The group currently in inline-rename mode, if any (`WorkspaceModel`).
     let renamingGroup: GroupID?
 
@@ -43,6 +48,7 @@ struct GroupSplitTreeView: View {
                 node: node,
                 groups: groups,
                 focusedGroup: focusedGroup,
+                ordinals: ordinals,
                 renamingGroup: renamingGroup,
                 paneAction: paneAction,
                 labelActions: labelActions,
@@ -64,6 +70,7 @@ private struct GroupSplitSubtreeView: View {
     let node: SplitTree<GroupRef>.Node
     let groups: [GroupID: GroupState]
     let focusedGroup: GroupID?
+    let ordinals: [GroupID: Int]
     let renamingGroup: GroupID?
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: GroupLabelActions
@@ -79,6 +86,7 @@ private struct GroupSplitSubtreeView: View {
                 GroupView(
                     group: group,
                     isFocused: ref.id == focusedGroup,
+                    ordinal: ordinals[ref.id],
                     isRenaming: ref.id == renamingGroup,
                     paneAction: paneAction,
                     labelActions: labelActions)
@@ -104,6 +112,7 @@ private struct GroupSplitSubtreeView: View {
                         node: split.left,
                         groups: groups,
                         focusedGroup: focusedGroup,
+                        ordinals: ordinals,
                         renamingGroup: renamingGroup,
                         paneAction: paneAction,
                         labelActions: labelActions,
@@ -115,6 +124,7 @@ private struct GroupSplitSubtreeView: View {
                         node: split.right,
                         groups: groups,
                         focusedGroup: focusedGroup,
+                        ordinals: ordinals,
                         renamingGroup: renamingGroup,
                         paneAction: paneAction,
                         labelActions: labelActions,

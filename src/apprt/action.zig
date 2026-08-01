@@ -390,6 +390,12 @@ pub const Action = union(Key) {
     /// compatibility; see the note above.
     move_group: GotoSplit,
 
+    /// Focus the Nth visible group (1-indexed) in tree traversal order.
+    /// Reuses `GotoTab` (only its non-negative index values are used here).
+    /// Appended last (rather than next to `goto_group`) to preserve C ABI
+    /// compatibility; see the note above.
+    goto_group_index: GotoTab,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -473,6 +479,7 @@ pub const Action = union(Key) {
         set_group_title,
         close_group,
         move_group,
+        goto_group_index,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

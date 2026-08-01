@@ -6819,15 +6819,55 @@ pub const Keybinds = struct {
                 .{ .paste_from_selection = {} },
             );
         }
-        {
-            // On macOS we default to super but everywhere else
-            // is alt.
-            const mods: inputpkg.Mods = if (builtin.target.os.tag.isDarwin())
-                .{ .super = true }
-            else
-                .{ .alt = true };
+        if (comptime builtin.target.os.tag.isDarwin()) {
+            // Cmd+1..9 focus the Nth visible group in tree traversal order.
+            // Tabs are being deprecated on macOS in favor of groups, so
+            // unlike the goto_tab bindings below (still used on other
+            // platforms) there's no tab bar key equivalent to preserve and
+            // these can just be performable.
+            const mods: inputpkg.Mods = .{ .super = true };
 
-            // Cmd/Alt+N for goto tab N
+            const start: u21 = '1';
+            const end: u21 = '9';
+            comptime var i: u21 = start;
+            inline while (i <= end) : (i += 1) {
+                // We register BOTH the physical `digit_N` key and the unicode
+                // `N` key. This allows most keyboard layouts to work with
+                // this shortcut. Namely, AZERTY doesn't produce unicode `N`
+                // for their digit keys (they're on shifted keys on the same
+                // physical keys).
+
+                try self.set.putFlags(
+                    alloc,
+                    .{
+                        .key = .{ .physical = @field(
+                            inputpkg.Key,
+                            std.fmt.comptimePrint("digit_{u}", .{i}),
+                        ) },
+                        .mods = mods,
+                    },
+                    .{ .goto_group = .{ .index = (i - start) + 1 } },
+                    .{ .performable = true },
+                );
+
+                // Important: this must be the LAST binding set so that the
+                // libghostty trigger API returns this one for the action,
+                // so that things like the macOS tab bar key equivalent label
+                // work properly.
+                try self.set.putFlags(
+                    alloc,
+                    .{
+                        .key = .{ .unicode = i },
+                        .mods = mods,
+                    },
+                    .{ .goto_group = .{ .index = (i - start) + 1 } },
+                    .{ .performable = true },
+                );
+            }
+        } else {
+            // Alt+N for goto tab N
+            const mods: inputpkg.Mods = .{ .alt = true };
+
             const start: u21 = '1';
             const end: u21 = '8';
             comptime var i: u21 = start;
@@ -6849,11 +6889,6 @@ pub const Keybinds = struct {
                     },
                     .{ .goto_tab = (i - start) + 1 },
                     .{
-                        // On macOS we keep this not performable so that the
-                        // keyboard shortcuts in tabs work. In the future the
-                        // correct fix is to fix the reverse mapping lookup
-                        // to allow us to lookup performable keybinds
-                        // conditionally.
                         .performable = !builtin.target.os.tag.isDarwin(),
                     },
                 );
@@ -7057,22 +7092,22 @@ pub const Keybinds = struct {
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .left },
+                .{ .goto_group = .{ .direction = .left } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .right },
+                .{ .goto_group = .{ .direction = .right } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .up },
+                .{ .goto_group = .{ .direction = .up } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .down },
+                .{ .goto_group = .{ .direction = .down } },
             );
             try self.set.put(
                 alloc,

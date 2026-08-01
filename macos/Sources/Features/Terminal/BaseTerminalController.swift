@@ -294,6 +294,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidGotoGroupIndex(_:)),
+            name: XGhostty.Notification.ghosttyGotoGroupIndex,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidMoveGroup(_:)),
             name: XGhostty.Notification.ghosttyMoveGroup,
             object: nil)
@@ -431,6 +436,11 @@ class BaseTerminalController: NSWindowController,
         // need a focused group to anchor the new sibling against.
         guard surfaceTree.root?.node(view: oldView) != nil else { return nil }
         guard workspace.state.focusedGroup != nil else { return nil }
+        // At most `WorkspaceState.maxVisibleGroups` groups can be visible, since
+        // each one needs a number. At the cap this is a silent no-op (no toast,
+        // no beep) — checked here, before a `SurfaceView` (and its shell process)
+        // would be spawned only to be thrown away.
+        guard workspace.canAddVisibleGroup else { return nil }
         guard let xghostty_app = ghostty.app else { return nil }
 
         // Build the new group's single initial pane.
@@ -1000,6 +1010,18 @@ class BaseTerminalController: NSWindowController,
         focusGroup(target)
     }
 
+    @objc private func ghosttyDidGotoGroupIndex(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        guard let ordinal = notification.userInfo?[
+            XGhostty.Notification.GotoGroupIndexKey] as? Int else { return }
+
+        gotoGroup(index: ordinal)
+    }
+
     @objc private func ghosttyDidMoveGroup(_ notification: Notification) {
         // The triggering surface must be within our workspace (not just the
         // currently focused group's tree, to survive the async focus window).
@@ -1404,6 +1426,27 @@ class BaseTerminalController: NSWindowController,
         moveKeyboardFocus(toGroupSurface: targetFocus)
     }
 
+    /// Jump to the `index`-th visible group in response to `goto_group:<N>`
+    /// (Cmd+1..9). Mirrors `focusGroup`'s swap, with one extra twist: unlike the
+    /// directional `goto_group`, an index jump also works while zoomed — the
+    /// model clears the zoom and moves focus in a single state write, so the
+    /// un-zoomed layout and the new focused group render together.
+    ///
+    /// No-op when the number resolves to nothing, to the zoomed group, or (when
+    /// nothing is zoomed) to the already-focused group. Like `focusGroup` this
+    /// registers no undo: it is a focus change, not a structural mutation.
+    func gotoGroup(index: Int) {
+        guard let result = workspace.gotoGroup(
+            index: index,
+            savingOutgoingPaneTree: surfaceTree) else { return }
+
+        // Swap the source-of-truth pane tree to the newly focused group. When
+        // only the zoom was cleared this is the same tree, and the workspace's
+        // own change re-renders the group layout.
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toGroupSurface: result.focus)
+    }
+
     /// Swap the focused group with its neighbor in `direction` in response to
     /// `move_group`. Only the canonical group tree changes: the focused group and
     /// its panes are untouched (it simply occupies its neighbor's slot), so there
@@ -1448,8 +1491,11 @@ class BaseTerminalController: NSWindowController,
     /// zoom, and focuses it; here we swap `surfaceTree` to its panes and move
     /// keyboard focus into its last-focused pane. Registers a group-aware undo
     /// ("Show Group") so the reveal can be reversed.
+    ///
+    /// Silent no-op when `WorkspaceState.maxVisibleGroups` groups are already
+    /// visible: the pill just stays on the shelf.
     func showGroup(_ id: GroupID) {
-        guard workspace.state.hiddenGroupIDs.contains(id) else { return }
+        guard workspace.canShowGroup(id) else { return }
         let before = workspace.state
         let targetFocus = workspace.showGroup(id, savingOutgoingPaneTree: surfaceTree)
 

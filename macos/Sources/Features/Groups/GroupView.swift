@@ -25,6 +25,10 @@ struct GroupView: View {
     let group: GroupState
     let isFocused: Bool
 
+    /// This group's 1-based display number, shown as a `"{ordinal}. "` prefix on
+    /// the header. `nil` when the group has no number.
+    let ordinal: Int?
+
     /// Whether this group's header is currently in inline-rename mode.
     let isRenaming: Bool
 
@@ -39,7 +43,8 @@ struct GroupView: View {
     var body: some View {
         VStack(spacing: 0) {
             GroupLabel(
-                title: group.name,
+                name: group.name,
+                ordinal: ordinal,
                 isFocused: isFocused,
                 isRenaming: isRenaming,
                 onFocus: { labelActions.focus(group.id) },
