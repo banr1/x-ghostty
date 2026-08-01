@@ -7,7 +7,7 @@ Ghostty の既存 split pane の上位に、**グループレイヤー**を追�
 既存のペイン分割は「同一グループ内の terminal surface 分割」として維持し、新たに「グループ単位の分割・移動・ズーム・非表示・復元」を実装する。
 
 ```text
-Window / Tab
+Window（アプリ唯一のウィンドウ）
 └─ GroupTree
    ├─ Group: calm-river
    │  └─ PaneTree
@@ -19,14 +19,15 @@ Window / Tab
          └─ pane
 ```
 
-Ghostty 既存の action model には `new_split`, `goto_split`, `toggle_split_zoom`, `resize_split`, `equalize_splits`, `close_surface` があり、`new_split` は方向指定で split を作り、`toggle_split_zoom` は現在 split をタブ領域全体に拡大し、`resize_split` と `equalize_splits` も split 単位で定義されています。したがって、本機能は既存 action を上書きせず、**グループ版 action を並列追加する**設計にする。([Ghostty][1])
+Ghostty 既存の action model には `new_split`, `goto_split`, `toggle_split_zoom`, `resize_split`, `equalize_splits`, `close_surface` があり、`new_split` は方向指定で split を作り、`toggle_split_zoom` は現在 split をウィンドウ全体に拡大し、`resize_split` と `equalize_splits` も split 単位で定義されています。したがって、本機能は既存 action を上書きせず、**グループ版 action を並列追加する**設計にする。([Ghostty][1])
 
 ## 2. 非目的
 
 初期実装では以下をやらない。
 
 ```text
-- Linux / GTK 対応
+- Linux / GTK 対応（本 fork は macOS 専用。GTK apprt は削除済みで、
+  そもそも対応対象として存在しない）
 - tmux / zellij 互換
 - floating pane
 - live session 完全復元
@@ -405,7 +406,9 @@ enum GroupNameGenerator {
             if !existing.contains(name) { return name }
         }
 
-        return "group-\(existing.count + 1)"
+        var n = existing.count + 1
+        while existing.contains("group-\(n)") { n += 1 }
+        return "group-\(n)"
     }
 }
 ```
@@ -501,7 +504,7 @@ Cmd+Ctrl+Opt+Up       -> goto_group:up
 Cmd+Ctrl+Opt+Down     -> goto_group:down
 ```
 
-序数ジャンプ（macOS/Darwin のみ）:
+序数ジャンプ:
 
 ```text
 Cmd+1                 -> goto_group:1
@@ -515,9 +518,9 @@ Cmd+8                 -> goto_group:8
 Cmd+9                 -> goto_group:9
 ```
 
-**macOS のみ**: Cmd+1～9（Unicode digits 等も同時登録）は `goto_group:1`～`goto_group:9` にバインドされ、
-古い `goto_tab:1`～`goto_tab:8` と `last_tab` の keybind は削除される。
-非 macOS（Linux / FreeBSD）は Alt+1～8 → `goto_tab` / Alt+9 → `last_tab` が従来通り。
+Cmd+1～9 は physical `digit_1`～`digit_9` と unicode `1`～`9` の両方に登録し
+（AZERTY 等のレイアウト対策）、`goto_group:1`～`goto_group:9` に performable 付きでバインドする。
+本 fork にタブは存在せず、上流の `goto_tab` / `last_tab` は core ごと削除済みなので衝突しない。
 
 ### 10.4 グループリサイズ
 
@@ -852,11 +855,15 @@ This will close 4 panes and terminate their processes.
 ```text
 if group.paneTree.leafCount > 1:
   close_surface normally
-else:
+else if groups.count > 1:
   close_group confirmation
+else:
+  close_surface normally  (唯一の group なので window close → app 終了, §18.5)
 ```
 
-最後のpaneを閉じることは、実質groupを閉じること。
+最後のpaneを閉じることは、実質groupを閉じること。group が複数ある場合のみ
+close_group confirmation に昇格する(実装: `BaseTerminalController` の
+close_surface 経路)。
 
 ## 12. 復元仕様
 
@@ -974,7 +981,9 @@ var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
 15. group zoom と pane zoom は外側から内側へ適用する
 16. hidden group は focus / resize / equalize の直接対象にならない
 17. 最後の visible group は hide できない
-18. 最後の pane で close_surface した場合は close_group confirmation に昇格する
+18. group が複数あるとき、最後の pane で close_surface すると close_group
+    confirmation に昇格する（唯一の group では通常の close_surface として
+    window close → app 終了になる。§11.10, §18.5）
 19. visible group 数は常に ≤ 9（§7.3）
 20. visible group の序数は canonical tree 葉走査順で 1～visibleCount となり、
     hide/close/show/move 時に自動 re-pack される（表示のみ、保存しない）
@@ -990,7 +999,7 @@ var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
 
 ```text
 Before:
-  tab.surfaceTree: SplitTree<SurfaceView>
+  controller.surfaceTree: SplitTree<SurfaceView>
 
 After:
   workspace.canonicalGroupTree = leaf(defaultGroup)
@@ -1189,15 +1198,19 @@ MVPでは visible focused group のみ close 対象。
 
 ### 18.5 close_group 後に group が0個になる
 
-原則、最後のgroupの close は window/tab close と同等に扱う。
-つまり既存 `close_surface` の window/tab close semantics に寄せる。
+原則、最後のgroupの close はウィンドウ close と同等に扱う。
+本 fork は単一ウィンドウなので、**ウィンドウが閉じる = アプリ終了**である。
 
-MVPでは:
+実装:
 
 ```text
 最後のgroupをclose:
-  Close Group? confirmation
-  実行後、tab/window close に委譲
+  Close Group? confirmation（live process が残っている場合のみ）
+  WorkspaceModel.closeFocusedGroup() は .closedLast を返し、モデルは変更しない
+  controller が空の surfaceTree を replaceSurfaceTree に渡す
+  TerminalController の override が closeWindowImmediately() でウィンドウを閉じる
+  ウィンドウが閉じると AppDelegate がアプリを終了する
+  この経路では undo を登録しない
 ```
 
 ## 19. テスト計画
@@ -1254,9 +1267,9 @@ MVPでは:
   Cmd+Opt+D          group split right
   Cmd+Opt+Shift+D    group split down
 
-追加（グループ番号・序数ジャンプ、macOS のみ）:
+追加（グループ番号・序数ジャンプ）:
   Cmd+1～9           goto_group:1～9（visible group の序数でジャンプ）
-  ※ 旧 goto_tab:1～8 / last_tab は削除
+  ※ 本 fork にタブはなく、goto_tab / last_tab は core から削除済み
 
 group UI:
   ヘッダー帯に "{序数}. {名前}" を表示
@@ -1294,6 +1307,7 @@ close:
   最後のpaneでCmd+W -> Close Group?
   [Cancel] [Close Group]
   Hide Insteadなし
+  最後のgroupをcloseするとウィンドウが閉じ、アプリが終了する（§18.5）
 
 restore:
   layout/name/pane layout復元

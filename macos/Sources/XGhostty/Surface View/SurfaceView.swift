@@ -651,7 +651,7 @@ extension XGhostty {
         var waitAfterCommand: Bool = false
 
         /// Context for surface creation
-        var context: xghostty_surface_context_e = XGHOSTTY_SURFACE_CONTEXT_WINDOW
+        var context: xghostty_surface_context_e = XGHOSTTY_SURFACE_CONTEXT_GROUP
 
         init() {}
 

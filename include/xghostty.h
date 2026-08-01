@@ -459,9 +459,8 @@ typedef union {
 } xghostty_platform_u;
 
 typedef enum {
-  XGHOSTTY_SURFACE_CONTEXT_WINDOW = 0,
-  XGHOSTTY_SURFACE_CONTEXT_TAB = 1,
-  XGHOSTTY_SURFACE_CONTEXT_SPLIT = 2,
+  XGHOSTTY_SURFACE_CONTEXT_GROUP = 0,
+  XGHOSTTY_SURFACE_CONTEXT_SPLIT = 1,
 } xghostty_surface_context_e;
 
 typedef struct {
@@ -520,28 +519,6 @@ typedef struct {
   xghostty_config_color_s colors[256];
 } xghostty_config_palette_s;
 
-// config.QuickTerminalSize
-typedef enum {
-  XGHOSTTY_QUICK_TERMINAL_SIZE_NONE,
-  XGHOSTTY_QUICK_TERMINAL_SIZE_PERCENTAGE,
-  XGHOSTTY_QUICK_TERMINAL_SIZE_PIXELS,
-} xghostty_quick_terminal_size_tag_e;
-
-typedef union {
-  float percentage;
-  uint32_t pixels;
-} xghostty_quick_terminal_size_value_u;
-
-typedef struct {
-  xghostty_quick_terminal_size_tag_e tag;
-  xghostty_quick_terminal_size_value_u value;
-} xghostty_quick_terminal_size_s;
-
-typedef struct {
-  xghostty_quick_terminal_size_s primary;
-  xghostty_quick_terminal_size_s secondary;
-} xghostty_config_quick_terminal_size_s;
-
 // config.Fullscreen
 typedef enum {
   XGHOSTTY_CONFIG_FULLSCREEN_FALSE,
@@ -584,12 +561,6 @@ typedef enum {
   XGHOSTTY_GOTO_SPLIT_RIGHT,
 } xghostty_action_goto_split_e;
 
-// apprt.action.GotoWindow
-typedef enum {
-  XGHOSTTY_GOTO_WINDOW_PREVIOUS,
-  XGHOSTTY_GOTO_WINDOW_NEXT,
-} xghostty_action_goto_window_e;
-
 // apprt.action.ResizeSplit.Direction
 typedef enum {
   XGHOSTTY_RESIZE_SPLIT_UP,
@@ -604,17 +575,12 @@ typedef struct {
   xghostty_action_resize_split_direction_e direction;
 } xghostty_action_resize_split_s;
 
-// apprt.action.MoveTab
-typedef struct {
-  ssize_t amount;
-} xghostty_action_move_tab_s;
-
-// apprt.action.GotoTab
+// apprt.action.GotoGroup
 typedef enum {
-  XGHOSTTY_GOTO_TAB_PREVIOUS = -1,
-  XGHOSTTY_GOTO_TAB_NEXT = -2,
-  XGHOSTTY_GOTO_TAB_LAST = -3,
-} xghostty_action_goto_tab_e;
+  XGHOSTTY_GOTO_GROUP_PREVIOUS = -1,
+  XGHOSTTY_GOTO_GROUP_NEXT = -2,
+  XGHOSTTY_GOTO_GROUP_LAST = -3,
+} xghostty_action_goto_group_e;
 
 // apprt.action.Fullscreen
 typedef enum {
@@ -667,12 +633,6 @@ typedef struct {
 typedef struct {
   const char* title;
 } xghostty_action_set_title_s;
-
-// apprt.action.PromptTitle
-typedef enum {
-  XGHOSTTY_PROMPT_TITLE_SURFACE,
-  XGHOSTTY_PROMPT_TITLE_TAB,
-} xghostty_action_prompt_title_e;
 
 // apprt.action.Pwd.C
 typedef struct {
@@ -821,13 +781,6 @@ typedef struct {
   uintptr_t len;
 } xghostty_action_open_url_s;
 
-// apprt.action.CloseTabMode
-typedef enum {
-  XGHOSTTY_ACTION_CLOSE_TAB_MODE_THIS,
-  XGHOSTTY_ACTION_CLOSE_TAB_MODE_OTHER,
-  XGHOSTTY_ACTION_CLOSE_TAB_MODE_RIGHT,
-} xghostty_action_close_tab_mode_e;
-
 // apprt.surface.Message.ChildExited
 typedef struct {
   uint32_t exit_code;
@@ -884,23 +837,12 @@ typedef struct {
 // apprt.Action.Key
 typedef enum {
   XGHOSTTY_ACTION_QUIT,
-  XGHOSTTY_ACTION_NEW_WINDOW,
-  XGHOSTTY_ACTION_NEW_TAB,
-  XGHOSTTY_ACTION_CLOSE_TAB,
   XGHOSTTY_ACTION_NEW_SPLIT,
-  XGHOSTTY_ACTION_CLOSE_ALL_WINDOWS,
   XGHOSTTY_ACTION_TOGGLE_MAXIMIZE,
   XGHOSTTY_ACTION_TOGGLE_FULLSCREEN,
-  XGHOSTTY_ACTION_TOGGLE_TAB_OVERVIEW,
-  XGHOSTTY_ACTION_TOGGLE_WINDOW_DECORATIONS,
-  XGHOSTTY_ACTION_TOGGLE_QUICK_TERMINAL,
   XGHOSTTY_ACTION_TOGGLE_COMMAND_PALETTE,
-  XGHOSTTY_ACTION_TOGGLE_VISIBILITY,
   XGHOSTTY_ACTION_TOGGLE_BACKGROUND_OPACITY,
-  XGHOSTTY_ACTION_MOVE_TAB,
-  XGHOSTTY_ACTION_GOTO_TAB,
   XGHOSTTY_ACTION_GOTO_SPLIT,
-  XGHOSTTY_ACTION_GOTO_WINDOW,
   XGHOSTTY_ACTION_RESIZE_SPLIT,
   XGHOSTTY_ACTION_EQUALIZE_SPLITS,
   XGHOSTTY_ACTION_TOGGLE_SPLIT_ZOOM,
@@ -912,11 +854,9 @@ typedef enum {
   XGHOSTTY_ACTION_SCROLLBAR,
   XGHOSTTY_ACTION_RENDER,
   XGHOSTTY_ACTION_INSPECTOR,
-  XGHOSTTY_ACTION_SHOW_GTK_INSPECTOR,
   XGHOSTTY_ACTION_RENDER_INSPECTOR,
   XGHOSTTY_ACTION_DESKTOP_NOTIFICATION,
   XGHOSTTY_ACTION_SET_TITLE,
-  XGHOSTTY_ACTION_SET_TAB_TITLE,
   XGHOSTTY_ACTION_PROMPT_TITLE,
   XGHOSTTY_ACTION_PWD,
   XGHOSTTY_ACTION_MOUSE_SHAPE,
@@ -932,7 +872,6 @@ typedef enum {
   XGHOSTTY_ACTION_COLOR_CHANGE,
   XGHOSTTY_ACTION_RELOAD_CONFIG,
   XGHOSTTY_ACTION_CONFIG_CHANGE,
-  XGHOSTTY_ACTION_CLOSE_WINDOW,
   XGHOSTTY_ACTION_RING_BELL,
   XGHOSTTY_ACTION_SELECTION_CHANGED,
   XGHOSTTY_ACTION_UNDO,
@@ -941,7 +880,6 @@ typedef enum {
   XGHOSTTY_ACTION_OPEN_URL,
   XGHOSTTY_ACTION_SHOW_CHILD_EXITED,
   XGHOSTTY_ACTION_PROGRESS_REPORT,
-  XGHOSTTY_ACTION_SHOW_ON_SCREEN_KEYBOARD,
   XGHOSTTY_ACTION_COMMAND_FINISHED,
   XGHOSTTY_ACTION_START_SEARCH,
   XGHOSTTY_ACTION_END_SEARCH,
@@ -966,10 +904,7 @@ typedef enum {
 typedef union {
   xghostty_action_split_direction_e new_split;
   xghostty_action_fullscreen_e toggle_fullscreen;
-  xghostty_action_move_tab_s move_tab;
-  xghostty_action_goto_tab_e goto_tab;
   xghostty_action_goto_split_e goto_split;
-  xghostty_action_goto_window_e goto_window;
   xghostty_action_resize_split_s resize_split;
   xghostty_action_size_limit_s size_limit;
   xghostty_action_initial_size_s initial_size;
@@ -978,8 +913,6 @@ typedef union {
   xghostty_action_inspector_e inspector;
   xghostty_action_desktop_notification_s desktop_notification;
   xghostty_action_set_title_s set_title;
-  xghostty_action_set_title_s set_tab_title;
-  xghostty_action_prompt_title_e prompt_title;
   xghostty_action_pwd_s pwd;
   xghostty_action_mouse_shape_e mouse_shape;
   xghostty_action_mouse_visibility_e mouse_visibility;
@@ -994,7 +927,6 @@ typedef union {
   xghostty_action_reload_config_s reload_config;
   xghostty_action_config_change_s config_change;
   xghostty_action_open_url_s open_url;
-  xghostty_action_close_tab_mode_e close_tab_mode;
   xghostty_surface_message_childexited_s child_exited;
   xghostty_action_progress_report_s progress_report;
   xghostty_action_command_finished_s command_finished;
@@ -1008,7 +940,7 @@ typedef union {
   xghostty_action_set_title_s show_group;
   xghostty_action_set_title_s set_group_title;
   xghostty_action_goto_split_e move_group;
-  xghostty_action_goto_tab_e goto_group_index;
+  xghostty_action_goto_group_e goto_group_index;
 } xghostty_action_u;
 
 typedef struct {
@@ -1046,44 +978,12 @@ typedef struct {
   xghostty_runtime_close_surface_cb close_surface_cb;
 } xghostty_runtime_config_s;
 
-// apprt.ipc.Target.Key
-typedef enum {
-  XGHOSTTY_IPC_TARGET_CLASS,
-  XGHOSTTY_IPC_TARGET_DETECT,
-} xghostty_ipc_target_tag_e;
-
-typedef union {
-  char *klass;
-} xghostty_ipc_target_u;
-
-typedef struct {
-  xghostty_ipc_target_tag_e tag;
-  xghostty_ipc_target_u target;
-} chostty_ipc_target_s;
-
-// apprt.ipc.Action.NewWindow
-typedef struct {
-  // This should be a null terminated list of strings.
-  const char **arguments;
-} xghostty_ipc_action_new_window_s;
-
-typedef union {
-  xghostty_ipc_action_new_window_s new_window;
-} xghostty_ipc_action_u;
-
-// apprt.ipc.Action.Key
-typedef enum {
-  XGHOSTTY_IPC_ACTION_NEW_WINDOW,
-  XGHOSTTY_IPC_ACTION_TOGGLE_QUICK_TERMINAL,
-} xghostty_ipc_action_tag_e;
-
 //-------------------------------------------------------------------
 // Published API
 
 XGHOSTTY_API int xghostty_init(uintptr_t, char**);
 XGHOSTTY_API void xghostty_cli_try_action(void);
 XGHOSTTY_API xghostty_info_s xghostty_info(void);
-XGHOSTTY_API const char* xghostty_translate(const char*);
 XGHOSTTY_API void xghostty_string_free(xghostty_string_s);
 
 XGHOSTTY_API xghostty_config_t xghostty_config_new();

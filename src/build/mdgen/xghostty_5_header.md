@@ -12,7 +12,7 @@ at `$XDG_CONFIG_HOME/xghostty/config.xghostty`, which defaults to `~/.config/xgh
 if the [XDG environment is not set](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html).
 
 **If you are using macOS, the configuration file can also be placed at
-`$HOME/Library/Application Support/com.mitchellh.xxghostty/config.xghostty`.** This is the
+`$HOME/Library/Application Support/com.mitchellh.xghostty/config.xghostty`.** This is the
 default configuration location for macOS. It will be searched before any of the
 XDG environment locations listed above.
 
@@ -82,9 +82,9 @@ debug output of Ghostty.
 
 In the debug output, you should see in the first 20 lines or so messages about
 loading (or not loading) a configuration file, as well as any errors it may have
-encountered. Configuration errors are also shown in a dedicated window on both
-macOS and Linux (GTK). Ghostty does not treat configuration errors as fatal and
-will fall back to default values for erroneous keys.
+encountered. Configuration errors are also shown in a dedicated window.
+Ghostty does not treat configuration errors as fatal and will fall back to
+default values for erroneous keys.
 
 You can also view the full configuration Ghostty is loading using `ghostty
 +show-config` from the command-line. Use the `--help` flag to additional options
@@ -92,17 +92,13 @@ for that command.
 
 ## Logging
 
-Ghostty can write logs to a number of destinations. On all platforms, logging to
-`stderr` is available. Depending on the platform and how Ghostty was launched,
-logs sent to `stderr` may be stored by the system and made available for later
-retrieval.
+Ghostty can write logs to `stderr` and to the macOS unified log. Depending on
+how Ghostty was launched, logs sent to `stderr` may be stored by the system and
+made available for later retrieval.
 
-On Linux if Ghostty is launched by the default `systemd` user service, you can use
-`journald` to see Ghostty's logs: `journalctl --user --unit app-com.mitchellh.xghostty.service`.
-
-On macOS logging to the macOS unified log is available and enabled by default.
---Use the system `log` CLI to view Ghostty's logs: `sudo log stream --level debug
---predicate 'subsystem=="com.mitchellh.xghostty"'`.
+Logging to the macOS unified log is enabled by default. Use the system `log`
+CLI to view Ghostty's logs: `sudo log stream --level debug --predicate
+'subsystem=="com.mitchellh.xghostty"'`.
 
 Ghostty's logging can be configured in two ways. The first is by what
 optimization level Ghostty is compiled with. If Ghostty is compiled with `Debug`
@@ -114,7 +110,7 @@ to control which destinations receive logs. Ghostty currently defines two
 destinations:
 
 - `stderr` - logging to `stderr`.
-- `macos` - logging to macOS's unified log (has no effect on non-macOS platforms).
+- `macos` - logging to macOS's unified log.
 
 Combine values with a comma to enable multiple destinations. Prefix a
 destination with `no-` to disable it. Enabling and disabling destinations

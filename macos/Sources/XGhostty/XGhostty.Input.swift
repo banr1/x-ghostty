@@ -1,4 +1,3 @@
-import AppIntents
 import Cocoa
 import SwiftUI
 import XGhosttyKit
@@ -243,16 +242,6 @@ extension XGhostty.Input {
     }
 }
 
-extension XGhostty.Input.Action: AppEnum {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Key Action")
-
-    static var caseDisplayRepresentations: [XGhostty.Input.Action: DisplayRepresentation] = [
-        .release: "Release",
-        .press: "Press",
-        .repeat: "Repeat"
-    ]
-}
-
 // MARK: XGhostty.Input.MouseEvent
 
 extension XGhostty.Input {
@@ -355,15 +344,6 @@ extension XGhostty.Input {
     }
 }
 
-extension XGhostty.Input.MouseState: AppEnum {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Mouse State")
-
-    static var caseDisplayRepresentations: [XGhostty.Input.MouseState: DisplayRepresentation] = [
-        .release: "Release",
-        .press: "Press"
-    ]
-}
-
 // MARK: XGhostty.Input.MouseButton
 
 extension XGhostty.Input {
@@ -418,23 +398,6 @@ extension XGhostty.Input {
             }
         }
     }
-}
-
-extension XGhostty.Input.MouseButton: AppEnum {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Mouse Button")
-
-    static var caseDisplayRepresentations: [XGhostty.Input.MouseButton: DisplayRepresentation] = [
-        .unknown: "Unknown",
-        .left: "Left",
-        .right: "Right",
-        .middle: "Middle"
-    ]
-
-    static var allCases: [XGhostty.Input.MouseButton] = [
-        .left,
-        .right,
-        .middle,
-    ]
 }
 
 // MARK: XGhostty.Input.ScrollMods
@@ -504,20 +467,6 @@ extension XGhostty.Input {
     }
 }
 
-extension XGhostty.Input.Momentum: AppEnum {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Scroll Momentum")
-
-    static var caseDisplayRepresentations: [XGhostty.Input.Momentum: DisplayRepresentation] = [
-        .none: "None",
-        .began: "Began",
-        .stationary: "Stationary",
-        .changed: "Changed",
-        .ended: "Ended",
-        .cancelled: "Cancelled",
-        .mayBegin: "May Begin"
-    ]
-}
-
 #if canImport(AppKit)
 import AppKit
 
@@ -581,7 +530,7 @@ extension XGhostty.Input {
 
 extension XGhostty.Input {
     /// `xghostty_input_key_e`
-    enum Key: String {
+    enum Key: String, CaseIterable {
         // Writing System Keys
         case backquote
         case backslash
@@ -1174,144 +1123,4 @@ extension XGhostty.Input {
             }
         }
     }
-}
-
-extension XGhostty.Input.Key: AppEnum {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Key")
-
-    // Only include keys that have Mac keycodes for App Intents
-    static var allCases: [XGhostty.Input.Key] {
-        return [
-            // Letters (A-Z)
-            .a, .b, .c, .d, .e, .f, .g, .h, .i, .j, .k, .l, .m, .n, .o, .p, .q, .r, .s, .t, .u, .v, .w, .x, .y, .z,
-
-            // Numbers (0-9)
-            .digit0, .digit1, .digit2, .digit3, .digit4, .digit5, .digit6, .digit7, .digit8, .digit9,
-
-            // Common Control Keys
-            .space, .enter, .tab, .backspace, .escape, .delete,
-
-            // Arrow Keys
-            .arrowUp, .arrowDown, .arrowLeft, .arrowRight,
-
-            // Navigation Keys
-            .home, .end, .pageUp, .pageDown, .insert,
-
-            // Function Keys (F1-F20)
-            .f1, .f2, .f3, .f4, .f5, .f6, .f7, .f8, .f9, .f10, .f11, .f12,
-            .f13, .f14, .f15, .f16, .f17, .f18, .f19, .f20,
-
-            // Modifier Keys
-            .shiftLeft, .shiftRight, .controlLeft, .controlRight, .altLeft, .altRight,
-            .metaLeft, .metaRight, .capsLock,
-
-            // Punctuation & Symbols
-            .minus, .equal, .backquote, .bracketLeft, .bracketRight, .backslash,
-            .semicolon, .quote, .comma, .period, .slash,
-
-            // Numpad
-            .numLock, .numpad0, .numpad1, .numpad2, .numpad3, .numpad4, .numpad5,
-            .numpad6, .numpad7, .numpad8, .numpad9, .numpadAdd, .numpadSubtract,
-            .numpadMultiply, .numpadDivide, .numpadDecimal, .numpadEqual,
-            .numpadEnter, .numpadComma,
-
-            // Media Keys
-            .audioVolumeUp, .audioVolumeDown, .audioVolumeMute,
-
-            // International Keys
-            .intlBackslash, .intlRo, .intlYen,
-
-            // Other
-            .contextMenu
-        ]
-    }
-
-    static var caseDisplayRepresentations: [XGhostty.Input.Key: DisplayRepresentation] = [
-        // Letters (A-Z)
-        .a: "A", .b: "B", .c: "C", .d: "D", .e: "E", .f: "F", .g: "G", .h: "H", .i: "I", .j: "J",
-        .k: "K", .l: "L", .m: "M", .n: "N", .o: "O", .p: "P", .q: "Q", .r: "R", .s: "S", .t: "T",
-        .u: "U", .v: "V", .w: "W", .x: "X", .y: "Y", .z: "Z",
-
-        // Numbers (0-9)
-        .digit0: "0", .digit1: "1", .digit2: "2", .digit3: "3", .digit4: "4",
-        .digit5: "5", .digit6: "6", .digit7: "7", .digit8: "8", .digit9: "9",
-
-        // Common Control Keys
-        .space: "Space",
-        .enter: "Enter",
-        .tab: "Tab",
-        .backspace: "Backspace",
-        .escape: "Escape",
-        .delete: "Delete",
-
-        // Arrow Keys
-        .arrowUp: "Up Arrow",
-        .arrowDown: "Down Arrow",
-        .arrowLeft: "Left Arrow",
-        .arrowRight: "Right Arrow",
-
-        // Navigation Keys
-        .home: "Home",
-        .end: "End",
-        .pageUp: "Page Up",
-        .pageDown: "Page Down",
-        .insert: "Insert",
-
-        // Function Keys (F1-F20)
-        .f1: "F1", .f2: "F2", .f3: "F3", .f4: "F4", .f5: "F5", .f6: "F6",
-        .f7: "F7", .f8: "F8", .f9: "F9", .f10: "F10", .f11: "F11", .f12: "F12",
-        .f13: "F13", .f14: "F14", .f15: "F15", .f16: "F16", .f17: "F17",
-        .f18: "F18", .f19: "F19", .f20: "F20",
-
-        // Modifier Keys
-        .shiftLeft: "Left Shift",
-        .shiftRight: "Right Shift",
-        .controlLeft: "Left Control",
-        .controlRight: "Right Control",
-        .altLeft: "Left Alt",
-        .altRight: "Right Alt",
-        .metaLeft: "Left Command",
-        .metaRight: "Right Command",
-        .capsLock: "Caps Lock",
-
-        // Punctuation & Symbols
-        .minus: "Minus (-)",
-        .equal: "Equal (=)",
-        .backquote: "Backtick (`)",
-        .bracketLeft: "Left Bracket ([)",
-        .bracketRight: "Right Bracket (])",
-        .backslash: "Backslash (\\)",
-        .semicolon: "Semicolon (;)",
-        .quote: "Quote (')",
-        .comma: "Comma (,)",
-        .period: "Period (.)",
-        .slash: "Slash (/)",
-
-        // Numpad
-        .numLock: "Num Lock",
-        .numpad0: "Numpad 0", .numpad1: "Numpad 1", .numpad2: "Numpad 2",
-        .numpad3: "Numpad 3", .numpad4: "Numpad 4", .numpad5: "Numpad 5",
-        .numpad6: "Numpad 6", .numpad7: "Numpad 7", .numpad8: "Numpad 8", .numpad9: "Numpad 9",
-        .numpadAdd: "Numpad Add (+)",
-        .numpadSubtract: "Numpad Subtract (-)",
-        .numpadMultiply: "Numpad Multiply (×)",
-        .numpadDivide: "Numpad Divide (÷)",
-        .numpadDecimal: "Numpad Decimal",
-        .numpadEqual: "Numpad Equal",
-        .numpadEnter: "Numpad Enter",
-        .numpadComma: "Numpad Comma",
-
-        // Media Keys
-        .audioVolumeUp: "Volume Up",
-        .audioVolumeDown: "Volume Down",
-        .audioVolumeMute: "Volume Mute",
-
-        // International Keys
-        .intlBackslash: "International Backslash",
-        .intlRo: "International Ro",
-        .intlYen: "International Yen",
-
-        // Other
-        .contextMenu: "Context Menu"
-    ]
 }

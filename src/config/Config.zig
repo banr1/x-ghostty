@@ -70,14 +70,6 @@ pub const compatibility = std.StaticStringMap(
     // to set a radius).
     .{ "background-blur-radius", cli.compatibilityRenamed(Config, "background-blur") },
 
-    // XGhostty 1.2 renamed all our adw options to gtk because we now have
-    // a hard dependency on libadwaita.
-    .{ "adw-toolbar-style", cli.compatibilityRenamed(Config, "gtk-toolbar-style") },
-
-    // XGhostty 1.2 removed the `hidden` value from `gtk-tabs-location` and
-    // moved it to `window-show-tab-bar`.
-    .{ "gtk-tabs-location", compatGtkTabsLocation },
-
     // XGhostty 1.2 lets you set `cell-foreground` and `cell-background`
     // to match the cell foreground and background colors, respectively.
     // This can be used with `cursor-color` and `cursor-text` to recreate
@@ -88,35 +80,7 @@ pub const compatibility = std.StaticStringMap(
     // XGhostty 1.2 merged `bold-is-bright` into the new `bold-color`
     // by setting the value to "bright".
     .{ "bold-is-bright", compatBoldIsBright },
-
-    // XGhostty 1.2 removed the "desktop" option and renamed it to "detect".
-    // The semantics also changed slightly but this is the correct mapping.
-    .{ "gtk-single-instance", compatGtkSingleInstance },
-
-    // XGhostty 1.3 rename the "window" option to "new-window".
-    // See: https://github.com/ghostty-org/ghostty/pull/9764
-    .{ "macos-dock-drop-behavior", compatMacOSDockDropBehavior },
 });
-
-/// Set XGhostty's graphical user interface language to a language other than the
-/// system default language. For example:
-///
-///     language = de
-///
-/// will force the strings in XGhostty's graphical user interface to be in German
-/// rather than the system default.
-///
-/// This will not affect the language used by programs run _within_ XGhostty.
-/// Those will continue to use the default system language. There are also many
-/// non-GUI elements in XGhostty that are not translated - this setting will have
-/// no effect on those.
-///
-/// Warning: This setting cannot be reloaded at runtime. To change the language
-/// you must fully restart XGhostty.
-///
-/// GTK only.
-/// Available since 1.3.0.
-language: ?[:0]const u8 = null,
 
 /// The font families to use.
 ///
@@ -129,10 +93,9 @@ language: ?[:0]const u8 = null,
 /// font. This is particularly useful for multiple languages, symbolic fonts,
 /// etc.
 ///
-/// Notes on emoji specifically: On macOS, XGhostty by default will always use
-/// Apple Color Emoji and on Linux will always use Noto Emoji. You can
-/// override this behavior by specifying a font family here that contains
-/// emoji glyphs.
+/// Notes on emoji specifically: XGhostty by default will always use Apple
+/// Color Emoji. You can override this behavior by specifying a font family
+/// here that contains emoji glyphs.
 ///
 /// The specific styles (bold, italic, bold italic) do not need to be
 /// explicitly set. If a style is not set, then the regular style (font-family)
@@ -256,10 +219,6 @@ language: ?[:0]const u8 = null,
 /// adjusted their font size will retain their manually adjusted size.
 /// Otherwise, the font size of existing terminals will be updated on
 /// reload.
-///
-/// On Linux with GTK, font size is scaled according to both display-wide and
-/// text-specific scaling factors, which are often managed by your desktop
-/// environment (e.g. the GNOME display scale and large text settings).
 @"font-size": f32 = switch (builtin.os.tag) {
     // On macOS we default a little bigger since this tends to look better. This
     // is purely subjective but this is easy to modify.
@@ -305,7 +264,7 @@ language: ?[:0]const u8 = null,
 /// codepoint mappings.
 ///
 /// Changing this configuration at runtime will only affect new terminals,
-/// i.e. new windows, tabs, etc.
+/// i.e. new groups, splits, etc.
 @"font-codepoint-map": RepeatableCodepointMap = .{},
 
 /// Map specific Unicode codepoints to replacement values when copying text
@@ -384,7 +343,7 @@ language: ?[:0]const u8 = null,
 /// Valid values:
 ///
 /// * `native` - Perform alpha blending in the native color space for the OS.
-///   On macOS this corresponds to Display P3, and on Linux it's sRGB.
+///   On macOS this corresponds to Display P3.
 ///
 /// * `linear` - Perform alpha blending in linear space. This will eliminate
 ///   the darkening artifacts around the edges of text that are very visible
@@ -513,8 +472,8 @@ language: ?[:0]const u8 = null,
 /// to turn all flags on or off.
 ///
 /// This configuration only applies to XGhostty builds that use FreeType.
-/// This is usually the case only for Linux builds. macOS uses CoreText
-/// and does not have an equivalent configuration.
+/// macOS builds use CoreText and do not have an equivalent configuration, so
+/// this setting has no effect.
 ///
 /// Available flags:
 ///
@@ -530,9 +489,8 @@ language: ?[:0]const u8 = null,
 ///   * `autohint` - Enable the freetype auto-hinter. Enabled by default.
 ///
 ///   * `light` - Use a light hinting style, better preserving glyph shapes.
-///     This is the most common setting in GTK apps and therefore also XGhostty's
-///     default. This has no effect if `monochrome` is enabled. Enabled by
-///     default.
+///     This is XGhostty's default. This has no effect if `monochrome` is
+///     enabled. Enabled by default.
 ///
 /// Example: `hinting`, `no-hinting`, `force-autohint`, `no-force-autohint`
 @"freetype-load-flags": FreetypeLoadFlags = .{},
@@ -557,10 +515,8 @@ language: ?[:0]const u8 = null,
 ///
 /// The second directory is the `themes` subdirectory of the XGhostty resources
 /// directory. XGhostty ships with a multitude of themes that will be installed
-/// into this directory. On macOS, this list is in the
-/// `XGhostty.app/Contents/Resources/xghostty/themes` directory. On Linux, this
-/// list is in the `share/xghostty/themes` directory (wherever you installed the
-/// XGhostty "share" directory.
+/// into this directory. This list is in the
+/// `XGhostty.app/Contents/Resources/xghostty/themes` directory.
 ///
 /// To see a list of available themes, run `ghostty +list-themes`.
 ///
@@ -584,12 +540,8 @@ language: ?[:0]const u8 = null,
 /// `light:Rose Pine Dawn,dark:Rose Pine`. Whitespace around all values are
 /// trimmed and order of light and dark does not matter. Both light and dark
 /// must be specified in this form. In this form, the theme used will be
-/// based on the current desktop environment theme.
+/// based on the current system appearance (light or dark).
 ///
-/// There are some known bugs with light/dark mode theming. These will
-/// be fixed in a future update:
-///
-///   - macOS: titlebar tabs style is not updated when switching themes.
 theme: ?Theme = null,
 
 /// Background color for the window.
@@ -918,7 +870,7 @@ palette: Palette = .{},
 /// Hide the mouse immediately when typing. The mouse becomes visible again
 /// when the mouse is used (button, movement, etc.). Platform-specific behavior
 /// may dictate other scenarios where the mouse is shown. For example on macOS,
-/// the mouse is shown again when a new window, tab, or split is created.
+/// the mouse is shown again when a new group or split is created.
 @"mouse-hide-while-typing": bool = false,
 
 /// When to scroll the surface to the bottom. The format of this is a list of
@@ -1034,30 +986,8 @@ palette: Palette = .{},
 ///   * `macos-glass-regular` - Standard glass effect with some opacity
 ///   * `macos-glass-clear` - Highly transparent glass effect
 ///
-/// If the macOS values are set, then this implies `background-blur = true`
-/// on non-macOS platforms.
-///
-/// Supported on macOS and on some Linux desktop environments, including:
-///
-///   * KDE Plasma (Wayland and X11)
-///
-/// Warning: the exact blur intensity is _ignored_ under KDE Plasma, and setting
-/// this setting to either `true` or any positive blur intensity value would
-/// achieve the same effect. The reason is that KWin, the window compositor
-/// powering Plasma, only has one global blur setting and does not allow
-/// applications to specify individual blur settings.
-///
-/// To configure KWin's global blur setting, open System Settings and go to
-/// "Apps & Windows" > "Window Management" > "Desktop Effects" and select the
-/// "Blur" plugin. If disabled, enable it by ticking the checkbox to the left.
-/// Then click on the "Configure" button and there will be two sliders that
-/// allow you to set background blur and noise intensities for all apps,
-/// including XGhostty.
-///
-/// All other Linux desktop environments are as of now unsupported. Users may
-/// need to set environment-specific settings and/or install third-party plugins
-/// in order to support background blur, as there isn't a unified interface for
-/// doing so.
+/// The `macos-glass-*` values require macOS 26.0 or later; on earlier
+/// versions they behave the same as `true`.
 @"background-blur": BackgroundBlur = .false,
 
 /// The opacity level (opposite of transparency) of an unfocused split.
@@ -1152,8 +1082,8 @@ palette: Palette = .{},
 /// command in a shell. This can be used to ensure our heuristics to choose the
 /// right mode are not used in case they are wrong. (Available since: 1.2.0)
 ///
-/// This command will be used for all new terminal surfaces, i.e. new windows,
-/// tabs, etc. If you want to run a command only for the first terminal surface
+/// This command will be used for all new terminal surfaces, i.e. new groups,
+/// splits, etc. If you want to run a command only for the first terminal surface
 /// created when XGhostty starts, use the `initial-command` configuration.
 ///
 /// XGhostty supports the common `-e` flag for executing a command with
@@ -1180,12 +1110,8 @@ command: ?Command = null,
 ///     be shell-expanded by the upstream (e.g. the shell used to type in
 ///     the `ghostty -e` command).
 ///
-///   * `gtk-single-instance=false` - This ensures that a new instance is
-///     launched and the CLI args are respected.
-///
-///   * `quit-after-last-window-closed=true` - This ensures that the XGhostty
-///     process will exit when the command exits. Additionally, the
-///     `quit-after-last-window-closed-delay` is unset.
+///   * XGhostty always quits when the last surface is closed, so the
+///     process will exit when the command exits.
 ///
 ///   * `shell-integration=detect` (if not `none`) - This prevents forcibly
 ///     injecting any configured shell integration into the command's
@@ -1209,10 +1135,6 @@ command: ?Command = null,
 /// Command finished notifications requires that either shell integration is
 /// enabled, or that your shell sends OSC 133 escape sequences to mark the start
 /// and end of commands.
-///
-/// On GTK, there is a context menu item that will enable command finished
-/// notifications for a single command, overriding the `never` and `unfocused`
-/// options.
 ///
 /// Available since 1.3.0.
 @"notify-on-command-finish": NotifyOnCommandFinish = .never,
@@ -1361,9 +1283,8 @@ input: RepeatableReadableIO = .{},
 /// to be abnormal. This is used to show an error message when the process exits
 /// too quickly.
 ///
-/// On Linux, this must be paired with a non-zero exit code. On macOS, we allow
-/// any exit code because of the way shell processes are launched via the login
-/// command.
+/// Any exit code is allowed because of the way shell processes are launched
+/// via the login command.
 @"abnormal-command-exit-runtime": u32 = 250,
 
 /// The size of the scrollback buffer in bytes. This also includes the active
@@ -1417,9 +1338,8 @@ scrollbar: Scrollbar = .system,
 /// TODO: This can't currently be set!
 link: RepeatableLink = .{},
 
-/// Enable URL matching. URLs are matched on hover with control (Linux) or
-/// command (macOS) pressed and open using the default system application for
-/// the linked URL.
+/// Enable URL matching. URLs are matched on hover with command pressed and
+/// open using the default system application for the linked URL.
 ///
 /// The URL matcher is always lowest priority of any configured links (see
 /// `link`). If you want to customize URL matching, use `link` and disable this.
@@ -1435,37 +1355,28 @@ link: RepeatableLink = .{},
 /// Available since: 1.2.0
 @"link-previews": LinkPreviews = .true,
 
-/// Whether to start the window in a maximized state. This setting applies
-/// to new windows and does not apply to tabs, splits, etc. However, this setting
-/// will apply to all new windows, not just the first one.
+/// Whether to start the window in a maximized state. This applies only to the
+/// window itself and does not apply to groups, splits, etc.
 ///
 /// Available since: 1.1.0
 maximize: bool = false,
 
-/// Start new windows in fullscreen. This setting applies to new windows and
-/// does not apply to tabs, splits, etc. However, this setting will apply to all
-/// new windows, not just the first one.
+/// Start the window in fullscreen. This applies only to the window itself and
+/// does not apply to groups, splits, etc.
 ///
 /// Allowable values are:
 ///
 ///   * `false` - Don't start in fullscreen (default)
 ///   * `true` - Start in native fullscreen
-///   * `non-native` - (macOS only) Start in non-native fullscreen, hiding the
-///     menu bar. This is faster than native fullscreen since it doesn't use
-///     animations. On non-macOS platforms, this behaves the same as `true`.
-///   * `non-native-visible-menu` - (macOS only) Start in non-native fullscreen,
-///     keeping the menu bar visible. On non-macOS platforms, behaves like `true`.
-///   * `non-native-padded-notch` - (macOS only) Start in non-native fullscreen,
-///     hiding the menu bar but padding for the notch on applicable devices.
-///     On non-macOS platforms, behaves like `true`.
+///   * `non-native` - Start in non-native fullscreen, hiding the menu bar.
+///     This is faster than native fullscreen since it doesn't use animations.
+///   * `non-native-visible-menu` - Start in non-native fullscreen, keeping the
+///     menu bar visible.
+///   * `non-native-padded-notch` - Start in non-native fullscreen, hiding the
+///     menu bar but padding for the notch on applicable devices.
 ///
-/// Important: tabs DO NOT WORK with non-native fullscreen modes. Non-native
-/// fullscreen removes the titlebar and macOS native tabs require the titlebar.
-/// If you use tabs, use `true` (native) instead.
-///
-/// On macOS, `true` (native fullscreen) does not work if `window-decoration`
-/// is set to `false`, because native fullscreen on macOS requires window
-/// decorations.
+/// `true` (native fullscreen) does not work if `window-decoration` is set to
+/// `false`, because native fullscreen on macOS requires window decorations.
 fullscreen: Fullscreen = .false,
 
 /// The title XGhostty will use for the window. This will force the title of the
@@ -1484,48 +1395,16 @@ fullscreen: Fullscreen = .false,
 /// to get the new title.
 title: ?[:0]const u8 = null,
 
-/// The setting that will change the application class value.
-///
-/// This controls the class field of the `WM_CLASS` X11 property (when running
-/// under X11), the Wayland application ID (when running under Wayland), and the
-/// bus name that XGhostty uses to connect to DBus.
-///
-/// Note that changing this value between invocations will create new, separate
-/// instances, of XGhostty when running with `gtk-single-instance=true`. See that
-/// option for more details.
-///
-/// Changing this value may break launching XGhostty from `.desktop` files, via
-/// DBus activation, or systemd user services as the system is expecting XGhostty
-/// to connect to DBus using the default `class` when it is launched.
-///
-/// The class name must follow the requirements defined [in the GTK
-/// documentation](https://docs.gtk.org/gio/type_func.Application.id_is_valid.html).
-///
-/// The default is `com.mitchellh.xghostty`.
-///
-/// This only affects GTK builds.
-class: ?[:0]const u8 = null,
-
-/// This controls the instance name field of the `WM_CLASS` X11 property when
-/// running under X11. It has no effect otherwise.
-///
-/// The default is `ghostty`.
-///
-/// This only affects GTK builds.
-@"x11-instance-name": ?[:0]const u8 = null,
-
 /// The directory to change to after starting the command.
 ///
-/// This setting is secondary to the `window-inherit-working-directory`
-/// setting. If a previous XGhostty terminal exists in the same process,
-/// `window-inherit-working-directory` will take precedence. Otherwise, this
-/// setting will be used. Typically, this setting is used only for the first
-/// window.
+/// This setting is secondary to the inheritance behavior of new groups and
+/// splits: if a previous XGhostty terminal exists in the same process, its
+/// working directory takes precedence. Otherwise, this setting will be used.
+/// Typically, this setting is used only for the first surface.
 ///
-/// The default is `inherit` except in special scenarios listed next. On macOS,
-/// if XGhostty can detect it is launched from launchd (double-clicked) or
-/// `open`, then it defaults to `home`. On Linux with GTK, if XGhostty can detect
-/// it was launched from a desktop launcher, then it defaults to `home`.
+/// The default is `inherit` except in one special scenario: if XGhostty can
+/// detect it is launched from launchd (double-clicked) or `open`, then it
+/// defaults to `home`.
 ///
 /// The value of this must be an absolute path, a path prefixed with `~/`
 /// (the tilde will be expanded to the user's home directory), or
@@ -1611,14 +1490,14 @@ class: ?[:0]const u8 = null,
 ///
 /// You may also specify multiple triggers separated by `>` to require a
 /// sequence of triggers to activate the action. For example,
-/// `ctrl+a>n=new_window` will only trigger the `new_window` action if the
+/// `ctrl+a>n=toggle_fullscreen` will only trigger the `toggle_fullscreen` action if the
 /// user presses `ctrl+a` followed separately by `n`. In other software, this
 /// is sometimes called a leader key, a key chord, a key table, etc. There
 /// is no hardcoded limit on the number of parts in a sequence.
 ///
 /// Warning: If you define a sequence as a CLI argument to `ghostty`,
 /// you probably have to quote the keybind since `>` is a special character
-/// in most shells. Example: ghostty --keybind='ctrl+a>n=new_window'
+/// in most shells. Example: ghostty --keybind='ctrl+a>n=toggle_fullscreen'
 ///
 /// A trigger sequence has some special handling:
 ///
@@ -1635,7 +1514,7 @@ class: ?[:0]const u8 = null,
 ///
 ///   * If a prefix in a sequence is previously bound, the sequence will
 ///     override the previous binding. For example, if `ctrl+a` is bound to
-///     `new_window` and `ctrl+a>n` is bound to `new_tab`, pressing `ctrl+a`
+///     `toggle_fullscreen` and `ctrl+a>n` is bound to `close_group`, pressing `ctrl+a`
 ///     will do nothing.
 ///
 ///   * Adding to the above, if a previously bound sequence prefix is
@@ -1709,7 +1588,7 @@ class: ?[:0]const u8 = null,
 ///    Note: this does not work in all environments; see the additional notes
 ///    below for more information.
 ///
-///    Available since: 1.0.0 on macOS, 1.2.0 on GTK
+///    Available since: 1.0.0
 ///
 ///  * `unconsumed:`
 ///
@@ -1751,33 +1630,11 @@ class: ?[:0]const u8 = null,
 /// `global:unconsumed:ctrl+a=reload_config` will make the keybind global
 /// and not consume the input to reload the config.
 ///
-/// Note: `global:` is only supported on macOS and certain Linux platforms.
-///
-/// On macOS, this feature requires accessibility permissions to be granted
-/// to XGhostty. When a `global:` keybind is specified and XGhostty is launched
-/// or reloaded, XGhostty will attempt to request these permissions.
-/// If the permissions are not granted, the keybind will not work. On macOS,
-/// you can find these permissions in System Preferences -> Privacy & Security
-/// -> Accessibility.
-///
-/// On Linux, you need a desktop environment that implements the
-/// [Global Shortcuts](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html)
-/// protocol as a part of its XDG desktop protocol implementation.
-/// Desktop environments that are known to support (or not support)
-/// global shortcuts include:
-///
-///  - Users using KDE Plasma (since [5.27](https://kde.org/announcements/plasma/5/5.27.0/#wayland))
-///    and GNOME (since [48](https://release.gnome.org/48/#and-thats-not-all)) should be able
-///    to use global shortcuts with little to no configuration.
-///
-///  - Some manual configuration is required on Hyprland. Consult the steps
-///    outlined on the [Hyprland Wiki](https://wiki.hyprland.org/Configuring/Binds/#dbus-global-shortcuts)
-///    to set up global shortcuts correctly.
-///    (Important: [`xdg-desktop-portal-hyprland`](https://wiki.hyprland.org/Hypr-Ecosystem/xdg-desktop-portal-hyprland/)
-///    must also be installed!)
-///
-///  - Notably, global shortcuts have not been implemented on wlroots-based
-///    compositors like Sway (see [upstream issue](https://github.com/emersion/xdg-desktop-portal-wlr/issues/240)).
+/// `global:` requires accessibility permissions to be granted to XGhostty.
+/// When a `global:` keybind is specified and XGhostty is launched or reloaded,
+/// XGhostty will attempt to request these permissions. If the permissions are
+/// not granted, the keybind will not work. You can find these permissions in
+/// System Settings -> Privacy & Security -> Accessibility.
 ///
 /// ## Chained Actions
 ///
@@ -1786,16 +1643,16 @@ class: ?[:0]const u8 = null,
 /// executed in order. The syntax is:
 ///
 /// ```ini
-/// keybind = ctrl+a=new_window
+/// keybind = ctrl+a=toggle_fullscreen
 /// keybind = chain=goto_split:left
 /// ```
 ///
-/// This binds `ctrl+a` to first open a new window, then move focus to the
+/// This binds `ctrl+a` to first toggle fullscreen, then move focus to the
 /// left split. Each `chain` entry appends an action to the most recently
 /// defined keybind. You can chain as many actions as you want:
 ///
 /// ```ini
-/// keybind = ctrl+a=new_window
+/// keybind = ctrl+a=toggle_fullscreen
 /// keybind = chain=goto_split:left
 /// keybind = chain=toggle_fullscreen
 /// ```
@@ -1806,7 +1663,7 @@ class: ?[:0]const u8 = null,
 /// Chained actions work with key sequences as well. For example:
 ///
 /// ```ini
-/// keybind = ctrl+a>n=new_window
+/// keybind = ctrl+a>n=toggle_fullscreen
 /// keybind = chain=goto_split:left
 /// ````
 ///
@@ -1828,7 +1685,7 @@ class: ?[:0]const u8 = null,
 /// `<table>` value is the name of the key table. Table names can contain
 /// anything except `/`, `=`, `+`, and `>`. The characters `+` and `>` are
 /// reserved for keybind syntax (modifier combinations and key sequences).
-/// For example `foo/ctrl+a=new_window` defines a binding within a table
+/// For example `foo/ctrl+a=toggle_fullscreen` defines a binding within a table
 /// named `foo`.
 ///
 /// Tables are activated and deactivated using the binding actions
@@ -1854,18 +1711,18 @@ class: ?[:0]const u8 = null,
 ///     `activate_key_table_once:<name>`. A one-shot table is automatically
 ///     deactivated when any non-catch-all binding is invoked.
 ///
-///   * Key sequences work within tables: `foo/ctrl+a>ctrl+b=new_window`.
+///   * Key sequences work within tables: `foo/ctrl+a>ctrl+b=toggle_fullscreen`.
 ///     If an invalid key is pressed, the sequence ends but the table remains
 ///     active.
 ///
 ///   * Chain actions work within tables, the `chain` keyword applies to
 ///     the most recently defined binding in the table. e.g. if you set
-///     `table/ctrl+a=new_window` you can chain by using `chain=text:hello`.
+///     `table/ctrl+a=toggle_fullscreen` you can chain by using `chain=text:hello`.
 ///     Important: chain itself doesn't get prefixed with the table name,
 ///     since it applies to the most recent binding in any table.
 ///
 ///   * Prefixes like `global:` work within tables:
-///     `foo/global:ctrl+a=new_window`.
+///     `foo/global:ctrl+a=toggle_fullscreen`.
 ///
 /// Key tables are available since XGhostty 1.3.0.
 keybind: Keybinds = .{},
@@ -1926,7 +1783,7 @@ keybind: Keybinds = .{},
 /// will appear in the logs.
 ///
 /// Changing this configuration at runtime will only affect new terminals, i.e.
-/// new windows, tabs, etc.
+/// new groups, splits, etc.
 ///
 /// To set a different left and right padding, specify two numerical values
 /// separated by a comma. For example, `window-padding-x = 2,4` will set the
@@ -1945,7 +1802,7 @@ keybind: Keybinds = .{},
 /// will appear in the logs.
 ///
 /// Changing this configuration at runtime will only affect new terminals,
-/// i.e. new windows, tabs, etc.
+/// i.e. new groups, splits, etc.
 ///
 /// To set a different top and bottom padding, specify two numerical values
 /// separated by a comma. For example, `window-padding-y = 2,4` will set the
@@ -2013,101 +1870,49 @@ keybind: Keybinds = .{},
 /// This setting is only supported currently on macOS.
 @"window-vsync": bool = true,
 
-/// If true, new windows will inherit the working directory of the
-/// previously focused window. If no window was previously focused, the default
-/// working directory will be used (the `working-directory` option).
-@"window-inherit-working-directory": bool = true,
-
-/// If true, new tabs will inherit the working directory of the
-/// previously focused tab. If no tab was previously focused, the default
-/// working directory will be used (the `working-directory` option).
-@"tab-inherit-working-directory": bool = true,
-
 /// If true, new split panes will inherit the working directory of the
 /// previously focused split. If no split was previously focused, the default
 /// working directory will be used (the `working-directory` option).
 @"split-inherit-working-directory": bool = true,
 
-/// If true, new windows and tabs will inherit the font size of the previously
-/// focused window. If no window was previously focused, the default font size
-/// will be used. If this is false, the default font size specified in the
-/// configuration `font-size` will be used.
-@"window-inherit-font-size": bool = true,
-
-/// Configure a preference for window decorations. This setting specifies
-/// a _preference_; the actual OS, desktop environment, window manager, etc.
-/// may override this preference. XGhostty will do its best to respect this
-/// preference but it may not always be possible.
+/// Configure whether windows are drawn with decorations.
 ///
 /// Valid values:
+///
+///  * `auto`
+///
+///    Use the standard macOS window decorations: titlebar, window controls,
+///    borders, and rounded corners. This is what makes XGhostty look native.
 ///
 ///  * `none`
 ///
 ///    All window decorations will be disabled. Titlebar, borders, etc. will
-///    not be shown. On macOS, this will also disable tabs (enforced by the
-///    system).
-///
-///  * `auto`
-///
-///    Automatically decide to use either client-side or server-side
-///    decorations based on the detected preferences of the current OS and
-///    desktop environment. This option usually makes XGhostty look the most
-///    "native" for your desktop.
+///    not be shown.
 ///
 ///  * `client`
 ///
-///    Prefer client-side decorations.
-///
-///    Available since: 1.1.0
-///
-///  * `server`
-///
-///    Prefer server-side decorations. This is only relevant on Linux with GTK,
-///    either on X11, or Wayland on a compositor that supports the
-///    `org_kde_kwin_server_decoration` protocol (e.g. KDE Plasma, but almost
-///    any non-GNOME desktop supports this protocol).
-///
-///    If `server` is set but the environment doesn't support server-side
-///    decorations, client-side decorations will be used instead.
-///
-///    Available since: 1.1.0
+///    Retained alias for `auto`; macOS windows are always client-side
+///    decorated so there is no behavioral difference between the two.
 ///
 /// The default value is `auto`.
 ///
 /// For the sake of backwards compatibility and convenience, this setting also
 /// accepts boolean true and false values. If set to `true`, this is equivalent
 /// to `auto`. If set to `false`, this is equivalent to `none`.
-/// This is convenient for users who live primarily on systems that don't
-/// differentiate between client and server-side decorations (e.g. macOS and
-/// Windows).
 ///
-/// The "toggle_window_decorations" keybind action can be used to create
-/// a keybinding to toggle this setting at runtime.
-///
-/// macOS: To hide the titlebar without removing the native window borders
-///        or rounded corners, use `macos-titlebar-style = hidden` instead.
+/// To hide the titlebar without removing the native window borders or
+/// rounded corners, use `macos-titlebar-style = hidden` instead.
 @"window-decoration": WindowDecoration = .auto,
 
-/// The font that will be used for the application's window and tab titles.
+/// The font that will be used for the window title.
 ///
 /// If this setting is left unset, the system default font will be used.
 ///
 /// Note: any font available on the system may be used, this font is not
 /// required to be a fixed-width font.
 ///
-/// Available since: 1.0.0 on macOS, 1.1.0 on GTK
+/// Available since: 1.0.0
 @"window-title-font-family": ?[:0]const u8 = null,
-
-/// The text that will be displayed in the subtitle of the window. Valid values:
-///
-///   * `false` - Disable the subtitle.
-///   * `working-directory` - Set the subtitle to the working directory of the
-///      surface.
-///
-/// This feature is only supported on GTK.
-///
-/// Available since: 1.1.0
-@"window-subtitle": WindowSubtitle = .false,
 
 /// The theme to use for the windows. Valid values:
 ///
@@ -2118,15 +1923,11 @@ keybind: Keybinds = .{},
 ///   * `system` - Use the system theme.
 ///   * `light` - Use the light theme regardless of system theme.
 ///   * `dark` - Use the dark theme regardless of system theme.
-///   * `ghostty` - Use the background and foreground colors specified in the
-///     XGhostty configuration. This is only supported on Linux builds.
 ///
-/// On macOS, if `macos-titlebar-style` is `tabs` or `transparent`, the window theme will be
-/// automatically set based on the luminosity of the terminal background color.
-/// This only applies to terminal windows. This setting will still apply to
-/// non-terminal windows within XGhostty.
-///
-/// This is currently only supported on macOS and Linux.
+/// If `macos-titlebar-style` is `transparent`, the window theme will be
+/// automatically set based on the luminosity of the terminal background
+/// color. This only applies to terminal windows. This setting will still apply
+/// to non-terminal windows within XGhostty.
 @"window-theme": WindowTheme = .auto,
 
 /// The color space to use when interpreting terminal colors. "Terminal colors"
@@ -2157,15 +1958,10 @@ keybind: Keybinds = .{},
 /// Sizes larger than the screen size will be clamped to the screen size.
 /// This can be used to create a maximized-by-default window size.
 ///
-/// This will not affect new tabs, splits, or other nested terminal elements.
-/// This only affects the initial window size of any new window. Changing this
-/// value will not affect the size of the window after it has been created. This
-/// is only used for the initial size.
-///
-/// BUG: On Linux with GTK, the calculated window size will not properly take
-/// into account window decorations. As a result, the grid dimensions will not
-/// exactly match this configuration. If window decorations are disabled (see
-/// `window-decoration`), then this will work as expected.
+/// This will not affect groups, splits, or other nested terminal elements.
+/// This only affects the initial window size. Changing this value will not
+/// affect the size of the window after it has been created. This is only used
+/// for the initial size.
 ///
 /// Windows smaller than 10 wide by 4 high are not allowed.
 @"window-height": u32 = 0,
@@ -2187,18 +1983,14 @@ keybind: Keybinds = .{},
 /// Invalid positions are runtime-specific, but generally the positions are
 /// clamped to the nearest valid position.
 ///
-/// On macOS, the window position is relative to the top-left corner of
-/// the visible screen area. This means that if the menu bar is visible, the
-/// window will be placed below the menu bar.
-///
-/// Note: this is only supported on macOS. The GTK runtime does not support
-/// setting the window position, as windows are only allowed position
-/// themselves in X11 and not Wayland.
+/// The window position is relative to the top-left corner of the visible
+/// screen area. This means that if the menu bar is visible, the window will be
+/// placed below the menu bar.
 @"window-position-x": ?i16 = null,
 @"window-position-y": ?i16 = null,
 
 /// Whether to enable saving and restoring window state. Window state includes
-/// their position, size, tabs, splits, etc. Some window state requires shell
+/// the window position, size, groups, splits, etc. Some window state requires shell
 /// integration, such as preserving working directories. See `shell-integration`
 /// for more information.
 ///
@@ -2225,59 +2017,11 @@ keybind: Keybinds = .{},
 /// saves state on exit if this is enabled.
 ///
 /// The default value is `default`.
-///
-/// This is currently only supported on macOS. This has no effect on Linux.
 @"window-save-state": WindowSaveState = .default,
 
 /// Resize the window in discrete increments of the focused surface's cell size.
-/// If this is disabled, surfaces are resized in pixel increments. Currently
-/// only supported on macOS.
+/// If this is disabled, surfaces are resized in pixel increments.
 @"window-step-resize": bool = false,
-
-/// The position where new tabs are created. Valid values:
-///
-///   * `current` - Insert the new tab after the currently focused tab,
-///     or at the end if there are no focused tabs.
-///
-///   * `end` - Insert the new tab at the end of the tab list.
-@"window-new-tab-position": WindowNewTabPosition = .current,
-
-/// Whether to show the tab bar.
-///
-/// Valid values:
-///
-///  - `always`
-///
-///    Always display the tab bar, even when there's only one tab.
-///
-///    Available since: 1.2.0
-///
-///  - `auto` *(default)*
-///
-///    Automatically show and hide the tab bar. The tab bar is only
-///    shown when there are two or more tabs present.
-///
-///  - `never`
-///
-///    Never show the tab bar. Tabs are only accessible via the tab
-///    overview or by keybind actions.
-///
-/// Currently only supported on Linux (GTK).
-@"window-show-tab-bar": WindowShowTabBar = .auto,
-
-/// Background color for the window titlebar. This only takes effect if
-/// window-theme is set to ghostty. Currently only supported in the GTK app
-/// runtime.
-///
-/// Specified as either hex (`#RRGGBB` or `RRGGBB`) or a named X11 color.
-@"window-titlebar-background": ?Color = null,
-
-/// Foreground color for the window titlebar. This only takes effect if
-/// window-theme is set to ghostty. Currently only supported in the GTK app
-/// runtime.
-///
-/// Specified as either hex (`#RRGGBB` or `RRGGBB`) or a named X11 color.
-@"window-titlebar-foreground": ?Color = null,
 
 /// This controls when resize overlays are shown. Resize overlays are a
 /// transient popup that shows the size of the terminal while the surfaces are
@@ -2412,7 +2156,7 @@ keybind: Keybinds = .{},
 /// selection clipboard); with `clipboard` it reads from the system
 /// clipboard.
 ///
-/// The default value is true on Linux and macOS.
+/// The default value is true.
 @"copy-on-select": CopyOnSelect = switch (builtin.os.tag) {
     .linux => .true,
     .macos => .true,
@@ -2498,65 +2242,6 @@ keybind: Keybinds = .{},
 /// running.
 @"confirm-close-surface": ConfirmCloseSurface = .true,
 
-/// Whether or not to quit after the last surface is closed.
-///
-/// This defaults to `false` on macOS since that is standard behavior for
-/// a macOS application. On Linux, this defaults to `true` since that is
-/// generally expected behavior.
-///
-/// On Linux, if this is `true`, XGhostty can delay quitting fully until a
-/// configurable amount of time has passed after the last window is closed.
-/// See the documentation of `quit-after-last-window-closed-delay`.
-@"quit-after-last-window-closed": bool = builtin.os.tag == .linux,
-
-/// Controls how long XGhostty will stay running after the last open surface has
-/// been closed. This only has an effect if `quit-after-last-window-closed` is
-/// also set to `true`.
-///
-/// The minimum value for this configuration is `1s`. Any values lower than
-/// this will be clamped to `1s`.
-///
-/// The duration is specified as a series of numbers followed by time units.
-/// Whitespace is allowed between numbers and units. Each number and unit will
-/// be added together to form the total duration.
-///
-/// The allowed time units are as follows:
-///
-///   * `y` - 365 SI days, or 8760 hours, or 31536000 seconds. No adjustments
-///     are made for leap years or leap seconds.
-///   * `d` - one SI day, or 86400 seconds.
-///   * `h` - one hour, or 3600 seconds.
-///   * `m` - one minute, or 60 seconds.
-///   * `s` - one second.
-///   * `ms` - one millisecond, or 0.001 second.
-///   * `us` or `µs` - one microsecond, or 0.000001 second.
-///   * `ns` - one nanosecond, or 0.000000001 second.
-///
-/// Examples:
-///   * `1h30m`
-///   * `45s`
-///
-/// Units can be repeated and will be added together. This means that
-/// `1h1h` is equivalent to `2h`. This is confusing and should be avoided.
-/// A future update may disallow this.
-///
-/// The maximum value is `584y 49w 23h 34m 33s 709ms 551µs 615ns`. Any
-/// value larger than this will be clamped to the maximum value.
-///
-/// By default `quit-after-last-window-closed-delay` is unset and
-/// XGhostty will quit immediately after the last window is closed if
-/// `quit-after-last-window-closed` is `true`.
-///
-/// Only implemented on Linux.
-@"quit-after-last-window-closed-delay": ?Duration = null,
-
-/// This controls whether an initial window is created when XGhostty
-/// is run. Note that if `quit-after-last-window-closed` is `true` and
-/// `quit-after-last-window-closed-delay` is set, setting `initial-window` to
-/// `false` will mean that XGhostty will quit after the configured delay if no
-/// window is ever created. Only implemented on Linux and macOS.
-@"initial-window": bool = true,
-
 /// The duration that undo operations remain available. After this
 /// time, the operation will be removed from the undo stack and
 /// cannot be undone.
@@ -2598,198 +2283,13 @@ keybind: Keybinds = .{},
 /// `1h1h` is equivalent to `2h`. This is confusing and should be avoided.
 /// A future update may disallow this.
 ///
-/// This configuration is only supported on macOS. Linux doesn't
-/// support undo operations at all so this configuration has no
-/// effect.
-///
 /// Available since: 1.2.0
 @"undo-timeout": Duration = .{ .duration = 5 * std.time.ns_per_s },
-
-/// The position of the "quick" terminal window. To learn more about the
-/// quick terminal, see the documentation for the `toggle_quick_terminal`
-/// binding action.
-///
-/// Valid values are:
-///
-///   * `top` - Terminal appears at the top of the screen.
-///   * `bottom` - Terminal appears at the bottom of the screen.
-///   * `left` - Terminal appears at the left of the screen.
-///   * `right` - Terminal appears at the right of the screen.
-///   * `center` - Terminal appears at the center of the screen.
-///
-/// On macOS, changing this configuration requires restarting XGhostty
-/// completely.
-///
-/// Note: There is no default keybind for toggling the quick terminal.
-/// To enable this feature, bind the `toggle_quick_terminal` action to a key.
-@"quick-terminal-position": QuickTerminalPosition = .top,
-
-/// The size of the quick terminal.
-///
-/// The size can be specified either as a percentage of the screen dimensions
-/// (height/width), or as an absolute size in pixels. Percentage values are
-/// suffixed with `%` (e.g. `20%`) while pixel values are suffixed with `px`
-/// (e.g. `300px`). A bare value without a suffix is a config error.
-///
-/// When only one size is specified, the size parameter affects the size of
-/// the quick terminal on its *primary axis*, which depends on its position:
-/// height for quick terminals placed on the top or bottom, and width for left
-/// or right. The primary axis of a centered quick terminal depends on the
-/// monitor's orientation: height when on a landscape monitor, and width when
-/// on a portrait monitor.
-///
-/// The *secondary axis* would be maximized for non-center positioned
-/// quick terminals unless another size parameter is specified, separated
-/// from the first by a comma (`,`). Percentage and pixel sizes can be mixed
-/// together: for instance, a size of `50%,500px` for a top-positioned quick
-/// terminal would be half a screen tall, and 500 pixels wide.
-///
-/// Available since: 1.2.0
-@"quick-terminal-size": QuickTerminalSize = .{},
-
-/// The layer of the quick terminal window. The higher the layer,
-/// the more windows the quick terminal may conceal.
-///
-/// Valid values are:
-///
-///  * `overlay`
-///
-///    The quick terminal appears in front of all windows.
-///
-///  * `top` (default)
-///
-///    The quick terminal appears in front of normal windows but behind
-///    fullscreen overlays like lock screens.
-///
-///  * `bottom`
-///
-///    The quick terminal appears behind normal windows but in front of
-///    wallpapers and other windows in the background layer.
-///
-///  * `background`
-///
-///    The quick terminal appears behind all windows.
-///
-/// GTK Wayland only.
-///
-/// Available since: 1.2.0
-@"gtk-quick-terminal-layer": QuickTerminalLayer = .top,
-/// The namespace for the quick terminal window.
-///
-/// This is an identifier that is used by the Wayland compositor and/or
-/// scripts to determine the type of layer surfaces and to possibly apply
-/// unique effects.
-///
-/// GTK Wayland only.
-///
-/// Available since: 1.2.0
-@"gtk-quick-terminal-namespace": [:0]const u8 = "xghostty-quick-terminal",
-
-/// The screen where the quick terminal should show up.
-///
-/// Valid values are:
-///
-///  * `main` - The screen that the operating system recommends as the main
-///    screen. On macOS, this is the screen that is currently receiving
-///    keyboard input. This screen is defined by the operating system and
-///    not chosen by XGhostty.
-///
-///  * `mouse` - The screen that the mouse is currently hovered over.
-///
-///  * `macos-menu-bar` - The screen that contains the macOS menu bar as
-///    set in the display settings on macOS. This is a bit confusing because
-///    every screen on macOS has a menu bar, but this is the screen that
-///    contains the primary menu bar.
-///
-/// The default value is `main` because this is the recommended screen
-/// by the operating system.
-///
-/// On macOS, `macos-menu-bar` uses the screen containing the menu bar.
-/// On Linux/Wayland, `macos-menu-bar` is treated as equivalent to `main`.
-///
-/// Note: On Linux, there is no universal concept of a "primary" monitor.
-/// XGhostty uses the compositor-reported primary output when available and
-/// falls back to the first monitor reported by GDK if no primary output can
-/// be resolved.
-@"quick-terminal-screen": QuickTerminalScreen = .main,
-
-/// Duration (in seconds) of the quick terminal enter and exit animation.
-/// Set it to 0 to disable animation completely. This can be changed at
-/// runtime.
-///
-/// Only implemented on macOS.
-@"quick-terminal-animation-duration": f64 = 0.2,
-
-/// Automatically hide the quick terminal when focus shifts to another window.
-/// Set it to false for the quick terminal to remain open even when it loses focus.
-///
-/// Defaults to true on macOS and on false on Linux/BSD. This is because global
-/// shortcuts on Linux require system configuration and are considerably less
-/// accessible than on macOS, meaning that it is more preferable to keep the
-/// quick terminal open until the user has completed their task.
-/// This default may change in the future.
-@"quick-terminal-autohide": bool = switch (builtin.os.tag) {
-    .linux => false,
-    .macos => true,
-    else => false,
-},
-
-/// This configuration option determines the behavior of the quick terminal
-/// when switching between macOS spaces. macOS spaces are virtual desktops
-/// that can be manually created or are automatically created when an
-/// application is in full-screen mode.
-///
-/// Valid values are:
-///
-///  * `move` - When switching to another space, the quick terminal will
-///    also moved to the current space.
-///
-///  * `remain` - The quick terminal will stay only in the space where it
-///    was originally opened and will not follow when switching to another
-///    space.
-///
-/// The default value is `move`.
-///
-/// Only implemented on macOS.
-/// On Linux the behavior is always equivalent to `move`.
-///
-/// Available since: 1.1.0
-@"quick-terminal-space-behavior": QuickTerminalSpaceBehavior = .move,
-
-/// Determines under which circumstances that the quick terminal should receive
-/// keyboard input. See the corresponding [Wayland documentation](https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:enum:keyboard_interactivity)
-/// for a more detailed explanation of the behavior of each option.
-///
-/// > [!NOTE]
-/// > The exact behavior of each option may differ significantly across
-/// > compositors -- experiment with them on your system to find one that
-/// > suits your liking!
-///
-/// Valid values are:
-///
-///  * `none`
-///
-///    The quick terminal will not receive any keyboard input.
-///
-///  * `on-demand` (default)
-///
-///    The quick terminal would only receive keyboard input when it is focused.
-///
-///  * `exclusive`
-///
-///    The quick terminal will always receive keyboard input, even when another
-///    window is currently focused.
-///
-/// Only has an effect on Linux Wayland.
-/// On macOS the behavior is always equivalent to `on-demand`.
-///
-/// Available since: 1.2.0
-@"quick-terminal-keyboard-interactivity": QuickTerminalKeyboardInteractivity = .@"on-demand",
 
 /// Whether to enable shell integration auto-injection or not. Shell integration
 /// greatly enhances the terminal experience by enabling a number of features:
 ///
-///   * Working directory reporting so new tabs, splits inherit the
+///   * Working directory reporting so new groups and splits inherit the
 ///     previous terminal's working directory.
 ///
 ///   * Prompt marking that enables the "jump_to_prompt" keybinding.
@@ -3076,33 +2576,17 @@ keybind: Keybinds = .{},
 ///  * `system`
 ///
 ///    Instruct the system to notify the user using built-in system functions.
-///    This could result in an audiovisual effect, a notification, or something
-///    else entirely. Changing these effects require altering system settings:
-///    for instance under the "Sound > Alert Sound" setting in GNOME,
-///    or the "Accessibility > System Bell" settings in KDE Plasma.
-///
-///    On macOS, this plays the system alert sound.
+///    This plays the system alert sound, which can be changed under
+///    System Settings -> Sound.
 ///
 ///  * `audio`
 ///
-///    Play a custom sound. (Available since 1.3.0 on macOS)
+///    Play a custom sound. (Available since 1.3.0)
 ///
 ///  * `attention` *(enabled by default)*
 ///
 ///    Request the user's attention when XGhostty is unfocused, until it has
-///    received focus again. On macOS, this will bounce the app icon in the
-///    dock once. On Linux, the behavior depends on the desktop environment
-///    and/or the window manager/compositor:
-///
-///    - On KDE, the background of the desktop icon in the task bar would be
-///      highlighted;
-///
-///    - On GNOME, you may receive a notification that, when clicked, would
-///      bring the XGhostty window into focus;
-///
-///    - On Sway, the window may be decorated with a distinctly colored border;
-///
-///    - On other systems this may have no effect at all.
+///    received focus again. This bounces the app icon in the dock once.
 ///
 ///  * `title` *(enabled by default)*
 ///
@@ -3114,7 +2598,7 @@ keybind: Keybinds = .{},
 ///    Display a border around the alerted surface until the terminal is
 ///    re-focused or interacted with (such as on keyboard input).
 ///
-///    Available since: 1.2.0 on GTK, 1.2.1 on macOS
+///    Available since: 1.2.1
 ///
 /// Example: `audio`, `no-audio`, `system`, `no-system`
 ///
@@ -3127,59 +2611,20 @@ keybind: Keybinds = .{},
 /// directory if this is used as a CLI flag. The path may be prefixed with `~/`
 /// to reference the user's home directory.
 ///
-/// Available since: 1.2.0 on GTK, 1.3.0 on macOS.
+/// Available since: 1.3.0.
 @"bell-audio-path": ?Path = null,
 
 /// If `audio` is an enabled bell feature, this is the volume to play the audio
 /// file at (relative to the system volume). This is a floating point number
 /// ranging from 0.0 (silence) to 1.0 (as loud as possible). The default is 0.5.
 ///
-/// Available since: 1.2.0 on GTK, 1.3.0 on macOS.
+/// Available since: 1.3.0.
 @"bell-audio-volume": f64 = 0.5,
-
-/// Control the in-app notifications that XGhostty shows.
-///
-/// On Linux (GTK), in-app notifications show up as toasts. Toasts appear
-/// overlaid on top of the terminal window. They are used to show information
-/// that is not critical but may be important.
-///
-/// Possible notifications are:
-///
-///   - `clipboard-copy` (default: true) - Show a notification when text is copied
-///     to the clipboard.
-///   - `config-reload` (default: true) - Show a notification when
-///     the configuration is reloaded.
-///
-/// To specify a notification to enable, specify the name of the notification.
-/// To specify a notification to disable, prefix the name with `no-`. For
-/// example, to disable `clipboard-copy`, set this configuration to
-/// `no-clipboard-copy`. To enable it, set this configuration to `clipboard-copy`.
-///
-/// Multiple notifications can be enabled or disabled by separating them
-/// with a comma.
-///
-/// A value of "false" will disable all notifications. A value of "true" will
-/// enable all notifications.
-///
-/// This configuration only applies to GTK.
-///
-/// Available since: 1.1.0
-@"app-notifications": AppNotifications = .{},
 
 /// If anything other than false, fullscreen mode on macOS will not use the
 /// native fullscreen, but make the window fullscreen without animations and
 /// using a new space. It's faster than the native fullscreen mode since it
 /// doesn't use animations.
-///
-/// Important: tabs DO NOT WORK in this mode. Non-native fullscreen removes
-/// the titlebar and macOS native tabs require the titlebar. If you use tabs,
-/// you should not use this mode.
-///
-/// If you fullscreen a window with tabs, the currently focused tab will
-/// become fullscreen while the others will remain in a separate window in
-/// the background. You can switch to that window using normal window-switching
-/// keybindings such as command+tilde. When you exit fullscreen, the window
-/// will return to the tabbed state it was in before.
 ///
 /// Allowable values are:
 ///
@@ -3213,13 +2658,13 @@ keybind: Keybinds = .{},
 ///
 /// The default value is `visible`.
 ///
-/// Changing this option at runtime only applies to new windows.
+/// Changing this option at runtime requires a restart to take effect.
 ///
 /// Available since: 1.2.0
 @"macos-window-buttons": MacWindowButtons = .visible,
 
 /// The style of the macOS titlebar. Available values are: "native",
-/// "transparent", "tabs", and "hidden".
+/// "transparent", and "hidden".
 ///
 /// The "native" style uses the native macOS titlebar with zero customization.
 /// The titlebar will match your window theme (see `window-theme`).
@@ -3231,22 +2676,15 @@ keybind: Keybinds = .{},
 ///
 /// The "transparent" style will also update in real-time to dynamic
 /// changes to the window background color, e.g. via OSC 11. To make this
-/// more aesthetically pleasing, this only happens if the terminal is
-/// a window, tab, or split that borders the top of the window. This
-/// avoids a disjointed appearance where the titlebar color changes
-/// but all the topmost terminals don't match.
-///
-/// The "tabs" style is a completely custom titlebar that integrates the
-/// tab bar into the titlebar. This titlebar always matches the background
-/// color of the terminal. There are some limitations to this style:
-/// On macOS 13 and below, saved window state will not restore tabs correctly.
-/// macOS 14 does not have this issue and any other macOS version has not
-/// been tested.
+/// more aesthetically pleasing, this only happens if the terminal is a
+/// split that borders the top of the window. This avoids a disjointed
+/// appearance where the titlebar color changes but all the topmost
+/// terminals don't match.
 ///
 /// The "hidden" style hides the titlebar. Unlike `window-decoration = none`,
 /// however, it does not remove the frame from the window or cause it to have
 /// squared corners. Changing to or from this option at run-time may affect
-/// existing windows in buggy ways.
+/// the existing window in buggy ways.
 ///
 /// When "hidden", the top titlebar area can no longer be used for dragging
 /// the window. To drag the window, you can use option+click on the resizable
@@ -3257,7 +2695,7 @@ keybind: Keybinds = .{},
 /// but its one I think is the most aesthetically pleasing and works in
 /// most cases.
 ///
-/// Changing this option at runtime only applies to new windows.
+/// Changing this option at runtime requires a restart to take effect.
 @"macos-titlebar-style": MacTitlebarStyle = .transparent,
 
 /// Whether the proxy icon in the macOS titlebar is visible. The proxy icon
@@ -3280,21 +2718,6 @@ keybind: Keybinds = .{},
 /// usually `cd` to a different directory, open a different file in an
 /// editor, etc.
 @"macos-titlebar-proxy-icon": MacTitlebarProxyIcon = .visible,
-
-/// Controls the windowing behavior when dropping a file or folder
-/// onto the XGhostty icon in the macOS dock.
-///
-/// Valid values are:
-///
-///   * `new-tab` - Create a new tab in the current window, or open
-///     a new window if none exist.
-///   * `new-window` - Create a new window unconditionally.
-///
-/// The default value is `new-tab`.
-///
-/// This setting is only supported on macOS and has no effect on other
-/// platforms.
-@"macos-dock-drop-behavior": MacOSDockDropBehavior = .@"new-tab",
 
 /// macOS doesn't have a distinct "alt" key and instead has the "option"
 /// key which behaves slightly differently. On macOS by default, the
@@ -3335,16 +2758,8 @@ keybind: Keybinds = .{},
 /// find false more visually appealing.
 @"macos-window-shadow": bool = true,
 
-/// If true, the macOS icon in the dock and app switcher will be hidden. This is
-/// mainly intended for those primarily using the quick-terminal mode.
-///
-/// Note that setting this to true means that keyboard layout changes
-/// will no longer be automatic.
-///
 /// Control whether macOS app is excluded from the dock and app switcher,
-/// a "hidden" state. This is mainly intended for those primarily using
-/// quick-terminal mode, but is a general configuration for any use
-/// case.
+/// a "hidden" state.
 ///
 /// Available values:
 ///
@@ -3384,16 +2799,6 @@ keybind: Keybinds = .{},
 /// always have secure input enabled, the indication can be distracting and
 /// you may want to disable it.
 @"macos-secure-input-indication": bool = true,
-
-/// If true, XGhostty exposes and handles the built-in AppleScript dictionary
-/// on macOS.
-///
-/// If false, all AppleScript interactions are disabled. This includes
-/// AppleScript commands and AppleScript object lookup for windows, tabs,
-/// and terminals.
-///
-/// The default is true.
-@"macos-applescript": bool = true,
 
 /// Customize the macOS app icon.
 ///
@@ -3493,193 +2898,6 @@ keybind: Keybinds = .{},
 /// Available since: 1.2.0
 @"macos-shortcuts": MacShortcuts = .ask,
 
-/// Put every surface (tab, split, window) into a transient `systemd` scope.
-///
-/// This allows per-surface resource management. For example, if a shell program
-/// is using too much memory, only that shell will be killed by the oom monitor
-/// instead of the entire XGhostty process. Similarly, if a shell program is
-/// using too much CPU, only that surface will be CPU-throttled.
-///
-/// This will cause startup times to be slower (a hundred milliseconds or so),
-/// so the default value is "single-instance." In single-instance mode, only
-/// one instance of XGhostty is running (see gtk-single-instance) so the startup
-/// time is a one-time cost. Additionally, single instance XGhostty is much
-/// more likely to have many windows, tabs, etc. so cgroup isolation is a
-/// big benefit.
-///
-/// This feature requires `systemd`. If `systemd` is unavailable, cgroup
-/// initialization will fail. By default, this will not prevent XGhostty from
-/// working (see `linux-cgroup-hard-fail`).
-///
-/// Changing this value and reloading the config will not affect existing
-/// surfaces.
-///
-/// Valid values are:
-///
-///   * `never` - Never use cgroups.
-///   * `always` - Always use cgroups.
-///   * `single-instance` - Enable cgroups only for XGhostty instances launched
-///     as single-instance applications (see gtk-single-instance).
-@"linux-cgroup": LinuxCgroup = if (builtin.os.tag == .linux)
-    .@"single-instance"
-else
-    .never,
-
-/// Memory limit for any individual terminal process (tab, split, window,
-/// etc.) in bytes. If this is unset then no memory limit will be set.
-///
-/// Note that this sets the `MemoryHigh` setting on the transient `systemd`
-/// scope, which is a soft limit. You should configure something like
-/// `systemd-oom` to handle killing processes that have too much memory
-/// pressure.
-///
-/// Changing this value and reloading the config will not affect existing
-/// surfaces.
-///
-/// See the `systemd.resource-control` manual page for more information:
-/// https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html
-@"linux-cgroup-memory-limit": ?u64 = null,
-
-/// Number of processes limit for any individual terminal process (tab, split,
-/// window, etc.). If this is unset then no limit will be set.
-///
-/// Note that this sets the `TasksMax` setting on the transient `systemd` scope,
-/// which is a hard limit.
-///
-/// Changing this value and reloading the config will not affect existing
-/// surfaces.
-///
-/// See the `systemd.resource-control` manual page for more information:
-/// https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html
-@"linux-cgroup-processes-limit": ?u64 = null,
-
-/// If this is false, then creating a transient `systemd` scope (for
-/// `linux-cgroup`) will be allowed to fail and the failure is ignored. This is
-/// useful if you view cgroup isolation as a "nice to have" and not a critical
-/// resource management feature, because surface creation will not fail if
-/// `systemd` APIs fail.
-///
-/// If this is true, then any transient `systemd` scope creation failure will
-/// cause surface creation to fail.
-///
-/// Changing this value and reloading the config will not affect existing
-/// surfaces.
-@"linux-cgroup-hard-fail": bool = false,
-
-/// Enable or disable GTK's OpenGL debugging logs. The default is `true` for
-/// debug builds, `false` for all others.
-///
-/// Available since: 1.1.0
-@"gtk-opengl-debug": bool = builtin.mode == .Debug,
-
-/// If `true`, the XGhostty GTK application will run in single-instance mode:
-/// each new `ghostty` process launched will result in a new window if there is
-/// already a running process.
-///
-/// If `false`, each new ghostty process will launch a separate application.
-///
-/// If `detect`, XGhostty will assume true (single instance) unless one of
-/// the following scenarios is found:
-///
-/// 1. TERM_PROGRAM environment variable is a non-empty value. In this
-/// case, we assume XGhostty is being launched from a graphical terminal
-/// session and you want a dedicated instance.
-///
-/// 2. Any CLI arguments exist. In this case, we assume you are passing
-/// custom XGhostty configuration. Single instance mode inherits the
-/// configuration from when it was launched, so we must disable single
-/// instance to load the new configuration.
-///
-/// If either of these scenarios is producing a false positive, you can
-/// set this configuration explicitly to the behavior you want.
-///
-/// The pre-1.2 option `desktop` has been deprecated. Please replace
-/// this with `detect`.
-///
-/// The default value is `detect`.
-///
-/// Note that debug builds of XGhostty have a separate single-instance ID
-/// so you can test single instance without conflicting with release builds.
-@"gtk-single-instance": GtkSingleInstance = .default,
-
-/// When enabled, the full GTK titlebar is displayed instead of your window
-/// manager's simple titlebar. The behavior of this option will vary with your
-/// window manager.
-///
-/// This option does nothing when `window-decoration` is none or when running
-/// under macOS.
-@"gtk-titlebar": bool = true,
-
-/// Determines the side of the screen that the GTK tab bar will stick to.
-/// Top, bottom, and hidden are supported. The default is top.
-///
-/// When `hidden` is set, a tab button displaying the number of tabs will appear
-/// in the title bar. It has the ability to open a tab overview for displaying
-/// tabs. Alternatively, you can use the `toggle_tab_overview` action in a
-/// keybind if your window doesn't have a title bar, or you can switch tabs
-/// with keybinds.
-@"gtk-tabs-location": GtkTabsLocation = .top,
-
-/// If this is `true`, the titlebar will be hidden when the window is maximized,
-/// and shown when the titlebar is unmaximized. GTK only.
-///
-/// Available since: 1.1.0
-@"gtk-titlebar-hide-when-maximized": bool = false,
-
-/// Determines the appearance of the top and bottom bars tab bar.
-///
-/// Valid values are:
-///
-///  * `flat` - Top and bottom bars are flat with the terminal window.
-///  * `raised` - Top and bottom bars cast a shadow on the terminal area.
-///  * `raised-border` - Similar to `raised` but the shadow is replaced with a
-///    more subtle border.
-@"gtk-toolbar-style": GtkToolbarStyle = .raised,
-
-/// The style of the GTK titlebar. Available values are `native` and `tabs`.
-///
-/// The `native` titlebar style is a traditional titlebar with a title, a few
-/// buttons and window controls. A separate tab bar will show up below the
-/// titlebar if you have multiple tabs open in the window.
-///
-/// The `tabs` titlebar merges the tab bar and the traditional titlebar.
-/// This frees up vertical space on your screen if you use multiple tabs. One
-/// limitation of the `tabs` titlebar is that you cannot drag the titlebar
-/// by the titles any longer (as they are tab titles now). Other areas of the
-/// `tabs` title bar can be used to drag the window around.
-///
-/// The default style is `native`.
-@"gtk-titlebar-style": GtkTitlebarStyle = .native,
-
-/// If `true` (default), then the XGhostty GTK tabs will be "wide." Wide tabs
-/// are the new typical Gnome style where tabs fill their available space.
-/// If you set this to `false` then tabs will only take up space they need,
-/// which is the old style.
-@"gtk-wide-tabs": bool = true,
-
-/// Custom CSS files to be loaded.
-///
-/// GTK CSS documentation can be found at the following links:
-///
-///   * https://docs.gtk.org/gtk4/css-overview.html - An overview of GTK CSS.
-///   * https://docs.gtk.org/gtk4/css-properties.html - A comprehensive list
-///     of supported CSS properties.
-///
-/// Launch XGhostty with `env GTK_DEBUG=interactive ghostty` to tweak XGhostty's
-/// CSS in real time using the GTK Inspector. Errors in your CSS files would
-/// also be reported in the terminal you started XGhostty from. See
-/// https://developer.gnome.org/documentation/tools/inspector.html for more
-/// information about the GTK Inspector.
-///
-/// This configuration can be repeated multiple times to load multiple files.
-/// Prepend a ? character to the file path to suppress errors if the file does
-/// not exist. If you want to include a file that begins with a literal ?
-/// character, surround the file path in double quotes (").
-/// The file size limit for a single stylesheet is 5MiB.
-///
-/// Available since: 1.1.0
-@"gtk-custom-css": RepeatablePath = .{},
-
 /// If `true` (default), applications running in the terminal can show desktop
 /// notifications using certain escape sequences such as OSC 9 or OSC 777.
 @"desktop-notifications": bool = true,
@@ -3727,39 +2945,7 @@ term: []const u8 = "xterm-xghostty",
 /// running. Defaults to an empty string if not set.
 @"enquiry-response": []const u8 = "",
 
-/// Configures the low-level API to use for async IO, eventing, etc.
-///
-/// Most users should leave this set to `auto`. This will automatically detect
-/// scenarios where APIs may not be available (for example `io_uring` on
-/// certain hardened kernels) and fall back to a different API. However, if
-/// you want to force a specific backend for any reason, you can set this
-/// here.
-///
-/// Based on various benchmarks, we haven't found a statistically significant
-/// difference between the backends with regards to memory, CPU, or latency.
-/// The choice of backend is more about compatibility and features.
-///
-/// Available options:
-///
-///   * `auto` - Automatically choose the best backend for the platform
-///     based on available options.
-///   * `epoll` - Use the `epoll` API
-///   * `io_uring` - Use the `io_uring` API
-///
-/// If the selected backend is not available on the platform, XGhostty will
-/// fall back to an automatically chosen backend that is available.
-///
-/// Changing this value requires a full application restart to take effect.
-///
-/// This is only supported on Linux, since this is the only platform
-/// where we have multiple options. On macOS, we always use `kqueue`.
-///
-/// Available since: 1.2.0
-@"async-backend": AsyncBackend = .auto,
-
-/// Control the auto-update functionality of XGhostty. This is only supported
-/// on macOS currently, since Linux builds are distributed via package
-/// managers that are not centrally controlled by XGhostty.
+/// Control the auto-update functionality of XGhostty.
 ///
 /// Checking or downloading an update does not send any information to
 /// the project beyond standard network information mandated by the
@@ -3823,9 +3009,6 @@ _conditional_set: std.EnumSet(conditional.Key) = .{},
 /// without reopening the files. This is used in very specific cases such
 /// as loadTheme which has more details on why.
 _replay_steps: std.ArrayListUnmanaged(Replay.Step) = .{},
-
-/// Set to true if XGhostty was executed as xdg-terminal-exec on Linux.
-@"_xdg-terminal-exec": bool = false,
 
 pub fn deinit(self: *Config) void {
     if (self._arena) |arena| arena.deinit();
@@ -4113,43 +3296,6 @@ pub fn loadCliArgs(self: *Config, alloc_gpa: Allocator) !void {
         // Everything else we have to at least try because it may
         // not use std.os.argv.
         else => {},
-    }
-
-    // On Linux, we have a special case where if the executing
-    // program is "xdg-terminal-exec" then we treat all CLI
-    // args as if they are a command to execute.
-    //
-    // In this mode, we also behave slightly differently:
-    //
-    //   - The initial window title is set to the full command. This
-    //     can be used with window managers to modify positioning,
-    //     styling, etc. based on the command.
-    //
-    // See: https://github.com/Vladimir-csp/xdg-terminal-exec
-    if ((comptime builtin.os.tag == .linux) or (comptime builtin.os.tag == .freebsd)) {
-        if (internal_os.xdg.parseTerminalExec(std.os.argv)) |args| {
-            const arena_alloc = self._arena.?.allocator();
-
-            // First, we add an artificial "-e" so that if we
-            // replay the inputs to rebuild the config (i.e. if
-            // a theme is set) then we will get the same behavior.
-            try self._replay_steps.append(arena_alloc, .@"-e");
-
-            // Next, take all remaining args and use that to build up
-            // a command to execute.
-            var builder: std.ArrayList([:0]const u8) = .empty;
-            errdefer builder.deinit(arena_alloc);
-            for (args) |arg_raw| {
-                const arg = std.mem.sliceTo(arg_raw, 0);
-                const copy = try arena_alloc.dupeZ(u8, arg);
-                try self._replay_steps.append(arena_alloc, .{ .arg = copy });
-                try builder.append(arena_alloc, copy);
-            }
-
-            self.@"_xdg-terminal-exec" = true;
-            self.@"initial-command" = .{ .direct = try builder.toOwnedSlice(arena_alloc) };
-            return;
-        }
     }
 
     // We set config-default-files to true here because this
@@ -4575,14 +3721,9 @@ pub fn finalize(self: *Config) !void {
     {
         if (self.command == null or wd == .home) command: {
             // First look up the command using the SHELL env var if needed.
-            // We don't do this in flatpak because SHELL in Flatpak is always
-            // set to /bin/sh.
             if (self.command) |cmd|
                 log.info("shell src=config value={}", .{cmd})
             else shell_env: {
-                // Flatpak always gets its shell from outside the sandbox
-                if (internal_os.isFlatpak()) break :shell_env;
-
                 // If we were launched from the desktop, our SHELL env var
                 // will represent our SHELL at login time. We only want to
                 // read from SHELL if we're in a probable CLI environment.
@@ -4645,23 +3786,6 @@ pub fn finalize(self: *Config) !void {
     try wd.finalize(alloc);
     self.@"working-directory" = wd;
 
-    // Apprt-specific defaults
-    switch (build_config.app_runtime) {
-        .none => {},
-        .gtk => {
-            switch (self.@"gtk-single-instance") {
-                .true, .false => {},
-
-                // For detection, we assume single instance unless we're
-                // in a CLI environment, then we disable single instance.
-                .detect => self.@"gtk-single-instance" = if (probable_cli)
-                    .false
-                else
-                    .true,
-            }
-        },
-    }
-
     // Default our click interval
     if (self.@"click-repeat-interval" == 0 and
         (comptime !builtin.is_test))
@@ -4686,18 +3810,6 @@ pub fn finalize(self: *Config) !void {
     // If URLs are disabled, cut off the first link. The first link is
     // always the URL matcher.
     if (!self.@"link-url") self.link.links.items = self.link.links.items[1..];
-
-    // We warn when the quit-after-last-window-closed-delay is set to a very
-    // short value because it can cause XGhostty to quit before the first
-    // window is even shown.
-    if (self.@"quit-after-last-window-closed-delay") |duration| {
-        if (duration.duration < 5 * std.time.ns_per_s) {
-            log.warn(
-                "quit-after-last-window-closed-delay is set to a very short value ({f}), which might cause problems",
-                .{duration},
-            );
-        }
-    }
 
     // We can't set this as a struct default because our config is
     // loaded in environments where a build config isn't available.
@@ -4752,9 +3864,6 @@ pub fn parseManuallyHook(
 
         // See "command" docs for the implied configurations and why.
         self.@"initial-command" = .{ .direct = command.items };
-        self.@"gtk-single-instance" = .false;
-        self.@"quit-after-last-window-closed" = true;
-        self.@"quit-after-last-window-closed-delay" = null;
         if (self.@"shell-integration" != .none) {
             self.@"shell-integration" = .detect;
         }
@@ -4771,40 +3880,6 @@ pub fn parseManuallyHook(
 
     // If we didn't find a special case, continue parsing normally
     return true;
-}
-
-fn compatGtkTabsLocation(
-    self: *Config,
-    alloc: Allocator,
-    key: []const u8,
-    value: ?[]const u8,
-) bool {
-    _ = alloc;
-    assert(std.mem.eql(u8, key, "gtk-tabs-location"));
-
-    if (std.mem.eql(u8, value orelse "", "hidden")) {
-        self.@"window-show-tab-bar" = .never;
-        return true;
-    }
-
-    return false;
-}
-
-fn compatGtkSingleInstance(
-    self: *Config,
-    alloc: Allocator,
-    key: []const u8,
-    value: ?[]const u8,
-) bool {
-    _ = alloc;
-    assert(std.mem.eql(u8, key, "gtk-single-instance"));
-
-    if (std.mem.eql(u8, value orelse "", "desktop")) {
-        self.@"gtk-single-instance" = .detect;
-        return true;
-    }
-
-    return false;
 }
 
 fn compatCursorInvertFgBg(
@@ -4867,23 +3942,6 @@ fn compatBoldIsBright(
     }
 
     return true;
-}
-
-fn compatMacOSDockDropBehavior(
-    self: *Config,
-    alloc: Allocator,
-    key: []const u8,
-    value: ?[]const u8,
-) bool {
-    _ = alloc;
-    assert(std.mem.eql(u8, key, "macos-dock-drop-behavior"));
-
-    if (std.mem.eql(u8, value orelse "", "window")) {
-        self.@"macos-dock-drop-behavior" = .@"new-window";
-        return true;
-    }
-
-    return false;
 }
 
 /// Add a diagnostic message to the config with the given string.
@@ -5272,11 +4330,6 @@ pub const WindowPaddingColor = enum {
     background,
     extend,
     @"extend-always",
-};
-
-pub const WindowSubtitle = enum {
-    false,
-    @"working-directory",
 };
 
 pub const LinkPreviews = enum {
@@ -6595,25 +5648,8 @@ pub const Keybinds = struct {
             .{ .performable = true },
         );
 
-        // Tabs common to all platforms
-        try self.set.put(
-            alloc,
-            .{ .key = .{ .physical = .tab }, .mods = .{ .ctrl = true, .shift = true } },
-            .{ .previous_tab = {} },
-        );
-        try self.set.put(
-            alloc,
-            .{ .key = .{ .physical = .tab }, .mods = .{ .ctrl = true } },
-            .{ .next_tab = {} },
-        );
-
         // Windowing
         if (comptime !builtin.target.os.tag.isDarwin()) {
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 'n' }, .mods = .{ .ctrl = true, .shift = true } },
-                .{ .new_window = {} },
-            );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'w' }, .mods = .{ .ctrl = true, .shift = true } },
@@ -6623,45 +5659,6 @@ pub const Keybinds = struct {
                 alloc,
                 .{ .key = .{ .unicode = 'q' }, .mods = .{ .ctrl = true, .shift = true } },
                 .{ .quit = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .f4 }, .mods = .{ .alt = true } },
-                .{ .close_window = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 't' }, .mods = .{ .ctrl = true, .shift = true } },
-                .{ .new_tab = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 'w' }, .mods = .{ .ctrl = true, .shift = true } },
-                .{ .close_tab = .this },
-            );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .ctrl = true, .shift = true } },
-                .{ .previous_tab = {} },
-                .{ .performable = true },
-            );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .ctrl = true, .shift = true } },
-                .{ .next_tab = {} },
-                .{ .performable = true },
-            );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .physical = .page_up }, .mods = .{ .ctrl = true } },
-                .{ .previous_tab = {} },
-                .{ .performable = true },
-            );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .physical = .page_down }, .mods = .{ .ctrl = true } },
-                .{ .next_tab = {} },
-                .{ .performable = true },
             );
             try self.set.put(
                 alloc,
@@ -6770,20 +5767,6 @@ pub const Keybinds = struct {
                 .{ .jump_to_prompt = 1 },
             );
 
-            // Move tab
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .physical = .page_up }, .mods = .{ .shift = true, .ctrl = true } },
-                .{ .move_tab = -1 },
-                .{ .performable = true },
-            );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .physical = .page_down }, .mods = .{ .shift = true, .ctrl = true } },
-                .{ .move_tab = 1 },
-                .{ .performable = true },
-            );
-
             // Search
             try self.set.putFlags(
                 alloc,
@@ -6821,10 +5804,6 @@ pub const Keybinds = struct {
         }
         if (comptime builtin.target.os.tag.isDarwin()) {
             // Cmd+1..9 focus the Nth visible group in tree traversal order.
-            // Tabs are being deprecated on macOS in favor of groups, so
-            // unlike the goto_tab bindings below (still used on other
-            // platforms) there's no tab bar key equivalent to preserve and
-            // these can just be performable.
             const mods: inputpkg.Mods = .{ .super = true };
 
             const start: u21 = '1';
@@ -6852,8 +5831,8 @@ pub const Keybinds = struct {
 
                 // Important: this must be the LAST binding set so that the
                 // libghostty trigger API returns this one for the action,
-                // so that things like the macOS tab bar key equivalent label
-                // work properly.
+                // so that things like menu item key equivalent labels work
+                // properly.
                 try self.set.putFlags(
                     alloc,
                     .{
@@ -6864,63 +5843,6 @@ pub const Keybinds = struct {
                     .{ .performable = true },
                 );
             }
-        } else {
-            // Alt+N for goto tab N
-            const mods: inputpkg.Mods = .{ .alt = true };
-
-            const start: u21 = '1';
-            const end: u21 = '8';
-            comptime var i: u21 = start;
-            inline while (i <= end) : (i += 1) {
-                // We register BOTH the physical `digit_N` key and the unicode
-                // `N` key. This allows most keyboard layouts to work with
-                // this shortcut. Namely, AZERTY doesn't produce unicode `N`
-                // for their digit keys (they're on shifted keys on the same
-                // physical keys).
-
-                try self.set.putFlags(
-                    alloc,
-                    .{
-                        .key = .{ .physical = @field(
-                            inputpkg.Key,
-                            std.fmt.comptimePrint("digit_{u}", .{i}),
-                        ) },
-                        .mods = mods,
-                    },
-                    .{ .goto_tab = (i - start) + 1 },
-                    .{
-                        .performable = !builtin.target.os.tag.isDarwin(),
-                    },
-                );
-
-                // Important: this must be the LAST binding set so that the
-                // libghostty trigger API returns this one for the action,
-                // so that things like the macOS tab bar key equivalent label
-                // work properly.
-                try self.set.putFlags(
-                    alloc,
-                    .{
-                        .key = .{ .unicode = i },
-                        .mods = mods,
-                    },
-                    .{ .goto_tab = (i - start) + 1 },
-                    .{
-                        .performable = !builtin.target.os.tag.isDarwin(),
-                    },
-                );
-            }
-            try self.set.putFlags(
-                alloc,
-                .{
-                    .key = .{ .unicode = '9' },
-                    .mods = mods,
-                },
-                .{ .last_tab = {} },
-                .{
-                    // See comment above with the numeric goto_tab
-                    .performable = !builtin.target.os.tag.isDarwin(),
-                },
-            );
         }
 
         // Toggle fullscreen
@@ -7026,43 +5948,8 @@ pub const Keybinds = struct {
             // Mac windowing
             try self.set.put(
                 alloc,
-                .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true } },
-                .{ .new_window = {} },
-            );
-            try self.set.put(
-                alloc,
                 .{ .key = .{ .unicode = 'w' }, .mods = .{ .super = true } },
                 .{ .close_surface = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 'w' }, .mods = .{ .super = true, .alt = true } },
-                .{ .close_tab = .this },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 'w' }, .mods = .{ .super = true, .shift = true } },
-                .{ .close_window = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 'w' }, .mods = .{ .super = true, .shift = true, .alt = true } },
-                .{ .close_all_windows = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 't' }, .mods = .{ .super = true } },
-                .{ .new_tab = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = '[' }, .mods = .{ .super = true, .shift = true } },
-                .{ .previous_tab = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = ']' }, .mods = .{ .super = true, .shift = true } },
-                .{ .next_tab = {} },
             );
             try self.set.put(
                 alloc,
@@ -7621,15 +6508,15 @@ pub const Keybinds = struct {
         const alloc = arena.allocator();
 
         var list: Keybinds = .{};
-        try list.parseCLI(alloc, "ctrl+z>1=goto_tab:1");
-        try list.parseCLI(alloc, "ctrl+z>2=goto_tab:2");
+        try list.parseCLI(alloc, "ctrl+z>1=goto_group:1");
+        try list.parseCLI(alloc, "ctrl+z>2=goto_group:2");
         try list.formatEntry(formatterpkg.entryFormatter("keybind", &buf.writer));
 
         // Note they turn into translated keys because they match
         // their ASCII mapping.
         const want =
-            \\keybind = ctrl+z>1=goto_tab:1
-            \\keybind = ctrl+z>2=goto_tab:2
+            \\keybind = ctrl+z>1=goto_group:1
+            \\keybind = ctrl+z>2=goto_group:2
             \\
         ;
         try std.testing.expectEqualStrings(want, buf.written());
@@ -7645,18 +6532,18 @@ pub const Keybinds = struct {
         const alloc = arena.allocator();
 
         var list: Keybinds = .{};
-        try list.parseCLI(alloc, "ctrl+a>ctrl+b>n=new_window");
-        try list.parseCLI(alloc, "ctrl+a>ctrl+b>w=close_window");
-        try list.parseCLI(alloc, "ctrl+a>ctrl+c>t=new_tab");
-        try list.parseCLI(alloc, "ctrl+b>ctrl+d>a=previous_tab");
+        try list.parseCLI(alloc, "ctrl+a>ctrl+b>n=toggle_fullscreen");
+        try list.parseCLI(alloc, "ctrl+a>ctrl+b>w=close_surface");
+        try list.parseCLI(alloc, "ctrl+a>ctrl+c>t=close_group");
+        try list.parseCLI(alloc, "ctrl+b>ctrl+d>a=toggle_split_zoom");
         try list.formatEntry(formatterpkg.entryFormatter("a", &buf.writer));
 
         // NB: This does not currently retain the order of the keybinds.
         const want =
-            \\a = ctrl+a>ctrl+b>n=new_window
-            \\a = ctrl+a>ctrl+b>w=close_window
-            \\a = ctrl+a>ctrl+c>t=new_tab
-            \\a = ctrl+b>ctrl+d>a=previous_tab
+            \\a = ctrl+a>ctrl+b>n=toggle_fullscreen
+            \\a = ctrl+a>ctrl+b>w=close_surface
+            \\a = ctrl+a>ctrl+c>t=close_group
+            \\a = ctrl+b>ctrl+d>a=toggle_split_zoom
             \\
         ;
         try std.testing.expectEqualStrings(want, buf.written());
@@ -7706,7 +6593,7 @@ pub const Keybinds = struct {
 
         try keybinds.parseCLI(alloc, "foo/shift+a=copy_to_clipboard");
         try keybinds.parseCLI(alloc, "foo/shift+b=paste_from_clipboard");
-        try keybinds.parseCLI(alloc, "bar/ctrl+c=close_window");
+        try keybinds.parseCLI(alloc, "bar/ctrl+c=close_surface");
 
         try testing.expectEqual(2, keybinds.tables.count());
         try testing.expectEqual(2, keybinds.tables.get("foo").?.bindings.count());
@@ -7749,7 +6636,7 @@ pub const Keybinds = struct {
         var keybinds: Keybinds = .{};
 
         // Key sequences should work within tables
-        try keybinds.parseCLI(alloc, "foo/ctrl+a>ctrl+b=new_window");
+        try keybinds.parseCLI(alloc, "foo/ctrl+a>ctrl+b=toggle_fullscreen");
 
         const table = keybinds.tables.get("foo").?;
         try testing.expectEqual(1, table.bindings.count());
@@ -7828,7 +6715,7 @@ pub const Keybinds = struct {
         var keybinds: Keybinds = .{};
 
         // Key sequence ending with / should work
-        try keybinds.parseCLI(alloc, "ctrl+a>ctrl+/=new_window");
+        try keybinds.parseCLI(alloc, "ctrl+a>ctrl+/=toggle_fullscreen");
 
         // Should be in root set, not a table
         try testing.expectEqual(1, keybinds.set.bindings.count());
@@ -7862,7 +6749,7 @@ pub const Keybinds = struct {
         var keybinds: Keybinds = .{};
 
         // Table with a key sequence that ends with /
-        try keybinds.parseCLI(alloc, "mytable/a>/=new_window");
+        try keybinds.parseCLI(alloc, "mytable/a>/=toggle_fullscreen");
 
         // Should be in the table
         try testing.expectEqual(0, keybinds.set.bindings.count());
@@ -7880,7 +6767,7 @@ pub const Keybinds = struct {
 
         try testing.expectError(
             error.InvalidFormat,
-            keybinds.parseCLI(alloc, "chain=new_tab"),
+            keybinds.parseCLI(alloc, "chain=close_group"),
         );
     }
 
@@ -7936,7 +6823,7 @@ pub const Keybinds = struct {
         var keybinds: Keybinds = .{};
         try keybinds.parseCLI(alloc, "shift+a=copy_to_clipboard");
         try keybinds.parseCLI(alloc, "foo/shift+b=paste_from_clipboard");
-        try keybinds.parseCLI(alloc, "bar/ctrl+c=close_window");
+        try keybinds.parseCLI(alloc, "bar/ctrl+c=close_surface");
 
         const cloned = try keybinds.clone(alloc);
 
@@ -8060,7 +6947,7 @@ pub const Keybinds = struct {
         // Add bindings to root set and tables
         try keybinds.parseCLI(alloc, "shift+a=copy_to_clipboard");
         try keybinds.parseCLI(alloc, "foo/shift+b=paste_from_clipboard");
-        try keybinds.parseCLI(alloc, "bar/ctrl+c=close_window");
+        try keybinds.parseCLI(alloc, "bar/ctrl+c=close_surface");
 
         try testing.expectEqual(1, keybinds.set.bindings.count());
         try testing.expectEqual(2, keybinds.tables.count());
@@ -9119,7 +8006,6 @@ pub const MacWindowButtons = enum {
 pub const MacTitlebarStyle = enum {
     native,
     transparent,
-    tabs,
     hidden,
 };
 
@@ -9167,49 +8053,6 @@ pub const MacShortcuts = enum {
     allow,
     deny,
     ask,
-};
-
-/// See gtk-single-instance
-pub const GtkSingleInstance = enum {
-    false,
-    true,
-    detect,
-
-    pub const default: GtkSingleInstance = .detect;
-};
-
-/// See gtk-tabs-location
-pub const GtkTabsLocation = enum {
-    top,
-    bottom,
-};
-
-/// See gtk-toolbar-style
-pub const GtkToolbarStyle = enum {
-    flat,
-    raised,
-    @"raised-border",
-};
-
-/// See gtk-titlebar-style
-pub const GtkTitlebarStyle = enum(c_int) {
-    native,
-    tabs,
-
-    pub const getGObjectType = switch (build_config.app_runtime) {
-        .gtk => @import("gobject").ext.defineEnum(
-            GtkTitlebarStyle,
-            .{ .name = "XGhosttyGtkTitlebarStyle" },
-        ),
-
-        .none => void,
-    };
-};
-
-/// See app-notifications
-pub const AppNotifications = packed struct {
-    @"clipboard-copy": bool = true,
-    @"config-reload": bool = true,
 };
 
 /// See bell-features
@@ -9345,25 +8188,6 @@ pub const WindowSaveState = enum {
     always,
 };
 
-/// See window-new-tab-position
-pub const WindowNewTabPosition = enum {
-    current,
-    end,
-};
-
-/// See macos-dock-drop-behavior
-pub const MacOSDockDropBehavior = enum {
-    @"new-tab",
-    @"new-window",
-};
-
-/// See window-show-tab-bar
-pub const WindowShowTabBar = enum {
-    always,
-    auto,
-    never,
-};
-
 /// See resize-overlay
 pub const ResizeOverlay = enum {
     always,
@@ -9380,336 +8204,6 @@ pub const ResizeOverlayPosition = enum {
     @"bottom-left",
     @"bottom-center",
     @"bottom-right",
-};
-
-/// See quick-terminal-position
-pub const QuickTerminalPosition = enum {
-    top,
-    bottom,
-    left,
-    right,
-    center,
-};
-
-/// See quick-terminal-layer
-pub const QuickTerminalLayer = enum {
-    overlay,
-    top,
-    bottom,
-    background,
-};
-
-/// See quick-terminal-size
-pub const QuickTerminalSize = struct {
-    primary: ?Size = null,
-    secondary: ?Size = null,
-
-    pub const Size = union(enum) {
-        percentage: f32,
-        pixels: u32,
-
-        pub fn toPixels(self: Size, parent_dimensions: u32) u32 {
-            switch (self) {
-                .percentage => |v| {
-                    const dim: f32 = @floatFromInt(parent_dimensions);
-                    return @intFromFloat(v / 100.0 * dim);
-                },
-                .pixels => |v| return v,
-            }
-        }
-
-        pub fn parse(input: []const u8) !Size {
-            if (input.len == 0) return error.ValueRequired;
-
-            if (std.mem.endsWith(u8, input, "px")) {
-                return .{
-                    .pixels = std.fmt.parseInt(
-                        u32,
-                        input[0 .. input.len - "px".len],
-                        10,
-                    ) catch return error.InvalidValue,
-                };
-            }
-
-            if (std.mem.endsWith(u8, input, "%")) {
-                const percentage = std.fmt.parseFloat(
-                    f32,
-                    input[0 .. input.len - "%".len],
-                ) catch return error.InvalidValue;
-
-                if (percentage < 0) return error.InvalidValue;
-                return .{ .percentage = percentage };
-            }
-
-            return error.MissingUnit;
-        }
-
-        fn format(self: Size, writer: *std.Io.Writer) !void {
-            switch (self) {
-                .percentage => |v| try writer.print("{d}%", .{v}),
-                .pixels => |v| try writer.print("{}px", .{v}),
-            }
-        }
-    };
-
-    pub const Dimensions = struct {
-        width: u32,
-        height: u32,
-    };
-
-    /// C API structure for QuickTerminalSize
-    pub const C = extern struct {
-        primary: C.Size,
-        secondary: C.Size,
-
-        pub const Size = extern struct {
-            tag: Tag,
-            value: Value,
-
-            /// c_int because it needs to be extern compatible
-            pub const Tag = enum(c_int) { none, percentage, pixels };
-
-            pub const Value = extern union {
-                percentage: f32,
-                pixels: u32,
-            };
-
-            pub const none: C.Size = .{ .tag = .none, .value = undefined };
-
-            pub fn percentage(v: f32) C.Size {
-                return .{
-                    .tag = .percentage,
-                    .value = .{ .percentage = v },
-                };
-            }
-
-            pub fn pixels(v: u32) C.Size {
-                return .{
-                    .tag = .pixels,
-                    .value = .{ .pixels = v },
-                };
-            }
-        };
-    };
-
-    pub fn cval(self: QuickTerminalSize) C {
-        return .{
-            .primary = if (self.primary) |p| switch (p) {
-                .percentage => |v| .percentage(v),
-                .pixels => |v| .pixels(v),
-            } else .none,
-            .secondary = if (self.secondary) |s| switch (s) {
-                .percentage => |v| .percentage(v),
-                .pixels => |v| .pixels(v),
-            } else .none,
-        };
-    }
-
-    pub fn calculate(
-        self: QuickTerminalSize,
-        position: QuickTerminalPosition,
-        dims: Dimensions,
-    ) Dimensions {
-        switch (position) {
-            .left, .right => return .{
-                .width = if (self.primary) |v| v.toPixels(dims.width) else 400,
-                .height = if (self.secondary) |v| v.toPixels(dims.height) else dims.height,
-            },
-            .top, .bottom => return .{
-                .width = if (self.secondary) |v| v.toPixels(dims.width) else dims.width,
-                .height = if (self.primary) |v| v.toPixels(dims.height) else 400,
-            },
-            .center => if (dims.width >= dims.height) {
-                return .{
-                    .width = if (self.primary) |v| v.toPixels(dims.width) else 800,
-                    .height = if (self.secondary) |v| v.toPixels(dims.height) else 400,
-                };
-            } else {
-                return .{
-                    .width = if (self.secondary) |v| v.toPixels(dims.width) else 400,
-                    .height = if (self.primary) |v| v.toPixels(dims.height) else 800,
-                };
-            },
-        }
-    }
-
-    pub fn parseCLI(self: *QuickTerminalSize, input: ?[]const u8) !void {
-        const input_ = input orelse return error.ValueRequired;
-        var it = std.mem.splitScalar(u8, input_, ',');
-
-        const primary = std.mem.trim(
-            u8,
-            it.next() orelse return error.ValueRequired,
-            cli.args.whitespace,
-        );
-        self.primary = try .parse(primary);
-
-        self.secondary = secondary: {
-            const secondary = std.mem.trim(
-                u8,
-                it.next() orelse break :secondary null,
-                cli.args.whitespace,
-            );
-            break :secondary try .parse(secondary);
-        };
-
-        if (it.next()) |_| return error.TooManyArguments;
-    }
-
-    pub fn clone(self: *const QuickTerminalSize, _: Allocator) Allocator.Error!QuickTerminalSize {
-        return .{
-            .primary = self.primary,
-            .secondary = self.secondary,
-        };
-    }
-
-    pub fn formatEntry(self: QuickTerminalSize, formatter: formatterpkg.EntryFormatter) !void {
-        const primary = self.primary orelse return;
-
-        var buf: [4096]u8 = undefined;
-        var writer: std.Io.Writer = .fixed(&buf);
-
-        primary.format(&writer) catch return error.OutOfMemory;
-        if (self.secondary) |secondary| {
-            writer.writeByte(',') catch return error.OutOfMemory;
-            secondary.format(&writer) catch return error.OutOfMemory;
-        }
-
-        try formatter.formatEntry([]const u8, writer.buffered());
-    }
-
-    test "parse QuickTerminalSize" {
-        const testing = std.testing;
-        var v: QuickTerminalSize = undefined;
-
-        try v.parseCLI("50%");
-        try testing.expectEqual(50, v.primary.?.percentage);
-        try testing.expectEqual(null, v.secondary);
-
-        try v.parseCLI("200px");
-        try testing.expectEqual(200, v.primary.?.pixels);
-        try testing.expectEqual(null, v.secondary);
-
-        try v.parseCLI("50%,200px");
-        try testing.expectEqual(50, v.primary.?.percentage);
-        try testing.expectEqual(200, v.secondary.?.pixels);
-
-        try testing.expectError(error.ValueRequired, v.parseCLI(null));
-        try testing.expectError(error.ValueRequired, v.parseCLI(""));
-        try testing.expectError(error.ValueRequired, v.parseCLI("69px,"));
-        try testing.expectError(error.TooManyArguments, v.parseCLI("69px,42%,69px"));
-
-        try testing.expectError(error.MissingUnit, v.parseCLI("420"));
-        try testing.expectError(error.MissingUnit, v.parseCLI("bobr"));
-        try testing.expectError(error.InvalidValue, v.parseCLI("bobr%"));
-        try testing.expectError(error.InvalidValue, v.parseCLI("-32%"));
-        try testing.expectError(error.InvalidValue, v.parseCLI("-69px"));
-    }
-    test "calculate QuickTerminalSize" {
-        const testing = std.testing;
-        const dims_landscape: Dimensions = .{ .width = 2560, .height = 1600 };
-        const dims_portrait: Dimensions = .{ .width = 1600, .height = 2560 };
-
-        {
-            const size: QuickTerminalSize = .{};
-            try testing.expectEqual(
-                Dimensions{ .width = 2560, .height = 400 },
-                size.calculate(.top, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 400, .height = 1600 },
-                size.calculate(.left, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 800, .height = 400 },
-                size.calculate(.center, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 400, .height = 800 },
-                size.calculate(.center, dims_portrait),
-            );
-        }
-        {
-            const size: QuickTerminalSize = .{ .primary = .{ .percentage = 20 } };
-            try testing.expectEqual(
-                Dimensions{ .width = 2560, .height = 320 },
-                size.calculate(.top, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 512, .height = 1600 },
-                size.calculate(.left, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 512, .height = 400 },
-                size.calculate(.center, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 400, .height = 512 },
-                size.calculate(.center, dims_portrait),
-            );
-        }
-        {
-            const size: QuickTerminalSize = .{ .primary = .{ .pixels = 600 } };
-            try testing.expectEqual(
-                Dimensions{ .width = 2560, .height = 600 },
-                size.calculate(.top, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 600, .height = 1600 },
-                size.calculate(.left, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 600, .height = 400 },
-                size.calculate(.center, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 400, .height = 600 },
-                size.calculate(.center, dims_portrait),
-            );
-        }
-        {
-            const size: QuickTerminalSize = .{
-                .primary = .{ .percentage = 69 },
-                .secondary = .{ .pixels = 420 },
-            };
-            try testing.expectEqual(
-                Dimensions{ .width = 420, .height = 1104 },
-                size.calculate(.top, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 1766, .height = 420 },
-                size.calculate(.left, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 1766, .height = 420 },
-                size.calculate(.center, dims_landscape),
-            );
-            try testing.expectEqual(
-                Dimensions{ .width = 420, .height = 1766 },
-                size.calculate(.center, dims_portrait),
-            );
-        }
-    }
-};
-
-/// See quick-terminal-screen
-pub const QuickTerminalScreen = enum {
-    main,
-    mouse,
-    @"macos-menu-bar",
-};
-
-// See quick-terminal-space-behavior
-pub const QuickTerminalSpaceBehavior = enum {
-    remain,
-    move,
-};
-
-/// See quick-terminal-keyboard-interactivity
-pub const QuickTerminalKeyboardInteractivity = enum {
-    none,
-    @"on-demand",
-    exclusive,
 };
 
 /// See grapheme-width-method
@@ -9767,20 +8261,6 @@ pub const FreetypeLoadFlags = packed struct {
     monochrome: bool = false,
     autohint: bool = true,
     light: bool = true,
-};
-
-/// See linux-cgroup
-pub const LinuxCgroup = enum {
-    never,
-    always,
-    @"single-instance",
-};
-
-/// See async-backend
-pub const AsyncBackend = enum {
-    auto,
-    epoll,
-    io_uring,
 };
 
 /// See auto-updates
@@ -9907,18 +8387,7 @@ pub const BackgroundBlur = union(enum) {
 pub const WindowDecoration = enum(c_int) {
     auto,
     client,
-    server,
     none,
-
-    /// Make this a valid gobject if we're in a GTK environment.
-    pub const getGObjectType = switch (build_config.app_runtime) {
-        .gtk => @import("gobject").ext.defineEnum(
-            WindowDecoration,
-            .{ .name = "XGhosttyConfigWindowDecoration" },
-        ),
-
-        .none => void,
-    };
 
     pub fn parseCLI(input_: ?[]const u8) !WindowDecoration {
         const input = input_ orelse return .auto;
@@ -9945,10 +8414,6 @@ pub const WindowDecoration = enum(c_int) {
         {
             const v = try WindowDecoration.parseCLI("false");
             try testing.expectEqual(WindowDecoration.none, v);
-        }
-        {
-            const v = try WindowDecoration.parseCLI("server");
-            try testing.expectEqual(WindowDecoration.server, v);
         }
         {
             const v = try WindowDecoration.parseCLI("client");
@@ -10950,27 +9415,6 @@ test "theme specifying light/dark sets theme usage in conditional state" {
     }
 }
 
-test "compatibility: gtk-single-instance desktop" {
-    const testing = std.testing;
-    const alloc = testing.allocator;
-
-    {
-        var cfg = try Config.default(alloc);
-        defer cfg.deinit();
-        var it: TestIterator = .{ .data = &.{
-            "--gtk-single-instance=desktop",
-        } };
-        try cfg.loadIter(alloc, &it);
-
-        // We need to test this BEFORE finalize, because finalize will
-        // convert our detect to a real value.
-        try testing.expectEqual(
-            GtkSingleInstance.detect,
-            cfg.@"gtk-single-instance",
-        );
-    }
-}
-
 test "compatibility: removed cursor-invert-fg-bg" {
     const testing = std.testing;
     const alloc = testing.allocator;
@@ -11035,25 +9479,6 @@ test "compatibility: removed bold-is-bright" {
         try testing.expectEqual(
             BoldColor.bright,
             cfg.@"bold-color",
-        );
-    }
-}
-
-test "compatibility: window new-window" {
-    const testing = std.testing;
-    const alloc = testing.allocator;
-
-    {
-        var cfg = try Config.default(alloc);
-        defer cfg.deinit();
-        var it: TestIterator = .{ .data = &.{
-            "--macos-dock-drop-behavior=window",
-        } };
-        try cfg.loadIter(alloc, &it);
-        try cfg.finalize();
-        try testing.expectEqual(
-            MacOSDockDropBehavior.@"new-window",
-            cfg.@"macos-dock-drop-behavior",
         );
     }
 }

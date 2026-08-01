@@ -121,7 +121,6 @@ struct TerminalCommandPaletteView: View {
     private var terminalOptions: [CommandOption] {
         guard let appDelegate = NSApp.delegate as? AppDelegate else { return [] }
         return appDelegate.ghostty.config.commandPaletteEntries
-            .filter(\.isSupported)
             .map { c in
                 let symbols = appDelegate.ghostty.config.keyboardShortcut(for: c.action)?.keyList
                 return CommandOption(
@@ -136,45 +135,60 @@ struct TerminalCommandPaletteView: View {
 
     /// Commands for jumping to other terminal surfaces.
     private var jumpOptions: [CommandOption] {
-        TerminalController.all.flatMap { controller -> [CommandOption] in
-            guard let window = controller.window else { return [] }
+        guard let controller = TerminalController.shared,
+              let window = controller.window else { return [] }
 
-            let color = (window as? TerminalWindow)?.tabColor
-            let displayColor = color != TerminalTabColor.none ? color : nil
+        // Every group's panes are reachable, not just the focused group's — the
+        // present handler focuses the owning group before the surface.
+        let focusedGroup = controller.workspace.state.focusedGroup
 
-            return controller.surfaceTree.map { surface in
-                let terminalTitle = surface.title.isEmpty ? window.title : surface.title
-                let displayTitle: String
-                if let override = controller.titleOverride, !override.isEmpty {
-                    displayTitle = override
-                } else if !terminalTitle.isEmpty {
-                    displayTitle = terminalTitle
-                } else {
-                    displayTitle = "Untitled"
-                }
-                let pwd = surface.pwd?.abbreviatedPath
-                let subtitle: String? = if let pwd, !displayTitle.contains(pwd) {
-                    pwd
-                } else {
-                    nil
-                }
+        return controller.allSurfaces.map { surface in
+            // The window-scoped title override is a fallback here, not an
+            // override: applying it to every entry would make all the panes in
+            // the list read identically.
+            let displayTitle: String
+            if !surface.title.isEmpty {
+                displayTitle = surface.title
+            } else if let override = controller.titleOverride, !override.isEmpty {
+                displayTitle = override
+            } else if !window.title.isEmpty {
+                displayTitle = window.title
+            } else {
+                displayTitle = "Untitled"
+            }
 
-                return CommandOption(
-                    title: "Focus: \(displayTitle)",
-                    subtitle: subtitle,
-                    leadingIcon: "rectangle.on.rectangle",
-                    leadingColor: displayColor?.displayColor.map { Color($0) },
-                    sortKey: AnySortKey(ObjectIdentifier(surface))
-                ) {
-                    NotificationCenter.default.post(
-                        name: XGhostty.Notification.ghosttyPresentTerminal,
-                        object: surface
-                    )
-                }
+            // Qualify panes that live outside the focused group by group name so
+            // otherwise-identical entries are distinguishable.
+            let groupName: String? = {
+                guard let groupID = controller.groupID(containing: surface),
+                      groupID != focusedGroup else { return nil }
+                return controller.workspace.state.groups[groupID]?.name
+            }()
+
+            let pwd = surface.pwd?.abbreviatedPath
+            let pwdPart: String? = if let pwd, !displayTitle.contains(pwd) {
+                pwd
+            } else {
+                nil
+            }
+            let subtitleParts = [groupName, pwdPart].compactMap { $0 }
+            let subtitle: String? = subtitleParts.isEmpty
+                ? nil
+                : subtitleParts.joined(separator: " · ")
+
+            return CommandOption(
+                title: "Focus: \(displayTitle)",
+                subtitle: subtitle,
+                leadingIcon: "rectangle.on.rectangle",
+                sortKey: AnySortKey(ObjectIdentifier(surface))
+            ) {
+                NotificationCenter.default.post(
+                    name: XGhostty.Notification.ghosttyPresentTerminal,
+                    object: surface
+                )
             }
         }
     }
-
 }
 
 /// This is done to ensure that the given view is in the responder chain.

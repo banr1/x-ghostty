@@ -6,26 +6,6 @@ import SwiftUI
 struct ConfigTests {
     // MARK: - Boolean Properties
 
-    @Test func initialWindowDefaultsToTrue() throws {
-        let config = try TemporaryConfig("")
-        #expect(config.initialWindow == true)
-    }
-
-    @Test func initialWindowSetToFalse() throws {
-        let config = try TemporaryConfig("initial-window = false")
-        #expect(config.initialWindow == false)
-    }
-
-    @Test func quitAfterLastWindowClosedDefaultsToFalse() throws {
-        let config = try TemporaryConfig("")
-        #expect(config.shouldQuitAfterLastWindowClosed == false)
-    }
-
-    @Test func quitAfterLastWindowClosedSetToTrue() throws {
-        let config = try TemporaryConfig("quit-after-last-window-closed = true")
-        #expect(config.shouldQuitAfterLastWindowClosed == true)
-    }
-
     @Test func windowStepResizeDefaultsToFalse() throws {
         let config = try TemporaryConfig("")
         #expect(config.windowStepResize == false)
@@ -98,7 +78,6 @@ struct ConfigTests {
     @Test(arguments: [
         ("native", XGhostty.Config.MacOSTitlebarStyle.native),
         ("transparent", XGhostty.Config.MacOSTitlebarStyle.transparent),
-        ("tabs", XGhostty.Config.MacOSTitlebarStyle.tabs),
         ("hidden", XGhostty.Config.MacOSTitlebarStyle.hidden),
     ])
     func macosTitlebarStyleValues(raw: String, expected: XGhostty.Config.MacOSTitlebarStyle) throws {
@@ -210,15 +189,13 @@ struct ConfigTests {
 
     @Test func multipleConfigValues() throws {
         let config = try TemporaryConfig("""
-        initial-window = false
-        quit-after-last-window-closed = true
         maximize = true
         focus-follows-mouse = true
+        window-step-resize = true
         """)
-        #expect(config.initialWindow == false)
-        #expect(config.shouldQuitAfterLastWindowClosed == true)
         #expect(config.maximize == true)
         #expect(config.focusFollowsMouse == true)
+        #expect(config.windowStepResize == true)
     }
 
     // MARK: - Keybind
@@ -241,8 +218,8 @@ struct ConfigTests {
     @Test
     func emptyConfigShouldBeHaveDefaultShortcut() async throws {
         let config = try TemporaryConfig("")
-        let newWindow = try #require(config.keyboardShortcut(for: "new_window"))
-        #expect(newWindow == .init("n", modifiers: [.command]))
+        let closeSurface = try #require(config.keyboardShortcut(for: "close_surface"))
+        #expect(closeSurface == .init("w", modifiers: [.command]))
         let gotoToNextSplit = try #require(config.keyboardShortcut(for: "goto_split:next"))
         #expect(gotoToNextSplit == .init("]", modifiers: [.command]))
     }

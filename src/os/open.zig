@@ -1,7 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
-const build_config = @import("../build_config.zig");
 const apprt = @import("../apprt.zig");
 
 const log = std.log.scoped(.@"os-open");
@@ -48,17 +47,6 @@ pub fn open(
     // Pipe stderr so we can log the stderr from the command. This must be set
     // before spawning the process.
     exe.stderr_behavior = .Pipe;
-
-    // In the snap on Linux the launcher exports LD_LIBRARY_PATH pointing at
-    // the snap's bundled libraries. Leaking this into child process can can be
-    // problematic, so let's drop it from the env
-    var snap_env: std.process.EnvMap = if (comptime build_config.snap) blk: {
-        var env = try std.process.getEnvMap(alloc);
-        env.remove("LD_LIBRARY_PATH");
-        break :blk env;
-    } else undefined;
-    defer if (comptime build_config.snap) snap_env.deinit();
-    if (comptime build_config.snap) exe.env_map = &snap_env;
 
     // Spawn the process on our same thread so we can detect failure
     // quickly.

@@ -254,14 +254,6 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             /// frame state struct so we can start working on a new frame.
             frame_sema: std.Thread.Semaphore = .{ .permits = buf_count },
 
-            /// Set to true when deinited, if you try to deinit a defunct
-            /// swap chain it will just be ignored, to prevent double-free.
-            ///
-            /// This is required because of `displayUnrealized`, since it
-            /// `deinits` the swapchain, which leads to a double-free if
-            /// the renderer is deinited after that.
-            defunct: bool = false,
-
             pub fn init(api: GraphicsAPI, custom_shaders: bool) !SwapChain {
                 var result: SwapChain = .{ .frames = undefined };
 
@@ -274,9 +266,6 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             }
 
             pub fn deinit(self: *SwapChain) void {
-                if (self.defunct) return;
-                self.defunct = true;
-
                 // Wait for all of our inflight draws to complete
                 // so that we can cleanly deinit our GPU state.
                 for (0..buf_count) |_| self.frame_sema.wait();
@@ -286,11 +275,8 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             /// Get the next frame state to draw to. This will wait on the
             /// semaphore to ensure that the frame is available. This must
             /// always be paired with a call to releaseFrame.
-            pub fn nextFrame(self: *SwapChain) error{Defunct}!*FrameState {
-                if (self.defunct) return error.Defunct;
-
+            pub fn nextFrame(self: *SwapChain) *FrameState {
                 self.frame_sema.wait();
-                errdefer self.frame_sema.post();
                 self.frame_index = (self.frame_index + 1) % buf_count;
                 return &self.frames[self.frame_index];
             }
@@ -932,57 +918,6 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             display_link.stop() catch {};
         }
 
-        /// This is called by the GTK apprt after the surface is
-        /// reinitialized due to any of the events mentioned in
-        /// the doc comment for `displayUnrealized`.
-        pub fn displayRealized(self: *Self) !void {
-            // If our API has to do things on realize, let it.
-            if (@hasDecl(GraphicsAPI, "displayRealized")) {
-                self.api.displayRealized();
-            }
-
-            // Lock the draw mutex so that we can
-            // safely reinitialize our GPU resources.
-            self.draw_mutex.lock();
-            defer self.draw_mutex.unlock();
-
-            // We assume that the swap chain was deinited in
-            // `displayUnrealized`, in which case it should be
-            // marked defunct. If not, we have a problem.
-            assert(self.swap_chain.defunct);
-
-            // We reinitialize our shaders and our swap chain.
-            try self.initShaders();
-            self.swap_chain = try SwapChain.init(
-                self.api,
-                self.has_custom_shaders,
-            );
-            self.reinitialize_shaders = false;
-            self.target_config_modified = 1;
-        }
-
-        /// This is called by the GTK apprt when the surface is being destroyed.
-        /// This can happen because the surface is being closed but also when
-        /// moving the window between displays or splitting.
-        pub fn displayUnrealized(self: *Self) void {
-            // If our API has to do things on unrealize, let it.
-            if (@hasDecl(GraphicsAPI, "displayUnrealized")) {
-                self.api.displayUnrealized();
-            }
-
-            // Lock the draw mutex so that we can
-            // safely deinitialize our GPU resources.
-            self.draw_mutex.lock();
-            defer self.draw_mutex.unlock();
-
-            // We deinit our swap chain and shaders.
-            //
-            // This will mark them as defunct so that they
-            // can't be double-freed or used in draw calls.
-            self.swap_chain.deinit();
-            self.shaders.deinit(self.alloc);
-        }
-
         fn displayLinkCallback(
             _: *macos.video.DisplayLink,
             ud: ?*xev.Async,
@@ -1490,7 +1425,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             self.cells_rebuilt = false;
 
             // Wait for a frame to be available.
-            const frame = try self.swap_chain.nextFrame();
+            const frame = self.swap_chain.nextFrame();
             errdefer self.swap_chain.releaseFrame();
             // log.debug("drawing frame index={}", .{self.swap_chain.frame_index});
 

@@ -1,5 +1,4 @@
 const std = @import("std");
-const build_config = @import("../build_config.zig");
 const assert = @import("../quirks.zig").inlineAssert;
 const apprt = @import("../apprt.zig");
 const configpkg = @import("../config.zig");
@@ -79,25 +78,9 @@ pub const Action = union(Key) {
     /// Quit the application.
     quit,
 
-    /// Open a new window. The target determines whether properties such
-    /// as font size should be inherited.
-    new_window,
-
-    /// Open a new tab. If the target is a surface it should be opened in
-    /// the same window as the surface. If the target is the app then
-    /// the tab should be opened in a new window.
-    new_tab,
-
-    /// Closes the tab belonging to the currently focused split, or all other
-    /// tabs, depending on the mode.
-    close_tab: CloseTabMode,
-
     /// Create a new split. The value determines the location of the split
     /// relative to the target.
     new_split: SplitDirection,
-
-    /// Close all open windows.
-    close_all_windows,
 
     /// Toggle maximized window state.
     toggle_maximize,
@@ -105,42 +88,16 @@ pub const Action = union(Key) {
     /// Toggle fullscreen mode.
     toggle_fullscreen: Fullscreen,
 
-    /// Toggle tab overview.
-    toggle_tab_overview,
-
-    /// Toggle whether window directions are shown.
-    toggle_window_decorations,
-
-    /// Toggle the quick terminal in or out.
-    toggle_quick_terminal,
-
     /// Toggle the command palette.
     toggle_command_palette,
-
-    /// Toggle the visibility of all XGhostty terminal windows.
-    toggle_visibility,
 
     /// Toggle the window background opacity. This only has an effect
     /// if the window started as transparent (non-opaque), and toggles
     /// it between fully opaque and the configured background opacity.
     toggle_background_opacity,
 
-    /// Moves a tab by a relative offset.
-    ///
-    /// Adjusts the tab position based on `offset` (e.g., -1 for left, +1
-    /// for right). If the new position is out of bounds, it wraps around
-    /// cyclically within the tab range.
-    move_tab: MoveTab,
-
-    /// Jump to a specific tab. Must handle the scenario that the tab
-    /// value is invalid.
-    goto_tab: GotoTab,
-
     /// Jump to a specific split.
     goto_split: GotoSplit,
-
-    /// Jump to next/previous window.
-    goto_window: GotoWindow,
 
     /// Resize the split in the given direction.
     resize_split: ResizeSplit,
@@ -152,7 +109,7 @@ pub const Action = union(Key) {
     /// to take up the entire window.
     toggle_split_zoom,
 
-    /// Present the target terminal whether its a tab, split, or window.
+    /// Present the target terminal whether its a group or a split.
     present_terminal,
 
     /// Sets a size limit (in pixels) for the target terminal.
@@ -188,9 +145,6 @@ pub const Action = union(Key) {
     /// Control whether the inspector is shown or hidden.
     inspector: Inspector,
 
-    /// Show the GTK inspector.
-    show_gtk_inspector,
-
     /// The inspector for the given target has changes and should be
     /// rendered at the next opportunity.
     render_inspector,
@@ -201,13 +155,9 @@ pub const Action = union(Key) {
     /// Set the title of the target to the requested value.
     set_title: SetTitle,
 
-    /// Set the tab title override for the target's tab.
-    set_tab_title: SetTitle,
-
     /// Set the title of the target to a prompted value. It is up to
-    /// the apprt to prompt. The value specifies whether to prompt for the
-    /// surface title or the tab title.
-    prompt_title: PromptTitle,
+    /// the apprt to prompt.
+    prompt_title,
 
     /// The current working directory has changed for the target terminal.
     pwd: Pwd,
@@ -288,9 +238,6 @@ pub const Action = union(Key) {
     /// for changes.
     config_change: ConfigChange,
 
-    /// Closes the currently focused window.
-    close_window,
-
     /// Called when the bell character is seen. The apprt should do whatever
     /// it needs to ring the bell. This is usually a sound or visual effect.
     ring_bell,
@@ -318,9 +265,6 @@ pub const Action = union(Key) {
 
     /// Show a native GUI notification about the progress of some TUI operation.
     progress_report: terminal.osc.Command.ProgressReport,
-
-    /// Show the on-screen keyboard.
-    show_on_screen_keyboard,
 
     /// A command has finished,
     command_finished: CommandFinished,
@@ -391,31 +335,20 @@ pub const Action = union(Key) {
     move_group: GotoSplit,
 
     /// Focus the Nth visible group (1-indexed) in tree traversal order.
-    /// Reuses `GotoTab` (only its non-negative index values are used here).
+    /// Uses `GotoGroup` (only its non-negative index values are used here).
     /// Appended last (rather than next to `goto_group`) to preserve C ABI
     /// compatibility; see the note above.
-    goto_group_index: GotoTab,
+    goto_group_index: GotoGroup,
 
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
-        new_window,
-        new_tab,
-        close_tab,
         new_split,
-        close_all_windows,
         toggle_maximize,
         toggle_fullscreen,
-        toggle_tab_overview,
-        toggle_window_decorations,
-        toggle_quick_terminal,
         toggle_command_palette,
-        toggle_visibility,
         toggle_background_opacity,
-        move_tab,
-        goto_tab,
         goto_split,
-        goto_window,
         resize_split,
         equalize_splits,
         toggle_split_zoom,
@@ -427,11 +360,9 @@ pub const Action = union(Key) {
         scrollbar,
         render,
         inspector,
-        show_gtk_inspector,
         render_inspector,
         desktop_notification,
         set_title,
-        set_tab_title,
         prompt_title,
         pwd,
         mouse_shape,
@@ -447,7 +378,6 @@ pub const Action = union(Key) {
         color_change,
         reload_config,
         config_change,
-        close_window,
         ring_bell,
         selection_changed,
         undo,
@@ -456,7 +386,6 @@ pub const Action = union(Key) {
         open_url,
         show_child_exited,
         progress_report,
-        show_on_screen_keyboard,
         command_finished,
         start_search,
         end_search,
@@ -587,17 +516,6 @@ pub const GotoSplit = enum(c_int) {
     }
 };
 
-// This is made extern (c_int) to make interop easier with our embedded
-// runtime. The small size cost doesn't make a difference in our union.
-pub const GotoWindow = enum(c_int) {
-    previous,
-    next,
-
-    test "xghostty.h GotoWindow" {
-        try lib.checkXGhosttyHEnum(GotoWindow, "XGHOSTTY_GOTO_WINDOW_");
-    }
-};
-
 /// The amount to resize the split by and the direction to resize it in.
 pub const ResizeSplit = extern struct {
     amount: u16,
@@ -615,22 +533,18 @@ pub const ResizeSplit = extern struct {
     };
 };
 
-pub const MoveTab = extern struct {
-    amount: isize,
-};
-
-/// The tab to jump to. This is non-exhaustive so that integer values represent
-/// the index (zero-based) of the tab to jump to. Negative values are special
-/// values.
-pub const GotoTab = enum(c_int) {
+/// The group to jump to. This is non-exhaustive so that integer values
+/// represent the index (zero-based) of the group to jump to. Negative values
+/// are special values.
+pub const GotoGroup = enum(c_int) {
     previous = -1,
     next = -2,
     last = -3,
     _,
 
     // TODO: check non-exhaustive enums
-    // test "xghostty.h GotoTab" {
-    //     try lib.checkXGhosttyHEnum(GotoTab, "XGHOSTTY_GOTO_TAB_");
+    // test "xghostty.h GotoGroup" {
+    //     try lib.checkXGhosttyHEnum(GotoGroup, "XGHOSTTY_GOTO_GROUP_");
     // }
 };
 
@@ -707,16 +621,6 @@ pub const MouseVisibility = enum(c_int) {
     }
 };
 
-/// Whether to prompt for the surface title or tab title.
-pub const PromptTitle = enum(c_int) {
-    surface,
-    tab,
-
-    test "xghostty.h PromptTitle" {
-        try lib.checkXGhosttyHEnum(PromptTitle, "XGHOSTTY_PROMPT_TITLE_");
-    }
-};
-
 pub const MouseOverLink = struct {
     url: [:0]const u8,
 
@@ -744,16 +648,6 @@ pub const SizeLimit = extern struct {
 pub const InitialSize = extern struct {
     width: u32,
     height: u32,
-
-    /// Make this a valid gobject if we're in a GTK environment.
-    pub const getGObjectType = switch (build_config.app_runtime) {
-        .gtk => @import("gobject").ext.defineBoxed(
-            InitialSize,
-            .{ .name = "XGhosttyApprtInitialSize" },
-        ),
-
-        .none => void,
-    };
 };
 
 pub const CellSize = extern struct {
@@ -992,20 +886,6 @@ pub const OpenUrl = struct {
             .url = self.url.ptr,
             .len = self.url.len,
         };
-    }
-};
-
-/// sync with xghostty_action_close_tab_mode_e in ghostty.h
-pub const CloseTabMode = enum(c_int) {
-    /// Close the current tab.
-    this,
-    /// Close all other tabs.
-    other,
-    /// Close all tabs to the right of the current tab.
-    right,
-
-    test "xghostty.h CloseTabMode" {
-        try lib.checkXGhosttyHEnum(CloseTabMode, "XGHOSTTY_ACTION_CLOSE_TAB_MODE_");
     }
 };
 

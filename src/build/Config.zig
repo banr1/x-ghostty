@@ -5,7 +5,6 @@ const Config = @This();
 const std = @import("std");
 const builtin = @import("builtin");
 
-const ApprtRuntime = @import("../apprt/runtime.zig").Runtime;
 const FontBackend = @import("../font/backend.zig").Backend;
 const RendererBackend = @import("../renderer/backend.zig").Backend;
 const TerminalBuildOptions = @import("../terminal/build_options.zig").Options;
@@ -13,7 +12,6 @@ const XCFrameworkTarget = @import("xcframework.zig").Target;
 const WasmTarget = @import("../os/wasm/target.zig").Target;
 const expandPath = @import("../os/path.zig").expand;
 
-const gtk = @import("gtk.zig");
 const GitVersion = @import("GitVersion.zig");
 
 /// Standard build configuration options.
@@ -23,16 +21,12 @@ xcframework_target: XCFrameworkTarget = .universal,
 wasm_target: WasmTarget,
 
 /// Comptime interfaces
-app_runtime: ApprtRuntime = .none,
 renderer: RendererBackend = .opengl,
 font_backend: FontBackend = .freetype,
 
 /// Feature flags
-x11: bool = false,
-wayland: bool = false,
 sentry: bool = true,
 simd: bool = true,
-i18n: bool = true,
 wasm_shared: bool = true,
 
 /// XGhostty exe properties
@@ -46,11 +40,8 @@ strip: bool = false,
 patch_rpath: ?[]const u8 = null,
 
 /// Artifacts
-flatpak: bool = false,
-snap: bool = false,
 emit_bench: bool = false,
 emit_docs: bool = false,
-emit_exe: bool = false,
 emit_helpgen: bool = false,
 emit_lib_vt: bool = false,
 emit_macos_app: bool = false,
@@ -119,11 +110,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
     // one exists so this is hardcoded.
     const wasm_target: WasmTarget = .browser;
 
-    // Determine whether GTK supports X11 and Wayland. This is always safe
-    // to run even on non-Linux platforms because any failures result in
-    // defaults.
-    const gtk_targets = gtk.targets(b);
-
     // We use env vars throughout the build so we grab them immediately here.
     var env = try std.process.getEnvMap(b.allocator);
     errdefer env.deinit();
@@ -152,12 +138,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "The font backend to use for discovery and rasterization.",
     ) orelse FontBackend.default(target.result, wasm_target);
 
-    config.app_runtime = b.option(
-        ApprtRuntime,
-        "app-runtime",
-        "The app runtime to use. Not all values supported on all platforms.",
-    ) orelse ApprtRuntime.default(target.result);
-
     config.renderer = b.option(
         RendererBackend,
         "renderer",
@@ -166,18 +146,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
 
     //---------------------------------------------------------------
     // Feature Flags
-
-    config.flatpak = b.option(
-        bool,
-        "flatpak",
-        "Build for Flatpak (integrates with Flatpak APIs). Only has an effect targeting Linux.",
-    ) orelse false;
-
-    config.snap = b.option(
-        bool,
-        "snap",
-        "Build for Snap (do specific Snap operations). Only has an effect targeting Linux.",
-    ) orelse false;
 
     config.sentry = b.option(
         bool,
@@ -203,28 +171,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         if (target.result.cpu.arch.isWasm()) break :simd false;
 
         break :simd true;
-    };
-
-    config.wayland = b.option(
-        bool,
-        "gtk-wayland",
-        "Enables linking against Wayland libraries when using the GTK rendering backend.",
-    ) orelse gtk_targets.wayland;
-
-    config.x11 = b.option(
-        bool,
-        "gtk-x11",
-        "Enables linking against X11 libraries when using the GTK rendering backend.",
-    ) orelse gtk_targets.x11;
-
-    config.i18n = b.option(
-        bool,
-        "i18n",
-        "Enables gettext-based internationalization. Enabled by default only for macOS, and other Unix-like systems like Linux and FreeBSD when using glibc.",
-    ) orelse switch (target.result.os.tag) {
-        .macos, .ios => true,
-        .linux, .freebsd => target.result.isGnuLibC(),
-        else => false,
     };
 
     //---------------------------------------------------------------
@@ -356,12 +302,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "Set defaults for a libghostty-vt-only build (disables xcframework, macOS app, and docs).",
     ) orelse false;
 
-    config.emit_exe = b.option(
-        bool,
-        "emit-exe",
-        "Build and install main executables with 'build'",
-    ) orelse !config.emit_lib_vt;
-
     config.emit_test_exe = b.option(
         bool,
         "emit-test-exe",
@@ -455,10 +395,9 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
             defer if (path) |p| b.allocator.free(p);
             break :emit_xcfw path != null;
         }
-        break :emit_xcfw config.app_runtime == .none and
-            (!config.emit_bench and
-                !config.emit_test_exe and
-                !config.emit_helpgen);
+        break :emit_xcfw !config.emit_bench and
+            !config.emit_test_exe and
+            !config.emit_helpgen;
     };
 
     config.emit_macos_app = b.option(
@@ -508,15 +447,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         }) |dep| {
             _ = b.systemIntegrationOption(dep, .{ .default = false });
         }
-
-        // These are dynamic libraries we default to true, preferring
-        // to use system packages over building and installing libs
-        // as they require additional ldconfig of library paths or
-        // patching the rpath of the program to discover the dynamic library
-        // at runtime
-        for (&[_][]const u8{"gtk4-layer-shell"}) |dep| {
-            _ = b.systemIntegrationOption(dep, .{ .default = true });
-        }
     }
 
     return config;
@@ -526,14 +456,8 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
 pub fn addOptions(self: *const Config, step: *std.Build.Step.Options) !void {
     // We need to break these down individual because addOption doesn't
     // support all types.
-    step.addOption(bool, "flatpak", self.flatpak);
-    step.addOption(bool, "snap", self.snap);
-    step.addOption(bool, "x11", self.x11);
-    step.addOption(bool, "wayland", self.wayland);
     step.addOption(bool, "sentry", self.sentry);
     step.addOption(bool, "simd", self.simd);
-    step.addOption(bool, "i18n", self.i18n);
-    step.addOption(ApprtRuntime, "app_runtime", self.app_runtime);
     step.addOption(FontBackend, "font_backend", self.font_backend);
     step.addOption(RendererBackend, "renderer", self.renderer);
     step.addOption(ExeEntrypoint, "exe_entrypoint", self.exe_entrypoint);
@@ -618,15 +542,11 @@ pub fn fromOptions() Config {
         .env = undefined,
 
         .version = options.app_version,
-        .flatpak = options.flatpak,
-        .app_runtime = std.meta.stringToEnum(ApprtRuntime, @tagName(options.app_runtime)).?,
         .font_backend = std.meta.stringToEnum(FontBackend, @tagName(options.font_backend)).?,
         .renderer = std.meta.stringToEnum(RendererBackend, @tagName(options.renderer)).?,
-        .snap = options.snap,
         .exe_entrypoint = std.meta.stringToEnum(ExeEntrypoint, @tagName(options.exe_entrypoint)).?,
         .wasm_target = std.meta.stringToEnum(WasmTarget, @tagName(options.wasm_target)).?,
         .wasm_shared = options.wasm_shared,
-        .i18n = options.i18n,
     };
 }
 

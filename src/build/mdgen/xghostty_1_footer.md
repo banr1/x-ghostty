@@ -4,7 +4,7 @@ _\$XDG_CONFIG_HOME/xghostty/config.xghostty_
 
 : Location of the default configuration file.
 
-_\$HOME/Library/Application Support/com.mitchellh.xxghostty/config.xghostty_
+_\$HOME/Library/Application Support/com.mitchellh.xghostty/config.xghostty_
 
 : **On macOS**, location of the default configuration file. This location takes
 precedence over the XDG environment locations.
@@ -43,7 +43,7 @@ precedence over the XDG environment locations.
 destinations receive logs. Ghostty currently defines two destinations:
 
 : - `stderr` - logging to `stderr`.
-: - `macos` - logging to macOS's unified log (has no effect on non-macOS platforms).
+: - `macos` - logging to macOS's unified log.
 
 : Combine values with a comma to enable multiple destinations. Prefix a
 destination with `no-` to disable it. Enabling and disabling destinations

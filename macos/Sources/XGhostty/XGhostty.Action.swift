@@ -33,14 +33,6 @@ extension XGhostty.Action {
         }
     }
 
-    struct MoveTab {
-        let amount: Int
-
-        init(c: xghostty_action_move_tab_s) {
-            self.amount = c.amount
-        }
-    }
-
     struct OpenURL {
         enum Kind {
             case unknown
@@ -124,20 +116,6 @@ extension XGhostty.Action {
                 self.needle = String(cString: needleCString)
             } else {
                 self.needle = nil
-            }
-        }
-    }
-
-    enum PromptTitle {
-        case surface
-        case tab
-
-        init(_ c: xghostty_action_prompt_title_e) {
-            switch c {
-            case XGHOSTTY_PROMPT_TITLE_TAB:
-                self = .tab
-            default:
-                self = .surface
             }
         }
     }

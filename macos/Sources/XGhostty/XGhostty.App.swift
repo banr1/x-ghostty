@@ -187,20 +187,6 @@ extension XGhostty {
             xghostty_surface_request_close(surface)
         }
 
-        func newTab(surface: xghostty_surface_t) {
-            let action = "new_tab"
-            if !xghostty_surface_binding_action(surface, action, UInt(action.lengthOfBytes(using: .utf8))) {
-                logger.warning("action failed action=\(action, privacy: .public)")
-            }
-        }
-
-        func newWindow(surface: xghostty_surface_t) {
-            let action = "new_window"
-            if !xghostty_surface_binding_action(surface, action, UInt(action.lengthOfBytes(using: .utf8))) {
-                logger.warning("action failed action=\(action, privacy: .public)")
-            }
-        }
-
         func split(surface: xghostty_surface_t, direction: xghostty_action_split_direction_e) {
             xghostty_surface_split(surface, direction)
         }
@@ -494,12 +480,6 @@ extension XGhostty {
             case XGHOSTTY_ACTION_QUIT:
                 quit(app)
 
-            case XGHOSTTY_ACTION_NEW_WINDOW:
-                newWindow(app, target: target)
-
-            case XGHOSTTY_ACTION_NEW_TAB:
-                newTab(app, target: target)
-
             case XGHOSTTY_ACTION_NEW_SPLIT:
                 newSplit(app, target: target, direction: action.action.new_split)
 
@@ -539,26 +519,11 @@ extension XGhostty {
             case XGHOSTTY_ACTION_CLOSE_GROUP:
                 closeGroup(app, target: target)
 
-            case XGHOSTTY_ACTION_CLOSE_TAB:
-                closeTab(app, target: target, mode: action.action.close_tab_mode)
-
-            case XGHOSTTY_ACTION_CLOSE_WINDOW:
-                closeWindow(app, target: target)
-
             case XGHOSTTY_ACTION_TOGGLE_FULLSCREEN:
                 toggleFullscreen(app, target: target, mode: action.action.toggle_fullscreen)
 
-            case XGHOSTTY_ACTION_MOVE_TAB:
-                return moveTab(app, target: target, move: action.action.move_tab)
-
-            case XGHOSTTY_ACTION_GOTO_TAB:
-                return gotoTab(app, target: target, tab: action.action.goto_tab)
-
             case XGHOSTTY_ACTION_GOTO_SPLIT:
                 return gotoSplit(app, target: target, direction: action.action.goto_split)
-
-            case XGHOSTTY_ACTION_GOTO_WINDOW:
-                return gotoWindow(app, target: target, direction: action.action.goto_window)
 
             case XGHOSTTY_ACTION_RESIZE_SPLIT:
                 return resizeSplit(app, target: target, resize: action.action.resize_split)
@@ -581,11 +546,8 @@ extension XGhostty {
             case XGHOSTTY_ACTION_SET_TITLE:
                 setTitle(app, target: target, v: action.action.set_title)
 
-            case XGHOSTTY_ACTION_SET_TAB_TITLE:
-                return setTabTitle(app, target: target, v: action.action.set_tab_title)
-
             case XGHOSTTY_ACTION_PROMPT_TITLE:
-                return promptTitle(app, target: target, v: action.action.prompt_title)
+                return promptTitle(app, target: target)
 
             case XGHOSTTY_ACTION_PWD:
                 pwdChanged(app, target: target, v: action.action.pwd)
@@ -625,12 +587,6 @@ extension XGhostty {
 
             case XGHOSTTY_ACTION_TOGGLE_MAXIMIZE:
                 toggleMaximize(app, target: target)
-
-            case XGHOSTTY_ACTION_TOGGLE_QUICK_TERMINAL:
-                toggleQuickTerminal(app, target: target)
-
-            case XGHOSTTY_ACTION_TOGGLE_VISIBILITY:
-                toggleVisibility(app, target: target)
 
             case XGHOSTTY_ACTION_TOGGLE_BACKGROUND_OPACITY:
                 toggleBackgroundOpacity(app, target: target)
@@ -677,9 +633,6 @@ extension XGhostty {
             case XGHOSTTY_ACTION_SCROLLBAR:
                 scrollbar(app, target: target, v: action.action.scrollbar)
 
-            case XGHOSTTY_ACTION_CLOSE_ALL_WINDOWS:
-                closeAllWindows(app, target: target)
-
             case XGHOSTTY_ACTION_START_SEARCH:
                 startSearch(app, target: target, v: action.action.start_search)
 
@@ -698,14 +651,12 @@ extension XGhostty {
             case XGHOSTTY_ACTION_PRESENT_TERMINAL:
                 return presentTerminal(app, target: target)
 
-            case XGHOSTTY_ACTION_TOGGLE_TAB_OVERVIEW:
-                fallthrough
-            case XGHOSTTY_ACTION_TOGGLE_WINDOW_DECORATIONS:
-                fallthrough
-            case XGHOSTTY_ACTION_SIZE_LIMIT:
-                fallthrough
-            case XGHOSTTY_ACTION_QUIT_TIMER:
-                fallthrough
+            case XGHOSTTY_ACTION_SIZE_LIMIT, XGHOSTTY_ACTION_QUIT_TIMER:
+                // Unimplemented on macOS. These are listed explicitly so they
+                // can't fall through into a case that would read the wrong
+                // member of the action union.
+                return false
+
             case XGHOSTTY_ACTION_SHOW_CHILD_EXITED:
                 return showChildExited(app, target: target, v: action.action.child_exited)
             case XGHOSTTY_ACTION_COPY_TITLE_TO_CLIPBOARD:
@@ -826,67 +777,6 @@ extension XGhostty {
             return true
         }
 
-        private static func newWindow(_ app: xghostty_app_t, target: xghostty_target_s) {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyNewWindow,
-                    object: nil,
-                    userInfo: [:]
-                )
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return }
-                guard let surfaceView = self.surfaceView(from: surface) else { return }
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyNewWindow,
-                    object: surfaceView,
-                    userInfo: [
-                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_WINDOW)),
-                    ]
-                )
-
-            default:
-                assertionFailure()
-            }
-        }
-
-        private static func newTab(_ app: xghostty_app_t, target: xghostty_target_s) {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyNewTab,
-                    object: nil,
-                    userInfo: [:]
-                )
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return }
-                guard let surfaceView = self.surfaceView(from: surface) else { return }
-                guard let appState = self.appState(fromView: surfaceView) else { return }
-                guard appState.config.windowDecorations else {
-                    let alert = NSAlert()
-                    alert.messageText = "Tabs are disabled"
-                    alert.informativeText = "Enable window decorations to use tabs"
-                    alert.addButton(withTitle: "OK")
-                    alert.alertStyle = .warning
-                    _ = alert.runModal()
-                    return
-                }
-
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyNewTab,
-                    object: surfaceView,
-                    userInfo: [
-                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_TAB)),
-                    ]
-                )
-
-            default:
-                assertionFailure()
-            }
-        }
-
         private static func newSplit(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
@@ -934,7 +824,7 @@ extension XGhostty {
                     object: surfaceView,
                     userInfo: [
                         "direction": direction,
-                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_SPLIT)),
+                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_GROUP)),
                     ]
                 )
 
@@ -1027,7 +917,7 @@ extension XGhostty {
         private static func gotoGroupIndex(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
-            index: xghostty_action_goto_tab_e) -> Bool {
+            index: xghostty_action_goto_group_e) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
                 XGhostty.logger.warning("goto group index does nothing with an app target")
@@ -1038,9 +928,9 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // The action reuses the `goto_tab` C type but the value is always
-                // a 1-based group number (libghostty rejects anything outside
-                // 1..9 at parse time), so the negative sentinels never apply.
+                // The value is always a 1-based group number (libghostty rejects
+                // anything outside 1..9 at parse time), so the enum's negative
+                // sentinels never apply here.
                 let ordinal = Int(index.rawValue)
 
                 // The Cmd+1..9 binding is `performable`, so only consume the key
@@ -1299,72 +1189,6 @@ extension XGhostty {
             }
         }
 
-        private static func closeTab(_ app: xghostty_app_t, target: xghostty_target_s, mode: xghostty_action_close_tab_mode_e) {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("close tabs does nothing with an app target")
-                return
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return }
-                guard let surfaceView = self.surfaceView(from: surface) else { return }
-
-                switch mode {
-                case XGHOSTTY_ACTION_CLOSE_TAB_MODE_THIS:
-                    NotificationCenter.default.post(
-                        name: .ghosttyCloseTab,
-                        object: surfaceView
-                    )
-                    return
-
-                case XGHOSTTY_ACTION_CLOSE_TAB_MODE_OTHER:
-                    NotificationCenter.default.post(
-                        name: .ghosttyCloseOtherTabs,
-                        object: surfaceView
-                    )
-                    return
-
-                case XGHOSTTY_ACTION_CLOSE_TAB_MODE_RIGHT:
-                    NotificationCenter.default.post(
-                        name: .ghosttyCloseTabsOnTheRight,
-                        object: surfaceView
-                    )
-                    return
-
-                default:
-                    assertionFailure()
-                }
-
-            default:
-                assertionFailure()
-            }
-        }
-
-        private static func closeWindow(_ app: xghostty_app_t, target: xghostty_target_s) {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("close window does nothing with an app target")
-                return
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return }
-                guard let surfaceView = self.surfaceView(from: surface) else { return }
-
-                NotificationCenter.default.post(
-                    name: .ghosttyCloseWindow,
-                    object: surfaceView
-                )
-
-            default:
-                assertionFailure()
-            }
-        }
-
-        private static func closeAllWindows(_ app: xghostty_app_t, target: xghostty_target_s) {
-            guard let appDelegate = NSApplication.shared.delegate as? AppDelegate else { return }
-            appDelegate.closeAllWindows(nil)
-        }
-
         private static func toggleFullscreen(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
@@ -1437,14 +1261,6 @@ extension XGhostty {
             }
         }
 
-        private static func toggleVisibility(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s
-        ) {
-            guard let appDelegate = NSApplication.shared.delegate as? AppDelegate else { return }
-            appDelegate.toggleVisibility(self)
-        }
-
         private static func ringBell(
             _ app: xghostty_app_t,
             target: xghostty_target_s) {
@@ -1515,69 +1331,6 @@ extension XGhostty {
             }
         }
 
-        private static func moveTab(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            move: xghostty_action_move_tab_s) -> Bool {
-                switch target.tag {
-                case XGHOSTTY_TARGET_APP:
-                    XGhostty.logger.warning("move tab does nothing with an app target")
-                    return false
-
-                case XGHOSTTY_TARGET_SURFACE:
-                    guard let surface = target.target.surface else { return false }
-                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
-
-                    // See gotoTab for notes on this check.
-                    guard (surfaceView.window?.tabGroup?.windows.count ?? 0) > 1 else { return false }
-
-                    NotificationCenter.default.post(
-                        name: .ghosttyMoveTab,
-                        object: surfaceView,
-                        userInfo: [
-                            SwiftUI.Notification.Name.GhosttyMoveTabKey: Action.MoveTab(c: move),
-                        ]
-                    )
-
-                default:
-                    assertionFailure()
-                }
-
-                return true
-        }
-
-        private static func gotoTab(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            tab: xghostty_action_goto_tab_e) -> Bool {
-                switch target.tag {
-                case XGHOSTTY_TARGET_APP:
-                    XGhostty.logger.warning("goto tab does nothing with an app target")
-                    return false
-
-                case XGHOSTTY_TARGET_SURFACE:
-                    guard let surface = target.target.surface else { return false }
-                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
-
-                    // Similar to goto_split (see comment there) about our performability,
-                    // we should make this more accurate later.
-                    guard (surfaceView.window?.tabGroup?.windows.count ?? 0) > 1 else { return false }
-
-                    NotificationCenter.default.post(
-                        name: Notification.ghosttyGotoTab,
-                        object: surfaceView,
-                        userInfo: [
-                            Notification.GotoTabKey: tab,
-                        ]
-                    )
-
-                default:
-                    assertionFailure()
-                }
-
-                return true
-        }
-
         private static func gotoSplit(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
@@ -1624,64 +1377,6 @@ extension XGhostty {
                     assertionFailure()
                     return false
                 }
-        }
-
-        private static func gotoWindow(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            direction: xghostty_action_goto_window_e
-        ) -> Bool {
-            // Collect candidate windows: visible terminal windows that are either
-            // standalone or the currently selected tab in their tab group. This
-            // treats each native tab group as a single "window" for navigation
-            // purposes, since goto_tab handles per-tab navigation.
-            let candidates: [NSWindow] = NSApplication.shared.windows.filter { window in
-                guard window.windowController is BaseTerminalController else { return false }
-                guard window.isVisible, !window.isMiniaturized else { return false }
-                // For native tabs, only include the selected tab in each group
-                if let group = window.tabGroup, group.selectedWindow !== window {
-                    return false
-                }
-                return true
-            }
-
-            // Need at least two windows to navigate between
-            guard candidates.count > 1 else { return false }
-
-            // Find starting index from the current key/main window
-            let startIndex = candidates.firstIndex(where: { $0.isKeyWindow })
-                ?? candidates.firstIndex(where: { $0.isMainWindow })
-                ?? 0
-
-            let step: Int
-            switch direction {
-            case XGHOSTTY_GOTO_WINDOW_NEXT:
-                step = 1
-            case XGHOSTTY_GOTO_WINDOW_PREVIOUS:
-                step = -1
-            default:
-                return false
-            }
-
-            // Iterate with wrap-around until we find a valid window or return to start
-            let count = candidates.count
-            var index = (startIndex + step + count) % count
-
-            while index != startIndex {
-                let candidate = candidates[index]
-                if candidate.isVisible, !candidate.isMiniaturized {
-                    candidate.makeKeyAndOrderFront(nil)
-                    // Also focus the terminal surface within the window
-                    if let controller = candidate.windowController as? BaseTerminalController,
-                       let surface = controller.focusedSurface {
-                        XGhostty.moveFocus(to: surface)
-                    }
-                    return true
-                }
-                index = (index + step + count) % count
-            }
-
-            return false
         }
 
         private static func resizeSplit(
@@ -2002,14 +1697,6 @@ extension XGhostty {
             }
         }
 
-        private static func toggleQuickTerminal(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s
-        ) {
-            guard let appDelegate = NSApplication.shared.delegate as? AppDelegate else { return }
-            appDelegate.toggleQuickTerminal(self)
-        }
-
         private static func setTitle(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
@@ -2027,33 +1714,6 @@ extension XGhostty {
 
             default:
                 assertionFailure()
-            }
-        }
-
-        private static func setTabTitle(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            v: xghostty_action_set_title_s
-        ) -> Bool {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("set tab title does nothing with an app target")
-                return false
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let title = String(cString: v.title!, encoding: .utf8) else { return false }
-                let titleOverride = title.isEmpty ? nil : title
-                guard let surface = target.target.surface else { return false }
-                guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                guard let window = surfaceView.window,
-                      let controller = window.windowController as? BaseTerminalController
-                else { return false }
-                controller.titleOverride = titleOverride
-                return true
-
-            default:
-                assertionFailure()
-                return false
             }
         }
 
@@ -2098,49 +1758,21 @@ extension XGhostty {
 
         private static func promptTitle(
             _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            v: xghostty_action_prompt_title_e) -> Bool {
-            let promptTitle = Action.PromptTitle(v)
-            switch promptTitle {
-            case .surface:
-                switch target.tag {
-                case XGHOSTTY_TARGET_APP:
-                    XGhostty.logger.warning("set title prompt does nothing with an app target")
-                    return false
+            target: xghostty_target_s) -> Bool {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("set title prompt does nothing with an app target")
+                return false
 
-                case XGHOSTTY_TARGET_SURFACE:
-                    guard let surface = target.target.surface else { return false }
-                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                    surfaceView.promptTitle()
-                    return true
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                surfaceView.promptTitle()
+                return true
 
-                default:
-                    assertionFailure()
-                    return false
-                }
-
-            case .tab:
-                switch target.tag {
-                case XGHOSTTY_TARGET_APP:
-                    guard let window = NSApp.mainWindow ?? NSApp.keyWindow,
-                          let controller = window.windowController as? BaseTerminalController
-                    else { return false }
-                    controller.promptTabTitle()
-                    return true
-
-                case XGHOSTTY_TARGET_SURFACE:
-                    guard let surface = target.target.surface else { return false }
-                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                    guard let window = surfaceView.window,
-                          let controller = window.windowController as? BaseTerminalController
-                    else { return false }
-                    controller.promptTabTitle()
-                    return true
-
-                default:
-                    assertionFailure()
-                    return false
-                }
+            default:
+                assertionFailure()
+                return false
             }
         }
 

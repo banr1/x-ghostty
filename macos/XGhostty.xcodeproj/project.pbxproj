@@ -12,12 +12,10 @@
 		552964E62B34A9B400030505 /* vim in Resources */ = {isa = PBXBuildFile; fileRef = 552964E52B34A9B400030505 /* vim */; };
 		819324582F24E78800A9ED8F /* DockTilePlugin.plugin in Copy DockTilePlugin */ = {isa = PBXBuildFile; fileRef = 8193244D2F24E6C000A9ED8F /* DockTilePlugin.plugin */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		819324642F24FF2100A9ED8F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A5B30538299BEAAB0047F10C /* Assets.xcassets */; };
-		8F3A9B4C2FA6B88000A18D13 /* XGhostty.sdef in Resources */ = {isa = PBXBuildFile; fileRef = 8F3A9B4B2FA6B88000A18D13 /* XGhostty.sdef */; };
 		9351BE8E3D22937F003B3499 /* nvim in Resources */ = {isa = PBXBuildFile; fileRef = 9351BE8E2D22937F003B3499 /* nvim */; };
 		A51BFC272B30F1B800E92F16 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A51BFC262B30F1B800E92F16 /* Sparkle */; };
 		A53D0C8E2B53B0EA00305CE6 /* XGhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5D495A1299BEC7E00DD1313 /* XGhosttyKit.xcframework */; };
 		A53D0C952B53B4D800305CE6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A5B30538299BEAAB0047F10C /* Assets.xcassets */; };
-		A546F1142D7B68D7003B11A0 /* locale in Resources */ = {isa = PBXBuildFile; fileRef = A546F1132D7B68D7003B11A0 /* locale */; };
 		A553F4132E06EB1600257779 /* XGhostty.icon in Resources */ = {isa = PBXBuildFile; fileRef = A553F4122E06EB1600257779 /* XGhostty.icon */; };
 		A553F4142E06EB1600257779 /* XGhostty.icon in Resources */ = {isa = PBXBuildFile; fileRef = A553F4122E06EB1600257779 /* XGhostty.icon */; };
 		A56B880B2A840447007A0E29 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A56B880A2A840447007A0E29 /* Carbon.framework */; };
@@ -75,10 +73,8 @@
 		552964E52B34A9B400030505 /* vim */ = {isa = PBXFileReference; lastKnownFileType = folder; name = vim; path = "../zig-out/share/vim"; sourceTree = "<group>"; };
 		810ACC9F2E9D3301004F8F92 /* XGhosttyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XGhosttyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8193244D2F24E6C000A9ED8F /* DockTilePlugin.plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DockTilePlugin.plugin; sourceTree = BUILT_PRODUCTS_DIR; };
-		8F3A9B4B2FA6B88000A18D13 /* XGhostty.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.sdef; path = XGhostty.sdef; sourceTree = "<group>"; };
 		9351BE8E2D22937F003B3499 /* nvim */ = {isa = PBXFileReference; lastKnownFileType = folder; name = nvim; path = "../zig-out/share/nvim"; sourceTree = "<group>"; };
 		A51BFC282B30F26D00E92F16 /* XGhosttyDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = XGhosttyDebug.entitlements; sourceTree = "<group>"; };
-		A546F1132D7B68D7003B11A0 /* locale */ = {isa = PBXFileReference; lastKnownFileType = folder; name = locale; path = "../zig-out/share/locale"; sourceTree = "<group>"; };
 		A54F45F32E1F047A0046BD5C /* XGhosttyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XGhosttyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A553F4122E06EB1600257779 /* XGhostty.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = XXGhostty.icon; path = ../images/XXGhostty.icon; sourceTree = SOURCE_ROOT; };
 		A56B880A2A840447007A0E29 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
@@ -125,30 +121,6 @@
 				Features/About/AboutView.swift,
 				Features/About/AboutViewModel.swift,
 				Features/About/CyclingIconView.swift,
-				"Features/App Intents/CloseTerminalIntent.swift",
-				"Features/App Intents/CommandPaletteIntent.swift",
-				"Features/App Intents/Entities/CommandEntity.swift",
-				"Features/App Intents/Entities/TerminalEntity.swift",
-				"Features/App Intents/FocusTerminalIntent.swift",
-				"Features/App Intents/GetTerminalDetailsIntent.swift",
-				"Features/App Intents/XGhosttyIntentError.swift",
-				"Features/App Intents/InputIntent.swift",
-				"Features/App Intents/IntentPermission.swift",
-				"Features/App Intents/KeybindIntent.swift",
-				"Features/App Intents/NewTerminalIntent.swift",
-				"Features/App Intents/QuickTerminalIntent.swift",
-				"Features/AppleScript/AppDelegate+AppleScript.swift",
-				"Features/AppleScript/XGhostty.Input.Mods+AppleScript.swift",
-				Features/AppleScript/ScriptInputTextCommand.swift,
-				Features/AppleScript/ScriptKeyEventCommand.swift,
-				Features/AppleScript/ScriptMouseButtonCommand.swift,
-				Features/AppleScript/ScriptMousePosCommand.swift,
-				Features/AppleScript/ScriptMouseScrollCommand.swift,
-				Features/AppleScript/ScriptRecord.swift,
-				Features/AppleScript/ScriptSurfaceConfiguration.swift,
-				Features/AppleScript/ScriptTab.swift,
-				Features/AppleScript/ScriptTerminal.swift,
-				Features/AppleScript/ScriptWindow.swift,
 				Features/ClipboardConfirmation/ClipboardConfirmation.xib,
 				Features/ClipboardConfirmation/ClipboardConfirmationController.swift,
 				Features/ClipboardConfirmation/ClipboardConfirmationView.swift,
@@ -162,18 +134,8 @@
 				"Features/Custom App Icon/Extensions/Notification+AppIcon.swift",
 				"Features/Custom App Icon/Extensions/UserDefaults+AppIcon.swift",
 				"Features/Global Keybinds/GlobalEventTap.swift",
-				Features/QuickTerminal/QuickTerminal.xib,
-				Features/QuickTerminal/QuickTerminalController.swift,
-				Features/QuickTerminal/QuickTerminalPosition.swift,
-				Features/QuickTerminal/QuickTerminalRestorableState.swift,
-				Features/QuickTerminal/QuickTerminalScreen.swift,
-				Features/QuickTerminal/QuickTerminalScreenStateCache.swift,
-				Features/QuickTerminal/QuickTerminalSize.swift,
-				Features/QuickTerminal/QuickTerminalSpaceBehavior.swift,
-				Features/QuickTerminal/QuickTerminalWindow.swift,
 				"Features/Secure Input/SecureInput.swift",
 				"Features/Secure Input/SecureInputOverlay.swift",
-				Features/Services/ServiceProvider.swift,
 				Features/Settings/ConfigurationErrors.xib,
 				Features/Settings/ConfigurationErrorsController.swift,
 				Features/Settings/ConfigurationErrorsView.swift,
@@ -187,18 +149,13 @@
 				Features/Terminal/TerminalController.swift,
 				Features/Terminal/TerminalRestorable.swift,
 				"Features/Terminal/TerminalRestorableState+InteralState.swift",
-				Features/Terminal/TerminalTabColor.swift,
 				Features/Terminal/TerminalView.swift,
 				Features/Terminal/TerminalViewContainer.swift,
 				"Features/Terminal/Window Styles/HiddenTitlebarTerminalWindow.swift",
 				"Features/Terminal/Window Styles/Terminal.xib",
 				"Features/Terminal/Window Styles/TerminalHiddenTitlebar.xib",
-				"Features/Terminal/Window Styles/TerminalTabsTitlebarTahoe.xib",
-				"Features/Terminal/Window Styles/TerminalTabsTitlebarVentura.xib",
 				"Features/Terminal/Window Styles/TerminalTransparentTitlebar.xib",
 				"Features/Terminal/Window Styles/TerminalWindow.swift",
-				"Features/Terminal/Window Styles/TitlebarTabsTahoeTerminalWindow.swift",
-				"Features/Terminal/Window Styles/TitlebarTabsVenturaTerminalWindow.swift",
 				"Features/Terminal/Window Styles/TransparentTitlebarTerminalWindow.swift",
 				Features/Update/UpdateBadge.swift,
 				Features/Update/UpdateController.swift,
@@ -248,12 +205,9 @@
 				Helpers/LastWindowPosition.swift,
 				Helpers/MetalView.swift,
 				Helpers/NonDraggableHostingView.swift,
-				Helpers/ObjCExceptionCatcher.m,
 				Helpers/PermissionRequest.swift,
 				Helpers/Private/CGS.swift,
 				Helpers/Private/Dock.swift,
-				Helpers/TabGroupCloseCoordinator.swift,
-				Helpers/TabTitleEditor.swift,
 				Helpers/VibrantLayer.m,
 			);
 			target = A5D4499C2B53AE7B000F5B83 /* XGhostty-iOS */;
@@ -325,7 +279,6 @@
 				29C15B1C2CDC3B2000520DD4 /* bat */,
 				A586167B2B7703CC009BDB1D /* fish */,
 				55154BDF2B33911F001622DC /* xghostty */,
-				A546F1132D7B68D7003B11A0 /* locale */,
 				A5985CE52C33060F00C57AD3 /* man */,
 				9351BE8E2D22937F003B3499 /* nvim */,
 				A5A1F8842A489D6800D1E8BC /* terminfo */,
@@ -339,7 +292,6 @@
 			isa = PBXGroup;
 			children = (
 				A571AB1C2A206FC600248498 /* XGhostty-Info.plist */,
-				8F3A9B4B2FA6B88000A18D13 /* XGhostty.sdef */,
 				A5B30538299BEAAB0047F10C /* Assets.xcassets */,
 				A553F4122E06EB1600257779 /* XGhostty.icon */,
 				A5B3053D299BEAAB0047F10C /* XGhostty.entitlements */,
@@ -575,9 +527,7 @@
 				A553F4142E06EB1600257779 /* XGhostty.icon in Resources */,
 				29C15B1D2CDC3B2900520DD4 /* bat in Resources */,
 				A586167C2B7703CC009BDB1D /* fish in Resources */,
-				8F3A9B4C2FA6B88000A18D13 /* XGhostty.sdef in Resources */,
 				55154BE02B33911F001622DC /* xghostty in Resources */,
-				A546F1142D7B68D7003B11A0 /* locale in Resources */,
 				A5985CE62C33060F00C57AD3 /* man in Resources */,
 				9351BE8E3D22937F003B3499 /* nvim in Resources */,
 				A5A1F8852A489D6800D1E8BC /* terminfo in Resources */,
@@ -756,7 +706,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = XGhostty;
 				INFOPLIST_KEY_CFBundleName = XGhostty;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "A program running within XGhostty would like to use AppleScript.";
 				INFOPLIST_KEY_NSAudioCaptureUsageDescription = "A program running within XGhostty would like to access your system's audio.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "A program running within XGhostty would like to use Bluetooth.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "A program running within XGhostty would like to access your Calendar.";
@@ -1155,7 +1104,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "XGhostty[DEBUG]";
 				INFOPLIST_KEY_CFBundleName = "XGhostty[DEBUG]";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "A program running within XGhostty would like to use AppleScript.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "A program running within XGhostty would like to use Bluetooth.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "A program running within XGhostty would like to access your Calendar.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "A program running within XGhostty would like to use the camera.";
@@ -1211,7 +1159,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = XGhostty;
 				INFOPLIST_KEY_CFBundleName = XGhostty;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "A program running within XGhostty would like to use AppleScript.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "A program running within XGhostty would like to use Bluetooth.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "A program running within XGhostty would like to access your Calendar.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "A program running within XGhostty would like to use the camera.";

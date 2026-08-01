@@ -34,12 +34,6 @@ const log = std.log.scoped(.io_exec);
 /// The termios poll rate in milliseconds.
 const TERMIOS_POLL_MS = 200;
 
-/// If we build with flatpak support then we have to keep track of
-/// a potential execution on the host.
-const FlatpakHostCommand = if (!build_config.flatpak) struct {
-    pub const Completion = struct {};
-} else internal_os.FlatpakHostCommand;
-
 /// The subprocess state for our exec backend.
 subprocess: Subprocess,
 
@@ -103,18 +97,11 @@ pub fn threadEnter(
     errdefer self.subprocess.stop();
 
     // Watcher to detect subprocess exit
-    var process: ?xev.Process = if (self.subprocess.process) |v| switch (v) {
-        .fork_exec => |cmd| try xev.Process.init(
-            cmd.pid orelse return error.ProcessNoPid,
-        ),
-
-        // If we're executing via Flatpak then we can't do
-        // traditional process watching (its implemented
-        // as a special case in os/flatpak.zig) since the
-        // command is on the host.
-        .flatpak => null,
-    } else return error.ProcessNotStarted;
-    errdefer if (process) |*p| p.deinit();
+    var process: xev.Process = if (self.subprocess.process) |cmd|
+        try xev.Process.init(cmd.pid orelse return error.ProcessNoPid)
+    else
+        return error.ProcessNotStarted;
+    errdefer process.deinit();
 
     // Track our process start time for abnormal exits
     const process_start = try std.time.Instant.now();
@@ -154,28 +141,14 @@ pub fn threadEnter(
         .termios_timer = termios_timer,
     } };
 
-    // Start our process watcher. If we have an xev.Process use it.
-    if (process) |*p| p.wait(
+    // Start our process watcher.
+    process.wait(
         td.loop,
         &td.backend.exec.process_wait_c,
         termio.Termio.ThreadData,
         td,
         processExit,
-    ) else if (comptime build_config.flatpak) flatpak: {
-        switch (self.subprocess.process orelse break :flatpak) {
-            // If we're in flatpak and we have a flatpak command
-            // then we can run the special flatpak logic for watching.
-            .flatpak => |*c| c.waitXev(
-                td.loop,
-                &td.backend.exec.flatpak_wait_c,
-                termio.Termio.ThreadData,
-                td,
-                flatpakExit,
-            ),
-
-            .fork_exec => {},
-        }
-    }
+    );
 
     // Start our termios timer. We don't support this on Windows.
     // Fundamentally, we could support this on Windows so we're just
@@ -269,7 +242,14 @@ pub fn resize(
     return try self.subprocess.resize(grid_size, screen_size);
 }
 
-fn processExitCommon(td: *termio.Termio.ThreadData, exit_code: u32) void {
+fn processExit(
+    td_: ?*termio.Termio.ThreadData,
+    _: *xev.Loop,
+    _: *xev.Completion,
+    r: xev.Process.WaitError!u32,
+) xev.CallbackAction {
+    const exit_code = r catch unreachable;
+    const td = td_.?;
     assert(td.backend == .exec);
     const execdata = &td.backend.exec;
     execdata.exited = true;
@@ -294,27 +274,8 @@ fn processExitCommon(td: *termio.Termio.ThreadData, exit_code: u32) void {
             .runtime_ms = runtime_ms orelse 0,
         },
     }, .{ .forever = {} });
-}
 
-fn processExit(
-    td_: ?*termio.Termio.ThreadData,
-    _: *xev.Loop,
-    _: *xev.Completion,
-    r: xev.Process.WaitError!u32,
-) xev.CallbackAction {
-    const exit_code = r catch unreachable;
-    processExitCommon(td_.?, exit_code);
     return .disarm;
-}
-
-fn flatpakExit(
-    td_: ?*termio.Termio.ThreadData,
-    _: *xev.Loop,
-    _: *FlatpakHostCommand.Completion,
-    r: FlatpakHostCommand.WaitError!u8,
-) void {
-    const exit_code = r catch unreachable;
-    processExitCommon(td_.?, exit_code);
 }
 
 fn termiosTimer(
@@ -506,7 +467,7 @@ pub const ThreadData = struct {
     write_stream: xev.Stream,
 
     /// The process watcher
-    process: ?xev.Process,
+    process: xev.Process,
 
     /// This is the pool of available (unused) write requests. If you grab
     /// one from the pool, you must put it back when you're done!
@@ -521,10 +482,6 @@ pub const ThreadData = struct {
     /// This is used for both waiting for the process to exit and then
     /// subsequently to wait for the data_stream to close.
     process_wait_c: xev.Completion = .{},
-
-    // The completion specific to Flatpak process waiting. If
-    // we aren't compiling with Flatpak support this is zero-sized.
-    flatpak_wait_c: FlatpakHostCommand.Completion = .{},
 
     /// Reader thread state
     read_thread: std.Thread,
@@ -550,7 +507,7 @@ pub const ThreadData = struct {
         self.write_buf_pool.deinit(alloc);
 
         // Stop our process watcher
-        if (self.process) |*p| p.deinit();
+        self.process.deinit();
 
         // Stop our write stream
         self.write_stream.deinit();
@@ -589,19 +546,10 @@ const Subprocess = struct {
     grid_size: renderer.GridSize,
     screen_size: renderer.ScreenSize,
     pty: ?Pty = null,
-    process: ?Process = null,
+    process: ?Command = null,
 
     rt_pre_exec_info: Command.RtPreExecInfo,
     rt_post_fork_info: Command.RtPostForkInfo,
-
-    /// Union that represents the running process type.
-    const Process = union(enum) {
-        /// Standard POSIX fork/exec
-        fork_exec: Command,
-
-        /// Flatpak DBus command
-        flatpak: FlatpakHostCommand,
-    };
 
     const ArgsFormatter = struct {
         args: []const [:0]const u8,
@@ -663,13 +611,6 @@ const Subprocess = struct {
 
         // Add our binary to the path if we can find it.
         xghostty_path: {
-            // Skip this for flatpak since host cannot reach them
-            if ((comptime build_config.flatpak) and
-                internal_os.isFlatpak())
-            {
-                break :xghostty_path;
-            }
-
             var exe_buf: [std.fs.max_path_bytes]u8 = undefined;
             const exe_bin_path = std.fs.selfExePath(&exe_buf) catch |err| {
                 log.warn("failed to get xghostty exe path err={}", .{err});
@@ -937,35 +878,6 @@ const Subprocess = struct {
         // This is important because our cwd can be set by the shell (OSC 7)
         // and we don't want to break new windows.
         const cwd: ?[:0]const u8 = if (self.cwd) |proposed| cwd: {
-            if ((comptime build_config.flatpak) and internal_os.isFlatpak()) {
-                // Flatpak sandboxing prevents access to certain reserved paths
-                // regardless of configured permissions. Perform a test spawn
-                // to get around this problem
-                //
-                // https://docs.flatpak.org/en/latest/sandbox-permissions.html#reserved-paths
-                log.info("flatpak detected, will use host command to verify cwd access", .{});
-                const dev_null = try std.fs.cwd().openFile("/dev/null", .{ .mode = .read_write });
-                defer dev_null.close();
-                var cmd: internal_os.FlatpakHostCommand = .{
-                    .argv = &[_][]const u8{
-                        "/bin/sh",
-                        "-c",
-                        ":",
-                    },
-                    .cwd = proposed,
-                    .stdin = dev_null.handle,
-                    .stdout = dev_null.handle,
-                    .stderr = dev_null.handle,
-                };
-                _ = cmd.spawn(alloc) catch |err| {
-                    log.warn("cannot spawn command at cwd, ignoring: {}", .{err});
-                    break :cwd null;
-                };
-                _ = try cmd.wait();
-
-                break :cwd proposed;
-            }
-
             if (std.fs.cwd().access(proposed, .{})) {
                 break :cwd proposed;
             } else |err| {
@@ -973,37 +885,6 @@ const Subprocess = struct {
                 break :cwd null;
             }
         } else null;
-
-        // In flatpak, we use the HostCommand to execute our shell.
-        if (internal_os.isFlatpak()) flatpak: {
-            if (comptime !build_config.flatpak) {
-                log.warn("flatpak detected, but flatpak support not built-in", .{});
-                break :flatpak;
-            }
-
-            // Flatpak command must have a stable pointer.
-            self.process = .{ .flatpak = .{
-                .argv = self.args,
-                .cwd = cwd,
-                .env = if (self.env) |*env| env else null,
-                .stdin = pty.slave,
-                .stdout = pty.slave,
-                .stderr = pty.slave,
-            } };
-            var cmd = &self.process.?.flatpak;
-            const pid = try cmd.spawn(alloc);
-            errdefer killCommandFlatpak(cmd);
-
-            log.info("started subcommand on host via flatpak API path={s} pid={}", .{
-                self.args[0],
-                pid,
-            });
-
-            return .{
-                .read = pty.master,
-                .write = pty.master,
-            };
-        }
 
         // Build our subcommand
         var cmd: Command = .{
@@ -1058,7 +939,7 @@ const Subprocess = struct {
         };
         log.info("started subcommand path={s} pid={?}", .{ self.args[0], cmd.pid });
 
-        self.process = .{ .fork_exec = cmd };
+        self.process = cmd;
         return switch (builtin.os.tag) {
             .windows => .{
                 .read = pty.out_pipe,
@@ -1091,21 +972,12 @@ const Subprocess = struct {
     /// for it to terminate, so it will not block.
     /// This does not close the pty.
     pub fn stop(self: *Subprocess) void {
-        switch (self.process orelse return) {
-            .fork_exec => |*cmd| {
-                // Note: this will also wait for the command to exit, so
-                // DO NOT call cmd.wait
-                killCommand(cmd) catch |err|
-                    log.err("error sending SIGHUP to command, may hang: {}", .{err});
-            },
+        var cmd = self.process orelse return;
 
-            .flatpak => |*cmd| if (comptime build_config.flatpak) {
-                killCommandFlatpak(cmd) catch |err|
-                    log.err("error sending SIGHUP to command, may hang: {}", .{err});
-                _ = cmd.wait() catch |err|
-                    log.err("error waiting for command to exit: {}", .{err});
-            },
-        }
+        // Note: this will also wait for the command to exit, so
+        // DO NOT call cmd.wait
+        killCommand(&cmd) catch |err|
+            log.err("error sending SIGHUP to command, may hang: {}", .{err});
 
         self.process = null;
     }
@@ -1223,12 +1095,6 @@ const Subprocess = struct {
 
             return pgid;
         }
-    }
-
-    /// Kill the underlying process started via Flatpak host command.
-    /// This sends a signal via the Flatpak API.
-    fn killCommandFlatpak(command: *FlatpakHostCommand) !void {
-        try command.signal(c.SIGHUP, true);
     }
 
     /// Get information about the process(es) running within the subprocess.
@@ -1595,7 +1461,6 @@ fn execCommand(
                 // to setup some environment variables that are important to
                 // have set.
                 try args.append(alloc, "/bin/sh");
-                if (internal_os.isFlatpak()) try args.append(alloc, "-l");
                 try args.append(alloc, "-c");
             }
 

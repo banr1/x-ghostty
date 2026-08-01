@@ -246,7 +246,6 @@ fn drainMailbox(self: *App, rt_app: *apprt.App) !void {
         }
         switch (message) {
             .open_config => try self.performAction(rt_app, .open_config),
-            .new_window => |msg| try self.newWindow(rt_app, msg),
             .close => |surface| self.closeSurface(surface),
             .surface_message => |msg| try self.surfaceMessage(msg.surface, msg.message),
             .redraw_surface => |surface| try self.redrawSurface(rt_app, surface),
@@ -284,21 +283,6 @@ fn redrawSurface(
     _ = try rt_app.performAction(
         .{ .surface = surface.core() },
         .render,
-        {},
-    );
-}
-
-/// Create a new window
-pub fn newWindow(self: *App, rt_app: *apprt.App, msg: Message.NewWindow) !void {
-    const target: apprt.Target = target: {
-        const parent = msg.parent orelse break :target .app;
-        if (self.hasSurface(parent)) break :target .{ .surface = parent };
-        break :target .app;
-    };
-
-    _ = try rt_app.performAction(
-        target,
-        .new_window,
         {},
     );
 }
@@ -415,7 +399,7 @@ pub fn colorSchemeEvent(
 /// to the app. Callers can use performAllAction to perform any action
 /// and any non-app-scoped actions will be performed on all surfaces.
 pub fn performAction(
-    self: *App,
+    _: *App,
     rt_app: *apprt.App,
     action: input.Binding.Action.Scoped(.app),
 ) !void {
@@ -423,14 +407,9 @@ pub fn performAction(
         .unbind => unreachable,
         .ignore => {},
         .quit => _ = try rt_app.performAction(.app, .quit, {}),
-        .new_window => _ = try self.newWindow(rt_app, .{ .parent = null }),
         .open_config => _ = try rt_app.performAction(.app, .open_config, {}),
         .reload_config => _ = try rt_app.performAction(.app, .reload_config, .{}),
-        .close_all_windows => _ = try rt_app.performAction(.app, .close_all_windows, {}),
-        .toggle_quick_terminal => _ = try rt_app.performAction(.app, .toggle_quick_terminal, {}),
-        .toggle_visibility => _ = try rt_app.performAction(.app, .toggle_visibility, {}),
         .check_for_updates => _ = try rt_app.performAction(.app, .check_for_updates, {}),
-        .show_gtk_inspector => _ = try rt_app.performAction(.app, .show_gtk_inspector, {}),
         .undo => _ = try rt_app.performAction(.app, .undo, {}),
 
         .redo => _ = try rt_app.performAction(.app, .redo, {}),
@@ -528,9 +507,6 @@ pub const Message = union(enum) {
     // Open the configuration file
     open_config: void,
 
-    /// Create a new terminal window.
-    new_window: NewWindow,
-
     /// Close a surface. This notifies the runtime that a surface
     /// should close.
     close: *Surface,
@@ -549,11 +525,6 @@ pub const Message = union(enum) {
     /// wake up the renderer thread. The renderer thread will send this
     /// message if it needs to.
     redraw_surface: *apprt.Surface,
-
-    const NewWindow = struct {
-        /// The parent surface
-        parent: ?*Surface = null,
-    };
 };
 
 /// Mailbox is the way that other threads send the app thread messages.

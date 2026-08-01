@@ -19,8 +19,6 @@ import XGhosttyKit
 ///
 /// Notably, things this class does NOT implement (not exhaustive):
 ///
-///   - Tabbing, because there are many ways to get tabbed behavior in macOS and we
-///   don't want to be opinionated about it.
 ///   - Window restoration or save state
 ///   - Window visual styles (such as titlebar colors)
 ///
@@ -72,7 +70,7 @@ class BaseTerminalController: NSWindowController,
     /// `surfaceTree` is only the focused group's panes; the other groups' panes
     /// live in `workspace.state.groups` and their processes are just as alive
     /// (`SPEC.md` §14.7). Anything that reasons about what closing this
-    /// tab/window would destroy must use this, never `surfaceTree`, or it will
+    /// window would destroy must use this, never `surfaceTree`, or it will
     /// silently kill background groups.
     var allSurfaces: [XGhostty.SurfaceView] {
         // The focused group's canonical panes are `surfaceTree`; the workspace
@@ -96,8 +94,8 @@ class BaseTerminalController: NSWindowController,
         return result
     }
 
-    /// Whether closing this controller (tab or window) would terminate a live
-    /// process in any group, and therefore requires confirmation.
+    /// Whether closing this controller's window would terminate a live process
+    /// in any group, and therefore requires confirmation.
     var needsCloseConfirmation: Bool {
         allSurfaces.contains(where: { $0.needsConfirmQuit })
     }
@@ -118,6 +116,13 @@ class BaseTerminalController: NSWindowController,
 
     /// Non-nil when an alert is active so we don't overlap multiple.
     private var alert: NSAlert?
+
+    /// Whether a `confirmClose`/`confirmCloseAsync` sheet is currently up.
+    ///
+    /// Callers that would start a *new* destructive flow must check this so they
+    /// can't stack a second sheet, and — more importantly — can't slip past the
+    /// one the user hasn't answered yet.
+    var isShowingConfirmation: Bool { alert != nil }
 
     /// The clipboard confirmation window, if shown.
     private var clipboardConfirmation: ClipboardConfirmationController?
@@ -149,7 +154,7 @@ class BaseTerminalController: NSWindowController,
     /// Cancellable for invalidating restorable state on group-layer changes.
     private var workspaceStateCancellable: AnyCancellable?
 
-    /// An override title for the tab/window set by the user via prompt_tab_title.
+    /// An override title for the window set by the user.
     /// When set, this takes precedence over the computed title from the terminal.
     var titleOverride: String? {
         didSet { applyTitleToWindow() }
@@ -357,12 +362,6 @@ class BaseTerminalController: NSWindowController,
             selector: #selector(ghosttyDidPresentTerminal(_:)),
             name: XGhostty.Notification.ghosttyPresentTerminal,
             object: nil)
-        center.addObserver(
-            self,
-            selector: #selector(ghosttySurfaceDragEndedNoTarget(_:)),
-            name: .ghosttySurfaceDragEndedNoTarget,
-            object: nil)
-
         // Listen for local events that we need to know of outside of
         // single surface handlers.
         self.eventMonitor = NSEvent.addLocalMonitorForEvents(
@@ -553,8 +552,6 @@ class BaseTerminalController: NSWindowController,
             return .OK
         }
 
-        // If we need confirmation by any, show one confirmation for all windows
-        // in the tab group.
         let alert = NSAlert()
         alert.messageText = messageText
         alert.informativeText = informativeText
@@ -579,43 +576,16 @@ class BaseTerminalController: NSWindowController,
         completion: @escaping () -> Void
     ) {
         Task {
+            // A nil response means a confirmation sheet was already up, so the
+            // user never answered *this* request. That is emphatically not
+            // consent: every call site here is destructive (close surface, close
+            // group, close window), so we must not proceed. The user still has
+            // the sheet in front of them and can retry afterwards.
             guard let response = await confirmCloseAsync(messageText: messageText, informativeText: informativeText, confirmButtonTitle: confirmButtonTitle) else {
-                completion()
                 return
             }
             if [.alertFirstButtonReturn, .OK].contains(response) {
                 completion()
-            }
-        }
-    }
-
-    /// Prompt the user to change the tab/window title.
-    func promptTabTitle() {
-        guard let window else { return }
-
-        let alert = NSAlert()
-        alert.messageText = "Change Tab Title"
-        alert.informativeText = "Leave blank to restore the default."
-        alert.alertStyle = .informational
-
-        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        textField.stringValue = titleOverride ?? window.title
-        alert.accessoryView = textField
-
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Cancel")
-
-        alert.window.initialFirstResponder = textField
-
-        alert.beginSheetModal(for: window) { [weak self] response in
-            guard let self else { return }
-            guard response == .alertFirstButtonReturn else { return }
-
-            let newTitle = textField.stringValue
-            if newTitle.isEmpty {
-                self.titleOverride = nil
-            } else {
-                self.titleOverride = newTitle
             }
         }
     }
@@ -782,7 +752,7 @@ class BaseTerminalController: NSWindowController,
 
     /// Release every surface this controller owns, in every group.
     ///
-    /// Called when a tab/window is closed for good and the caller has already
+    /// Called when the window is closed for good and the caller has already
     /// captured whatever undo state it needs. Clearing `surfaceTree` alone only
     /// empties the *focused* group: the other groups' `SurfaceView`s stay retained
     /// by `workspace.state.groups`, so their processes would outlive the close and
@@ -901,8 +871,8 @@ class BaseTerminalController: NSWindowController,
         // When this close would empty the focused group's pane tree *and* there
         // are sibling groups, escalate to `close_group` (which switches focus to
         // a sibling). With only one group we fall through to the existing
-        // close_surface path, which already handles last-pane → tab/window close
-        // with the familiar "Close Terminal?" confirmation (§18.5).
+        // close_surface path, which already handles last-pane → window close
+        // (§18.5).
         if workspace.state.groups.count > 1, surfaceTree.removing(node).isEmpty {
             closeFocusedGroup()
             return
@@ -971,6 +941,16 @@ class BaseTerminalController: NSWindowController,
     private func isInWorkspace(_ view: XGhostty.SurfaceView) -> Bool {
         if surfaceTree.contains(view) { return true }
         return workspace.state.groups.values.contains { $0.paneTree.contains(view) }
+    }
+
+    /// The group that owns `view`, or nil when it belongs to no group here.
+    ///
+    /// `surfaceTree` is checked first because it is the focused group's
+    /// source of truth; the workspace's copy of it is only a mirror and can lag
+    /// by a change cycle.
+    func groupID(containing view: XGhostty.SurfaceView) -> GroupID? {
+        if surfaceTree.contains(view) { return workspace.state.focusedGroup }
+        return workspace.state.groups.first { $0.value.paneTree.contains(view) }?.key
     }
 
     @objc private func ghosttyDidRenameGroup(_ notification: Notification) {
@@ -1193,7 +1173,7 @@ class BaseTerminalController: NSWindowController,
         }
 
         // Move focus to our window. Importantly this ensures that if we click the
-        // reset zoom button in a tab bar of an unfocused tab that we become focused.
+        // reset zoom titlebar button while unfocused that we become focused.
         window?.makeKeyAndOrderFront(nil)
 
         // Ensure focus stays on the target surface. We lose focus when we do
@@ -1237,7 +1217,23 @@ class BaseTerminalController: NSWindowController,
 
     @objc private func ghosttyDidPresentTerminal(_ notification: Notification) {
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.contains(target) else { return }
+
+        // The target may live in another group — the command palette's "Focus:"
+        // entries cover every group's panes — so make its group the focused one
+        // first. A hidden group has to be re-shown; a merely unfocused one just
+        // needs a focus switch. Both swap `surfaceTree` to the target's panes.
+        if !surfaceTree.contains(target) {
+            guard let groupID = groupID(containing: target) else { return }
+            if workspace.state.hiddenGroupIDs.contains(groupID) {
+                showGroup(groupID)
+            } else {
+                focusGroup(groupID)
+            }
+
+            // `showGroup` is a silent no-op at the visible-group cap, so confirm
+            // the swap actually happened before we try to focus into it.
+            guard surfaceTree.contains(target) else { return }
+        }
 
         // Bring the window to front and focus the surface.
         window?.makeKeyAndOrderFront(nil)
@@ -1249,43 +1245,6 @@ class BaseTerminalController: NSWindowController,
 
         // Show a brief highlight to help the user locate the presented terminal.
         target.highlight()
-    }
-
-    @objc private func ghosttySurfaceDragEndedNoTarget(_ notification: Notification) {
-        guard let target = notification.object as? XGhostty.SurfaceView else { return }
-        guard let targetNode = surfaceTree.root?.node(view: target) else { return }
-
-        // If our tree isn't split, then we never create a new window, because
-        // it is already a single split.
-        guard surfaceTree.isSplit else { return }
-
-        // If we are removing our focused surface then we move it. We need to
-        // keep track of our old one so undo sends focus back to the right place.
-        let oldFocusedSurface = focusedSurface
-        if focusedSurface == target {
-            focusedSurface = findNextFocusTargetAfterClosing(node: targetNode)
-        }
-
-        // Remove the surface from our tree
-        let removedTree = surfaceTree.removing(targetNode)
-
-        // Create a new tree with the dragged surface and open a new window
-        let newTree = SplitTree<XGhostty.SurfaceView>(view: target)
-
-        // Treat our undo below as a full group.
-        undoManager?.beginUndoGrouping()
-        undoManager?.setActionName("Move Split")
-        defer {
-            undoManager?.endUndoGrouping()
-        }
-
-        replaceSurfaceTree(removedTree, moveFocusFrom: oldFocusedSurface)
-        _ = TerminalController.newWindow(
-            ghostty,
-            tree: newTree,
-            position: notification.userInfo?[Notification.Name.ghosttySurfaceDragEndedNoTargetPointKey] as? NSPoint,
-            confirmUndo: false,
-            inheritBackgroundOpacity: isBackgroundOpaque)
     }
 
     // MARK: Local Events
@@ -1513,8 +1472,8 @@ class BaseTerminalController: NSWindowController,
     /// The `.switched` close registers a group-aware undo ("Close Group"); the
     /// pre-close snapshot retains the closed group's `SurfaceView`s, so its
     /// processes stay alive for the `undoExpiration` window (mirroring
-    /// `close_surface` undo). The §18.5 last-group case delegates to the existing
-    /// tab/window close, which carries its own undo, so it is not double-wrapped.
+    /// `close_surface` undo). The §18.5 last-group case delegates to the window
+    /// close (which quits the app), so it is not wrapped in an undo.
     func closeFocusedGroup() {
         guard let group = workspace.focusedGroupState else { return }
 
@@ -1538,7 +1497,7 @@ class BaseTerminalController: NSWindowController,
     /// Apply a confirmed `close_group`: prune the focused group from the group
     /// structure and either swap `surfaceTree` to the nearest remaining group
     /// (terminating the closed group's surfaces as they fall out of scope, §14.8)
-    /// or, when it was the only group, delegate to tab/window close (§18.5).
+    /// or, when it was the only group, delegate to the window close (§18.5).
     private func performCloseFocusedGroup() {
         let before = workspace.state
         switch workspace.closeFocusedGroup() {
@@ -1549,8 +1508,7 @@ class BaseTerminalController: NSWindowController,
 
         case .closedLast:
             // §18.5: emptying the tree routes through `replaceSurfaceTree`, whose
-            // `TerminalController` override turns it into `closeTabImmediately()`
-            // (closing the window if it is the last tab).
+            // `TerminalController` override closes the window (which quits the app).
             replaceSurfaceTree(.init())
 
         case nil:
@@ -1619,50 +1577,9 @@ class BaseTerminalController: NSWindowController,
             return
         }
 
-        // Source is not in our tree - search other windows
-        var sourceController: BaseTerminalController?
-        var sourceNode: SplitTree<XGhostty.SurfaceView>.Node?
-        for window in NSApp.windows {
-            guard let controller = window.windowController as? BaseTerminalController else { continue }
-            guard controller !== self else { continue }
-            if let node = controller.surfaceTree.root?.node(view: source) {
-                sourceController = controller
-                sourceNode = node
-                break
-            }
-        }
-
-        guard let sourceController, let sourceNode else {
-            XGhostty.logger.warning("source surface not found in any window during drop")
-            return
-        }
-
-        // Remove from source controller's tree and add it to our tree.
-        // We do this first because if there is an error then we can
-        // abort.
-        let newTree: SplitTree<XGhostty.SurfaceView>
-        do {
-            newTree = try surfaceTree.inserting(view: source, at: destination, direction: direction)
-        } catch {
-            XGhostty.logger.warning("failed to insert surface during cross-window drop: \(error, privacy: .public)")
-            return
-        }
-
-        // Treat our undo below as a full group.
-        undoManager?.beginUndoGrouping()
-        undoManager?.setActionName("Move Split")
-        defer {
-            undoManager?.endUndoGrouping()
-        }
-
-        // Remove the node from the source.
-        sourceController.removeSurfaceNode(sourceNode)
-
-        // Add in the surface to our tree
-        replaceSurfaceTree(
-            newTree,
-            moveFocusTo: source,
-            moveFocusFrom: focusedSurface)
+        // We are a single-window app, so a surface that isn't in our tree isn't
+        // anywhere we can move it from.
+        XGhostty.logger.warning("source surface not found in this window during drop")
     }
 
     func performAction(_ action: String, on surfaceView: XGhostty.SurfaceView) {
@@ -2001,21 +1918,6 @@ class BaseTerminalController: NSWindowController,
         window.performClose(sender)
     }
 
-    @IBAction func changeTabTitle(_ sender: Any) {
-        if let targetWindow = window {
-            let inlineHostWindow =
-                targetWindow.tabbedWindows?
-                    .first(where: { $0.tabBarView != nil }) as? TerminalWindow
-                ?? (targetWindow as? TerminalWindow)
-
-            if let inlineHostWindow, inlineHostWindow.beginInlineTabTitleEdit(for: targetWindow) {
-                return
-            }
-        }
-
-        promptTabTitle()
-    }
-
     @IBAction func splitRight(_ sender: Any) {
         guard let surface = focusedSurface?.surface else { return }
         ghostty.split(surface: surface, direction: XGHOSTTY_SPLIT_DIRECTION_RIGHT)
@@ -2146,7 +2048,7 @@ class BaseTerminalController: NSWindowController,
     }
 
     @IBAction func findPrevious(_ sender: Any) {
-        focusedSurface?.findNext(sender)
+        focusedSurface?.findPrevious(sender)
     }
 
     @IBAction func findHide(_ sender: Any) {

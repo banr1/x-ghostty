@@ -42,23 +42,10 @@
             .url = "https://deps.files.ghostty.org/uucode-0.2.0-ZZjBPqZVVABQepOqZHR7vV_NcaN-wats0IB6o-Exj6m9.tar.gz",
             .hash = "uucode-0.2.0-ZZjBPqZVVABQepOqZHR7vV_NcaN-wats0IB6o-Exj6m9",
         },
-        .zig_wayland = .{
-            // codeberg ifreund/zig-wayland
-            .url = "https://deps.files.ghostty.org/zig_wayland-1b5c038ec10da20ed3a15b0b2a6db1c21383e8ea.tar.gz",
-            .hash = "wayland-0.5.0-dev-lQa1khrMAQDJDwYFKpdH3HizherB7sHo5dKMECfvxQHe",
-            .lazy = true,
-        },
         .zf = .{
             // natecraddock/zf
             .url = "https://deps.files.ghostty.org/zf-3c52637b7e937c5ae61fd679717da3e276765b23.tar.gz",
             .hash = "zf-0.10.3-OIRy8RuJAACKA3Lohoumrt85nRbHwbpMcUaLES8vxDnh",
-            .lazy = true,
-        },
-        .gobject = .{
-            // https://github.com/ghostty-org/zig-gobject based on zig_gobject
-            // Temporary until we generate them at build time automatically.
-            .url = "https://deps.files.ghostty.org/gobject-2025-11-08-23-1.tar.zst",
-            .hash = "gobject-0.3.0-Skun7ANLnwDvEfIpVmohcppXgOvg_I6YOJFmPIsKfXk-",
             .lazy = true,
         },
 
@@ -66,10 +53,8 @@
         .dcimgui = .{ .path = "./pkg/dcimgui", .lazy = true },
         .fontconfig = .{ .path = "./pkg/fontconfig", .lazy = true },
         .freetype = .{ .path = "./pkg/freetype", .lazy = true },
-        .gtk4_layer_shell = .{ .path = "./pkg/gtk4-layer-shell", .lazy = true },
         .harfbuzz = .{ .path = "./pkg/harfbuzz", .lazy = true },
         .highway = .{ .path = "./pkg/highway", .lazy = true },
-        .libintl = .{ .path = "./pkg/libintl", .lazy = true },
         .libpng = .{ .path = "./pkg/libpng", .lazy = true },
         .macos = .{ .path = "./pkg/macos", .lazy = true },
         .oniguruma = .{ .path = "./pkg/oniguruma", .lazy = true },
@@ -82,23 +67,6 @@
         // Shader translation
         .glslang = .{ .path = "./pkg/glslang", .lazy = true },
         .spirv_cross = .{ .path = "./pkg/spirv-cross", .lazy = true },
-
-        // Wayland
-        .wayland = .{
-            .url = "https://deps.files.ghostty.org/wayland-9cb3d7aa9dc995ffafdbdef7ab86a949d0fb0e7d.tar.gz",
-            .hash = "N-V-__8AAKrHGAAs2shYq8UkE6bGcR1QJtLTyOE_lcosMn6t",
-            .lazy = true,
-        },
-        .wayland_protocols = .{
-            .url = "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.47/wayland-protocols-1.47.tar.gz",
-            .hash = "N-V-__8AAFdWDwA0ktbNUi9pFBHCRN4weXIgIfCrVjfGxqgA",
-            .lazy = true,
-        },
-        .plasma_wayland_protocols = .{
-            .url = "https://deps.files.ghostty.org/plasma_wayland_protocols-12207e0851c12acdeee0991e893e0132fc87bb763969a585dc16ecca33e88334c566.tar.gz",
-            .hash = "N-V-__8AAKYZBAB-CFHBKs3u4JkeiT4BMvyHu3Y5aaWF3Bbs",
-            .lazy = true,
-        },
 
         // Fonts
         .jetbrains_mono = .{

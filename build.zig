@@ -1,5 +1,4 @@
 const std = @import("std");
-const assert = std.debug.assert;
 const builtin = @import("builtin");
 const buildpkg = @import("src/build/main.zig");
 
@@ -59,30 +58,14 @@ pub fn build(b: *std.Build) !void {
     // All our steps which we'll hook up later. The steps are shown
     // up here just so that they are more self-documenting.
     const run_step = b.step("run", "Run the app");
-    const run_valgrind_step = b.step(
-        "run-valgrind",
-        "Run the app under valgrind",
-    );
     const test_step = b.step("test", "Run tests");
     const test_lib_vt_step = b.step(
         "test-lib-vt",
         "Run libghostty-vt tests",
     );
-    const test_valgrind_step = b.step(
-        "test-valgrind",
-        "Run tests under valgrind",
-    );
-    const translations_step = b.step(
-        "update-translations",
-        "Update translation files",
-    );
 
     // XGhostty resources like terminfo, shell integration, themes, etc.
     const resources = try buildpkg.XGhosttyResources.init(b, &config, &deps);
-    const i18n = if (config.i18n) try buildpkg.XGhosttyI18n.init(b, &config) else null;
-
-    // XGhostty executable, the actual runnable Ghostty program.
-    const exe = try buildpkg.XGhosttyExe.init(b, &config, &deps);
 
     // XGhostty docs
     const docs = try buildpkg.XGhosttyDocs.init(b, &deps);
@@ -173,14 +156,9 @@ pub fn build(b: *std.Build) !void {
     // Helpgen
     if (config.emit_helpgen) deps.help_strings.install();
 
-    // Runtime "none" is libghostty, anything else is an executable.
-    if (config.app_runtime != .none) {
-        if (config.emit_exe) {
-            exe.install();
-            resources.install();
-            if (i18n) |v| v.install();
-        }
-    } else if (!config.emit_lib_vt) {
+    // This fork only produces libghostty (the macOS app links against it),
+    // there is no standalone executable artifact.
+    if (!config.emit_lib_vt) {
         // The macOS XGhostty Library
         //
         // This is NOT libghostty (even though its named that for historical
@@ -221,7 +199,6 @@ pub fn build(b: *std.Build) !void {
             // The xcframework build always installs resources because our
             // macOS xcode project contains references to them.
             resources.install();
-            if (i18n) |v| v.install();
         }
 
         // XGhostty macOS app
@@ -231,7 +208,6 @@ pub fn build(b: *std.Build) !void {
             .{
                 .xcframework = &xcframework,
                 .docs = &docs,
-                .i18n = if (i18n) |v| &v else null,
                 .resources = &resources,
             },
         );
@@ -241,26 +217,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     // Run step
-    run: {
-        if (config.app_runtime != .none) {
-            const run_cmd = b.addRunArtifact(exe.exe);
-            if (b.args) |args| run_cmd.addArgs(args);
-
-            // Set the proper resources dir so things like shell integration
-            // work correctly. If we're running `zig build run` in XGhostty,
-            // this also ensures it overwrites the release one with our debug
-            // build.
-            run_cmd.setEnvironmentVariable(
-                "XGHOSTTY_RESOURCES_DIR",
-                b.getInstallPath(.prefix, "share/xghostty"),
-            );
-
-            run_step.dependOn(&run_cmd.step);
-            break :run;
-        }
-
-        assert(config.app_runtime == .none);
-
+    {
         // On macOS we can run the macOS app. For "run" we always force
         // a native-only build so that we can run as quickly as possible.
         if (!config.emit_lib_vt and
@@ -278,7 +235,6 @@ pub fn build(b: *std.Build) !void {
                 .{
                     .xcframework = &xcframework_native,
                     .docs = &docs,
-                    .i18n = if (i18n) |v| &v else null,
                     .resources = &resources,
                 },
             );
@@ -291,31 +247,6 @@ pub fn build(b: *std.Build) !void {
                 macos_app_native_only.addTestStepDependencies(test_step);
             }
         }
-    }
-
-    // Valgrind
-    if (config.app_runtime != .none) {
-        // We need to rebuild XGhostty with a baseline CPU target.
-        const valgrind_exe = exe: {
-            var valgrind_config = config;
-            valgrind_config.target = valgrind_config.baselineTarget();
-            break :exe try buildpkg.XGhosttyExe.init(
-                b,
-                &valgrind_config,
-                &deps,
-            );
-        };
-
-        const run_cmd = b.addSystemCommand(&.{
-            "valgrind",
-            "--leak-check=full",
-            "--num-callers=50",
-            b.fmt("--suppressions={s}", .{b.pathFromRoot("valgrind.supp")}),
-            "--gen-suppressions=all",
-        });
-        run_cmd.addArtifactArg(valgrind_exe.exe);
-        if (b.args) |args| run_cmd.addArgs(args);
-        run_valgrind_step.dependOn(&run_cmd.step);
     }
 
     // Zig module tests
@@ -369,24 +300,5 @@ pub fn build(b: *std.Build) !void {
 
         // Normal tests always test our libghostty modules
         //test_step.dependOn(test_lib_vt_step);
-
-        // Valgrind test running
-        const valgrind_run = b.addSystemCommand(&.{
-            "valgrind",
-            "--leak-check=full",
-            "--num-callers=50",
-            b.fmt("--suppressions={s}", .{b.pathFromRoot("valgrind.supp")}),
-            "--gen-suppressions=all",
-        });
-        valgrind_run.addArtifactArg(test_exe);
-        test_valgrind_step.dependOn(&valgrind_run.step);
-    }
-
-    // update-translations does what it sounds like and updates the "pot"
-    // files. These should be committed to the repo.
-    if (i18n) |v| {
-        translations_step.dependOn(v.update_step);
-    } else {
-        try translations_step.addError("cannot update translations when i18n is disabled", .{});
     }
 }

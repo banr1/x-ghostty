@@ -9,9 +9,7 @@ const build_config = @import("build_config.zig");
 const macos = @import("macos");
 const cli = @import("cli.zig");
 const renderer = @import("renderer.zig");
-const apprt = @import("apprt.zig");
 
-const App = @import("App.zig");
 const XGhostty = @import("main_c.zig").XGhostty;
 const state = &@import("global.zig").state;
 
@@ -71,44 +69,28 @@ pub fn main() !MainReturn {
         return;
     }
 
-    if (comptime build_config.app_runtime == .none) {
-        const stdout = std.io.getStdOut().writer();
-        try stdout.print("Usage: xghostty +<action> [flags]\n\n", .{});
-        try stdout.print(
-            \\This is the XGhostty helper CLI that accompanies the graphical XGhostty app.
-            \\To launch the terminal directly, please launch the graphical app
-            \\(i.e. XGhostty.app on macOS). This CLI can be used to perform various
-            \\actions such as inspecting the version, listing fonts, etc.
-            \\
-            \\On macOS, the terminal can also be launched using `open -na XGhostty.app`,
-            \\or `open -na XGhostty.app --args --foo=bar --baz=qux` to pass arguments.
-            \\
-            \\We don't have proper help output yet, sorry! Please refer to the
-            \\source code or Discord community for help for now. We'll fix this in time.
-            \\
-        ,
-            .{},
-        );
+    // There is no standalone GUI executable: the terminal itself lives in
+    // the macOS app, which links libghostty. Without a CLI action all we can
+    // do is print usage.
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Usage: xghostty +<action> [flags]\n\n", .{});
+    try stdout.print(
+        \\This is the XGhostty helper CLI that accompanies the graphical XGhostty app.
+        \\To launch the terminal directly, please launch the graphical app
+        \\(i.e. XGhostty.app on macOS). This CLI can be used to perform various
+        \\actions such as inspecting the version, listing fonts, etc.
+        \\
+        \\On macOS, the terminal can also be launched using `open -na XGhostty.app`,
+        \\or `open -na XGhostty.app --args --foo=bar --baz=qux` to pass arguments.
+        \\
+        \\We don't have proper help output yet, sorry! Please refer to the
+        \\source code or Discord community for help for now. We'll fix this in time.
+        \\
+    ,
+        .{},
+    );
 
-        posix.exit(0);
-    }
-
-    // Create our app state
-    const app: *App = try App.create(alloc);
-    defer app.destroy();
-
-    // Create our runtime app
-    var app_runtime: apprt.App = undefined;
-    try app_runtime.init(app, .{});
-    defer app_runtime.terminate();
-
-    // Since - by definition - there are no surfaces when first started, the
-    // quit timer may need to be started. The start timer will get cancelled if/
-    // when the first surface is created.
-    if (@hasDecl(apprt.App, "startQuitTimer")) app_runtime.startQuitTimer();
-
-    // Run the GUI event loop
-    try app_runtime.run();
+    posix.exit(0);
 }
 
 // The function std.log will call.

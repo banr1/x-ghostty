@@ -33,10 +33,6 @@ pub const swap_chain_count = 1;
 
 const log = std.log.scoped(.opengl);
 
-/// We require at least OpenGL 4.3
-pub const MIN_VERSION_MAJOR = 4;
-pub const MIN_VERSION_MINOR = 3;
-
 alloc: std.mem.Allocator,
 
 /// Alpha blending mode
@@ -59,115 +55,12 @@ pub fn deinit(self: *OpenGL) void {
     self.* = undefined;
 }
 
-/// 32-bit windows cross-compilation breaks with `.c` for some reason, so...
-const gl_debug_proc_callconv =
-    @typeInfo(
-        @typeInfo(
-            @typeInfo(
-                gl.c.GLDEBUGPROC,
-            ).optional.child,
-        ).pointer.child,
-    ).@"fn".calling_convention;
-
-fn glDebugMessageCallback(
-    src: gl.c.GLenum,
-    typ: gl.c.GLenum,
-    id: gl.c.GLuint,
-    severity: gl.c.GLenum,
-    len: gl.c.GLsizei,
-    msg: [*c]const gl.c.GLchar,
-    user_param: ?*const anyopaque,
-) callconv(gl_debug_proc_callconv) void {
-    _ = user_param;
-
-    const src_str: []const u8 = switch (src) {
-        gl.c.GL_DEBUG_SOURCE_API => "OpenGL API",
-        gl.c.GL_DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
-        gl.c.GL_DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
-        gl.c.GL_DEBUG_SOURCE_THIRD_PARTY => "Third Party",
-        gl.c.GL_DEBUG_SOURCE_APPLICATION => "User",
-        gl.c.GL_DEBUG_SOURCE_OTHER => "Other",
-        else => "Unknown",
-    };
-
-    const typ_str: []const u8 = switch (typ) {
-        gl.c.GL_DEBUG_TYPE_ERROR => "Error",
-        gl.c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR => "Deprecated Behavior",
-        gl.c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR => "Undefined Behavior",
-        gl.c.GL_DEBUG_TYPE_PORTABILITY => "Portability Issue",
-        gl.c.GL_DEBUG_TYPE_PERFORMANCE => "Performance Issue",
-        gl.c.GL_DEBUG_TYPE_MARKER => "Marker",
-        gl.c.GL_DEBUG_TYPE_PUSH_GROUP => "Group Push",
-        gl.c.GL_DEBUG_TYPE_POP_GROUP => "Group Pop",
-        gl.c.GL_DEBUG_TYPE_OTHER => "Other",
-        else => "Unknown",
-    };
-
-    const msg_str = msg[0..@intCast(len)];
-
-    (switch (severity) {
-        gl.c.GL_DEBUG_SEVERITY_HIGH => log.err(
-            "[{d}] ({s}: {s}) {s}",
-            .{ id, src_str, typ_str, msg_str },
-        ),
-        gl.c.GL_DEBUG_SEVERITY_MEDIUM => log.warn(
-            "[{d}] ({s}: {s}) {s}",
-            .{ id, src_str, typ_str, msg_str },
-        ),
-        gl.c.GL_DEBUG_SEVERITY_LOW => log.info(
-            "[{d}] ({s}: {s}) {s}",
-            .{ id, src_str, typ_str, msg_str },
-        ),
-        gl.c.GL_DEBUG_SEVERITY_NOTIFICATION => log.debug(
-            "[{d}] ({s}: {s}) {s}",
-            .{ id, src_str, typ_str, msg_str },
-        ),
-        else => log.warn(
-            "UNKNOWN SEVERITY [{d}] ({s}: {s}) {s}",
-            .{ id, src_str, typ_str, msg_str },
-        ),
-    });
-}
-
-/// Prepares the provided GL context, loading it with glad.
-fn prepareContext(getProcAddress: anytype) !void {
-    const version = try gl.glad.load(getProcAddress);
-    const major = gl.glad.versionMajor(@intCast(version));
-    const minor = gl.glad.versionMinor(@intCast(version));
-    errdefer gl.glad.unload();
-    log.info("loaded OpenGL {}.{}", .{ major, minor });
-
-    // Need to check version before trying to enable it
-    if (major < MIN_VERSION_MAJOR or
-        (major == MIN_VERSION_MAJOR and minor < MIN_VERSION_MINOR))
-    {
-        log.warn(
-            "OpenGL version is too old. XGhostty requires OpenGL {d}.{d}",
-            .{ MIN_VERSION_MAJOR, MIN_VERSION_MINOR },
-        );
-        return error.OpenGLOutdated;
-    }
-
-    // Enable debug output for the context.
-    try gl.enable(gl.c.GL_DEBUG_OUTPUT);
-
-    // Register our debug message callback with the OpenGL context.
-    gl.glad.context.DebugMessageCallback.?(glDebugMessageCallback, null);
-
-    // Enable SRGB framebuffer for linear blending support.
-    try gl.enable(gl.c.GL_FRAMEBUFFER_SRGB);
-}
-
 /// This is called early right after surface creation.
 pub fn surfaceInit(surface: *apprt.Surface) !void {
     _ = surface;
 
     switch (apprt.runtime) {
         else => @compileError("unsupported app runtime for OpenGL"),
-
-        // GTK uses global OpenGL context so we load from null.
-        apprt.gtk,
-        => try prepareContext(null),
 
         apprt.embedded => {
             // TODO(mitchellh): this does nothing today to allow libghostty
@@ -201,13 +94,6 @@ pub fn threadEnter(self: *const OpenGL, surface: *apprt.Surface) !void {
     switch (apprt.runtime) {
         else => @compileError("unsupported app runtime for OpenGL"),
 
-        apprt.gtk => {
-            // GTK doesn't support threaded OpenGL operations as far as I can
-            // tell, so we use the renderer thread to setup all the state
-            // but then do the actual draws and texture syncs and all that
-            // on the main thread. As such, we don't do anything here.
-        },
-
         apprt.embedded => {
             // TODO(mitchellh): this does nothing today to allow libghostty
             // to compile for OpenGL targets but libghostty is strictly
@@ -223,29 +109,9 @@ pub fn threadExit(self: *const OpenGL) void {
     switch (apprt.runtime) {
         else => @compileError("unsupported app runtime for OpenGL"),
 
-        apprt.gtk => {
-            // We don't need to do any unloading for GTK because we may
-            // be sharing the global bindings with other windows.
-        },
-
         apprt.embedded => {
             // TODO: see threadEnter
         },
-    }
-}
-
-pub fn displayRealized(self: *const OpenGL) void {
-    _ = self;
-
-    switch (apprt.runtime) {
-        apprt.gtk => prepareContext(null) catch |err| {
-            log.warn(
-                "Error preparing GL context in displayRealized, err={}",
-                .{err},
-            );
-        },
-
-        else => @compileError("only GTK should be calling displayRealized"),
     }
 }
 

@@ -15,7 +15,6 @@ const build_config = @import("build_config.zig");
 const main = @import("main_ghostty.zig");
 const state = &@import("global.zig").state;
 const apprt = @import("apprt.zig");
-const internal_os = @import("os/main.zig");
 
 // Some comptime assertions that our C API depends on.
 comptime {
@@ -139,16 +138,6 @@ pub export fn xghostty_info() Info {
         .version = build_config.version_string.ptr,
         .version_len = build_config.version_string.len,
     };
-}
-
-/// Translate a string maintained by libghostty into the current
-/// application language. This will return the same string (same pointer)
-/// if no translation is found, so the pointer must be stable through
-/// the function call.
-///
-/// This should only be used for singular strings maintained by XGhostty.
-pub export fn xghostty_translate(msgid: [*:0]const u8) [*:0]const u8 {
-    return internal_os.i18n._(msgid);
 }
 
 /// Free a string allocated by XGhostty.

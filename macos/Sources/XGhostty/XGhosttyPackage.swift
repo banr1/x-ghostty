@@ -338,22 +338,6 @@ extension Notification.Name {
     static let ghosttyColorDidChange = Notification.Name("com.mitchellh.xghostty.ghosttyColorDidChange")
     static let GhosttyColorChangeKey = ghosttyColorDidChange.rawValue
 
-    /// Goto tab. Has tab index in the userinfo.
-    static let ghosttyMoveTab = Notification.Name("com.mitchellh.xghostty.moveTab")
-    static let GhosttyMoveTabKey = ghosttyMoveTab.rawValue
-
-    /// Close tab
-    static let ghosttyCloseTab = Notification.Name("com.mitchellh.xghostty.closeTab")
-
-    /// Close other tabs
-    static let ghosttyCloseOtherTabs = Notification.Name("com.mitchellh.xghostty.closeOtherTabs")
-
-    /// Close tabs to the right of the focused tab
-    static let ghosttyCloseTabsOnTheRight = Notification.Name("com.mitchellh.xghostty.closeTabsOnTheRight")
-
-    /// Close window
-    static let ghosttyCloseWindow = Notification.Name("com.mitchellh.xghostty.closeWindow")
-
     /// Resize the window to a default size.
     static let ghosttyResetWindowSize = Notification.Name("com.mitchellh.xghostty.resetWindowSize")
 
@@ -459,16 +443,6 @@ extension XGhostty.Notification {
     /// Focus previous/next split. Has a SplitFocusDirection in the userinfo.
     static let ghosttyFocusSplit = Notification.Name("com.mitchellh.xghostty.focusSplit")
     static let SplitDirectionKey = ghosttyFocusSplit.rawValue
-
-    /// Goto tab. Has tab index in the userinfo.
-    static let ghosttyGotoTab = Notification.Name("com.mitchellh.xghostty.gotoTab")
-    static let GotoTabKey = ghosttyGotoTab.rawValue
-
-    /// New tab. Has base surface config requested in userinfo.
-    static let ghosttyNewTab = Notification.Name("com.mitchellh.xghostty.newTab")
-
-    /// New window. Has base surface config requested in userinfo.
-    static let ghosttyNewWindow = Notification.Name("com.mitchellh.xghostty.newWindow")
 
     /// Present terminal. Bring the surface's window to focus without activating the app.
     static let ghosttyPresentTerminal = Notification.Name("com.mitchellh.xghostty.presentTerminal")

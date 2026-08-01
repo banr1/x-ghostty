@@ -11,11 +11,9 @@
 *.py text eol=lf
 *.sh text eol=lf
 *.glsl text eol=lf
-*.blp text eol=lf
 
 # Config/build files - always LF
 *.zon text eol=lf
-*.nix text eol=lf
 *.md text eol=lf
 *.json text eol=lf
 *.yml text eol=lf
@@ -42,15 +40,9 @@ Makefile text eol=lf
 #--------------------------------------------------------------------
 # Linguist
 #--------------------------------------------------------------------
-build.zig.zon.nix linguist-generated=true
-build.zig.zon.txt linguist-generated=true
-build.zig.zon.json linguist-generated=true
 vendor/** linguist-vendored
 website/** linguist-documentation
 pkg/breakpad/vendor/** linguist-vendored
-pkg/glfw/wayland-headers/** linguist-vendored
-pkg/libintl/config.h linguist-generated=true
-pkg/libintl/libintl.h linguist-generated=true
 pkg/simdutf/vendor/** linguist-vendored
 src/font/nerd_font_attributes.zig linguist-generated=true
 src/font/nerd_font_codepoint_tables.py linguist-generated=true

@@ -12,33 +12,6 @@ struct TerminalRestorableTests {
         // still round-trip into the v8 `InternalState`).
         #expect(TerminalRestorableState.version == 8)
         #expect(TerminalRestorableState.minimumVersion == 5)
-
-        #expect(QuickTerminalRestorableState.version == 1)
-        #expect(QuickTerminalRestorableState.minimumVersion == 1)
-    }
-
-    @MainActor
-    @Test func quickTerminalRestorableFromV1() throws {
-        /* v1
-        let tree = try SplitTreeTests.makeHorizontalSplit()
-        let state = DummyQuickTerminalRestorableState(
-            focusedSurface: "123",
-            surfaceTree: tree.0,
-            screenStateEntries: [:],
-        )
-        let data = try archive(CodableBridge(state), className: "CodableBridge<QuickTerminal>")
-        print(data.base64EncodedString())
-        print(tree.1.id)
-        print(tree.2.id)
-        */
-
-        let decoded: CodableBridge<DummyQuickTerminalRestorableState> = try unarchive(v1QTData, className: "CodableBridge<QuickTerminal>")
-        let state = decoded.value.internalState
-
-        #expect(state.focusedSurface == "123")
-        #expect(state.screenStateEntries.isEmpty)
-        #expect(state.surfaceTree.contains(where: { $0.id.uuidString == "2F2F2D93-944C-474A-83BA-4DC1868C3EB9" }))
-        #expect(state.surfaceTree.contains(where: { $0.id.uuidString == "994C673F-B4C5-49EE-B044-65006652636D" }))
     }
 
     // To generate old data: created a dummy class, archive, and copy the printed result
@@ -60,7 +33,6 @@ struct TerminalRestorableTests {
             .value.internalState
         #expect(v5.focusedSurface == "v5")
         #expect(v5.effectiveFullscreenMode == nil)
-        #expect(v5.tabColor == nil)
         #expect(v5.titleOverride == nil)
         #expect(v5.surfaceTree.contains(where: { $0.id.uuidString == "926F3F2A-824C-40C9-87CA-2CDCA4E11049" }))
         #expect(v5.surfaceTree.contains(where: { $0.id.uuidString == "AC5E829B-85FD-4C69-B196-2EE469C72A90" }))
@@ -70,7 +42,6 @@ struct TerminalRestorableTests {
 //            focusedSurface: "v7",
 //            surfaceTree: tree.0,
 //            effectiveFullscreenMode: .native,
-//            tabColor: .green,
 //            titleOverride: "1.3.0"
 //        )
 //        let data = try archive(CodableBridge(state), className: "CodableBridge<Terminal>")
@@ -83,7 +54,6 @@ struct TerminalRestorableTests {
             .value.internalState
         #expect(v7.focusedSurface == "v7")
         #expect(v7.effectiveFullscreenMode == .native)
-        #expect(v7.tabColor == .green)
         #expect(v7.titleOverride == "1.3.0")
         #expect(v7.surfaceTree.contains(where: { $0.id.uuidString == "5D580A7A-81EA-47C6-BB9A-AD4B1783E478" }))
         #expect(v7.surfaceTree.contains(where: { $0.id.uuidString == "96EA1189-7482-41BC-A6CD-26E5190E4BFA" }))
@@ -94,7 +64,6 @@ struct TerminalRestorableTests {
 //                focusedSurface: "v7 generic",
 //                surfaceTree: tree.0,
 //                effectiveFullscreenMode: .native,
-//                tabColor: .green,
 //                titleOverride: "tip"
 //            )
 //        )
@@ -108,7 +77,6 @@ struct TerminalRestorableTests {
             .value.internalState
         #expect(v7Generic.focusedSurface == "v7 generic")
         #expect(v7Generic.effectiveFullscreenMode == .native)
-        #expect(v7Generic.tabColor == .green)
         #expect(v7Generic.titleOverride == "tip")
         #expect(v7Generic.surfaceTree.contains(where: { $0.id.uuidString == "953CE952-D91D-4D36-AC72-9D0F1F6BCE73" }))
         #expect(v7Generic.surfaceTree.contains(where: { $0.id.uuidString == "D3223569-2E01-4BC5-9DB2-DBFC3AFF46D1" }))
@@ -168,37 +136,6 @@ private final class DummyTerminalRestorableState: TerminalRestorable {
         try internalState.encode(to: encoder)
     }
 }
-
-@MainActor
-struct DummyQuickTerminalRestorableState: TerminalRestorable {
-    static var version: Int = QuickTerminalRestorableState.version
-
-    static var minimumVersion: Int = QuickTerminalRestorableState.minimumVersion
-
-    init(copy other: DummyQuickTerminalRestorableState) {
-        internalState = other.internalState
-    }
-
-    let internalState: QuickTerminalRestorableState.InternalState<MockView>
-
-    init(_ internalState: QuickTerminalRestorableState.InternalState<MockView>) {
-        self.internalState = internalState
-    }
-
-    init(from decoder: any Decoder) throws {
-        self.internalState = try QuickTerminalRestorableState.InternalState<MockView>(from: decoder)
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        try internalState.encode(to: encoder)
-    }
-}
-
-// MARK: - QuickTerminal V1 (1.3.0)
-
-private let v1QTData = Data(base64Encoded: """
-    YnBsaXN0MDDUAQIDBAUGBwpYJHZlcnNpb25ZJGFyY2hpdmVyVCR0b3BYJG9iamVjdHMSAAGGoF8QD05TS2V5ZWRBcmNoaXZlctEICVRyb290gAGkCwwRElUkbnVsbNINDg8QVGRhdGFWJGNsYXNzgAKAA08RA6hicGxpc3QwMNQBAgMEBQYHClgkdmVyc2lvblkkYXJjaGl2ZXJUJHRvcFgkb2JqZWN0cxIAAYagXxAPTlNLZXllZEFyY2hpdmVy0QgJVXZhbHVlgAGvECALDBkaGxwfJicvMDEyODlFRkdISU9QVldYXF1jaWpwcVUkbnVsbNMNDg8QFBhXTlMua2V5c1pOUy5vYmplY3RzViRjbGFzc6MREhOAAoADgASjFRYXgAWAB4AIgBhfEBJzY3JlZW5TdGF0ZUVudHJpZXNeZm9jdXNlZFN1cmZhY2Vbc3VyZmFjZVRyZWXSDg8dHqCABtIgISIjWiRjbGFzc25hbWVYJGNsYXNzZXNeTlNNdXRhYmxlQXJyYXmjIiQlV05TQXJyYXlYTlNPYmplY3RTMTIz0w0ODygrGKIpKoAJgAqiLC2AC4AMgBhXdmVyc2lvblRyb290EAHTDQ4PMzUYoTSADaE2gA6AGFVzcGxpdNMNDg86PxikOzw9PoAPgBCAEYASpEBBQkOAE4AZgBqAHYAYVXJpZ2h0VXJhdGlvVGxlZnRZZGlyZWN0aW9u0w0OD0pMGKFLgBShTYAVgBhUdmlld9MNDg9RUxihUoAWoVSAF4AYUmlkXxAkOTk0QzY3M0YtQjRDNS00OUVFLUIwNDQtNjUwMDY2NTI2MzZE0iAhWVpfEBNOU011dGFibGVEaWN0aW9uYXJ5o1lbJVxOU0RpY3Rpb25hcnkjP+AAAAAAAADTDQ4PXmAYoUuAFKFhgBuAGNMNDg9kZhihUoAWoWeAHIAYXxAkMkYyRjJEOTMtOTQ0Qy00NzRBLTgzQkEtNERDMTg2OEMzRUI50w0OD2ttGKFsgB6hboAfgBhaaG9yaXpvbnRhbNMNDg9ycxigoIAYAAgAEQAaACQAKQAyADcASQBMAFIAVAB3AH0AhACMAJcAngCiAKQApgCoAKwArgCwALIAtADJANgA5ADpAOoA7ADxAPwBBQEUARgBIAEpAS0BNAE3ATkBOwE+AUABQgFEAUwBUQFTAVoBXAFeAWABYgFkAWoBcQF2AXgBegF8AX4BgwGFAYcBiQGLAY0BkwGZAZ4BqAGvAbEBswG1AbcBuQG+AcUBxwHJAcsBzQHPAdIB+QH+AhQCGAIlAi4CNQI3AjkCOwI9Aj8CRgJIAkoCTAJOAlACdwJ+AoACggKEAoYCiAKTApoCmwKcAAAAAAAAAgEAAAAAAAAAdQAAAAAAAAAAAAAAAAAAAp7RExRaJGNsYXNzbmFtZV8QHENvZGFibGVCcmlkZ2U8UXVpY2tUZXJtaW5hbD4ACAARABoAJAApADIANwBJAEwAUQBTAFgAXgBjAGgAbwBxAHMEHwQiBC0AAAAAAAACAQAAAAAAAAAVAAAAAAAAAAAAAAAAAAAETA==
-    """)!
 
 // MARK: - Terminal V5 (1.2.3)
 

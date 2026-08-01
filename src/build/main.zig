@@ -2,7 +2,6 @@
 //! and spaghetti, so this package extracts the build logic into smaller,
 //! more manageable pieces.
 
-pub const gtk = @import("gtk.zig");
 pub const Config = @import("Config.zig");
 pub const GitVersion = @import("GitVersion.zig");
 
@@ -10,12 +9,10 @@ pub const GitVersion = @import("GitVersion.zig");
 pub const XGhosttyBench = @import("XGhosttyBench.zig");
 pub const XGhosttyDist = @import("XGhosttyDist.zig");
 pub const XGhosttyDocs = @import("XGhosttyDocs.zig");
-pub const XGhosttyExe = @import("XGhosttyExe.zig");
 pub const XGhosttyFrameData = @import("XGhosttyFrameData.zig");
 pub const XGhosttyLib = @import("XGhosttyLib.zig");
 pub const XGhosttyLibVt = @import("XGhosttyLibVt.zig");
 pub const XGhosttyResources = @import("XGhosttyResources.zig");
-pub const XGhosttyI18n = @import("XGhosttyI18n.zig");
 pub const XGhosttyXcodebuild = @import("XGhosttyXcodebuild.zig");
 pub const XGhosttyXCFramework = @import("XGhosttyXCFramework.zig");
 pub const XGhosttyWebdata = @import("XGhosttyWebdata.zig");

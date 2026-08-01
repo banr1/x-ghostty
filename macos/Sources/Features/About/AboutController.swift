@@ -24,6 +24,10 @@ class AboutController: NSWindowController, NSWindowDelegate {
     }
 
     func hide() {
+        // Don't touch `window` unless the nib is already loaded: this is called
+        // on every quit, and the accessor would otherwise instantiate the whole
+        // About window just to close it again.
+        guard isWindowLoaded else { return }
         window?.close()
     }
 

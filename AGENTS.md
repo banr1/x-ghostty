@@ -29,4 +29,8 @@ A file for [guiding coding agents](https://agents.md/).
 
 - Shared Zig core: `src/`
 - macOS app: `macos/`
-- GTK (Linux and FreeBSD) app: `src/apprt/gtk`
+- Groups feature (the fork's core feature, see `SPEC.md`):
+  `macos/Sources/Features/Groups/`
+
+XGhostty is macOS-only and single-window. There is no GTK/Linux app, and there
+are no tabs, multiple windows, or quick terminal.

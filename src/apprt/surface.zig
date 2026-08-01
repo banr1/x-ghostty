@@ -2,7 +2,6 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const apprt = @import("../apprt.zig");
-const build_config = @import("../build_config.zig");
 const App = @import("../App.zig");
 const Surface = @import("../Surface.zig");
 const renderer = @import("../renderer.zig");
@@ -117,17 +116,6 @@ pub const Message = union(enum) {
     pub const ChildExited = extern struct {
         exit_code: u32,
         runtime_ms: u64,
-
-        /// Make this a valid gobject if we're in a GTK environment.
-        pub const getGObjectType = switch (build_config.app_runtime) {
-            .gtk,
-            => @import("gobject").ext.defineBoxed(
-                ChildExited,
-                .{ .name = "XGhosttyApprtChildExited" },
-            ),
-
-            .none => void,
-        };
     };
 };
 
@@ -154,17 +142,22 @@ pub const Mailbox = struct {
     }
 };
 
-/// Context for new surface creation to determine inheritance behavior
+/// Context for new surface creation to determine inheritance behavior.
+///
+/// XGhostty is a single-window terminal, so the only two ways a new surface
+/// can come into existence are as a new group (the upper layer of the
+/// two-level split model) or as a new split within an existing group.
 pub const NewSurfaceContext = enum(c_int) {
-    window = 0,
-    tab = 1,
-    split = 2,
+    group = 0,
+    split = 1,
 };
 
 pub fn shouldInheritWorkingDirectory(context: NewSurfaceContext, config: *const Config) bool {
     return switch (context) {
-        .window => config.@"window-inherit-working-directory",
-        .tab => config.@"tab-inherit-working-directory",
+        // New groups always inherit the working directory. This used to be
+        // configurable via `tab-inherit-working-directory` (default true)
+        // back when the upper layer was tabs.
+        .group => true,
         .split => config.@"split-inherit-working-directory",
     };
 }

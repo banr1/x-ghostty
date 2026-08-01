@@ -2,9 +2,6 @@
 extend-exclude = [
   # Build
   "build.zig.zon",
-  "build.zig.zon.nix",
-  "build.zig.zon.txt",
-  "build.zig.zon.json",
   # Build artifacts
   "macos/build/*",
   "zig-out/*",
@@ -24,8 +21,6 @@ extend-exclude = [
   "*.png",
   "*.ico",
   "*.icns",
-  # Valgrind nonsense
-  "valgrind.supp",
   # Fuzz corpus (binary test inputs)
   "test/fuzz-libghostty/corpus/*",
   # Other
@@ -70,18 +65,12 @@ typ = "typ"
 kend = "kend"
 # Tai Tham is a script/writing system
 Tham = "Tham"
-# GTK
-GIR = "GIR"
 # terminfo
 rin = "rin"
 # sprites
 ower = "ower"
 # OpenType table names
 loca = "loca"
-
-[type.po]
-extend-glob = ["*.po"]
-check-file = false
 
 [type.swift.extend-words]
 inout = "inout"

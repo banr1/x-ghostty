@@ -5,7 +5,6 @@ const Binding = @This();
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = @import("../quirks.zig").inlineAssert;
-const build_config = @import("../build_config.zig");
 const uucode = @import("uucode");
 const EntryFormatter = @import("../config/formatter.zig").EntryFormatter;
 const deepEqual = @import("../datastruct/comparison.zig").deepEqual;
@@ -531,8 +530,7 @@ pub const Action = union(enum) {
     ///
     ///     Open the file in the default OS editor for text files.
     ///
-    ///     The default OS editor is determined by using `open` on macOS
-    ///     and `xdg-open` on Linux.
+    ///     The default OS editor is determined by using `open`.
     ///
     write_scrollback_file: WriteScreen,
 
@@ -550,67 +548,13 @@ pub const Action = union(enum) {
     /// Does nothing when no text is selected.
     write_selection_file: WriteScreen,
 
-    /// Open a new window.
-    ///
-    /// If the application isn't currently focused,
-    /// this will bring it to the front.
-    new_window,
-
-    /// Open a new tab.
-    new_tab,
-
-    /// Go to the previous tab.
-    previous_tab,
-
-    /// Go to the next tab.
-    next_tab,
-
-    /// Go to the last tab.
-    last_tab,
-
-    /// Go to the tab with the specific index, starting from 1.
-    ///
-    /// If the tab number is higher than the number of tabs,
-    /// this will go to the last tab.
-    goto_tab: usize,
-
-    /// Moves a tab by a relative offset.
-    ///
-    /// Positive values move the tab forwards, and negative values move it
-    /// backwards. If the new position is out of bounds, it is wrapped around
-    /// cyclically within the tab list.
-    ///
-    /// For example, `move_tab:1` moves the tab one position forwards, and if
-    /// it was already the last tab in the list, it wraps around and becomes
-    /// the first tab in the list. Likewise, `move_tab:-1` moves the tab one
-    /// position backwards, and if it was the first tab, then it will become
-    /// the last tab.
-    move_tab: isize,
-
-    /// Toggle the tab overview.
-    ///
-    /// This is only supported on Linux and when the system's libadwaita
-    /// version is 1.4 or newer. The current libadwaita version can be
-    /// found by running `ghostty +version`.
-    toggle_tab_overview,
-
     /// Change the title of the current focused surface via a pop-up prompt.
     prompt_surface_title,
-
-    /// Change the title of the current tab via a pop-up prompt. The
-    /// title set via this prompt overrides any title set by the terminal
-    /// and persists across focus changes within the tab.
-    prompt_tab_title,
 
     /// Set the title for the current focused surface.
     ///
     /// If the title is empty, the surface title is reset to an empty title.
     set_surface_title: []const u8,
-
-    /// Set the title for the current focused tab.
-    ///
-    /// If the title is empty, the tab title override is cleared.
-    set_tab_title: []const u8,
 
     /// Create a new split in the specified direction.
     ///
@@ -633,14 +577,10 @@ pub const Action = union(enum) {
     /// (`previous` and `next`).
     goto_split: SplitFocusDirection,
 
-    /// Focus on either the previous window or the next one ('previous', 'next')
-    goto_window: GotoWindow,
-
     /// Zoom in or out of the current split.
     ///
     /// When a split is zoomed into, it will take up the entire space in
-    /// the current tab, hiding other splits. The tab or tab bar would also
-    /// reflect this by displaying an icon indicating the zoomed state.
+    /// the current group, hiding other splits.
     toggle_split_zoom,
 
     /// Toggle read-only mode for the current surface.
@@ -721,29 +661,14 @@ pub const Action = union(enum) {
     close_group,
 
     /// Reset the window to the default size. The "default size" is the
-    /// size that a new window would be created with. This has no effect
-    /// if the window is fullscreen.
-    ///
-    /// Only implemented on macOS.
+    /// size the window is created with. This has no effect if the window
+    /// is fullscreen.
     reset_window_size,
 
     /// Control the visibility of the terminal inspector.
     ///
     /// Valid arguments: `toggle`, `show`, `hide`.
     inspector: InspectorMode,
-
-    /// Show the GTK inspector.
-    ///
-    /// Has no effect on macOS.
-    show_gtk_inspector,
-
-    /// Show the on-screen keyboard if one is present.
-    ///
-    /// Only implemented on Linux (GTK). On GNOME, the "Screen Keyboard"
-    /// accessibility feature must be turned on, which can be found under
-    /// Settings > Accessibility > Typing. Other platforms are as of now
-    /// untested.
-    show_on_screen_keyboard,
 
     /// Open the configuration file in the default OS editor.
     ///
@@ -759,65 +684,23 @@ pub const Action = union(enum) {
     /// Note that not all changes can be applied at runtime.
     reload_config,
 
-    /// Close the current "surface", whether that is a window, tab, split, etc.
+    /// Close the current "surface", i.e. a single terminal pane.
     ///
     /// This might trigger a close confirmation popup, depending on the value
     /// of the `confirm-close-surface` configuration setting.
     close_surface,
 
-    /// Close the specified tabs and all splits therein.
-    ///
-    /// Valid values:
-    ///
-    ///   - `this` (default)
-    ///
-    ///     Close the current tab and all splits within it.
-    ///
-    ///   - `other`
-    ///
-    ///     Close every tab in the current window except the current tab.
-    ///
-    ///   - `right`
-    ///
-    ///     Close every tab to the right of the current tab.
-    ///
-    /// This might trigger a close confirmation popup, depending on the value
-    /// of the `confirm-close-surface` configuration setting.
-    close_tab: CloseTabMode,
-
-    /// Close the current window and all tabs and splits therein.
-    ///
-    /// This might trigger a close confirmation popup, depending on the value
-    /// of the `confirm-close-surface` configuration setting.
-    close_window,
-
-    /// Close all windows.
-    ///
-    /// WARNING: This action has been deprecated and has no effect on either
-    /// Linux or macOS. Users are instead encouraged to use `all:close_window`
-    /// instead.
-    close_all_windows,
-
-    /// Maximize or unmaximize the current window.
-    ///
-    /// This has no effect on macOS as it does not have the concept of
-    /// maximized windows.
+    /// Maximize or unmaximize the window (macOS "zoom").
     toggle_maximize,
 
     /// Fullscreen or unfullscreen the current window.
     toggle_fullscreen,
 
-    /// Toggle window decorations (titlebar, buttons, etc.) for the current window.
-    ///
-    /// Only implemented on Linux.
-    toggle_window_decorations,
-
     /// Toggle whether the terminal window should always float on top of other
     /// windows even when unfocused.
     ///
-    /// Terminal windows always start as normal (not float-on-top) windows.
-    ///
-    /// Only implemented on macOS.
+    /// The terminal window always starts as a normal (not float-on-top)
+    /// window.
     toggle_window_float_on_top,
 
     /// Toggle secure input mode.
@@ -827,8 +710,6 @@ pub const Action = union(enum) {
     ///
     /// This applies to the entire application, not just the focused terminal.
     /// You must manually untoggle it or quit XGhostty entirely to disable it.
-    ///
-    /// Only implemented on macOS, as this uses a built-in system API.
     toggle_secure_input,
 
     /// Toggle mouse reporting on or off.
@@ -847,71 +728,7 @@ pub const Action = union(enum) {
     /// The command palette is a popup that lets you see what actions
     /// you can perform, their associated keybindings (if any), a search bar
     /// to filter the actions, and the ability to then execute the action.
-    ///
-    /// This requires libadwaita 1.5 or newer on Linux. The current libadwaita
-    /// version can be found by running `ghostty +version`.
     toggle_command_palette,
-
-    /// Toggle the quick terminal.
-    ///
-    /// The quick terminal, also known as the "Quake-style" or drop-down
-    /// terminal, is a terminal window that appears on demand from a keybinding,
-    /// often sliding in from a screen edge such as the top. This is useful for
-    /// quick access to a terminal without having to open a new window or tab.
-    ///
-    /// The terminal state is preserved between appearances, so showing the
-    /// quick terminal after it was already hidden would display the same
-    /// window instead of creating a new one.
-    ///
-    /// As quick terminals are often useful when other windows are currently
-    /// focused, they are best used with *global* keybinds. For example, one
-    /// can define the following key bind to toggle the quick terminal from
-    /// anywhere within the system by pressing `` Cmd+` ``:
-    ///
-    /// ```ini
-    /// keybind = global:cmd+backquote=toggle_quick_terminal
-    /// ```
-    ///
-    /// The quick terminal has some limitations:
-    ///
-    ///   - Only one quick terminal instance can exist at a time.
-    ///
-    ///   - Unlike normal terminal windows, the quick terminal will not be
-    ///     restored when the application is restarted on systems that support
-    ///     window restoration like macOS.
-    ///
-    ///   - On Linux, the quick terminal is only supported on Wayland and not
-    ///     X11, and only on Wayland compositors that support the `wlr-layer-shell-v1`
-    ///     protocol. In practice, this means that only GNOME users would not be
-    ///     able to use this feature.
-    ///
-    ///   - On Linux, slide-in animations are only supported on KDE, and when
-    ///     the "Sliding Popups" KWin plugin is enabled.
-    ///
-    ///     If you do not have this plugin enabled, open System Settings > Apps
-    ///     & Windows > Window Management > Desktop Effects, and enable the
-    ///     plugin in the plugin list. XGhostty would then need to be restarted
-    ///     fully for this to take effect.
-    ///
-    ///   - Quick terminal tabs are only supported on Linux and not on macOS.
-    ///     This is because tabs on macOS require a title bar.
-    ///
-    ///   - On macOS, a fullscreened quick terminal will always be in non-native
-    ///     fullscreen mode. This is a requirement due to how the quick terminal
-    ///     is rendered.
-    ///
-    /// See the various configurations for the quick terminal in the
-    /// configuration file to customize its behavior.
-    toggle_quick_terminal,
-
-    /// Show or hide all windows. If all windows become shown, we also ensure
-    /// XGhostty becomes focused. When hiding all windows, focus is yielded
-    /// to the next application as determined by the OS.
-    ///
-    /// Note: When the focused surface is fullscreen, this method does nothing.
-    ///
-    /// Only implemented on macOS.
-    toggle_visibility,
 
     /// Toggle the window background opacity between transparent and opaque.
     ///
@@ -919,25 +736,19 @@ pub const Action = union(enum) {
     ///
     /// When `background-opacity` is less than 1, this action will either make
     /// the window transparent or not depending on its current transparency state.
-    ///
-    /// Only implemented on macOS.
     toggle_background_opacity,
 
     /// Check for updates.
-    ///
-    /// Only implemented on macOS.
     check_for_updates,
 
     /// Undo the last undoable action for the focused surface or terminal,
-    /// if possible. This can undo actions such as closing tabs or
-    /// windows.
+    /// if possible. This can undo actions such as closing a split.
     ///
     /// Not every action in XGhostty can be undone or redone. The list
     /// of actions support undo/redo is currently limited to:
     ///
-    ///   - New window, close window
-    ///   - New tab, close tab
     ///   - New split, close split
+    ///   - New group, close group
     ///
     /// All actions are only undoable/redoable for a limited time.
     /// For example, restoring a closed split can only be done for
@@ -948,8 +759,6 @@ pub const Action = union(enum) {
     /// bounded memory usage over time, closed surfaces don't continue running
     /// in the background indefinitely, and the keybinds become available
     /// for terminal applications to use.
-    ///
-    /// Only implemented on macOS.
     undo,
 
     /// Redo the last undoable action for the focused surface or terminal,
@@ -1030,16 +839,6 @@ pub const Action = union(enum) {
     crash: CrashThread,
 
     pub const Key = @typeInfo(Action).@"union".tag_type.?;
-
-    /// Make this a valid gobject if we're in a GTK environment.
-    pub const getGObjectType = switch (build_config.app_runtime) {
-        .gtk => @import("gobject").ext.defineBoxed(
-            Action,
-            .{ .name = "XGhosttyBindingAction" },
-        ),
-
-        .none => void,
-    };
 
     pub const CrashThread = enum {
         main,
@@ -1207,11 +1006,6 @@ pub const Action = union(enum) {
         right,
     };
 
-    pub const GotoWindow = enum {
-        previous,
-        next,
-    };
-
     pub const SplitResizeParameter = struct {
         SplitResizeDirection,
         u16,
@@ -1295,14 +1089,6 @@ pub const Action = union(enum) {
         toggle,
         show,
         hide,
-    };
-
-    pub const CloseTabMode = enum {
-        this,
-        other,
-        right,
-
-        pub const default: CloseTabMode = .this;
     };
 
     fn parseEnum(comptime T: type, value: []const u8) !T {
@@ -1453,16 +1239,11 @@ pub const Action = union(enum) {
             // Obviously app actions.
             .open_config,
             .reload_config,
-            .close_all_windows,
             .quit,
-            .toggle_quick_terminal,
-            .toggle_visibility,
             .check_for_updates,
-            .show_gtk_inspector,
             => .app,
 
             // These are app but can be special-cased in a surface context.
-            .new_window,
             .undo,
             .redo,
             => .app,
@@ -1488,9 +1269,7 @@ pub const Action = union(enum) {
             .reset_font_size,
             .set_font_size,
             .prompt_surface_title,
-            .prompt_tab_title,
             .set_surface_title,
-            .set_tab_title,
             .clear_screen,
             .select_all,
             .scroll_to_top,
@@ -1507,17 +1286,13 @@ pub const Action = union(enum) {
             .write_screen_file,
             .write_selection_file,
             .close_surface,
-            .close_tab,
-            .close_window,
             .toggle_maximize,
             .toggle_fullscreen,
-            .toggle_window_decorations,
             .toggle_window_float_on_top,
             .toggle_secure_input,
             .toggle_mouse_reporting,
             .toggle_command_palette,
             .toggle_background_opacity,
-            .show_on_screen_keyboard,
             .reset_window_size,
             .activate_key_table,
             .activate_key_table_once,
@@ -1529,18 +1304,10 @@ pub const Action = union(enum) {
 
             // These are less obvious surface actions. They're surface
             // actions because they are relevant to the surface they
-            // come from. For example `new_window` needs to be sourced to
+            // come from. For example `new_split` needs to be sourced to
             // a surface so inheritance can be done correctly.
-            .new_tab,
-            .previous_tab,
-            .next_tab,
-            .last_tab,
-            .goto_tab,
-            .move_tab,
-            .toggle_tab_overview,
             .new_split,
             .goto_split,
-            .goto_window,
             .toggle_split_zoom,
             .toggle_readonly,
             .resize_split,
@@ -2212,9 +1979,9 @@ pub const Set = struct {
     /// Performable triggers are also not present in the reverse map. This
     /// is so that GUI toolkits don't register performable triggers as
     /// menu shortcuts (the primary use case of the reverse map). GUI toolkits
-    /// such as GTK handle menu shortcuts too early in the event lifecycle
-    /// for performable to work so this is a conscious decision to ease the
-    /// integration with GUI toolkits.
+    /// handle menu shortcuts too early in the event lifecycle for performable
+    /// to work so this is a conscious decision to ease the integration with
+    /// GUI toolkits.
     reverse: ReverseMap = .{},
 
     /// The chain parent is the information necessary to attach a chained
@@ -3485,9 +3252,9 @@ test "parse: action with string" {
         try testing.expectEqualStrings("surface", binding.action.set_surface_title);
     }
     {
-        const binding = try parseSingle("a=set_tab_title:tab");
-        try testing.expect(binding.action == .set_tab_title);
-        try testing.expectEqualStrings("tab", binding.action.set_tab_title);
+        const binding = try parseSingle("a=set_group_title:tab");
+        try testing.expect(binding.action == .set_group_title);
+        try testing.expectEqualStrings("tab", binding.action.set_group_title);
     }
 }
 
@@ -3700,9 +3467,9 @@ test "parse: chain" {
 
     // Valid
     {
-        var p = try Parser.init("chain=new_tab");
+        var p = try Parser.init("chain=close_group");
         try testing.expectEqual(Parser.Elem{
-            .chain = .new_tab,
+            .chain = .close_group,
         }, try p.next());
         try testing.expect(try p.next() == null);
     }
@@ -3795,18 +3562,18 @@ test "set: parseAndPut typical binding" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
+    try s.parseAndPut(alloc, "a=quit");
 
     // Creates forward mapping
     {
         const action = s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
         try testing.expectEqual(Flags{}, action.flags);
     }
 
     // Creates reverse mapping
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 
@@ -3827,19 +3594,19 @@ test "set: parseAndPut unconsumed binding" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "unconsumed:a=new_window");
+    try s.parseAndPut(alloc, "unconsumed:a=quit");
 
     // Creates forward mapping
     {
         const trigger: Trigger = .{ .key = .{ .unicode = 'a' } };
         const action = s.get(trigger).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
         try testing.expectEqual(Flags{ .consumed = false }, action.flags);
     }
 
     // Creates reverse mapping
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 
@@ -3860,7 +3627,7 @@ test "set: parseAndPut removed binding" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
+    try s.parseAndPut(alloc, "a=quit");
     try s.parseAndPut(alloc, "a=unbind");
 
     // Creates forward mapping
@@ -3868,7 +3635,7 @@ test "set: parseAndPut removed binding" {
         const trigger: Trigger = .{ .key = .{ .unicode = 'a' } };
         try testing.expect(s.get(trigger) == null);
     }
-    try testing.expect(s.getTrigger(.{ .new_window = {} }) == null);
+    try testing.expect(s.getTrigger(.{ .quit = {} }) == null);
 
     // Sets up the chain parent properly
     try testing.expect(s.chain_parent == null);
@@ -3881,7 +3648,7 @@ test "set: put sets chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
 
     // chain_parent should be set
     try testing.expect(s.chain_parent != null);
@@ -3906,7 +3673,7 @@ test "set: putFlags sets chain_parent" {
     try s.putFlags(
         alloc,
         .{ .key = .{ .unicode = 'a' } },
-        .{ .new_window = {} },
+        .{ .quit = {} },
         .{ .consumed = false },
     );
 
@@ -3931,7 +3698,7 @@ test "set: sequence sets chain_parent to final leaf" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a>b=quit");
 
     // chain_parent should be set and point to 'b' (the final leaf)
     try testing.expect(s.chain_parent != null);
@@ -3944,7 +3711,7 @@ test "set: sequence sets chain_parent to final leaf" {
 
     // chain_parent value should be a leaf
     try testing.expect(s.chain_parent.?.value_ptr.* == .leaf);
-    try testing.expect(s.chain_parent.?.value_ptr.*.leaf.action == .new_window);
+    try testing.expect(s.chain_parent.?.value_ptr.*.leaf.action == .quit);
 }
 
 test "set: multiple leaves under leader updates chain_parent" {
@@ -3954,7 +3721,7 @@ test "set: multiple leaves under leader updates chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a>b=quit");
 
     // After first binding, chain_parent should be 'b'
     try testing.expect(s.chain_parent != null);
@@ -3965,7 +3732,7 @@ test "set: multiple leaves under leader updates chain_parent" {
         try testing.expectEqualStrings("b", buf.written());
     }
 
-    try s.parseAndPut(alloc, "a>c=new_tab");
+    try s.parseAndPut(alloc, "a>c=close_group");
 
     // After second binding, chain_parent should be updated to 'c'
     try testing.expect(s.chain_parent != null);
@@ -3975,7 +3742,7 @@ test "set: multiple leaves under leader updates chain_parent" {
         try s.chain_parent.?.key_ptr.format(&buf.writer);
         try testing.expectEqualStrings("c", buf.written());
     }
-    try testing.expect(s.chain_parent.?.value_ptr.*.leaf.action == .new_tab);
+    try testing.expect(s.chain_parent.?.value_ptr.*.leaf.action == .close_group);
 }
 
 test "set: sequence unbind clears chain_parent" {
@@ -3985,7 +3752,7 @@ test "set: sequence unbind clears chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a>b=quit");
     try testing.expect(s.chain_parent != null);
 
     try s.parseAndPut(alloc, "a>b=unbind");
@@ -4001,8 +3768,8 @@ test "set: sequence unbind with remaining leaves clears chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
-    try s.parseAndPut(alloc, "a>c=new_tab");
+    try s.parseAndPut(alloc, "a>b=quit");
+    try s.parseAndPut(alloc, "a>c=close_group");
     try s.parseAndPut(alloc, "a>b=unbind");
 
     // After unbind, chain_parent should be cleared even though 'c' remains
@@ -4022,7 +3789,7 @@ test "set: direct remove clears chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
     try testing.expect(s.chain_parent != null);
 
     s.remove(alloc, .{ .key = .{ .unicode = 'a' } });
@@ -4038,7 +3805,7 @@ test "set: invalid format preserves chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
+    try s.parseAndPut(alloc, "a=quit");
     const before_key = s.chain_parent.?.key_ptr;
     const before_value = s.chain_parent.?.value_ptr;
 
@@ -4058,7 +3825,7 @@ test "set: clone produces null chain_parent" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
+    try s.parseAndPut(alloc, "a=quit");
     try testing.expect(s.chain_parent != null);
 
     var cloned = try s.clone(alloc);
@@ -4079,8 +3846,8 @@ test "set: clone with leaf_chained" {
     defer s.deinit(alloc);
 
     // Create a chained binding using parseAndPut with chain=
-    try s.parseAndPut(alloc, "a=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "a=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
 
     // Verify we have a leaf_chained
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
@@ -4095,8 +3862,8 @@ test "set: clone with leaf_chained" {
     const cloned_entry = cloned.get(.{ .key = .{ .unicode = 'a' } }).?;
     try testing.expect(cloned_entry.value_ptr.* == .leaf_chained);
     try testing.expectEqual(@as(usize, 2), cloned_entry.value_ptr.leaf_chained.actions.items.len);
-    try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[0] == .new_window);
-    try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[1] == .new_tab);
+    try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[0] == .quit);
+    try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[1] == .close_group);
 }
 
 test "set: clone with leaf_chained containing allocated data" {
@@ -4136,7 +3903,7 @@ test "set: parseAndPut sequence" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a>b=quit");
     var current: *Set = &s;
     {
         const t: Trigger = .{ .key = .{ .unicode = 'a' } };
@@ -4148,7 +3915,7 @@ test "set: parseAndPut sequence" {
         const t: Trigger = .{ .key = .{ .unicode = 'b' } };
         const e = current.get(t).?.value_ptr.*;
         try testing.expect(e == .leaf);
-        try testing.expect(e.leaf.action == .new_window);
+        try testing.expect(e.leaf.action == .quit);
         try testing.expectEqual(Flags{}, e.leaf.flags);
     }
 }
@@ -4160,8 +3927,8 @@ test "set: parseAndPut sequence with two actions" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
-    try s.parseAndPut(alloc, "a>c=new_tab");
+    try s.parseAndPut(alloc, "a>b=quit");
+    try s.parseAndPut(alloc, "a>c=close_group");
     var current: *Set = &s;
     {
         const t: Trigger = .{ .key = .{ .unicode = 'a' } };
@@ -4173,14 +3940,14 @@ test "set: parseAndPut sequence with two actions" {
         const t: Trigger = .{ .key = .{ .unicode = 'b' } };
         const e = current.get(t).?.value_ptr.*;
         try testing.expect(e == .leaf);
-        try testing.expect(e.leaf.action == .new_window);
+        try testing.expect(e.leaf.action == .quit);
         try testing.expectEqual(Flags{}, e.leaf.flags);
     }
     {
         const t: Trigger = .{ .key = .{ .unicode = 'c' } };
         const e = current.get(t).?.value_ptr.*;
         try testing.expect(e == .leaf);
-        try testing.expect(e.leaf.action == .new_tab);
+        try testing.expect(e.leaf.action == .close_group);
         try testing.expectEqual(Flags{}, e.leaf.flags);
     }
 }
@@ -4192,8 +3959,8 @@ test "set: parseAndPut overwrite sequence" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_tab");
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a>b=close_group");
+    try s.parseAndPut(alloc, "a>b=quit");
     var current: *Set = &s;
     {
         const t: Trigger = .{ .key = .{ .unicode = 'a' } };
@@ -4205,7 +3972,7 @@ test "set: parseAndPut overwrite sequence" {
         const t: Trigger = .{ .key = .{ .unicode = 'b' } };
         const e = current.get(t).?.value_ptr.*;
         try testing.expect(e == .leaf);
-        try testing.expect(e.leaf.action == .new_window);
+        try testing.expect(e.leaf.action == .quit);
         try testing.expectEqual(Flags{}, e.leaf.flags);
     }
 }
@@ -4217,8 +3984,8 @@ test "set: parseAndPut overwrite leader" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_tab");
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a=close_group");
+    try s.parseAndPut(alloc, "a>b=quit");
     var current: *Set = &s;
     {
         const t: Trigger = .{ .key = .{ .unicode = 'a' } };
@@ -4230,7 +3997,7 @@ test "set: parseAndPut overwrite leader" {
         const t: Trigger = .{ .key = .{ .unicode = 'b' } };
         const e = current.get(t).?.value_ptr.*;
         try testing.expect(e == .leaf);
-        try testing.expect(e.leaf.action == .new_window);
+        try testing.expect(e.leaf.action == .quit);
         try testing.expectEqual(Flags{}, e.leaf.flags);
     }
 }
@@ -4242,7 +4009,7 @@ test "set: parseAndPut unbind sequence unbinds leader" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
+    try s.parseAndPut(alloc, "a>b=quit");
     try s.parseAndPut(alloc, "a>b=unbind");
     var current: *Set = &s;
     {
@@ -4273,12 +4040,12 @@ test "set: parseAndPut sequence preserves reverse mapping" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
-    try s.parseAndPut(alloc, "ctrl+a>b=new_window");
+    try s.parseAndPut(alloc, "a=quit");
+    try s.parseAndPut(alloc, "ctrl+a>b=quit");
 
     // Creates reverse mapping
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 }
@@ -4290,15 +4057,15 @@ test "set: put overwrites sequence" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "ctrl+a>b=new_window");
+    try s.parseAndPut(alloc, "ctrl+a>b=quit");
     try s.put(alloc, .{
         .mods = .{ .ctrl = true },
         .key = .{ .unicode = 'a' },
-    }, .{ .new_window = {} });
+    }, .{ .quit = {} });
 
     // Creates reverse mapping
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 }
@@ -4310,23 +4077,23 @@ test "set: maintains reverse mapping" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 
     // should be most recent
-    try s.put(alloc, .{ .key = .{ .unicode = 'b' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'b' } }, .{ .quit = {} });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'b');
     }
 
     // removal should replace
     s.remove(alloc, .{ .key = .{ .unicode = 'b' } });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 }
@@ -4338,9 +4105,9 @@ test "set: performable is not part of reverse mappings" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 
@@ -4348,18 +4115,18 @@ test "set: performable is not part of reverse mappings" {
     try s.putFlags(
         alloc,
         .{ .key = .{ .unicode = 'b' } },
-        .{ .new_window = {} },
+        .{ .quit = {} },
         .{ .performable = true },
     );
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 
     // removal of performable should do nothing
     s.remove(alloc, .{ .key = .{ .unicode = 'b' } });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 }
@@ -4371,16 +4138,16 @@ test "set: overriding a mapping updates reverse" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 
     // should be most recent
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_tab = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .close_group = {} });
     {
-        const trigger = s.getTrigger(.{ .new_window = {} });
+        const trigger = s.getTrigger(.{ .quit = {} });
         try testing.expect(trigger == null);
     }
 }
@@ -4392,20 +4159,20 @@ test "set: consumed state" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
     try testing.expect(s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.* == .leaf);
     try testing.expect(s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*.leaf.flags.consumed);
 
     try s.putFlags(
         alloc,
         .{ .key = .{ .unicode = 'a' } },
-        .{ .new_window = {} },
+        .{ .quit = {} },
         .{ .consumed = false },
     );
     try testing.expect(s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.* == .leaf);
     try testing.expect(!s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*.leaf.flags.consumed);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
     try testing.expect(s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.* == .leaf);
     try testing.expect(s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*.leaf.flags.consumed);
 }
@@ -4417,8 +4184,8 @@ test "set: parseAndPut chain" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "a=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
 
     // Creates forward mapping as leaf_chained
     {
@@ -4426,14 +4193,14 @@ test "set: parseAndPut chain" {
         try testing.expect(entry == .leaf_chained);
         const chained = entry.leaf_chained;
         try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
-        try testing.expect(chained.actions.items[0] == .new_window);
-        try testing.expect(chained.actions.items[1] == .new_tab);
+        try testing.expect(chained.actions.items[0] == .quit);
+        try testing.expect(chained.actions.items[1] == .close_group);
     }
 
     // Does not create reverse mapping, because reverse mappings are only for
     // non-chained actions.
     {
-        try testing.expect(s.getTrigger(.{ .new_window = {} }) == null);
+        try testing.expect(s.getTrigger(.{ .quit = {} }) == null);
     }
 }
 
@@ -4445,7 +4212,7 @@ test "set: parseAndPut chain without parent is error" {
     defer s.deinit(alloc);
 
     // Chain without a prior binding should fail
-    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=new_tab"));
+    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=close_group"));
 }
 
 test "set: parseAndPut chain multiple times" {
@@ -4455,8 +4222,8 @@ test "set: parseAndPut chain multiple times" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "a=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
     try s.parseAndPut(alloc, "chain=close_surface");
 
     // Should have 3 actions chained
@@ -4465,8 +4232,8 @@ test "set: parseAndPut chain multiple times" {
         try testing.expect(entry == .leaf_chained);
         const chained = entry.leaf_chained;
         try testing.expectEqual(@as(usize, 3), chained.actions.items.len);
-        try testing.expect(chained.actions.items[0] == .new_window);
-        try testing.expect(chained.actions.items[1] == .new_tab);
+        try testing.expect(chained.actions.items[0] == .quit);
+        try testing.expect(chained.actions.items[1] == .close_group);
         try testing.expect(chained.actions.items[2] == .close_surface);
     }
 }
@@ -4478,8 +4245,8 @@ test "set: parseAndPut chain preserves flags" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "unconsumed:a=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "unconsumed:a=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
 
     // Should preserve unconsumed flag
     {
@@ -4498,11 +4265,11 @@ test "set: parseAndPut chain after unbind is error" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
+    try s.parseAndPut(alloc, "a=quit");
     try s.parseAndPut(alloc, "a=unbind");
 
     // Chain after unbind should fail because chain_parent is cleared
-    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=new_tab"));
+    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=close_group"));
 }
 
 test "set: parseAndPut chain on sequence" {
@@ -4512,8 +4279,8 @@ test "set: parseAndPut chain on sequence" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "a>b=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
 
     // Navigate to the inner set
     const a_entry = s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*;
@@ -4525,8 +4292,8 @@ test "set: parseAndPut chain on sequence" {
     try testing.expect(b_entry == .leaf_chained);
     const chained = b_entry.leaf_chained;
     try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
-    try testing.expect(chained.actions.items[0] == .new_window);
-    try testing.expect(chained.actions.items[1] == .new_tab);
+    try testing.expect(chained.actions.items[0] == .quit);
+    try testing.expect(chained.actions.items[1] == .close_group);
 }
 
 test "set: parseAndPut chain with unbind is error" {
@@ -4536,7 +4303,7 @@ test "set: parseAndPut chain with unbind is error" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=new_window");
+    try s.parseAndPut(alloc, "a=quit");
 
     // chain=unbind is not valid
     try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=unbind"));
@@ -4544,7 +4311,7 @@ test "set: parseAndPut chain with unbind is error" {
     // Original binding should still exist
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*;
     try testing.expect(entry == .leaf);
-    try testing.expect(entry.leaf.action == .new_window);
+    try testing.expect(entry.leaf.action == .quit);
 }
 
 test "set: getEvent physical" {
@@ -4554,7 +4321,7 @@ test "set: getEvent physical" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "ctrl+quote=new_window");
+    try s.parseAndPut(alloc, "ctrl+quote=quit");
 
     // Physical matches on physical
     {
@@ -4562,7 +4329,7 @@ test "set: getEvent physical" {
             .key = .quote,
             .mods = .{ .ctrl = true },
         }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
     }
 
     // Physical does not match on UTF8/codepoint
@@ -4584,7 +4351,7 @@ test "set: getEvent codepoint" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "ctrl+'=new_window");
+    try s.parseAndPut(alloc, "ctrl+'=quit");
 
     // Matches on codepoint
     {
@@ -4594,7 +4361,7 @@ test "set: getEvent codepoint" {
             .utf8 = "",
             .unshifted_codepoint = '\'',
         }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
     }
 
     // Matches on UTF-8
@@ -4604,7 +4371,7 @@ test "set: getEvent codepoint" {
             .mods = .{ .ctrl = true },
             .utf8 = "'",
         }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
     }
 
     // Doesn't match on physical
@@ -4624,7 +4391,7 @@ test "set: getEvent codepoint case folding" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "ctrl+A=new_window");
+    try s.parseAndPut(alloc, "ctrl+A=quit");
 
     // Lowercase codepoint
     {
@@ -4634,7 +4401,7 @@ test "set: getEvent codepoint case folding" {
             .utf8 = "",
             .unshifted_codepoint = 'a',
         }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
     }
 
     // Uppercase codepoint
@@ -4645,7 +4412,7 @@ test "set: getEvent codepoint case folding" {
             .utf8 = "",
             .unshifted_codepoint = 'A',
         }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
     }
 
     // Negative case for sanity
@@ -4686,14 +4453,14 @@ test "set: getEvent catch_all fallback" {
     }
 
     // Specific binding takes precedence over catch_all
-    try s.parseAndPut(alloc, "ctrl+b=new_window");
+    try s.parseAndPut(alloc, "ctrl+b=quit");
     {
         const action = s.getEvent(.{
             .key = .key_b,
             .mods = .{ .ctrl = true },
             .unshifted_codepoint = 'b',
         }).?.value_ptr.*.leaf;
-        try testing.expect(action.action == .new_window);
+        try testing.expect(action.action == .quit);
     }
 }
 
@@ -4887,12 +4654,12 @@ test "action: format set title" {
     const testing = std.testing;
     const alloc = testing.allocator;
 
-    const a: Action = .{ .set_tab_title = "foo bar" };
+    const a: Action = .{ .set_group_title = "foo bar" };
 
     var buf: std.Io.Writer.Allocating = .init(alloc);
     defer buf.deinit();
     try a.format(&buf.writer);
-    try testing.expectEqualStrings("set_tab_title:foo bar", buf.written());
+    try testing.expectEqualStrings("set_group_title:foo bar", buf.written());
 }
 
 test "set: appendChain with no parent returns error" {
@@ -4902,7 +4669,7 @@ test "set: appendChain with no parent returns error" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try testing.expectError(error.NoChainParent, s.appendChain(alloc, .{ .new_tab = {} }));
+    try testing.expectError(error.NoChainParent, s.appendChain(alloc, .{ .close_group = {} }));
 }
 
 test "set: appendChain after put converts to leaf_chained" {
@@ -4912,18 +4679,18 @@ test "set: appendChain after put converts to leaf_chained" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
 
     // First appendChain converts leaf to leaf_chained and appends the new action
-    try s.appendChain(alloc, .{ .new_tab = {} });
+    try s.appendChain(alloc, .{ .close_group = {} });
 
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
     try testing.expect(entry.value_ptr.* == .leaf_chained);
 
     const chained = entry.value_ptr.*.leaf_chained;
     try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
-    try testing.expect(chained.actions.items[0] == .new_window);
-    try testing.expect(chained.actions.items[1] == .new_tab);
+    try testing.expect(chained.actions.items[0] == .quit);
+    try testing.expect(chained.actions.items[1] == .close_group);
 }
 
 test "set: appendChain after putFlags preserves flags" {
@@ -4936,10 +4703,10 @@ test "set: appendChain after putFlags preserves flags" {
     try s.putFlags(
         alloc,
         .{ .key = .{ .unicode = 'a' } },
-        .{ .new_window = {} },
+        .{ .quit = {} },
         .{ .consumed = false },
     );
-    try s.appendChain(alloc, .{ .new_tab = {} });
+    try s.appendChain(alloc, .{ .close_group = {} });
 
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
     try testing.expect(entry.value_ptr.* == .leaf_chained);
@@ -4947,8 +4714,8 @@ test "set: appendChain after putFlags preserves flags" {
     const chained = entry.value_ptr.*.leaf_chained;
     try testing.expect(!chained.flags.consumed);
     try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
-    try testing.expect(chained.actions.items[0] == .new_window);
-    try testing.expect(chained.actions.items[1] == .new_tab);
+    try testing.expect(chained.actions.items[0] == .quit);
+    try testing.expect(chained.actions.items[1] == .close_group);
 }
 
 test "set: appendChain multiple times" {
@@ -4958,8 +4725,8 @@ test "set: appendChain multiple times" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
-    try s.appendChain(alloc, .{ .new_tab = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
+    try s.appendChain(alloc, .{ .close_group = {} });
     try s.appendChain(alloc, .{ .close_surface = {} });
 
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
@@ -4967,8 +4734,8 @@ test "set: appendChain multiple times" {
 
     const chained = entry.value_ptr.*.leaf_chained;
     try testing.expectEqual(@as(usize, 3), chained.actions.items.len);
-    try testing.expect(chained.actions.items[0] == .new_window);
-    try testing.expect(chained.actions.items[1] == .new_tab);
+    try testing.expect(chained.actions.items[0] == .quit);
+    try testing.expect(chained.actions.items[1] == .close_group);
     try testing.expect(chained.actions.items[2] == .close_surface);
 }
 
@@ -4979,16 +4746,16 @@ test "set: appendChain removes reverse mapping" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
 
     // Verify reverse mapping exists before chaining
-    try testing.expect(s.getTrigger(.{ .new_window = {} }) != null);
+    try testing.expect(s.getTrigger(.{ .quit = {} }) != null);
 
     // Chaining should remove the reverse mapping
-    try s.appendChain(alloc, .{ .new_tab = {} });
+    try s.appendChain(alloc, .{ .close_group = {} });
 
     // Reverse mapping should be gone since chained actions are not in reverse map
-    try testing.expect(s.getTrigger(.{ .new_window = {} }) == null);
+    try testing.expect(s.getTrigger(.{ .quit = {} }) == null);
 }
 
 test "set: appendChain with performable does not affect reverse mapping" {
@@ -4999,8 +4766,8 @@ test "set: appendChain with performable does not affect reverse mapping" {
     defer s.deinit(alloc);
 
     // Add a non-performable binding first
-    try s.put(alloc, .{ .key = .{ .unicode = 'b' } }, .{ .new_window = {} });
-    try testing.expect(s.getTrigger(.{ .new_window = {} }) != null);
+    try s.put(alloc, .{ .key = .{ .unicode = 'b' } }, .{ .quit = {} });
+    try testing.expect(s.getTrigger(.{ .quit = {} }) != null);
 
     // Add a performable binding (not in reverse map) and chain it
     try s.putFlags(
@@ -5014,10 +4781,10 @@ test "set: appendChain with performable does not affect reverse mapping" {
     try testing.expect(s.getTrigger(.{ .close_surface = {} }) == null);
 
     // Chaining the performable binding should not crash or affect anything
-    try s.appendChain(alloc, .{ .new_tab = {} });
+    try s.appendChain(alloc, .{ .close_group = {} });
 
-    // The non-performable new_window binding should still be in reverse map
-    try testing.expect(s.getTrigger(.{ .new_window = {} }) != null);
+    // The non-performable quit binding should still be in reverse map
+    try testing.expect(s.getTrigger(.{ .quit = {} }) != null);
 }
 
 test "set: appendChain restores next valid reverse mapping" {
@@ -5028,21 +4795,21 @@ test "set: appendChain restores next valid reverse mapping" {
     defer s.deinit(alloc);
 
     // Add two bindings for the same action
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .new_window = {} });
-    try s.put(alloc, .{ .key = .{ .unicode = 'b' } }, .{ .new_window = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'b' } }, .{ .quit = {} });
 
     // Reverse mapping should point to 'b' (most recent)
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'b');
     }
 
     // Chain an action to 'b', which should restore 'a' in the reverse map
-    try s.appendChain(alloc, .{ .new_tab = {} });
+    try s.appendChain(alloc, .{ .close_group = {} });
 
     // Now reverse mapping should point to 'a'
     {
-        const trigger = s.getTrigger(.{ .new_window = {} }).?;
+        const trigger = s.getTrigger(.{ .quit = {} }).?;
         try testing.expect(trigger.key.unicode == 'a');
     }
 }
@@ -5056,8 +4823,8 @@ test "set: formatEntries leaf_chained" {
     defer s.deinit(alloc);
 
     // Create a chained binding
-    try s.parseAndPut(alloc, "a=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "a=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
 
     // Verify it's a leaf_chained
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
@@ -5075,8 +4842,8 @@ test "set: formatEntries leaf_chained" {
     try entry.value_ptr.formatEntries(&writer, formatterpkg.entryFormatter("keybind", &output.writer));
 
     const expected =
-        \\keybind = a=new_window
-        \\keybind = chain=new_tab
+        \\keybind = a=quit
+        \\keybind = chain=close_group
         \\
     ;
     try testing.expectEqualStrings(expected, output.written());
@@ -5091,8 +4858,8 @@ test "set: formatEntries leaf_chained multiple chains" {
     defer s.deinit(alloc);
 
     // Create a chained binding with 3 actions
-    try s.parseAndPut(alloc, "ctrl+a=new_window");
-    try s.parseAndPut(alloc, "chain=new_tab");
+    try s.parseAndPut(alloc, "ctrl+a=quit");
+    try s.parseAndPut(alloc, "chain=close_group");
     try s.parseAndPut(alloc, "chain=close_surface");
 
     // Verify it's a leaf_chained with 3 actions
@@ -5111,8 +4878,8 @@ test "set: formatEntries leaf_chained multiple chains" {
     try entry.value_ptr.formatEntries(&writer, formatterpkg.entryFormatter("keybind", &output.writer));
 
     const expected =
-        \\keybind = ctrl+a=new_window
-        \\keybind = chain=new_tab
+        \\keybind = ctrl+a=quit
+        \\keybind = chain=close_group
         \\keybind = chain=close_surface
         \\
     ;

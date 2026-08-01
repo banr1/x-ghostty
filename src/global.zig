@@ -40,9 +40,9 @@ pub const GlobalState = struct {
 
     /// Where logging should go
     pub const Logging = packed struct {
-        /// Whether to log to stderr. For lib mode we always disable stderr
-        /// logging by default. Otherwise it's enabled by default.
-        stderr: bool = build_config.app_runtime != .none,
+        /// Whether to log to stderr. This is disabled by default; the
+        /// macOS app relies on unified logging instead.
+        stderr: bool = false,
         /// Whether to log to macOS's unified logging. Enabled by default
         /// on macOS.
         macos: bool = builtin.os.tag.isDarwin(),
@@ -128,7 +128,6 @@ pub const GlobalState = struct {
         // Output some debug information right away
         std.log.info("xghostty version={s}", .{build_config.version_string});
         std.log.info("xghostty build optimize={s}", .{build_config.mode_string});
-        std.log.info("runtime={}", .{build_config.app_runtime});
         std.log.info("font_backend={}", .{build_config.font_backend});
         if (comptime build_config.font_backend.hasHarfbuzz()) {
             std.log.info("dependency harfbuzz={s}", .{harfbuzz.versionString()});
@@ -173,11 +172,6 @@ pub const GlobalState = struct {
         // hereafter can use this cached value.
         self.resources_dir = try apprt.runtime.resourcesDir(self.alloc);
         errdefer self.resources_dir.deinit(self.alloc);
-
-        // Setup i18n
-        if (self.resources_dir.app()) |v| internal_os.i18n.init(v) catch |err| {
-            std.log.warn("failed to init i18n, translations will not be available err={}", .{err});
-        };
     }
 
     /// Cleans up the global state. This doesn't _need_ to be called but

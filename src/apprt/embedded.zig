@@ -7,7 +7,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const assert = @import("../quirks.zig").inlineAssert;
-const Allocator = std.mem.Allocator;
 const objc = @import("objc");
 const apprt = @import("../apprt.zig");
 const font = @import("../font/main.zig");
@@ -321,24 +320,6 @@ pub const App = struct {
             else => {},
         }
     }
-
-    /// Send the given IPC to a running XGhostty. Returns `true` if the action was
-    /// able to be performed, `false` otherwise.
-    ///
-    /// Note that this is a static function. Since this is called from a CLI app (or
-    /// some other process that is not XGhostty) there is no full-featured apprt App
-    /// to use.
-    pub fn performIpc(
-        _: Allocator,
-        _: apprt.ipc.Target,
-        comptime action: apprt.ipc.Action.Key,
-        _: apprt.ipc.Action.Value(action),
-    ) (Allocator.Error || std.posix.WriteError || apprt.ipc.Errors)!bool {
-        switch (action) {
-            .new_window => return false,
-            .toggle_quick_terminal => return false,
-        }
-    }
 };
 
 /// Platform-specific configuration for libghostty.
@@ -461,7 +442,7 @@ pub const Surface = struct {
         wait_after_command: bool = false,
 
         /// Context for the new surface
-        context: apprt.surface.NewSurfaceContext = .window,
+        context: apprt.surface.NewSurfaceContext = .group,
     };
 
     pub fn init(self: *Surface, app: *App, opts: Options) !void {
@@ -931,10 +912,10 @@ pub const Surface = struct {
     }
 
     pub fn newSurfaceOptions(self: *const Surface, context: apprt.surface.NewSurfaceContext) apprt.Surface.Options {
-        const font_size: f32 = font_size: {
-            if (!self.app.config.@"window-inherit-font-size") break :font_size 0;
-            break :font_size self.core_surface.font_size.points;
-        };
+        // New surfaces always inherit the font size of the surface they
+        // were created from. This used to be configurable via
+        // `window-inherit-font-size` (default true).
+        const font_size: f32 = self.core_surface.font_size.points;
 
         const working_directory: ?[*:0]const u8 = wd: {
             if (!apprt.surface.shouldInheritWorkingDirectory(context, &self.app.config)) break :wd null;

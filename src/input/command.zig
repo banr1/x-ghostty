@@ -407,47 +407,10 @@ fn actionCommands(action: Action.Key) []const Command {
             },
         },
 
-        .new_window => comptime &.{.{
-            .action = .new_window,
-            .title = "New Window",
-            .description = "Open a new window.",
-        }},
-
-        .new_tab => comptime &.{.{
-            .action = .new_tab,
-            .title = "New Tab",
-            .description = "Open a new tab.",
-        }},
-
-        .move_tab => comptime &.{
-            .{
-                .action = .{ .move_tab = -1 },
-                .title = "Move Tab Left",
-                .description = "Move the current tab to the left.",
-            },
-            .{
-                .action = .{ .move_tab = 1 },
-                .title = "Move Tab Right",
-                .description = "Move the current tab to the right.",
-            },
-        },
-
-        .toggle_tab_overview => comptime &.{.{
-            .action = .toggle_tab_overview,
-            .title = "Toggle Tab Overview",
-            .description = "Toggle the tab overview.",
-        }},
-
         .prompt_surface_title => comptime &.{.{
             .action = .prompt_surface_title,
             .title = "Change Terminal Title…",
             .description = "Prompt for a new title for the current terminal.",
-        }},
-
-        .prompt_tab_title => comptime &.{.{
-            .action = .prompt_tab_title,
-            .title = "Change Tab Title…",
-            .description = "Prompt for a new title for the current tab.",
         }},
 
         .new_split => comptime &.{
@@ -506,19 +469,6 @@ fn actionCommands(action: Action.Key) []const Command {
             },
         },
 
-        .goto_window => comptime &.{
-            .{
-                .action = .{ .goto_window = .previous },
-                .title = "Focus Window: Previous",
-                .description = "Focus the previous window, if any.",
-            },
-            .{
-                .action = .{ .goto_window = .next },
-                .title = "Focus Window: Next",
-                .description = "Focus the next window, if any.",
-            },
-        },
-
         .toggle_split_zoom => comptime &.{.{
             .action = .toggle_split_zoom,
             .title = "Toggle Split Zoom",
@@ -555,18 +505,6 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = "Toggle the inspector.",
         }},
 
-        .show_gtk_inspector => comptime &.{.{
-            .action = .show_gtk_inspector,
-            .title = "Show the GTK Inspector",
-            .description = "Show the GTK inspector.",
-        }},
-
-        .show_on_screen_keyboard => comptime &.{.{
-            .action = .show_on_screen_keyboard,
-            .title = "Show On-Screen Keyboard",
-            .description = "Show the on-screen keyboard if present.",
-        }},
-
         .open_config => comptime &.{.{
             .action = .open_config,
             .title = "Open Config",
@@ -585,36 +523,6 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = "Close the current terminal.",
         }},
 
-        .close_tab => comptime &.{
-            .{
-                .action = .{ .close_tab = .this },
-                .title = "Close Tab",
-                .description = "Close the current tab.",
-            },
-            .{
-                .action = .{ .close_tab = .other },
-                .title = "Close Other Tabs",
-                .description = "Close all tabs in this window except the current one.",
-            },
-            .{
-                .action = .{ .close_tab = .right },
-                .title = "Close Tabs to the Right",
-                .description = "Close all tabs to the right of the current one.",
-            },
-        },
-
-        .close_window => comptime &.{.{
-            .action = .close_window,
-            .title = "Close Window",
-            .description = "Close the current window.",
-        }},
-
-        .close_all_windows => comptime &.{.{
-            .action = .close_all_windows,
-            .title = "Close All Windows",
-            .description = "Close all windows.",
-        }},
-
         .toggle_maximize => comptime &.{.{
             .action = .toggle_maximize,
             .title = "Toggle Maximize",
@@ -625,12 +533,6 @@ fn actionCommands(action: Action.Key) []const Command {
             .action = .toggle_fullscreen,
             .title = "Toggle Fullscreen",
             .description = "Toggle the fullscreen state of the current window.",
-        }},
-
-        .toggle_window_decorations => comptime &.{.{
-            .action = .toggle_window_decorations,
-            .title = "Toggle Window Decorations",
-            .description = "Toggle the window decorations.",
         }},
 
         .toggle_window_float_on_top => comptime &.{.{
@@ -696,7 +598,6 @@ fn actionCommands(action: Action.Key) []const Command {
         .cursor_key,
         .set_font_size,
         .set_surface_title,
-        .set_tab_title,
         .search,
         .scroll_to_row,
         .scroll_page_fractional,
@@ -704,7 +605,6 @@ fn actionCommands(action: Action.Key) []const Command {
         .adjust_selection,
         .jump_to_prompt,
         .write_scrollback_file,
-        .goto_tab,
         .resize_split,
         .activate_key_table,
         .activate_key_table_once,
@@ -714,14 +614,9 @@ fn actionCommands(action: Action.Key) []const Command {
         .crash,
         => comptime &.{},
 
-        // No commands because I'm not sure they make sense in a command
+        // No commands because I'm not sure it makes sense in a command
         // palette context.
         .toggle_command_palette,
-        .toggle_quick_terminal,
-        .toggle_visibility,
-        .previous_tab,
-        .next_tab,
-        .last_tab,
         => comptime &.{},
 
         // Group-layer actions are plumbed through the core and implemented

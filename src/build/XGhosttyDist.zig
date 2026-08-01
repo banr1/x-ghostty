@@ -2,7 +2,6 @@ const GhosttyDist = @This();
 
 const std = @import("std");
 const Config = @import("Config.zig");
-const SharedDeps = @import("SharedDeps.zig");
 const GhosttyFrameData = @import("XGhosttyFrameData.zig");
 
 /// The final source tarball.
@@ -22,19 +21,12 @@ pub fn init(b: *std.Build, cfg: *const Config) !GhosttyDist {
     const name = if (cfg.emit_lib_vt) "libghostty-vt" else "ghostty";
 
     // Get the resources we're going to inject into the source tarball.
-    // lib-vt doesn't need GTK resources or frame data.
+    // lib-vt doesn't need frame data.
     const alloc = b.allocator;
     var resources: std.ArrayListUnmanaged(Resource) = .empty;
     if (!cfg.emit_lib_vt) {
-        {
-            const gtk = SharedDeps.gtkNgDistResources(b);
-            try resources.append(alloc, gtk.resources_c);
-            try resources.append(alloc, gtk.resources_h);
-        }
-        {
-            const framedata = GhosttyFrameData.distResources(b);
-            try resources.append(alloc, framedata.framedata);
-        }
+        const framedata = GhosttyFrameData.distResources(b);
+        try resources.append(alloc, framedata.framedata);
     }
 
     // git archive to create the final tarball. "git archive" is the
@@ -186,12 +178,8 @@ const lib_vt_excludes = &[_][]const u8{
     "images",
     "macos",
     "dist/doxygen",
-    "dist/linux",
     "dist/macos",
     "dist/windows",
-    "flatpak",
-    "snap",
-    "po",
     "example",
 
     // Test corpus (lib-vt tests use embedded testdata within src/terminal/)

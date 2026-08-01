@@ -746,26 +746,6 @@ pub fn init(
             .set_title,
             .{ .title = title },
         );
-    } else if ((comptime builtin.os.tag == .linux) and
-        config.@"_xdg-terminal-exec")
-    xdg: {
-        // For xdg-terminal-exec execution we special-case and set the window
-        // title to the command being executed. This allows window managers
-        // to set custom styling based on the command being executed.
-        const v = command orelse break :xdg;
-        const title = v.string(alloc) catch |err| {
-            log.warn(
-                "error copying command for title, title will not be set err={}",
-                .{err},
-            );
-            break :xdg;
-        };
-        defer alloc.free(title);
-        _ = try rt_app.performAction(
-            .{ .surface = self },
-            .set_title,
-            .{ .title = title },
-        );
     } else if (command) |cmd| switch (cmd) {
         // If a user specifies a command it is appropriate to set the title as argv[0]
         // we know in the case of a direct command it has been supplied by the user
@@ -4767,22 +4747,13 @@ fn showMouse(self: *Surface) void {
 ///
 /// This function returns true if the binding action was performed. This
 /// may return false if the binding action is not supported or if the
-/// binding action would do nothing (i.e. previous tab with no tabs).
-///
-/// NOTE: At the time of writing this comment, only previous/next tab
-/// will ever return false. We can expand this in the future if it becomes
-/// useful. We did previous/next tab so we could implement #498.
+/// binding action would do nothing.
 pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool {
     // Forward app-scoped actions to the app. Some app-scoped actions are
     // special-cased here because they do some special things when performed
     // from the surface.
     if (action.scoped(.app)) |app_action| {
         switch (app_action) {
-            .new_window => try self.app.newWindow(
-                self.rt_app,
-                .{ .parent = self },
-            ),
-
             // Undo and redo both support both surface and app targeting.
             // If we are triggering on a surface then we perform the
             // action with the surface target.
@@ -5132,13 +5103,7 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
         .prompt_surface_title => return try self.rt_app.performAction(
             .{ .surface = self },
             .prompt_title,
-            .surface,
-        ),
-
-        .prompt_tab_title => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .prompt_title,
-            .tab,
+            {},
         ),
 
         .set_surface_title => |v| {
@@ -5147,16 +5112,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             return try self.rt_app.performAction(
                 .{ .surface = self },
                 .set_title,
-                .{ .title = title },
-            );
-        },
-
-        .set_tab_title => |v| {
-            const title = try self.alloc.dupeZ(u8, v);
-            defer self.alloc.free(title);
-            return try self.rt_app.performAction(
-                .{ .surface = self },
-                .set_tab_title,
                 .{ .title = title },
             );
         },
@@ -5262,44 +5217,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             v,
         ),
 
-        .new_tab => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .new_tab,
-            {},
-        ),
-
-        .close_tab => |v| return try self.rt_app.performAction(
-            .{ .surface = self },
-            .close_tab,
-            switch (v) {
-                .this => .this,
-                .other => .other,
-                .right => .right,
-            },
-        ),
-
-        inline .previous_tab,
-        .next_tab,
-        .last_tab,
-        .goto_tab,
-        => |v, tag| return try self.rt_app.performAction(
-            .{ .surface = self },
-            .goto_tab,
-            switch (tag) {
-                .previous_tab => .previous,
-                .next_tab => .next,
-                .last_tab => .last,
-                .goto_tab => @enumFromInt(v),
-                else => comptime unreachable,
-            },
-        ),
-
-        .move_tab => |position| return try self.rt_app.performAction(
-            .{ .surface = self },
-            .move_tab,
-            .{ .amount = position },
-        ),
-
         .new_split => |direction| return try self.rt_app.performAction(
             .{ .surface = self },
             .new_split,
@@ -5323,15 +5240,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
                     apprt.action.GotoSplit,
                     @tagName(tag),
                 ),
-            },
-        ),
-
-        .goto_window => |direction| return try self.rt_app.performAction(
-            .{ .surface = self },
-            .goto_window,
-            switch (direction) {
-                .previous => .previous,
-                .next => .next,
             },
         ),
 
@@ -5507,18 +5415,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             },
         ),
 
-        .toggle_window_decorations => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .toggle_window_decorations,
-            {},
-        ),
-
-        .toggle_tab_overview => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .toggle_tab_overview,
-            {},
-        ),
-
         .toggle_window_float_on_top => return try self.rt_app.performAction(
             .{ .surface = self },
             .float_window,
@@ -5548,12 +5444,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
-        .show_on_screen_keyboard => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .show_on_screen_keyboard,
-            {},
-        ),
-
         .select_all => {
             self.renderer_state.mutex.lock();
             defer self.renderer_state.mutex.unlock();
@@ -5577,12 +5467,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
         ),
 
         .close_surface => self.close(),
-
-        .close_window => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .close_window,
-            {},
-        ),
 
         inline .activate_key_table,
         .activate_key_table_once,
@@ -5746,8 +5630,7 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
 fn closingAction(action: input.Binding.Action) bool {
     return switch (action) {
         .close_surface,
-        .close_window,
-        .close_tab,
+        .close_group,
         => true,
 
         else => false,

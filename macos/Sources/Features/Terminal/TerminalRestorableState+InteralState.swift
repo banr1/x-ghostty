@@ -13,7 +13,6 @@ extension TerminalRestorableState {
 
         // MARK: - Version 7 (1.3.0)
         let effectiveFullscreenMode: FullscreenMode?
-        let tabColor: TerminalTabColor?
         let titleOverride: String?
 
         // MARK: - Version 8 (group layer)
@@ -33,7 +32,6 @@ extension TerminalRestorableState.InternalState where ViewType == XGhostty.Surfa
             focusedSurface: controller.focusedSurface?.id.uuidString,
             surfaceTree: controller.surfaceTree,
             effectiveFullscreenMode: controller.fullscreenStyle?.fullscreenMode,
-            tabColor: (controller.window as? TerminalWindow)?.tabColor,
             titleOverride: controller.titleOverride,
             // The focused group's pane tree is mirrored from `surfaceTree`
             // (always in sync via `surfaceTreeDidChange`), so the captured state

@@ -192,8 +192,6 @@ identity 破綻なし
 - [x] `apprt/action.zig` の Action union + Key enum 末尾に追加（ABI 互換、引数型は
       `SplitDirection`/`GotoSplit`/`ResizeSplit`/`SetTitle` を再利用）
 - [x] `include/ghostty.h` の手書き enum/union を同期（`checkGhosttyHEnum` テスト通過）
-- [x] `apprt/gtk/.../application.zig` の Unimplemented リストに追加（macOS では非
-      コンパイルだがクロスプラットフォーム整合のため）
 - [ ] apprt action → Swift `WorkspaceModel` のプラミング（`Ghostty.App.action()` の
       case 追加 → notification → `BaseTerminalController` ハンドラ）は **2.3 へ**
 
@@ -262,7 +260,7 @@ Cmd+D は新 group 内のみ分割。
 
 - **語彙レイヤーのみ（Phase F 同様の基盤）**: Zig core の Action union に group action を
   足すと `scope()` / `command.zig` / `Surface.zig`（surface-scoped 網羅 switch）/
-  `apprt/action.zig` / `ghostty.h`（手書き・`checkGhosttyHEnum` で同期検証）/ GTK switch が
+  `apprt/action.zig` / `ghostty.h`（手書き・`checkGhosttyHEnum` で同期検証）が
   芋づる式にコンパイル要求される。一方 Swift `Ghostty.App.action()` は `default:` を持つため、
   ここで止めればビルドは緑のまま。挙動配線（2.3）と分離してレビューしやすくする狙い。
 - **引数型は既存 apprt 型を再利用**: `new_group_split`→`SplitDirection`、`goto_group`→
@@ -344,10 +342,10 @@ overlay 不変条件（§14.13）は `GroupView` の ZStack 構造で担保。na
       （`WorkspaceModel.gotoGroupTarget` で対象解決 → 既存 `focusGroup` で surfaceTree 差替+last pane focus）
 - [x] `resize_group`（§11.4）: visible で隣接探索 → canonical の LCA split ratio を変更
       （`WorkspaceModel.resizeFocusedGroup`。px→比率は controller が window content size 基準で変換）
-- [x] `equalize_groups`（§11.5）: **暫定案を採用** — hidden が空のときのみ実行、
-      ある場合は no-op + warning（log）。hidden は Phase 5 まで常に空のため現状は常時実行と等価。
-      推奨案（visible 対応 canonical split のみ均等化）は hidden が実体化する Phase 5 で対応
-  - [x] `WorkspaceModel.equalizeGroups`（hidden 空ガード → `canonicalGroupTree.equalized()`）
+- [x] `equalize_groups`（§11.5）: canonical tree が split のとき無条件に均等化
+      （hidden の有無に関わらず実行。canonical leaf = visible group なので
+      visible のみが対象になる）
+  - [x] `WorkspaceModel.equalizeGroups`（`canonicalGroupTree.equalized()`）
 - [x] デフォルト keybind: Cmd+Ctrl+Opt+方向 = goto_group / Cmd+Ctrl+Opt+Shift+方向 = resize_group:dir,10
       （§10.3, §10.4, `src/config/Config.zig` macOS 既定）。equalize_groups は SPEC に既定割当なし＝未配線
 
@@ -545,10 +543,11 @@ restore の論理〔§12.3 の hidden·zoom クリア / focusedGroup 検証〕�
       controller `performCloseFocusedGroup` が surfaceTree 差替 + last pane focus）
 - [x] 最後の pane で Cmd+W は close_group confirmation に昇格（§11.10, 不変条件 18）
       ※ 昇格は **複数 group のときのみ**（`groups.count > 1 && surfaceTree.removing(node).isEmpty`）。
-      単一 group では従来の `close_surface`（"Close Terminal?" / tab·window close）経路を維持し UX 非回帰
-- [x] 最後の group の close は tab/window close に委譲（§18.5）
+      単一 group では従来の `close_surface`（"Close Terminal?" / window close）経路を維持し UX 非回帰
+- [x] 最後の group の close はウィンドウ close に委譲（§18.5）
       （`closeFocusedGroup` が `.closedLast` 時は model 非変更のまま `replaceSurfaceTree(.init())` →
-      `TerminalController` override が `closeTabImmediately()` へ。既存 tab/window close の undo を流用）
+      `TerminalController` override が `closeWindowImmediately()` へ。単一ウィンドウのため
+      `windowWillClose` → `NSApp.terminate` でアプリ終了。undo は登録しない）
 - [x] Zig core 語彙は Phase 2.1 で整備済み（`close_group` は `Binding.zig`/`Surface.zig`/`action.zig`/
       `ghostty.h`/`command.zig` に配線済み）。本タスクは純 Swift 配線
       （`Ghostty.App.action()` に `GHOSTTY_ACTION_CLOSE_GROUP` case + `closeGroup` ヘルパー →
@@ -563,7 +562,7 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
 
 - [ ] 実機での目視確認（close_group confirmation の 2 ボタン / 複数 group での Cmd+W 昇格・
       visible neighbor へ focus / 単一 group は "Close Terminal?" のまま / 最後の group close で
-      tab·window close）は未実施（ロジックは自動テストで担保。group-aware undo 着手時の実機回帰と併せて実施推奨）
+      ウィンドウが閉じてアプリ終了）は未実施（ロジックは自動テストで担保。group-aware undo 着手時の実機回帰と併せて実施推奨）
 
 ### close_group 実装メモ（レビュー観点）
 
@@ -575,13 +574,13 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
   prompt を出さない（=既存挙動の非回帰）。
 - **Cmd+W 昇格は複数 group ゲート**: `ghosttyDidCloseSurface` で `surfaceTree.removing(node).isEmpty`
   かつ `groups.count > 1` のときだけ `closeFocusedGroup()` へ昇格。単一 group の最後の pane は従来の
-  `close_surface` 経路（空ツリー → `closeTabImmediately`）に委ね、文言も "Close Terminal?" のまま。
+  `close_surface` 経路（空ツリー → `closeWindowImmediately`）に委ね、文言も "Close Terminal?" のまま。
   複数 group のときは sibling が canonical に必ず存在するため `closeFocusedGroup` は必ず `.switched` を返し、
-  tab を誤って閉じない。
+  ウィンドウを誤って閉じない。
 - **`.closedLast` は model 非変更**: 最後の group の close は `closeFocusedGroup` が**何も変更せず**
-  `.closedLast` を返し、controller が `replaceSurfaceTree(.init())` で既存 tab/window close 経路へ委譲する。
-  これにより close の undo（既存 `closeTabImmediately` の restorable-state スナップショット）が
-  **無傷の workspace（1 group）**を捉え、tab 復元時に空 workspace で起動しない。
+  `.closedLast` を返し、controller が `replaceSurfaceTree(.init())` で既存の window close 経路へ委譲する。
+  これによりウィンドウが閉じ、単一ウィンドウのためアプリが終了する。restorable-state スナップショットは
+  **無傷の workspace（1 group）**を捉えるため、次回起動時に空 workspace にならない。
 - **focused group は常に可視（§14.6）の保全**: close 後の focus 先は pre-mutation canonical で
   `nearestLeaf(matching: !hidden)` を優先し、可視 neighbor が無ければ `nearestLeaf(matching: 全て)` に
   フォールバックして**その group を un-hide（reveal）**してから focus する。これは「focused（visible）group が
@@ -591,7 +590,7 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
   dealloc → PTY/process 終了。既存 `removeSurfaceNode` と同じ機構で、明示 close 呼び出しは不要。
 - **undo は引き続き未登録**: 他の group 操作同様、`replaceSurfaceTree` の surfaceTree-only undo は
   focusedGroup 切替後に旧 tree を誤 group へミラーするため流用不可。`.switched` 経路は undo 非登録、
-  `.closedLast` 経路のみ既存 tab/window close の undo を流用。group-aware undo 横断タスクで統合予定（下記）。
+  `.closedLast` 経路はウィンドウ close（アプリ終了）のため undo なし。group-aware undo 横断タスクで統合予定（下記）。
 
 ## 横断: group 操作の undo（Phase 2.3 申し送り）✅ 完了
 
@@ -627,9 +626,9 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
   - 非登録（parity）: `focusGroup`/`goto_group`（純ナビ＝`goto_split`・タブ切替と同様）、
     `resize_group`（divider drag resize）、`equalize_groups`（`equalize_splits`）、
     `toggle_group_zoom`（`toggle_split_zoom`・runtime-only）、`rename_group`
-    （`prompt_tab_title`・インラインエディタ内 text undo はローカル）。
-  - `close_group`.closedLast は model 非変更で既存 tab/window close（自前 undo 持ち）へ委譲するため
-    **二重登録しない**。
+    （インラインエディタ内 text undo はローカル）。
+  - `close_group`.closedLast は model 非変更で window close（= アプリ終了）へ委譲するため
+    **undo を登録しない**。
 - **復元順序が load-bearing**: `restoreWorkspaceState` は ①`workspace.restoreState` で state を先に復元
   → ②`surfaceTree = focusedPaneTree` → ③`moveKeyboardFocus`。②の `surfaceTreeDidChange` ミラーが
   読む `self.focusedSurface` が古くても、`replaceFocusedPaneTree` が「復元木に無い surface は無視し
@@ -747,7 +746,7 @@ zoom 解除 / 可視 neighbor 無時は hidden を reveal〔§14.6〕/ 他 hidde
 visible group に **dynamic ordinal 1～9** を付与し、canonical tree leaf traversal 順で自動 re-pack。
 同時に表示上限を 9 group に制限し、`new_group_split` / `show_group` を cap で gate。
 `goto_group` に **index form**（`goto_group:1`～`goto_group:9`）を追加し、
-macOS default keybind を Cmd+1～9 に置き換え（`goto_tab` は削除）。
+default keybind を Cmd+1～9 に置き換え（`goto_tab` は core ごと削除）。
 zoom 中の index jump は zoom 解除してからジャンプ（自 group は no-op）。
 restore 時に canonical が 9 超える場合は先頭 9 のみ visible、超過分を hidden に移す。
 
@@ -770,8 +769,8 @@ restore 時に canonical が 9 超える場合は先頭 9 のみ visible、超�
       超過分を hiddenGroupIDs へ移す（deterministic）。orphaned group は可能な限り再接続（9 cap 内で止める）。
       `focusedGroup` 無効時は firstLeaf へフォールバック。restore 経路（restoring(_:) と Codable init）で統一
 - [x] **Keybind**: `src/config/Config.zig` で Darwin/non-Darwin comptime split。macOS では Cmd+1～9（physical digit + unicode digit の dual-register）を
-      `goto_group:1`～`goto_group:9` にバインド、旧 `goto_tab:1`～`goto_tab:8` / `last_tab` keybind を削除。
-      non-Darwin は Alt+1～8 / Alt+9 をそのまま（`goto_tab` / `last_tab`）
+      `goto_group:1`～`goto_group:9` にバインド、旧 `goto_tab:1`～`goto_tab:8` / `last_tab` keybind を削除
+      （`goto_tab` / `last_tab` は core からも削除済み）
 - [x] **Performability**: `goto_group` index form と `show_group` に performability gate
       （`canShowGroup` / index が resolve しない・focused と同じとき false → key 非消費）。
       `new_group_split` は performability 配線が無いため key は消費されるが、
@@ -803,9 +802,8 @@ restore 時に canonical が 9 超える場合は先頭 9 のみ visible、超�
   canonical tree の**葉走査順**（in-order、previous/next focus と同順）から都度導出する。
   canonical tree 変更（hide/close/show/move）で自動的に値が変わるため、明示的な re-pack 処理や
   保存フィールドは不要。view へは `groupOrdinals`（dict、render pass ごとに 1 回算出）で受け渡し
-- **Cmd+1～9 は Darwin 限定の comptime 分岐**: 旧 goto_tab ブロックと同じく physical `digit_N` キーと
-  unicode `'1'`～`'9'` を dual-register（AZERTY 等対応、unicode 側を後勝ち登録）。非 Darwin は
-  Alt+1～8 → goto_tab / Alt+9 → last_tab を従来通り維持（挙動不変）
+- **Cmd+1～9 の dual-register**: 旧 goto_tab ブロックと同じく physical `digit_N` キーと
+  unicode `'1'`～`'9'` を dual-register（AZERTY 等対応、unicode 側を後勝ち登録）
 - **goto_group_index の zoom 動作**: zoom 中に別 group の番号 → zoom 解除 + focus 切替を
   **単一 state 書き込み**で原子的に実行（`gotoGroup(index:savingOutgoingPaneTree:)`）。
   zoomed group 自身の番号 → no-op（zoom 保持）。判定は `gotoGroupIndexTarget` に一本化し、

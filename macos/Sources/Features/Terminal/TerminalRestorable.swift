@@ -74,9 +74,6 @@ final class TerminalRestorableState: TerminalRestorable {
     var effectiveFullscreenMode: FullscreenMode? {
         internalState.effectiveFullscreenMode
     }
-    var tabColor: TerminalTabColor? {
-        internalState.tabColor
-    }
     var titleOverride: String? {
         internalState.titleOverride
     }
@@ -155,6 +152,15 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
             return
         }
 
+        // We are single-window: constructing a controller assigns the app's
+        // strong `shared` reference, so a second restoration (possible only via
+        // a saved-state file from a pre-conversion multi-window build) would
+        // overwrite it and leak the first controller with its live shells.
+        guard TerminalController.shared == nil else {
+            completionHandler(nil, nil)
+            return
+        }
+
         // The window creation has to go through our terminalManager so that it
         // can be found for events from libghostty. This uses the low-level
         // createWindow so that AppKit can place the window wherever it should
@@ -179,12 +185,7 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
             return
         }
 
-        // Restore our tab color and avoid unnecessary `invalidateRestorableState` calls
-        if let tabColor = state.tabColor {
-            (window as? TerminalWindow)?.tabColor = tabColor
-        }
-
-        // Restore the tab title override
+        // Restore the title override
         c.titleOverride = state.titleOverride
 
         // Setup our restored state on the controller. Find the focused surface
