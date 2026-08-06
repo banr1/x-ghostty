@@ -34,23 +34,33 @@ build-release *args:
 build-app *args:
     {{zig}} build {{args}}
 
+# A running instance is left alive; it picks up the new build on its next launch.
 # Build release and install to /Applications so Raycast/Spotlight can launch it.
-# Quits a running instance first, then relaunches the installed copy.
 install *args:
     #!/usr/bin/env bash
     set -euo pipefail
     {{zig}} build -Doptimize=ReleaseFast {{args}}
-    if pgrep -xq xghostty; then
-        osascript -e 'quit app "XGhostty"'
-        while pgrep -xq xghostty; do sleep 0.2; done
-    fi
-    rm -rf /Applications/XGhostty.app
-    ditto "{{release-app}}" /Applications/XGhostty.app
+    staging="$(mktemp -d /Applications/.XGhostty-install-XXXXXX)"
+    trap 'rm -rf "$staging"' EXIT
+    ditto "{{release-app}}" "$staging/XGhostty.app"
     # The Zig build edits Info.plist after xcodebuild signs the bundle, which
     # invalidates the signature; LaunchServices (open/Raycast) then refuses to
     # launch it on Apple Silicon. Re-sign ad-hoc so it launches cleanly.
-    codesign --force --deep --sign - /Applications/XGhostty.app
-    open /Applications/XGhostty.app
+    codesign --force --deep --sign - "$staging/XGhostty.app"
+    # Swap the bundle instead of quitting: a running instance keeps its old
+    # (now unlinked) bundle inode and survives the install.
+    old=""
+    if [ -e /Applications/XGhostty.app ]; then
+        old="$(mktemp -d /Applications/.XGhostty-old-XXXXXX)"
+        mv /Applications/XGhostty.app "$old/XGhostty.app"
+    fi
+    mv "$staging/XGhostty.app" /Applications/XGhostty.app
+    [ -z "$old" ] || rm -rf "$old"
+    # Match on the install path, not the executable name: debug builds are also
+    # called `xghostty`, and they must not count as "already running".
+    if ! pgrep -fq '/Applications/XGhostty.app/Contents/MacOS/xghostty'; then
+        open /Applications/XGhostty.app
+    fi
 
 # Open the already-built debug app without rebuilding.
 app:
