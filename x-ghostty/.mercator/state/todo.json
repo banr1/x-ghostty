@@ -9,5 +9,102 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [],
-  "items": []
+  "items": [
+    {
+      "id": "T-001",
+      "title": "Model layer: add note storage to GroupState (max 10 lines, project-scoped), persist and restore it like the group name, and cover save/restore plus the 10-line cap with XGhosttyTests",
+      "status": "blocked",
+      "priority": "must",
+      "spec": [
+        "S-001",
+        "S-002",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-model",
+      "risk_level": "normal",
+      "blocked_reason": "Implementation and tests are written (GroupState.note + normalizedNote cap, WorkspaceModel.setGroupNote, macos/Tests/Groups/GroupNoteTests.swift), but no verification command can run inside the autonomous session: the OS sandbox blocks both zig dependency fetch (network host deps.files.ghostty.org not allowlisted) and xcodebuild (XPC service connections and per-user temp/log writes denied). See Blocker B-001 / Recommendation R-001.",
+      "blocker": "B-001"
+    },
+    {
+      "id": "T-002",
+      "title": "Cmd+N note edit overlay: opens for the focused project, multi-line editing with full text visible, Esc saves and closes, terminal returns to full view",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-003",
+        "S-009"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-ui",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-003",
+      "title": "Overview mode (Cmd+Opt+N): toggle simultaneous note overlays on all visible projects, visible-only display set, zoom release on entry, read-only, truncated display; model-layer judgment logic covered by XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-004",
+        "S-005",
+        "S-006",
+        "S-007",
+        "S-008",
+        "S-009",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-ui",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-004",
+      "title": "Update SPEC.md and README.md to describe the note layer as implemented",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-011"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-docs",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-005",
+      "title": "Full verification: just build-app, just test, just swift-test all exit 0 with no regression of group features",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-012",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-verify",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-006",
+      "title": "Human on-device visual verification: Cmd+N overlay open/save, Cmd+Opt+N overview show/hide, overlay appearance, and note readability in overview (one-time, after all implementation)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-013"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "notes-verify",
+      "risk_level": "normal"
+    }
+  ]
 }

@@ -1,6 +1,144 @@
 {
   "schema_version": "2.0.0",
   "projected_from_essence_sha256": "f50f8382fb446c20eabf3ac9d5494b8eaa51c4e3139320a439738ed2536b0a47",
-  "projected_at": null,
-  "items": []
+  "projected_at": "2026-08-07T22:41:00+09:00",
+  "items": [
+    {
+      "id": "S-001",
+      "title": "Per-project note model: hand-written note held per project (not per pane), max 10 lines, with retention/restore/display-set judgment logic in the model layer verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトごとに、人間が手書きする短いノートを保持できる。",
+        "ノートは最大 10 行とし、10 行を超えて保持しない。",
+        "ノートはプロジェクトに属し、プロジェクト内のペイン(split)には属さない。",
+        "ノートの保持・復元・表示対象の判断ロジックはモデル層に置き、`XGhosttyTests` から",
+        "検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-002",
+      "title": "Note persisted like the group name and restored to the same project after app restart",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノートは group 名と同様に永続化され、アプリ再起動後に同じプロジェクトへ復元される。"
+      ]
+    },
+    {
+      "id": "S-003",
+      "title": "Cmd+N opens a multi-line note edit overlay for the focused project; Esc saves and closes; the edit overlay shows the full text",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+N` で focused プロジェクトのノート編集オーバーレイが開き、複数行を編集でき、",
+        "Esc で保存して閉じる。",
+        "編集オーバーレイでは全文が見える。"
+      ]
+    },
+    {
+      "id": "S-004",
+      "title": "Cmd+Opt+N toggles overview mode: notes overlay simultaneously on all visible projects; Cmd+Opt+N again or Esc exits",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+Opt+N` で一望モードをトグルし、visible な全プロジェクトの上にそれぞれのノートが",
+        "同時にオーバーレイ表示される。再度 `Cmd+Opt+N` を押すか Esc を押すと抜ける。"
+      ]
+    },
+    {
+      "id": "S-005",
+      "title": "Overview mode targets only visible projects; hidden projects' notes are not shown",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードの表示対象は visible なプロジェクトのみとし、hidden なプロジェクトの",
+        "ノートは表示しない。"
+      ]
+    },
+    {
+      "id": "S-006",
+      "title": "Entering overview mode while zoomed releases the zoom before overlaying all projects",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "zoom 中に一望モードへ入った場合は zoom を解除してから全プロジェクトに重ねる。"
+      ]
+    },
+    {
+      "id": "S-007",
+      "title": "Overview mode is read-only: no note editing and no focus movement during the mode",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードは閲覧専用とし、モード中にノート編集も focus 移動も行わない。"
+      ]
+    },
+    {
+      "id": "S-008",
+      "title": "Overview notes that do not fit the frame are truncated without breaking layout",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードで枠に収まらないノートは切り詰めて表示し、レイアウトを壊さない。"
+      ]
+    },
+    {
+      "id": "S-009",
+      "title": "Note UI never permanently occupies terminal area: shown only when invoked, terminal returns to full view on exit",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノートに関する UI は端末領域を恒久的に占有しない。呼び出したときだけ表示され、",
+        "抜ければ端末が全面に戻る。"
+      ]
+    },
+    {
+      "id": "S-010",
+      "title": "No regression of existing group features (enumeration, zoom, ordinal jump, hide/show, resize/equalize, rename, close) or upstream-derived terminal behavior",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "既存の group 機能(列挙・zoom・序数ジャンプ・hide/show・resize/equalize・rename・",
+        "close)および上流由来のターミナル動作を退行させない。"
+      ]
+    },
+    {
+      "id": "S-011",
+      "title": "Update SPEC.md and README.md to match the implemented note layer",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装したノート層の仕様に合わせて更新する。"
+      ]
+    },
+    {
+      "id": "S-012",
+      "title": "Success gates: just build-app / just test / just swift-test exit 0, and XGhosttyTests contains passing tests for note save/restore, 10-line cap, visible-only display set, zoom release on overview entry, and no focus movement or note editing during overview",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`just build-app` が exit 0 で終わる。",
+        "`just test` が exit 0 で終わる。",
+        "`just swift-test` が exit 0 で終わる。",
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "ノートを持つプロジェクトを保存し復元すると、同じノート本文が復元される",
+        "ノートは 10 行を超えて保持されない",
+        "一望モードの表示対象集合が visible なプロジェクトのみと一致し、hidden な",
+        "プロジェクトを含まない",
+        "zoom 中に一望モードへ入ると zoom が解除される",
+        "一望モード中に focus 移動もノート編集も発生しない"
+      ]
+    },
+    {
+      "id": "S-013",
+      "title": "Human performs a one-time on-device visual verification after all implementation is in place; not complete until confirmed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "すべての実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。"
+      ]
+    }
+  ]
 }

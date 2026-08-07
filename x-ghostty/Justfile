@@ -90,3 +90,29 @@ swift-test:
         xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty \
         -configuration Debug SYMROOT="{{justfile_directory()}}/macos/build" \
         -only-testing:XGhosttyTests test
+
+# Run the verification suite (Zig tests + Swift unit tests) with all caches
+# kept inside the repo, so it also works in sandboxes that deny writes to
+# $HOME. `just check zig` / `just check swift` run a single half.
+check target="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{justfile_directory()}}"
+    export ZIG_GLOBAL_CACHE_DIR="{{justfile_directory()}}/.zig-global-cache"
+    if [ "{{target}}" = "all" ] || [ "{{target}}" = "zig" ]; then
+        {{zig}} build test
+    fi
+    if [ "{{target}}" = "all" ] || [ "{{target}}" = "swift" ]; then
+        # No `env -i` here (unlike swift-build/swift-test): sandboxed
+        # environments route network access and temp dirs through env vars,
+        # and stripping them breaks SwiftPM's package resolution. TMPDIR is
+        # pinned into the repo for the same reason: SwiftPM lock files in the
+        # default per-user temp dir are unwritable under a sandbox.
+        mkdir -p "{{justfile_directory()}}/.tmp"
+        TMPDIR="{{justfile_directory()}}/.tmp" \
+            xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty \
+            -configuration Debug SYMROOT="{{justfile_directory()}}/macos/build" \
+            -derivedDataPath "{{justfile_directory()}}/macos/build/DerivedData" \
+            -resultBundlePath "{{justfile_directory()}}/.tmp/XGhosttyTests-$(date +%Y%m%d%H%M%S).xcresult" \
+            -only-testing:XGhosttyTests test
+    fi

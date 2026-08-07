@@ -624,6 +624,21 @@ final class WorkspaceModel: ObservableObject {
         state.groups[id] = group
     }
 
+    // MARK: Notes
+
+    /// Replace the note on group `id` with `text`, normalized through
+    /// `GroupState.setNote` so at most `GroupState.maxNoteLines` lines are
+    /// ever retained. No-op when the group is unknown or the normalized text
+    /// is unchanged (so no spurious state emission / re-persist).
+    func setGroupNote(_ id: GroupID, to text: String) {
+        guard var group = state.groups[id] else { return }
+        let normalized = GroupState.normalizedNote(text)
+        guard group.note != normalized else { return }
+
+        group.setNote(normalized)
+        state.groups[id] = group
+    }
+
     // MARK: Undo (group-aware undo cross-cutting task)
 
     /// Restore an entire captured `WorkspaceState` wholesale. Used by the
