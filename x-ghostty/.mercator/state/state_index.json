@@ -1,0 +1,22 @@
+{
+  "schema_version": "2.0.0",
+  "canonical": {
+    "essence": "../../ESSENCE.md",
+    "project": "project.json",
+    "spec": "spec.json",
+    "todo": "todo.json",
+    "recommendations": "recommendations.json",
+    "blockers": "blockers.json",
+    "context": "context.json",
+    "validation": "validation.json",
+    "reflection": "reflection.jsonl",
+    "runs": "runs.jsonl",
+    "high_risk_changes": "high_risk_changes.jsonl"
+  },
+  "priority_order": [
+    "ESSENCE.md",
+    ".mercator/state/spec.json",
+    ".mercator/state/todo.json",
+    "implementation"
+  ]
+}

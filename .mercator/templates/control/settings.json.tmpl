@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "best",
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "disableBypassPermissionsMode": "disable",
+    "additionalDirectories": [
+      "__MERCATOR_PROJECT_ABS__"
+    ],
+    "allow": [
+      "Read(/__MERCATOR_CONTROL_ABS__/**)",
+      "Read(/__MERCATOR_PROJECT_ABS__/**)",
+      "Edit(/__MERCATOR_PROJECT_ABS__/**)",
+      "Bash(bin/mercator state *)",
+      "Bash(bash scripts/mercator-*.sh *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(npm test *)",
+      "Bash(npm run test *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run build *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npm run check *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm run test *)",
+      "Bash(pnpm run lint *)",
+      "Bash(pnpm run build *)",
+      "Bash(pnpm run typecheck *)",
+      "Bash(pnpm run check *)",
+      "Bash(pnpm exec tsc *)",
+      "Bash(pnpm exec biome check *)",
+      "Bash(yarn test *)",
+      "Bash(yarn run test *)",
+      "Bash(yarn run lint *)",
+      "Bash(yarn run build *)",
+      "Bash(pytest *)",
+      "Bash(python -m pytest *)",
+      "Bash(python3 -m pytest *)",
+      "Bash(uv run pytest *)",
+      "Bash(ruff check *)",
+      "Bash(uv run ruff check *)",
+      "Bash(mypy *)",
+      "Bash(cargo test *)",
+      "Bash(cargo build *)",
+      "Bash(cargo clippy *)",
+      "Bash(go test *)",
+      "Bash(go build *)",
+      "Bash(make test *)",
+      "Bash(just test *)",
+      "Bash(just check *)"
+    ],
+    "ask": [
+      "Edit(/__MERCATOR_CONTROL_ABS__/.claude/settings.json)",
+      "Edit(/__MERCATOR_PROJECT_ABS__/CLAUDE.md)",
+      "Edit(/__MERCATOR_PROJECT_ABS__/.claude/**)",
+      "Edit(/__MERCATOR_PROJECT_ABS__/.mcp.json)"
+    ],
+    "deny": [
+      "Edit(/__MERCATOR_CONTROL_ABS__/CLAUDE.md)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/.claude/agents/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/.claude/commands/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/.claude/rules/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/.claude/skills/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/scripts/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/templates/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/recipes/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/META.md)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/README.md)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/justfile)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/.agent/prompts/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/.agent/state/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/bin/**)",
+      "Edit(/__MERCATOR_CONTROL_ABS__/lean/**)",
+      "Edit(/__MERCATOR_PROJECT_ABS__/ESSENCE.md)",
+      "Edit(/__MERCATOR_PROJECT_ABS__/essences/**)",
+      "Read(/__MERCATOR_PROJECT_ABS__/.env)",
+      "Read(/__MERCATOR_PROJECT_ABS__/.env.*)",
+      "Read(/__MERCATOR_PROJECT_ABS__/secrets/**)",
+      "Read(/__MERCATOR_PROJECT_ABS__/config/credentials.json)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.netrc)",
+      "Read(~/.claude/**)",
+      "Read(~/.claude.json)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(chmod -R *)",
+      "Bash(chown *)",
+      "Bash(claude *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -fd *)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "autoAllowBashIfSandboxed": false,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "raw.githubusercontent.com",
+        "objects.githubusercontent.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "crates.io",
+        "static.crates.io",
+        "index.crates.io",
+        "proxy.golang.org",
+        "sum.golang.org",
+        "releases.lean-lang.org"
+      ]
+    },
+    "filesystem": {
+      "allowWrite": [
+        "__MERCATOR_PROJECT_ABS__",
+        "__MERCATOR_CONTROL_ABS__/.agent/tmp"
+      ],
+      "denyRead": [
+        "__MERCATOR_PROJECT_ABS__/.env",
+        "__MERCATOR_PROJECT_ABS__/.env.*",
+        "__MERCATOR_PROJECT_ABS__/secrets",
+        "__MERCATOR_PROJECT_ABS__/config/credentials.json",
+        "~/.ssh",
+        "~/.aws",
+        "~/.config/gcloud",
+        "~/.kube",
+        "~/.docker/config.json",
+        "~/.npmrc",
+        "~/.pypirc",
+        "~/.netrc",
+        "~/.claude",
+        "~/.claude.json"
+      ],
+      "denyWrite": [
+        "__MERCATOR_PROJECT_ABS__/ESSENCE.md",
+        "__MERCATOR_PROJECT_ABS__/essences",
+        "__MERCATOR_PROJECT_ABS__/.env",
+        "__MERCATOR_PROJECT_ABS__/.env.*",
+        "__MERCATOR_PROJECT_ABS__/secrets",
+        "__MERCATOR_PROJECT_ABS__/config/credentials.json",
+        "__MERCATOR_PROJECT_ABS__/.mercator/state/project.json",
+        "__MERCATOR_CONTROL_ABS__/CLAUDE.md",
+        "__MERCATOR_CONTROL_ABS__/.claude",
+        "__MERCATOR_CONTROL_ABS__/scripts",
+        "__MERCATOR_CONTROL_ABS__/templates",
+        "__MERCATOR_CONTROL_ABS__/recipes",
+        "__MERCATOR_CONTROL_ABS__/META.md",
+        "__MERCATOR_CONTROL_ABS__/README.md",
+        "__MERCATOR_CONTROL_ABS__/justfile",
+        "__MERCATOR_CONTROL_ABS__/.agent/prompts",
+        "__MERCATOR_CONTROL_ABS__/.agent/state",
+        "__MERCATOR_CONTROL_ABS__/bin",
+        "__MERCATOR_CONTROL_ABS__/lean"
+      ]
+    }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/bin/mercator hook session-start"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/bin/mercator hook pre-tool"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/bin/mercator hook post-tool"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/bin/mercator hook pre-compact"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/bin/mercator hook stop"
+          }
+        ]
+      }
+    ]
+  }
+}

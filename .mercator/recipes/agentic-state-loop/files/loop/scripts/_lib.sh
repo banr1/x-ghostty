@@ -1,0 +1,360 @@
+#!/usr/bin/env bash
+# agentic-state-loop — shared helpers. Source only, do not execute.
+#
+# Path vocabulary:
+#   LOOP_ROOT   = <target>/<loop-dir>   (parent of this scripts/ dir)
+#   TARGET_ROOT = <target>              (the product root; scripts run from here)
+
+set -euo pipefail
+
+# Physical paths everywhere: git prints physical paths from rev-parse, so a
+# symlinked logical path would break every prefix computation below.
+_ASL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}")" && pwd -P)"
+LOOP_ROOT="$(cd "${_ASL_SCRIPT_DIR}/.." && pwd -P)"
+TARGET_ROOT="$(cd "${LOOP_ROOT}/.." && pwd -P)"
+LOOP_DIR_NAME="$(basename "${LOOP_ROOT}")"
+# The loop's judgment/state engine: a multi-call binary built from the
+# vendored Lean sources in <loop_dir>/lean/ (state + hooks + util + trust).
+ASL_BIN="${LOOP_ROOT}/bin/asl-loop"
+
+log() { printf '[loop] %s\n' "$*"; }
+warn() { printf '[loop] WARN: %s\n' "$*" >&2; }
+err() { printf '[loop] ERROR: %s\n' "$*" >&2; }
+
+require_asl_bin() {
+  if [[ ! -x "${ASL_BIN}" ]]; then
+    err "engine binary not found: ${ASL_BIN}"
+    err "Build it first: just engine-build   (or: cd ${LOOP_ROOT}/lean && lake build && mkdir -p ../bin && install -m 755 .lake/build/bin/asl-loop ../bin/asl-loop)"
+    exit 2
+  fi
+}
+
+state() {
+  require_asl_bin
+  "${ASL_BIN}" state "$@"
+}
+
+# Do not expose the operator's shell secrets to the autonomous Agent through
+# inherited environment variables. Authentication must use Claude's normal
+# login/config store; only stable process metadata is forwarded.
+build_sanitized_claude_env() {
+  SANITIZED_CLAUDE_ENV=(env -i CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1)
+  local name
+  for name in HOME USER LOGNAME PATH SHELL TERM COLORTERM TMPDIR LANG LC_ALL LC_CTYPE NO_COLOR FORCE_COLOR LOOP_TZ; do
+    if [[ -n "${!name:-}" ]]; then
+      SANITIZED_CLAUDE_ENV+=("${name}=${!name}")
+    fi
+  done
+}
+
+# Evaluate a state-engine yes/no predicate. Exit >= 2 is an engine/state
+# failure and must never be read as "no" — that would silently unlatch a gate.
+state_predicate() {
+  local __outvar="$1"
+  shift
+  local rc=0 out
+  out="$(state "$@")" || rc=$?
+  printf -v "${__outvar}" '%s' "${out}"
+  if ((rc > 1)); then
+    err "asl-loop state $* failed with exit ${rc}; refusing to guess the gate state."
+    exit 2
+  fi
+  return "${rc}"
+}
+
+# validate tolerating FINDINGS (exit 1 — recoverable by the next cycle's
+# agent) but never a crash (exit >= 2).
+# shellcheck disable=SC2120  # "$@" just forwards optional extra flags; callers pass none.
+state_validate_soft() {
+  local rc=0
+  state validate "$@" || rc=$?
+  if ((rc > 1)); then
+    err "asl-loop state validate crashed (exit ${rc}); this is an engine failure, not a finding."
+    exit 2
+  fi
+  return "${rc}"
+}
+
+# The loop always runs from TARGET_ROOT so every relative path and the agent
+# session CWD are anchored to the product root.
+assert_target_root() {
+  if [[ "$(pwd -P)" != "${TARGET_ROOT}" ]]; then
+    err "Run this from the product root (${TARGET_ROOT})."
+    err "Fix: cd ${TARGET_ROOT} && bash ${LOOP_DIR_NAME}/scripts/$(basename "$0") ..."
+    exit 2
+  fi
+}
+
+# Refuse to run while the instantiation placeholders are unfilled: an
+# unparameterized instance must not execute a single cycle.
+assert_instance_parameterized() {
+  local marker="ASL-PARAMETER-UNFILLED"
+  local f
+  for f in "${LOOP_ROOT}/schema.json" "${LOOP_ROOT}/prompts/cycle.md"; do
+    if [[ ! -f "${f}" ]]; then
+      err "missing instance file: ${f}"
+      exit 2
+    fi
+    if grep -q "${marker}" "${f}"; then
+      err "${f} still carries ${marker}; fill the instance parameters before running."
+      exit 2
+    fi
+  done
+  # A surviving substitution token means the harness guards the wrong paths
+  # (the hooks would silently protect a directory literally named after the
+  # token); the post-install check catches this once, this guard catches it
+  # forever. The constant is spelled split so the instantiation substitution
+  # ("every token in the installed files") cannot rewrite the checker itself.
+  local token='__ASL_LOOP''_DIR__'
+  local f="${TARGET_ROOT}/.claude/settings.json"
+  if [[ -f "${f}" ]] && grep -q "${token}" "${f}"; then
+    err "${f} still carries the ${token} substitution token; the harness is guarding the wrong paths. Re-run the instantiation substitution."
+    exit 2
+  fi
+}
+
+# --- Claude Code launch trust --------------------------------------------
+# Without trust, Claude Code ignores .claude/settings.json permissions and
+# hooks — the harness would silently not exist. Refuse to launch untrusted.
+# Trusted when EITHER the product root or its git toplevel is accepted
+# (`asl-loop trust status` reads ~/.claude.json; both paths are physical).
+require_claude_trust() {
+  require_asl_bin
+  local candidates=("${TARGET_ROOT}") top candidate
+  top="$(git -C "${TARGET_ROOT}" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "${top}" && "${top}" != "${TARGET_ROOT}" ]]; then
+    candidates+=("${top}")
+  fi
+  for candidate in "${candidates[@]}"; do
+    if "${ASL_BIN}" trust status --quiet "${candidate}"; then
+      return 0
+    fi
+  done
+  err "Claude Code trust is missing for ${TARGET_ROOT}; hooks/permissions would not be enforced."
+  err "Fix: cd ${TARGET_ROOT} && CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 CLAUDE_CODE_SKIP_PROMPT_HISTORY=1 claude --setting-sources project --strict-mcp-config"
+  err "Accept the trust dialog once, then exit."
+  exit 2
+}
+
+# --- single-flight lock ----------------------------------------------------
+# At most one loop/resume transition per instance. mkdir is the portable
+# atomic lock; the pid file lets locks abandoned by dead processes be
+# reclaimed.
+LOOP_LOCK_DIR=""
+
+lock_pid_is_alive() {
+  kill -0 "$1" 2>/dev/null || ps -p "$1" >/dev/null 2>&1
+}
+
+acquire_loop_lock() {
+  local lock_dir="${LOOP_ROOT}/tmp/loop.lock"
+  mkdir -p "${LOOP_ROOT}/tmp"
+  local attempt owner_pid
+  # shellcheck disable=SC2034  # `attempt` only bounds the retry count.
+  for attempt in 1 2 3; do
+    if mkdir "${lock_dir}" 2>/dev/null; then
+      LOOP_LOCK_DIR="${lock_dir}"
+      printf '%s\n' "$$" >"${lock_dir}/pid"
+      trap 'release_loop_lock' EXIT
+      return 0
+    fi
+    owner_pid="$(cat "${lock_dir}/pid" 2>/dev/null || true)"
+    if [[ -n "${owner_pid}" ]] && lock_pid_is_alive "${owner_pid}"; then
+      err "another loop/resume is already running (pid ${owner_pid}); only one may run per instance."
+      exit 5
+    fi
+    warn "reclaiming stale loop lock (owner pid ${owner_pid:-unknown} is not running)"
+    # Reclaim by atomic rename so two racers cannot delete each other's fresh lock.
+    if mv "${lock_dir}" "${lock_dir}.reclaim.$$" 2>/dev/null; then
+      rm -rf "${lock_dir}.reclaim.$$"
+    fi
+  done
+  err "could not acquire the loop lock: ${lock_dir}"
+  exit 5
+}
+
+release_loop_lock() {
+  if [[ -n "${LOOP_LOCK_DIR}" && -d "${LOOP_LOCK_DIR}" ]]; then
+    rm -rf "${LOOP_LOCK_DIR}"
+    LOOP_LOCK_DIR=""
+  fi
+}
+
+# --- git context and the atomic-commit discipline ---------------------------
+
+resolve_git_context() {
+  command -v git >/dev/null 2>&1 || {
+    err "git not found; cycle commits require git."
+    exit 2
+  }
+  GIT_ROOT="$(git -C "${TARGET_ROOT}" rev-parse --show-toplevel 2>/dev/null)" ||
+    {
+      err "TARGET_ROOT is not inside a git repository."
+      exit 2
+    }
+  if [[ "${TARGET_ROOT}" == "${GIT_ROOT}" ]]; then
+    TARGET_REL="."
+  else
+    TARGET_REL="${TARGET_ROOT#"${GIT_ROOT}"/}"
+  fi
+}
+
+git_in_progress_path_exists() {
+  local path
+  path="$(git -C "${GIT_ROOT}" rev-parse --git-path "$1")"
+  [[ -e "${path}" ]]
+}
+
+assert_git_commit_ready() {
+  [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
+  if git_in_progress_path_exists MERGE_HEAD || git_in_progress_path_exists rebase-merge ||
+    git_in_progress_path_exists rebase-apply || git_in_progress_path_exists CHERRY_PICK_HEAD ||
+    git_in_progress_path_exists REVERT_HEAD; then
+    err "git operation in progress; refusing to start a cycle."
+    exit 4
+  fi
+  # A checkpoint on a detached HEAD silently disappears on the next checkout.
+  git -C "${GIT_ROOT}" symbolic-ref -q HEAD >/dev/null ||
+    {
+      err "HEAD is detached; checkpoints must land on a branch."
+      exit 4
+    }
+  git -C "${GIT_ROOT}" config user.name >/dev/null ||
+    {
+      err "git user.name is not configured."
+      exit 4
+    }
+  git -C "${GIT_ROOT}" config user.email >/dev/null ||
+    {
+      err "git user.email is not configured."
+      exit 4
+    }
+}
+
+# One cycle = one commit requires each cycle to start clean: a dirty worktree
+# would mix foreign diffs into the cycle's checkpoint.
+assert_clean_worktree_for_cycle() {
+  assert_git_commit_ready
+  local status
+  status="$(git -C "${GIT_ROOT}" status --porcelain --untracked-files=all)"
+  if [[ -n "${status}" ]]; then
+    err "a cycle requires a clean worktree (one cycle = one atomic commit)."
+    err "If these are your own edits, commit them (or record them with resume.sh)."
+    git -C "${GIT_ROOT}" status --short --untracked-files=all >&2
+    exit 4
+  fi
+}
+
+# Paths a checkpoint must never carry: runtime debris, secrets, atomic-write
+# leftovers. Committing them would launder junk or secrets into history.
+is_forbidden_checkpoint_path() {
+  case "/$1" in
+    */"${LOOP_DIR_NAME}"/tmp/.gitkeep) return 1 ;;
+    */"${LOOP_DIR_NAME}"/tmp/*) return 0 ;;
+    */.env | */.env.* | */secrets/* | */config/credentials.json) return 0 ;;
+    */state/*.tmp) return 0 ;;
+  esac
+  return 1
+}
+
+# Protected paths (declared in schema.json `protected_paths`, target-relative):
+# files only a human may change. A diff on them is left out of the cycle
+# commit and waits for the human's own resume checkpoint.
+is_protected_leftover_path() {
+  local path="$1"
+  local rel="${path}"
+  [[ "${TARGET_REL}" != "." ]] && rel="${path#"${TARGET_REL}"/}"
+  "${ASL_BIN}" util protected-match --loop-root "${LOOP_ROOT}" "${rel}"
+}
+
+# Stage every TARGET_ROOT change, enforce the guards, and create exactly one
+# commit. on_empty: "fail" (cycle commits must never be empty) or "skip"
+# (a resume may find nothing left to record).
+create_guarded_checkpoint() {
+  local subject="$1"
+  local body="$2"
+  local on_empty="${3:-fail}"
+  local honor_protected="${4:-yes}"
+
+  [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
+  assert_git_commit_ready
+
+  git -C "${GIT_ROOT}" add -A -- "${TARGET_REL}"
+
+  local staged aborted=0
+  while IFS= read -r -d '' staged; do
+    if is_forbidden_checkpoint_path "${staged}"; then
+      err "forbidden path staged for checkpoint: ${staged}"
+      aborted=1
+    elif [[ "${honor_protected}" == "yes" ]] && is_protected_leftover_path "${staged}"; then
+      git -C "${GIT_ROOT}" reset -q -- "${staged}" >/dev/null 2>&1 || true
+    fi
+  done < <(git -C "${GIT_ROOT}" diff --cached --name-only -z)
+  if [[ "${aborted}" -eq 1 ]]; then
+    git -C "${GIT_ROOT}" reset -q -- "${TARGET_REL}"
+    err "checkpoint aborted; remove or ignore the forbidden paths first."
+    exit 4
+  fi
+
+  if git -C "${GIT_ROOT}" diff --cached --quiet --exit-code; then
+    if [[ "${on_empty}" == "skip" ]]; then
+      log "no changes to commit for: ${subject}"
+      return 0
+    fi
+    err "no staged changes for ${subject}; refusing an empty checkpoint."
+    exit 4
+  fi
+
+  git -C "${GIT_ROOT}" commit -m "${subject}" -m "${body}" >/dev/null
+  log "committed: ${subject}"
+
+  # Anything still dirty is either a protected leftover (human's own resume
+  # checkpoint records it) or an anomaly worth failing loudly on.
+  local line path leftover="" anomaly=0
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    path="${line:3}"
+    if is_forbidden_checkpoint_path "${path}"; then
+      continue
+    fi
+    if [[ "${honor_protected}" == "yes" ]] && is_protected_leftover_path "${path}"; then
+      leftover="${leftover:+${leftover}, }${path}"
+      continue
+    fi
+    anomaly=1
+  done < <(git -C "${GIT_ROOT}" status --porcelain --untracked-files=all)
+  if [[ "${anomaly}" -eq 1 ]]; then
+    err "checkpoint completed, but the worktree is still dirty:"
+    git -C "${GIT_ROOT}" status --short --untracked-files=all >&2
+    exit 4
+  fi
+  if [[ -n "${leftover}" ]]; then
+    warn "protected file(s) changed during this cycle and were NOT committed: ${leftover}"
+    warn "Record them as a human checkpoint: bash ${LOOP_DIR_NAME}/scripts/resume.sh --note \"...\""
+  fi
+}
+
+# True when the current worktree diff contains anything OUTSIDE the loop's
+# own state directory — the cycle produced real product progress, not just
+# bookkeeping.
+worktree_has_non_state_changes() {
+  [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
+  local line path state_prefix
+  if [[ "${TARGET_REL}" == "." ]]; then
+    state_prefix="${LOOP_DIR_NAME}/state/"
+  else
+    state_prefix="${TARGET_REL}/${LOOP_DIR_NAME}/state/"
+  fi
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    path="${line:3}"
+    [[ "${path}" == "${state_prefix}"* ]] && continue
+    is_forbidden_checkpoint_path "${path}" && continue
+    return 0
+  done < <(git -C "${GIT_ROOT}" status --porcelain --untracked-files=all)
+  return 1
+}
+
+stop_message_from_json() {
+  "${ASL_BIN}" util stop-message <<<"$1"
+}
