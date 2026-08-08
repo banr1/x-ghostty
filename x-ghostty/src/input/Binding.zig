@@ -661,6 +661,11 @@ pub const Action = union(enum) {
     /// persisted with it.
     edit_group_note,
 
+    /// Toggle the note overview mode: every visible group shows its note
+    /// in a read-only overlay at once. Entering while a group is zoomed
+    /// releases the zoom first. Hidden groups are not shown.
+    toggle_note_overview,
+
     /// Close the current group, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_group,
@@ -1328,6 +1333,7 @@ pub const Action = union(enum) {
             .rename_group,
             .set_group_title,
             .edit_group_note,
+            .toggle_note_overview,
             .close_group,
             .inspector,
             => .surface,
@@ -3453,6 +3459,10 @@ test "parse: group split actions" {
     {
         const binding = try parseSingle("a=edit_group_note");
         try testing.expect(binding.action == .edit_group_note);
+    }
+    {
+        const binding = try parseSingle("a=toggle_note_overview");
+        try testing.expect(binding.action == .toggle_note_overview);
     }
     {
         const binding = try parseSingle("a=close_group");

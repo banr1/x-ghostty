@@ -5362,6 +5362,12 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .toggle_note_overview => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .toggle_note_overview,
+            {},
+        ),
+
         .close_group => return try self.rt_app.performAction(
             .{ .surface = self },
             .close_group,

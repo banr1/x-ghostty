@@ -5983,6 +5983,11 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
+                .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true, .alt = true } },
+                .{ .toggle_note_overview = {} },
+            );
+            try self.set.put(
+                alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
                 .{ .goto_group = .{ .direction = .left } },
             );

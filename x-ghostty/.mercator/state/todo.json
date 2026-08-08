@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-003"
+    "T-004"
   ],
   "items": [
     {
@@ -114,7 +114,7 @@
     {
       "id": "T-003",
       "title": "Overview mode (Cmd+Opt+N): toggle simultaneous note overlays on all visible projects, visible-only display set, zoom release on entry, read-only, truncated display; model-layer judgment logic covered by XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-004",
@@ -129,7 +129,48 @@
         "mode": "mercator"
       },
       "batch_group": "notes-ui",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (recipe body of `just build-app`, per R-002 guard workaround) exited 0 with the new toggle_note_overview action compiled through the Zig core, the C header, and the Swift app."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite passed, including the xghostty.h enum-sync check (checkXGhosttyHEnum) covering the appended XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW tag and the new toggle_note_overview keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 434 test cases passed, including 14 new note-overview tests: display set == visible groups only (hidden excluded), zoom released on entry, focused group unchanged on entry, re-toggle and endNoteOverview exit, note editing and all three focus-move paths (directional / index / direct switch) are no-ops while active, toggle is a no-op while the note editor is open, restoreState/removeAllGroups end the overview."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupNoteOverview.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "New toggle_note_overview action mirroring edit_group_note end to end (default cmd+opt+n, no conflict; C ABI tag appended last). Model layer: WorkspaceModel.noteOverviewActive (transient, never persisted), toggleNoteOverview releases zoom before showing and keeps focusedGroup, noteOverviewGroupIDs == WorkspaceState.visibleGroupIDs (canonical leaves = visible groups, hidden excluded), viewing-only guards make beginNoteEditing*/gotoGroupTarget/gotoGroupIndexTarget/switchFocusedGroup no-ops while active. UI: per-group GroupNoteOverviewOverlay rendered inside each visible GroupView (lineLimit(maxNoteLines) + tail truncation, group-bounded frame so layout never breaks), workspace-level GroupNoteOverviewKeyCatcher blocks the mouse and owns the keyboard (Esc via focused-field onExitCommand, re-pressed Cmd+Opt+N via hidden keyboardShortcut button since the surface binding path is inert while unfocused), focus handed back to the terminal on exit. Overlays render only while active, so no permanent terminal area is occupied."
+        }
+      ]
     },
     {
       "id": "T-004",

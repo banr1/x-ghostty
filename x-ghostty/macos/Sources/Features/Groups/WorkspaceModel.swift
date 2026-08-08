@@ -44,6 +44,11 @@ final class WorkspaceModel: ObservableObject {
     /// `edit_group_note` action.
     @Published var noteEditingGroup: GroupID?
 
+    /// Whether the read-only note overview is active (`toggle_note_overview`).
+    /// Transient UI state like `renamingGroup`; never persisted. While active,
+    /// note editing and focus moves are no-ops — the mode is viewing-only.
+    @Published private(set) var noteOverviewActive = false
+
     /// An empty workspace with no groups. Used as the controller's initial
     /// value before `init(wrapping:)` wraps the real pane tree.
     init() {
@@ -225,6 +230,8 @@ final class WorkspaceModel: ObservableObject {
         to id: GroupID,
         savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
     ) -> SurfaceID? {
+        // The note overview is viewing-only: no focus moves while it is up.
+        guard !noteOverviewActive else { return nil }
         guard id != state.focusedGroup else { return nil }
         guard state.groups[id] != nil else { return nil }
 
@@ -247,6 +254,8 @@ final class WorkspaceModel: ObservableObject {
     ///   is no neighbor in that direction, or the resolved target is the focused
     ///   group itself (e.g. `next`/`previous` wrapping with a single group).
     func gotoGroupTarget(_ direction: SplitTree<GroupRef>.FocusDirection) -> GroupID? {
+        // The note overview is viewing-only: no focus moves while it is up.
+        guard !noteOverviewActive else { return nil }
         guard state.zoomedGroup == nil else { return nil }
         guard let focusedID = state.focusedGroup else { return nil }
         guard let visibleTree = state.effectiveVisibleGroupTree,
@@ -273,6 +282,8 @@ final class WorkspaceModel: ObservableObject {
     ///   and to answer the keybind's performability check, so the two always
     ///   agree on what counts as a no-op.
     func gotoGroupIndexTarget(_ index: Int) -> GroupID? {
+        // The note overview is viewing-only: no focus moves while it is up.
+        guard !noteOverviewActive else { return nil }
         guard let target = state.visibleGroupID(ordinal: index) else { return nil }
 
         if let zoomedGroup = state.zoomedGroup {
@@ -645,8 +656,10 @@ final class WorkspaceModel: ObservableObject {
         state.groups[id] = group
     }
 
-    /// Open the note editor for `id`. No-op if the group is unknown.
+    /// Open the note editor for `id`. No-op if the group is unknown, or while
+    /// the read-only note overview is active (viewing-only mode).
     func beginNoteEditing(_ id: GroupID) {
+        guard !noteOverviewActive else { return }
         guard state.groups[id] != nil else { return }
         noteEditingGroup = id
     }
@@ -664,6 +677,45 @@ final class WorkspaceModel: ObservableObject {
         defer { noteEditingGroup = nil }
         guard let id = noteEditingGroup else { return }
         setGroupNote(id, to: text)
+    }
+
+    // MARK: Note overview
+
+    /// The display set of the note overview: every *visible* group, in
+    /// canonical traversal order. Hidden groups are never shown — canonical
+    /// leaves are exactly the visible groups (hiding removes the leaf), so
+    /// this is `WorkspaceState.visibleGroupIDs`. Empty while the overview is
+    /// inactive.
+    var noteOverviewGroupIDs: [GroupID] {
+        guard noteOverviewActive else { return [] }
+        return state.visibleGroupIDs
+    }
+
+    /// Toggle the read-only note overview (`toggle_note_overview`).
+    ///
+    /// Entering releases any group zoom *first*, so the overlays land on all
+    /// visible groups rather than a single zoomed one. Entering never changes
+    /// `focusedGroup`. No-op while the note editor is open — the editor owns
+    /// the keyboard, and its draft must not be silently dropped.
+    ///
+    /// - Returns: whether the overview is active after the toggle, so the
+    ///   caller can hand keyboard focus over/back accordingly.
+    @discardableResult
+    func toggleNoteOverview() -> Bool {
+        guard noteEditingGroup == nil else { return noteOverviewActive }
+
+        if noteOverviewActive {
+            noteOverviewActive = false
+        } else {
+            state.zoomedGroup = nil
+            noteOverviewActive = true
+        }
+        return noteOverviewActive
+    }
+
+    /// Leave the note overview (the Escape path). No-op when inactive.
+    func endNoteOverview() {
+        noteOverviewActive = false
     }
 
     // MARK: Undo (group-aware undo cross-cutting task)
@@ -690,6 +742,11 @@ final class WorkspaceModel: ObservableObject {
         if let noteEditingGroup, state.groups[noteEditingGroup] == nil {
             self.noteEditingGroup = nil
         }
+        // The overview is a transient viewing session over the *current*
+        // layout; a wholesale state swap (undo/redo) ends it rather than
+        // letting a restored zoom contradict the mode's zoom-released
+        // invariant.
+        noteOverviewActive = false
     }
 
     // MARK: Teardown
@@ -705,5 +762,6 @@ final class WorkspaceModel: ObservableObject {
         state = WorkspaceState(canonicalGroupTree: .init(), groups: [:])
         renamingGroup = nil
         noteEditingGroup = nil
+        noteOverviewActive = false
     }
 }

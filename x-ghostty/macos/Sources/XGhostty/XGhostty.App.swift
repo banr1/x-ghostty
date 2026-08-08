@@ -492,6 +492,9 @@ extension XGhostty {
             case XGHOSTTY_ACTION_EDIT_GROUP_NOTE:
                 editGroupNote(app, target: target)
 
+            case XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW:
+                toggleNoteOverview(app, target: target)
+
             case XGHOSTTY_ACTION_SET_GROUP_TITLE:
                 setGroupTitle(app, target: target, v: action.action.set_group_title)
 
@@ -871,6 +874,27 @@ extension XGhostty {
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyEditGroupNote,
+                    object: surfaceView)
+
+            default:
+                assertionFailure()
+            }
+        }
+
+        private static func toggleNoteOverview(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s) {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("toggle note overview does nothing with an app target")
+                return
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return }
+                guard let surfaceView = self.surfaceView(from: surface) else { return }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyToggleNoteOverview,
                     object: surfaceView)
 
             default:

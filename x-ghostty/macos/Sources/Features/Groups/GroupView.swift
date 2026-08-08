@@ -40,6 +40,11 @@ struct GroupView: View {
     /// Focus / rename callbacks for the header.
     let labelActions: GroupLabelActions
 
+    /// Whether the note overview is laying this group's note over its content
+    /// (`toggle_note_overview`). Every rendered group is visible, so the flag
+    /// is workspace-wide.
+    let showsNoteOverlay: Bool
+
     var body: some View {
         VStack(spacing: 0) {
             GroupLabel(
@@ -55,6 +60,11 @@ struct GroupView: View {
             TerminalSplitTreeView(
                 tree: group.paneTree,
                 action: paneAction)
+        }
+        .overlay {
+            if showsNoteOverlay {
+                GroupNoteOverviewOverlay(group: group)
+            }
         }
     }
 }

@@ -63,6 +63,7 @@ struct TerminalWorkspaceView: View {
                     // under zoom and re-pack on hide / show / close / move.
                     ordinals: workspace.state.groupOrdinals,
                     renamingGroup: workspace.renamingGroup,
+                    noteOverview: workspace.noteOverviewActive,
                     paneAction: paneAction,
                     labelActions: labelActions,
                     onEqualize: onEqualizeGroups)
@@ -87,11 +88,32 @@ struct TerminalWorkspaceView: View {
                     note: group.note,
                     onEnd: { workspace.endNoteEditing(saving: $0) })
             }
+
+            // Note overview interaction layer: while the viewing-only mode is
+            // up it blocks the mouse everywhere (the per-group note panels
+            // render inside each `GroupView`) and owns the keyboard so Escape
+            // and a re-pressed Cmd+Opt+N leave the mode.
+            if workspace.noteOverviewActive {
+                GroupNoteOverviewKeyCatcher(
+                    onExit: { workspace.endNoteOverview() },
+                    onToggle: { workspace.toggleNoteOverview() })
+            }
         }
         .onChange(of: workspace.noteEditingGroup) { newValue in
             // When the note editor closes, hand keyboard focus back to the
             // terminal (same pattern as the command palette's dismissal).
             if newValue == nil {
+                DispatchQueue.main.async {
+                    if let surface = lastFocusedSurface?.value {
+                        surface.window?.makeFirstResponder(surface)
+                    }
+                }
+            }
+        }
+        .onChange(of: workspace.noteOverviewActive) { active in
+            // Leaving the overview hands keyboard focus back to the terminal,
+            // exactly like the note editor's dismissal above.
+            if !active {
                 DispatchQueue.main.async {
                     if let surface = lastFocusedSurface?.value {
                         surface.window?.makeFirstResponder(surface)

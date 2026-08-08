@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "25e468fa53efac80f63476a3a6555e81563c9c2aeee26902962eeb87ff8168d3",
+    "last_signature": "a743807d1f571cb5b6122b89d5b7dc0ff95ecf65c61a253a39437efe2d6c264c",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-08T17:57:31+09:00",
-    "last_checked_at": "2026-08-08T17:57:31+09:00"
+    "last_progress_at": "2026-08-08T18:17:30+09:00",
+    "last_checked_at": "2026-08-08T18:17:30+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -22,21 +22,21 @@
   "counters": {
     "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 18,
-    "completed_todos_since_reset": 2,
-    "important_decisions_since_reset": 5,
+    "changed_files_since_reset": 15,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 3,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-08T18:22:00+09:00",
-    "summary": "T-002 (Cmd+N note edit overlay) DONE with evidence: new edit_group_note action wired end to end on the rename_group pattern (Zig Binding/apprt/Surface/command/Config + xghostty.h tag appended last for C ABI + Swift XGhostty.App -> ghosttyEditGroupNote -> BaseTerminalController -> WorkspaceModel), model-layer session state (noteEditingGroup, begin*/endNoteEditing always-saves), SwiftUI GroupNoteEditor overlay in TerminalWorkspaceView (10-line-tall TextEditor, Esc/backdrop save-and-close, focus returned to surface). Gates: zig build 0, just test 0, just swift-test 0 (420 tests, 9 new). cmd+n confirmed conflict-free (config defaults + menu xibs). T-001 also done, B-001 resolved, R-002 (guard denies `just build-app`; use `zig build`) still proposed. Next batch: T-003 (Cmd+Opt+N overview mode) — the last UI must item, then T-004 docs, T-005 full gates, T-006 human visual check.",
+    "written_at": "2026-08-08T18:45:00+09:00",
+    "summary": "T-003 (Cmd+Opt+N note overview) DONE with evidence: new toggle_note_overview action wired end to end on the edit_group_note pattern (Zig Binding/apprt/Surface/command/Config + xghostty.h tag appended last; Swift XGhostty.App -> ghosttyToggleNoteOverview -> BaseTerminalController resigns surface first responder -> WorkspaceModel.toggleNoteOverview). Model layer holds all judgments with 14 new tests: zoom released before showing, focusedGroup unchanged, display set == visibleGroupIDs (hidden excluded), viewing-only guards (note editing + all 3 focus-move paths no-op while active), no-op while note editor open, restoreState/removeAllGroups end the mode. UI: per-group GroupNoteOverviewOverlay (truncated, read-only, inside each visible GroupView) + GroupNoteOverviewKeyCatcher (mouse blocked; Esc via focused-field onExitCommand; re-pressed Cmd+Opt+N via hidden keyboardShortcut button — surface performKeyEquivalent is inert while unfocused). Gates: zig build 0, just test 0, just swift-test 0 (434 tests, 14 new). T-001/T-002 done earlier, B-001 resolved, R-002 (guard denies `just build-app`; use `zig build`) still proposed. Next batch: T-004 (SPEC.md/README.md docs) — last autonomous impl item before T-005 gates and the T-006 human check.",
     "next_actions": [
-      "Execute T-003 (Cmd+Opt+N overview mode): add a toggle_note_overview-style action mirroring edit_group_note's plumbing — append the C tag AFTER XGHOSTTY_ACTION_EDIT_GROUP_NOTE in both apprt/action.zig Key and include/xghostty.h (ABI: append-only), register in Binding.zig (enum + surface scope list + parse test), Surface.zig dispatch, command.zig empty-palette list, Config.zig default cmd+opt+n (.super+.alt, unicode 'n'; no existing binding).",
-      "T-003 model layer (must be XGhosttyTests-covered per S-012): overview-active state on WorkspaceModel; entering releases zoom (zoomedGroup = nil) BEFORE showing; display set == visible groups only (drive from state.effectiveVisibleGroupTree / hiddenGroupIDs exclusion); read-only: while active, beginNoteEditing* are no-ops and entering does not change focusedGroup; exit via same action or Esc.",
-      "T-003 UI: per-group note overlays rendered over each visible group (GroupSplitTreeView knows each group's frame; consider overlaying inside GroupView or via the tree view), truncation without layout break (lineLimit + fixed frame), no interaction. Esc-to-exit: no focused text view exists in overview, so use the CommandPalette hidden-Button pattern (.keyboardShortcut(.cancelAction)) or a focusable container with onExitCommand; verify the surface does not swallow Esc — the palette resigns first responder via BaseTerminalController when opening (toggleCommandPalette precedent).",
-      "Verify with: zig build (NOT `just build-app`, guard-denied per R-002), just test, just swift-test.",
-      "After T-003: T-004 adds the note layer to SPEC.md (new numbered section; existing §12 is 復元仕様 — do not reuse) and README.md, and may add section refs to GroupNoteEditor/WorkspaceModel comments; then T-005 full gates; then stop for T-006 (human on-device visual check of Cmd+N and Cmd+Opt+N)."
+      "Execute T-004: add the note layer to SPEC.md as a NEW numbered section (existing §12 is 復元仕様 — do not renumber or reuse; append after the last section covering: note data model on GroupState with the 10-line cap and Codable back-compat, edit_group_note/Cmd+N editor overlay semantics incl. Esc-saves-and-closes, toggle_note_overview/Cmd+Opt+N overview semantics: visible-only display set, zoom release on entry, viewing-only guards, truncated display, exit paths).",
+      "T-004 also updates README.md's note-layer mention (keybinds Cmd+N / Cmd+Opt+N and what notes are); README rides the cycle commit (agent-owned).",
+      "Optionally add the new SPEC section refs into GroupNoteEditor.swift / GroupNoteOverview.swift / WorkspaceModel.swift comments where they say the section does not exist yet.",
+      "Then T-005: re-run all three gates (zig build — NOT `just build-app`, guard-denied per R-002 — just test, just swift-test) as the full-verification evidence with no regression.",
+      "Then stop at T-006 (human executor): on-device visual check of Cmd+N overlay and Cmd+Opt+N overview (incl. Esc and re-toggle exits, truncation readability, overlay looks). Note for the human: a user-rebound toggle_note_overview key exits only via Esc (the re-toggle chord is re-matched hardcoded to cmd+opt+n in GroupNoteOverviewKeyCatcher)."
     ],
     "open_questions": [],
     "pending_cycle": false

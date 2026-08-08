@@ -240,4 +240,153 @@ struct GroupNoteTests {
 
         #expect(model.noteEditingGroup == nil)
     }
+
+    // MARK: Note overview (toggle_note_overview)
+
+    @Test func overviewStartsInactiveWithEmptyDisplaySet() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        #expect(!model.noteOverviewActive)
+        #expect(model.noteOverviewGroupIDs.isEmpty)
+    }
+
+    @Test func overviewDisplaySetIsExactlyTheVisibleGroups() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        model.toggleNoteOverview()
+
+        #expect(model.noteOverviewGroupIDs == [ids.0, ids.1])
+    }
+
+    @Test func overviewDisplaySetExcludesHiddenGroups() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        // Hide the focused group (ids.0); ids.1 stays the only visible group.
+        let hidden = try #require(model.hideFocusedGroup(savingOutgoingPaneTree: .init()))
+        #expect(hidden.target == ids.1)
+
+        model.toggleNoteOverview()
+
+        #expect(model.noteOverviewGroupIDs == [ids.1])
+        #expect(!model.noteOverviewGroupIDs.contains(ids.0))
+    }
+
+    @Test func enteringOverviewReleasesZoom() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.toggleGroupZoom()
+        #expect(model.state.zoomedGroup == ids.0)
+
+        model.toggleNoteOverview()
+
+        #expect(model.state.zoomedGroup == nil)
+        #expect(model.noteOverviewActive)
+        // With the zoom released, the display set is all visible groups again.
+        #expect(model.noteOverviewGroupIDs == [ids.0, ids.1])
+    }
+
+    @Test func enteringOverviewKeepsFocusedGroup() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        model.toggleNoteOverview()
+
+        #expect(model.state.focusedGroup == ids.0)
+    }
+
+    @Test func togglingTwiceLeavesOverview() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        #expect(model.toggleNoteOverview())
+        #expect(!model.toggleNoteOverview())
+        #expect(!model.noteOverviewActive)
+    }
+
+    @Test func endNoteOverviewLeavesOverview() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.toggleNoteOverview()
+
+        model.endNoteOverview()
+
+        #expect(!model.noteOverviewActive)
+    }
+
+    @Test func overviewBlocksNoteEditing() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.toggleNoteOverview()
+
+        model.beginNoteEditing(ids.1)
+        model.beginNoteEditingFocusedGroup()
+
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func overviewBlocksDirectionalFocusMoves() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        // Sanity: the move resolves while the overview is inactive.
+        #expect(model.gotoGroupTarget(.spatial(.right)) != nil)
+
+        model.toggleNoteOverview()
+
+        #expect(model.gotoGroupTarget(.spatial(.right)) == nil)
+    }
+
+    @Test func overviewBlocksIndexFocusMoves() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        // Sanity: the jump resolves while the overview is inactive.
+        #expect(model.gotoGroupIndexTarget(2) != nil)
+
+        model.toggleNoteOverview()
+
+        #expect(model.gotoGroupIndexTarget(2) == nil)
+    }
+
+    @Test func overviewBlocksFocusSwitch() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.toggleNoteOverview()
+
+        let result = model.switchFocusedGroup(
+            to: ids.1, savingOutgoingPaneTree: .init())
+
+        #expect(result == nil)
+        #expect(model.state.focusedGroup == ids.0)
+    }
+
+    @Test func toggleOverviewWhileNoteEditingIsNoOp() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.0)
+
+        #expect(!model.toggleNoteOverview())
+        #expect(!model.noteOverviewActive)
+        #expect(model.noteEditingGroup == ids.0)
+    }
+
+    @Test func restoreStateEndsOverview() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.toggleNoteOverview()
+
+        model.restoreState(state)
+
+        #expect(!model.noteOverviewActive)
+    }
+
+    @Test func removeAllGroupsEndsOverview() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.toggleNoteOverview()
+
+        model.removeAllGroups()
+
+        #expect(!model.noteOverviewActive)
+    }
 }

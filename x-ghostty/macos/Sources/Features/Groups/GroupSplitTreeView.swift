@@ -31,6 +31,10 @@ struct GroupSplitTreeView: View {
     /// The group currently in inline-rename mode, if any (`WorkspaceModel`).
     let renamingGroup: GroupID?
 
+    /// Whether the note overview is active (`toggle_note_overview`): each
+    /// rendered group lays its note over its content.
+    let noteOverview: Bool
+
     let paneAction: (TerminalSplitOperation) -> Void
 
     /// Label focus / rename callbacks.
@@ -50,6 +54,7 @@ struct GroupSplitTreeView: View {
                 focusedGroup: focusedGroup,
                 ordinals: ordinals,
                 renamingGroup: renamingGroup,
+                noteOverview: noteOverview,
                 paneAction: paneAction,
                 labelActions: labelActions,
                 onEqualize: onEqualize,
@@ -72,6 +77,7 @@ private struct GroupSplitSubtreeView: View {
     let focusedGroup: GroupID?
     let ordinals: [GroupID: Int]
     let renamingGroup: GroupID?
+    let noteOverview: Bool
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: GroupLabelActions
     let onEqualize: () -> Void
@@ -89,7 +95,8 @@ private struct GroupSplitSubtreeView: View {
                     ordinal: ordinals[ref.id],
                     isRenaming: ref.id == renamingGroup,
                     paneAction: paneAction,
-                    labelActions: labelActions)
+                    labelActions: labelActions,
+                    showsNoteOverlay: noteOverview)
             }
 
         case .split(let split):
@@ -114,6 +121,7 @@ private struct GroupSplitSubtreeView: View {
                         focusedGroup: focusedGroup,
                         ordinals: ordinals,
                         renamingGroup: renamingGroup,
+                        noteOverview: noteOverview,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,
@@ -126,6 +134,7 @@ private struct GroupSplitSubtreeView: View {
                         focusedGroup: focusedGroup,
                         ordinals: ordinals,
                         renamingGroup: renamingGroup,
+                        noteOverview: noteOverview,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,

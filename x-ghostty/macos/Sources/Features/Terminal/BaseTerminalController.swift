@@ -294,6 +294,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidToggleNoteOverview(_:)),
+            name: XGhostty.Notification.ghosttyToggleNoteOverview,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidSetGroupTitle(_:)),
             name: XGhostty.Notification.ghosttySetGroupTitle,
             object: nil)
@@ -976,6 +981,20 @@ class BaseTerminalController: NSWindowController,
 
         // `edit_group_note` targets the focused group; open the note editor.
         workspace.beginNoteEditingFocusedGroup()
+    }
+
+    @objc private func ghosttyDidToggleNoteOverview(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // Entering hands the keyboard to the overlay layer so Escape reaches
+        // it instead of the terminal (same reasoning as the command palette);
+        // the workspace view hands focus back when the overview closes.
+        if workspace.toggleNoteOverview() {
+            _ = focusedSurface?.resignFirstResponder()
+        }
     }
 
     @objc private func ghosttyDidSetGroupTitle(_ notification: Notification) {

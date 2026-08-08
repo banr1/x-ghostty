@@ -345,6 +345,11 @@ pub const Action = union(Key) {
     /// `rename_group`) to preserve C ABI compatibility; see the note above.
     edit_group_note,
 
+    /// Toggle the read-only note overview over all visible groups. It is up
+    /// to the apprt to present the overlays. Appended last to preserve C ABI
+    /// compatibility; see the note above.
+    toggle_note_overview,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -415,6 +420,7 @@ pub const Action = union(Key) {
         move_group,
         goto_group_index,
         edit_group_note,
+        toggle_note_overview,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");
