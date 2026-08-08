@@ -301,7 +301,7 @@
     {
       "id": "T-009",
       "title": "Note edit confirm/discard semantics: Cmd+Enter saves and closes, Esc discards and closes keeping the pre-open text (no confirmation), with XGhosttyTests covering save-and-close and discard-and-close",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-003",
@@ -312,12 +312,36 @@
         "mode": "mercator"
       },
       "batch_group": "notes-rework",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "Editor confirm/discard split (authored in cycle R-20260808T210148, commit ff18da9): WorkspaceModel gains cancelNoteEditing() (drops the draft, keeps the pre-open note, clears the session) alongside endNoteEditing(saving:) which stays the save path; GroupNoteEditor routes Esc (onExitCommand) to onCancel and adds a hidden keyboardShortcut(.return, [.command]) button (same pattern as GroupNoteOverviewKeyCatcher) so Cmd+Enter saves-and-closes while the TextEditor owns focus; backdrop click remains save; header hint now reads '⌘↩ save · esc discard'. TerminalWorkspaceView wires onCancel to workspace.cancelNoteEditing(). Two new XGhosttyTests: cancelNoteEditingKeepsPreOpenTextAndCloses (edited draft discarded, pre-open text intact, session closed) and cancelNoteEditingWithoutSessionIsNoOp; the existing end-saves-draft test keeps covering the save-and-close success criterion."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 436 test cases passed (434 prior + the 2 new cancel tests), including both new-semantics tests and the pre-existing save-and-close test. Run in cycle R-20260808T212654 against the committed rework."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 with the reworked editor in the tree (cycle R-20260808T212654)."
+        }
+      ]
     },
     {
       "id": "T-010",
       "title": "Remove the Cmd+Enter default fullscreen keybind from the config defaults; fullscreen stays reachable via Ctrl+Cmd+F, the Window menu, and the green button",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-017",
@@ -327,12 +351,33 @@
         "mode": "mercator"
       },
       "batch_group": "notes-rework",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/config/Config.zig"
+          ],
+          "summary": "The upstream default ctrl/cmd+enter=toggle_fullscreen put() in Keybinds.default is removed (authored in cycle R-20260808T210148, commit ff18da9), with a comment reserving the chord for the note-editor confirm; the ctrl+cmd+f alternate binding, the Window menu item, and the window zoom button remain as fullscreen paths (macOS menu key-equivalent lookup now resolves toggle_fullscreen to ctrl+cmd+f as the last-set trigger)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 without the default binding (cycle R-20260808T212654)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 — no default-keybind test referenced cmd+enter=toggle_fullscreen, and the config keybind parse/serialization tests all pass without it (cycle R-20260808T212654)."
+        }
+      ]
     },
     {
       "id": "T-011",
       "title": "Update SPEC.md and README.md for the new edit semantics; README's Building section lists zig build / just test / just swift-test",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-011"
@@ -341,12 +386,28 @@
         "mode": "mercator"
       },
       "batch_group": "notes-rework",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md §21.2 now states Cmd+Enter saves-and-closes (hidden keyboardShortcut receiver), Esc discards keeping the pre-open text with no confirmation, and both exits return first responder to the terminal; §10.5 documents that the upstream cmd+enter=toggle_fullscreen default is unbound with the surviving fullscreen paths; §21.4 test inventory covers the cancel path. README.md: the About Notes bullet describes Cmd+Enter save / Esc discard and the unbound fullscreen default, and the Building section lists exactly the three verification commands — zig build, just test, just swift-test (authored in cycle R-20260808T210148, commit ff18da9)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig gate green after the docs updates (cycle R-20260808T212654)."
+        }
+      ]
     },
     {
       "id": "T-012",
       "title": "Full verification after the rework: zig build / just test / just swift-test all exit 0 with no regression of group features (Cmd+Enter fullscreen removal excepted)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-012",
@@ -356,7 +417,27 @@
         "mode": "mercator"
       },
       "batch_group": "notes-rework",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete rework in the tree (cycle R-20260808T212654, worktree == commit ff18da9)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check over both note action tags and both note keybind parse tests (cycle R-20260808T212654)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3+4 gate: TEST SUCCEEDED, 436 test cases, 0 failures — full group-feature suite (enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) plus all 39 GroupNoteTests covering every §S-012 test criterion (save/restore round trip, 10-line cap, save-and-close keeps edited text, discard-and-close keeps pre-open text, visible-only overview set, zoom release on entry, no focus move / no note editing during overview). No regression observed; the only intended behavior change is the unbound cmd+enter fullscreen default (S-010's sanctioned exception). Run in cycle R-20260808T212654."
+        }
+      ]
     }
   ]
 }

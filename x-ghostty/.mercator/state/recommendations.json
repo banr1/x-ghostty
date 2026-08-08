@@ -22,13 +22,16 @@
     {
       "id": "R-002",
       "type": "Non-blocking Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "source": [
         "T-001"
       ],
       "created_at": "2026-08-08T17:35:00+09:00",
       "title": "制御プレーンのガードが `just build-app` を bootstrap 系メンテナンス遷移と誤分類して deny する",
-      "description": "unsandboxed 化後の検証で、対象プロジェクトの通常ビルドコマンド `just build-app` が pre-tool ガードに『Mercator maintenance transition requires explicit human approval (bootstrap re-seeds project files outside the normal cycle flow)』として拒否されました。`just test` / `just swift-test` は通過するため、`build-app` という recipe 名がガードの bootstrap 判定パターンに誤って一致していると推測されます。実害は回避可能で、本サイクルでは recipe の実体である `zig build` を直接実行して exit 0 を確認済み(T-001 evidence)。恒久対応はメンテナプレーンでのガードのパターン修正が望ましいです。それまでの間、エージェントは `zig build` 直接実行で代替します。"
+      "description": "unsandboxed 化後の検証で、対象プロジェクトの通常ビルドコマンド `just build-app` が pre-tool ガードに『Mercator maintenance transition requires explicit human approval (bootstrap re-seeds project files outside the normal cycle flow)』として拒否されました。`just test` / `just swift-test` は通過するため、`build-app` という recipe 名がガードの bootstrap 判定パターンに誤って一致していると推測されます。実害は回避可能で、本サイクルでは recipe の実体である `zig build` を直接実行して exit 0 を確認済み(T-001 evidence)。恒久対応はメンテナプレーンでのガードのパターン修正が望ましいです。それまでの間、エージェントは `zig build` 直接実行で代替します。",
+      "resolved_at": "2026-08-08T21:32:25+09:00",
+      "resolved_by": "mercator",
+      "resolution": "人間の 2026-08-08 の resume 指示(R-003 解決文)により整理: 更新後の ESSENCE.md が成功条件 1 を `zig build` と明記し、`just build-app` を「zig build と等価の薄いラッパーであり、自動検証では zig build を直接用いる」と位置付けたため、ガードに拒否されるラッパーは正式な検証経路から外れた。エージェントは今後も `zig build` を直接実行する。メンテナプレーンでのガード判定パターンの修正(build-app の bootstrap 誤分類、および canonical パスや禁止コマンド文字列をデータとして含むだけの読み取り専用/一時ファイル操作への過剰反応 — 本サイクルでも状態バンドル組み立てで数回誤 deny を受けた)は任意の改善として残るが、本プロジェクトの進行は妨げない。"
     },
     {
       "id": "R-003",
@@ -46,6 +49,20 @@
       "resolved_at": "2026-08-08T21:01:37+09:00",
       "resolved_by": "human",
       "resolution": "T-006 の実機目視確認を実施し、更新前の仕様(Esc で保存して閉じる)に対しては Cmd+N オーバーレイの開閉・保存・再起動後の復元、Cmd+Opt+N 一望モードの表示と再トグル/Esc 退出、見た目、一望モード時の可読性のすべてが期待どおり動作した。ただし実機で触った結果として update-essence で ESSENCE.md を更新した: ノート編集の確定を Cmd+Enter に、Esc を破棄に変更し、Cmd+Enter の既定 fullscreen 割り当ての解除を必須化し、成功条件 1 と検証コマンドの記述を zig build 基準に正した。\nしたがって R-003 は解除するが T-006 は done にしないこと — 新しい成功条件 5 は現行実装が満たしていない項目(Cmd+Enter で保存、Esc で破棄、Cmd+Enter で fullscreen にならない)を含む。新 Essence から Spec/Todo を再射影し、新規 must(編集の確定/破棄セマンティクス変更、Cmd+Enter fullscreen 既定の解除、対応する XGhosttyTests 2 件、README Building 節の 3 コマンド記載)を実装したうえで、改めて人間の実機再確認をゲートとして立てること。\nR-002 は新 Essence が zig build を正式な検証コマンドと明記したため次サイクルで整理してよい(非ブロッキング)。"
+    },
+    {
+      "id": "R-004",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "source": [
+        "T-006"
+      ],
+      "created_at": "2026-08-08T21:32:25+09:00",
+      "reason": "自律実行可能な must Todo(T-009〜T-012)がすべて完了し、残る must は human executor の T-006(実機目視確認の再実施)のみ。GUI の見た目とキー操作の実挙動は自動検証できない(Essence 前提事項)ため、更新後の成功条件 5 に対する人間の実機確認が必要。",
+      "title": "T-006: 更新後のノート編集セマンティクス(Cmd+Enter 保存 / Esc 破棄)の実機目視確認をお願いします(最後の must)",
+      "description": "Cmd+Enter/Esc セマンティクス変更・fullscreen 既定解除・README Building 節の実装が完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0、436 テスト)。更新後の Essence 成功条件 5 の目視確認をお願いします。手順: アプリを起動し、(1) Cmd+N で focused プロジェクトのノート編集オーバーレイが開き、入力後 Cmd+Enter で閉じると内容が保存されている(再度 Cmd+N で確認可、アプリ再起動でも復元)。(2) 入力後 Esc で閉じると入力が破棄され、開く前の本文が残っている(破棄に確認は挟まれない)。(3) Cmd+Enter で fullscreen にならない(fullscreen は Ctrl+Cmd+F・Window メニュー・緑ボタンで引き続き到達可)。(4) Cmd+Opt+N で visible な全プロジェクトの上にノートが同時表示され、再度 Cmd+Opt+N または Esc で消える。(5) オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる。(6) 一望モードのノートが読める(切り詰め表示含む)。補足: 編集オーバーレイの背景クリックは保存扱い(Cmd+Enter と同経路)です。ヘッダー帯のヒント表示は『⌘↩ save · esc discard』に更新済み。確認が取れたら resume で T-006 の完了(見た目に不満があればその指摘も)を記録してください。must 完了後は phase 境界の判断(should の T-007/T-008 に進むか、must で閉じるか)も併せてご検討ください。"
     }
   ]
 }
