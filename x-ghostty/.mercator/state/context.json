@@ -29,16 +29,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-07T23:07:00+09:00",
-    "summary": "Initial projection done (S-001..S-013, T-001..T-006, all must). T-001 (note model layer) is IMPLEMENTED but UNVERIFIED: GroupState.note (10-line cap at init/setNote/decode, custom Codable with back-compat decodeIfPresent), WorkspaceModel.setGroupNote, macos/Tests/Groups/GroupNoteTests.swift. Loop is gated on R-001 (Human-input, stop_until_human_review) + B-001 (external): the OS sandbox blocks every Essence success-gate command - zig deps fetch needs network host deps.files.ghostty.org, xcodebuild fails on XPC/temp denials. A sandbox-friendly `just check [all|zig|swift]` recipe was added to the project justfile (repo-local caches).",
-    "next_actions": [
-      "After resume, read R-001's resolution: if the human reports exit codes for just check / just test / just swift-test / just build-app, record them as T-001 command evidence, set T-001 done, unblock, and pick T-002.",
-      "If the sandbox network allowlist gained deps.files.ghostty.org, run `just check zig` for the zig half autonomously.",
-      "T-002 (Cmd+N edit overlay): follow the group-action pattern (C action enum -> XGhostty.App switch -> handler -> keybind config); Cmd+N/Cmd+Opt+N are currently unbound; overlay template: HiddenGroupShelf.swift / SecureInputOverlay.swift.",
-      "Keybind conflict check for Cmd+N/Cmd+Opt+N must be re-verified at T-002 time; if a conflict emerges, the Essence reserves alternative-key selection to the human."
-    ],
-    "open_questions": [
-      "Which verification path does the human choose (sandbox network allow / manual gate runs / xcodebuild exemption)?"
-    ]
+    "written_at": "2026-08-08T16:53:27+09:00",
+    "summary": "Human resume: R-001 の選択肢 (c) を採る: ESSENCE に profile: unsandboxed を宣言し、再 init で OS sandbox を解除した(META.md §11.5)。これにより just test / just swift-test / just build-app が自律セッション内で実行可能になる。B-001 の原因(sandbox によるネットワーク不許可と xcodebuild の XPC/一時領域拒否)は解消したので、次サイクルで検証を実行のうえ B-001 を close し、blocked の T-001 を証跡付きで完了させること。XGhosttyUITests は従来どおり対象外。",
+    "next_actions": [],
+    "open_questions": [],
+    "pending_cycle": true
   }
 }

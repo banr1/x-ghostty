@@ -223,6 +223,30 @@ private def mutatorAt (prev : Option Char) : Frag := fun cs =>
 def hasWriteRedirectOrMutator (command : String) : Bool :=
   (positions command).any fun (prev, sfx) => (mutatorAt prev sfx).isSome
 
+/-- 保護パス直書き deny(§11.3)**専用**に足す「書き得るコマンド」。
+`WRITE_REDIRECT_OR_MUTATOR` の 5 種だけでは `perl -i` / `truncate` /
+`install` / `ln -sf` / 汎用インタプリタのインラインプログラム
+(`python3 -c "open(...,'w')"`)といったごく普通の書込み手段を取り逃す。
+
+**この集合を共有 `wordMutator` には足さない。** 共有側は control-surface /
+zone / manifest の判定にも使われ、そこでは mutator が対象パスの**前**に
+出現するかを見るため、インタプリタを足すと `python3 scripts/x.py validate`
+のような読取まで deny になる(凍結検査 `isControlSurfaceBashMutation ... ==
+false` が実際にこれを捕捉した)。保護パス側は「コマンドが保護パスを名指し
+している」ことを既に連言で要求しているので、広げても影響はその内側に閉じる。
+汎用インタプリタは静的に読取専用と示せないので、保護パスを名指しした時点で
+deny 側へ倒す(fail-closed)。 -/
+private def extraProtectedWriter : Frag :=
+  alts [lit "truncate", lit "install", lit "ln", lit "dd", lit "patch",
+        lit "perl", lit "python3", lit "python", lit "ruby", lit "node"]
+    >=> wordEnd
+
+/-- 保護パス直書き判定の mutator 面(`hasWriteRedirectOrMutator` ∪ 上記)。 -/
+def hasProtectedPathWriter (command : String) : Bool :=
+  hasWriteRedirectOrMutator command
+    || (positions command).any fun (prev, sfx) =>
+         boundaryBefore prev && (extraProtectedWriter sfx).isSome
+
 /-- mutator 直後から `[^;&|]*` で届く各位置(セパレータ手前まで)で tail を試す。
 tail は打ち切られていない実残余に適用するため、`\b` の先読みも Python と一致する。 -/
 private def mutatedFrom (tail : Frag) : List Char → Bool
@@ -366,19 +390,29 @@ def isZoneBashMutation (command : String) : Bool :=
 連言は呼び出し側)。`essences/` は ESSENCE.md と同格の human-only 資産面
 (§2.1.5)。`$` の「末尾 1 個の `\n` 直前」特例は `\s` の `\n` が吸収する
 ため、真の末尾のみで写す。 -/
-def isProtectedWriteTarget (command : String) : Bool :=
-  containsSub command "ESSENCE.md"
-    || containsSub command "essences/"
-    || containsSub command ".mercator/state/"
+private def protectedTargetText (text : String) : Bool :=
+  containsSub text "ESSENCE.md"
+    || containsSub text "essences/"
+    || containsSub text ".mercator/state/"
     || search
         (lit ".env"
           >=> alts [fun cs => if cs.isEmpty then some [] else none,
                     cls fun c => c == '.' || isPySpace c])
-        command
-    || containsSub command "secrets/"
-    || containsSub command "config/credentials.json"
-    || containsSub command "essence_attestations.jsonl"
-    || containsSub command ".agent/state/"
+        text
+    || containsSub text "secrets/"
+    || containsSub text "config/credentials.json"
+    || containsSub text "essence_attestations.jsonl"
+    || containsSub text ".agent/state/"
+
+/-- 生テキストに加えて**字句解析後のトークン**でも照合する。生の部分一致だけ
+だと、shell が同じ 1 パスとして解決する綴りをクォートで分断するだけで判定を
+外せた(`cp a ../p/'ESSENCE'.md`、`echo x > ../p/.mercator/'state'/todo.json`)。
+トークン側はクォート除去後の実パスなので、この一族の綴り替えをまとめて塞ぐ。
+字句解析不能な入力では `tokensLenient` が空白分割へ退避するため、生テキスト
+判定だけが残る(緩む側には倒れない)。 -/
+def isProtectedWriteTarget (command : String) : Bool :=
+  protectedTargetText command
+    || (tokensLenient command).any protectedTargetText
 
 /-! ## bash_high_risk_targets のトークン抽出部 -/
 

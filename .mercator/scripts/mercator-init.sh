@@ -73,6 +73,18 @@ CONTROL_ABS="${CONTROL_ROOT}"
 
 log "Binding control plane to ${PROJECT_TITLE} (${PROJECT_REL})"
 
+# --- Resolve the ESSENCE-declared execution profile (META.md §11.5) ---------
+# standard / auto-approve / unsandboxed. A missing, unreadable, or
+# placeholder ESSENCE resolves to standard (strictest). Invalid or
+# conflicting declarations abort the init (exit 2): a relaxation must never
+# take effect from an uncertain spelling, and silently rendering standard
+# settings over a declared intent would mask the mistake.
+if ! PROFILE="$("${MERCATOR_BIN}" util essence-profile "${PROJECT_ROOT}/ESSENCE.md")"; then
+  err "invalid profile declaration in ${PROJECT_ROOT}/ESSENCE.md (see above); fix the ESSENCE line and re-run init (META.md §11.5)"
+  exit 2
+fi
+log "Execution profile: ${PROFILE} (META.md §11.5)"
+
 # --- Topology guard (soft) --------------------------------------------------
 # Cycle commits require CONTROL_ROOT and PROJECT_ROOT to share one git repo.
 # Warn early rather than fail, so a workspace can be `git init`-ed afterwards.
@@ -118,11 +130,14 @@ fi
 # Token substitution is context-aware: settings.json needs JSON string escaping,
 # justfile needs Just string escaping, and Markdown keeps human-readable paths.
 render() {
+  local tmpl="$1"
   local src="${TEMPLATES}/$1"
   local dst="${CONTROL_ROOT}/$2"
-  local mode="${3:-raw}"
+  local dst_rel="$2"
+  local mode="$3"
+  shift 3
   if [[ ! -f "${src}" ]]; then
-    err "missing bind template: templates/control/$1"
+    err "missing bind template: templates/control/${tmpl}"
     exit 2
   fi
   # Context-aware token substitution lives in the pure Lean core
@@ -132,13 +147,16 @@ render() {
   # swap is atomic (`.render.<pid>.tmp` → rename): these are the
   # enforcement-bearing bindings (settings.json permissions/hooks), so a
   # crash or a render error must never leave a truncated/invalid live file.
+  # Extra flags pass through (settings.json takes --profile, §11.5: the
+  # profile derivation applies to the template text BEFORE substitution and
+  # refuses to render on any pattern mismatch).
   "${MERCATOR_BIN}" util render "${src}" "${dst}" "${mode}" \
     --title "${PROJECT_TITLE}" --rel "${PROJECT_REL}" \
-    --abs "${PROJECT_ABS}" --control-abs "${CONTROL_ABS}"
-  log "rendered: $2"
+    --abs "${PROJECT_ABS}" --control-abs "${CONTROL_ABS}" "$@"
+  log "rendered: ${dst_rel}"
 }
 
-render "settings.json.tmpl" ".claude/settings.json" "json"
+render "settings.json.tmpl" ".claude/settings.json" "json" --profile "${PROFILE}"
 render "CLAUDE.md.tmpl" "CLAUDE.md" "raw"
 render "justfile.tmpl" "justfile" "just"
 
@@ -167,3 +185,4 @@ bash "${CONTROL_ROOT}/scripts/mercator-bootstrap.sh" --project "${PROJECT_ARG}"
 log "Init complete. Control plane bound to ${PROJECT_TITLE}."
 log "Next: run 'just trust', ensure ${PROJECT_ROOT}/ESSENCE.md is the real human-written Essence, review generated files, commit the initial Mercator state, then run: just loop"
 log "If you (re)write ESSENCE.md after this init, record it first with 'just resume' — without that attestation the first loop stops as essence_unreviewed_change (META.md §13.1-10)."
+log "Profile declarations (ESSENCE 'profile:' line, META.md §11.5) take effect only through init: after declaring or changing one, re-run 'just init ${PROJECT_ARG}' and then record the edit with 'just resume'."

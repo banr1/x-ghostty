@@ -50,10 +50,7 @@
       "Bash(just check *)"
     ],
     "ask": [
-      "Edit(//Users/banriyanahama/workspace/mercator-xghostty/.mercator/.claude/settings.json)",
-      "Edit(//Users/banriyanahama/workspace/mercator-xghostty/x-ghostty/CLAUDE.md)",
-      "Edit(//Users/banriyanahama/workspace/mercator-xghostty/x-ghostty/.claude/**)",
-      "Edit(//Users/banriyanahama/workspace/mercator-xghostty/x-ghostty/.mcp.json)"
+      "Edit(//Users/banriyanahama/workspace/mercator-xghostty/.mercator/.claude/settings.json)"
     ],
     "deny": [
       "Edit(//Users/banriyanahama/workspace/mercator-xghostty/.mercator/CLAUDE.md)",
@@ -100,7 +97,7 @@
     ]
   },
   "sandbox": {
-    "enabled": true,
+    "enabled": false,
     "failIfUnavailable": true,
     "autoAllowBashIfSandboxed": false,
     "allowUnsandboxedCommands": false,

@@ -67,8 +67,14 @@ on_loop_signal() {
   local code="$2"
   err "received ${signal}; aborting the loop."
   if [[ -n "${CLAUDE_PID}" ]] && kill -0 "${CLAUDE_PID}" 2>/dev/null; then
-    kill "${CLAUDE_PID}" 2>/dev/null || true
-    # Wait for claude to actually die before the EXIT trap frees the lock.
+    # claude leads its own process group (set -m at spawn), so the group kill
+    # also reaches every verification/build child it started via Bash — a plain
+    # single-pid kill would leave such grandchildren running past the lock
+    # release. Fall back to the single pid if the group signal fails.
+    kill -- -"${CLAUDE_PID}" 2>/dev/null || kill "${CLAUDE_PID}" 2>/dev/null || true
+    # Wait for claude to actually die before the EXIT trap frees the lock:
+    # releasing it while the agent still shuts down would let an immediate
+    # `resume.sh --force` race its final writes.
     wait "${CLAUDE_PID}" 2>/dev/null || true
   fi
   if [[ -n "${CURRENT_RUN_ID}" ]]; then
@@ -80,6 +86,12 @@ on_loop_signal() {
 }
 trap 'on_loop_signal SIGINT 130' INT
 trap 'on_loop_signal SIGTERM 143' TERM
+# claude runs in its OWN process group (set -m), so a terminal hangup reaches
+# this wrapper's group but NOT claude's — without this trap the default HUP
+# action would run the EXIT trap and free the single-flight lock while a
+# headless claude keeps writing, and the documented `resume.sh --force`
+# recovery would then close a still-live run.
+trap 'on_loop_signal SIGHUP 129' HUP
 
 report_stop_and_exit() {
   local stop_json="$1"
@@ -136,9 +148,14 @@ while ((CYCLE < MAX_CYCLES)); do
   fi
 
   # claude runs as a background child under `wait` so signal traps are
-  # processed immediately instead of after claude exits.
+  # processed immediately instead of after claude exits. set -m gives it its
+  # own process group so on_loop_signal can kill it together with any
+  # verification/build child it spawned; disabled again right after, since job
+  # control must not affect the rest of the loop.
+  set -m
   "${CLAUDE_CMD[@]}" &
   CLAUDE_PID=$!
+  set +m
   CLAUDE_RC=0
   wait "${CLAUDE_PID}" || CLAUDE_RC=$?
   CLAUDE_PID=""

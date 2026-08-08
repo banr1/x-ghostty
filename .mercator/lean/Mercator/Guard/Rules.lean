@@ -92,6 +92,13 @@ def unsafeCdAskReason (target : String) : String :=
 def installAskReason : String :=
   "Dependency change requires the human (META.md §11.2): this is not a plain materialization, and not every package is on the curated trusted list or declared in the project's ESSENCE.md. Batch the whole dependency decision into ONE install command, and have the human declare the recurring ones in the Essence (`deps: npm:<pkg>, pypi:<pkg>, ...`) so future installs run unattended."
 
+/-- relaxed profile(ESSENCE の `profile:` 宣言、META.md §11.5)による自動許可。
+ask 6 葉と Bash 最終無意見葉だけがこの理由で allow になり、deny 床(I-030)と
+High-Risk staging(§20.4-3)は不変である。`surface` は緩和された面の名指し
+(監査ログ・permission 表示上の識別子)。 -/
+def profileAllowReason (surface : String) : String :=
+  s!"Auto-approved by the ESSENCE-declared relaxed profile (META.md §11.5): {surface}. The deny floor is unchanged (I-030); the profile only replaces a human-approval prompt with an audited allow, and high-risk hash staging still records the change (§20.4-3)."
+
 /-- read-only セッション(I-022/I-027)の handoff ファイル名(教示文の共有部)。 -/
 def readOnlyHandoffFile (mode : String) : String :=
   if mode == "triage" then "resume_note.txt" else "ESSENCE.draft.md"

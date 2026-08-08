@@ -1,5 +1,6 @@
 import Mercator.Core.Json
 import Mercator.Core.Classify.Install
+import Mercator.Core.Classify.Profile
 
 /-!
 `Mercator.Guard.Types` — PreToolUse guard の型群(LEAN_MIGRATION_PLAN.md §3.3-2、
@@ -20,7 +21,7 @@ META.md §16・§23)。
 namespace Mercator.Guard
 
 open Mercator.Core.Json (Value)
-open Mercator.Core.Classify (DeclaredPackages)
+open Mercator.Core.Classify (DeclaredPackages Profile)
 
 /-- `permissionDecision` の 3 値。 -/
 inductive Permission where
@@ -101,6 +102,12 @@ structure GuardEnv where
   /-- 精選リスト外の信頼源: 各登録ルートの ESSENCE.md から
   `Core.Classify.essenceDeclaredInto` で集めた `deps:` 宣言。 -/
   declared : DeclaredPackages
+  /-- ESSENCE 宣言の実行 profile(§11.5、`ProfileScan.effective` 済み —
+  absent / invalid / conflict は `.standard` へ縮退済み)。default 付きなので
+  既存の構造リテラル・proofs は無修正でコンパイルする。read-only セッションは
+  IO シェルが profile を読まず既定のままであり、決定木の read-only 分岐も
+  profile を参照しない(構造的二重化、I-022/I-027)。 -/
+  profile : Profile := .standard
   /-- 解決要求キー → 解決結果(上記の契約)。 -/
   resolved : List (String × Option String)
 

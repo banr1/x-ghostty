@@ -223,7 +223,19 @@ done
 if [[ ! -x "${LEAN_BIN}" ]]; then
   fail ".claude/settings.json safety-wiring check requires bin/mercator; run: just build"
 else
-  SETTINGS_ISSUES="$("${LEAN_BIN}" util settings-doctor .claude/settings.json "${PROJECT_ROOT}" "${CONTROL_ROOT}")"
+  # ESSENCE-declared execution profile (META.md §11.5): the settings check is
+  # a symmetric three-way match against the declaration, so the doctor is the
+  # single place where a declaration/rendering mismatch surfaces (launchers
+  # carry no pre-flight check — both mismatch directions fail safe, §11.5).
+  # An invalid/conflicting declaration is itself a failure and the settings
+  # are then checked against standard (the value it degrades to).
+  if DOCTOR_PROFILE="$("${LEAN_BIN}" util essence-profile "${PROJECT_ROOT}/ESSENCE.md")"; then
+    ok "ESSENCE execution profile: ${DOCTOR_PROFILE} (META.md §11.5)"
+  else
+    fail "ESSENCE.md declares an invalid or conflicting profile; it runs as standard until fixed (META.md §11.5)"
+    DOCTOR_PROFILE="standard"
+  fi
+  SETTINGS_ISSUES="$("${LEAN_BIN}" util settings-doctor .claude/settings.json "${PROJECT_ROOT}" "${CONTROL_ROOT}" "${DOCTOR_PROFILE}")"
   WIRING_ISSUES="$(
     # Each launcher must keep its session-isolation and fail-closed fragments.
     # claude -p / claude -c -p are not cosmetic: credential scrubbing makes

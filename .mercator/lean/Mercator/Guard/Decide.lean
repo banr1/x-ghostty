@@ -46,11 +46,14 @@ open Rules
 
 /-! ## 解決表の適用(`resolve_target` / read-only 結合規約の純粋側) -/
 
-/-- `resolve_target(raw, cwd)` の純粋側: 絶対パスは Python が**解決しない**
-(`Path(raw)` のまま返す)ため表記正規化のみ、相対パスは family A の解決結果
-(`(Path(cwd or ".") / raw).resolve()`、失敗 = none)。 -/
+/-- `resolve_target(raw, cwd)` の純粋側: 絶対・相対どちらも family A の解決
+結果(`.resolve()`)を使う。絶対綴りだけを未解決のまま通すと `..` 成分が残り、
+`insideOf` の成分 prefix 判定が `/root/x/../..` を「root の内側」と読む —
+それが cd フェンス(§11.2)と control-plane 分類(§11.3)を綴り 1 つで抜ける
+fail-open になっていた。解決不能(cwd 不明・NUL)のときだけ従来どおり表記
+正規化へ落ちる(候補を減らさないための fail-safe)。 -/
 def GuardEnv.resolveTarget? (env : GuardEnv) (raw : String) : Option String :=
-  if raw.startsWith "/" then some (pyPathStr raw)
+  if raw.startsWith "/" then some ((env.resolved? raw).getD (pyPathStr raw))
   else env.resolved? raw
 
 /-- read-only 面の結合キー: `Path(raw)` が絶対ならそのまま、相対なら
@@ -143,12 +146,11 @@ def cdFirstTokens (command : String) : List String :=
     | .ok (first :: _) => some first
     | _ => none
 
-/-- `cd_targets(command, cwd)` 等価: 絶対パスは未解決のまま、相対パスは解決
-(失敗時は生綴りを保持 — 許可ルートに一致せず ask 側へ落ちる fail-safe)。 -/
+/-- `cd_targets(command, cwd)` 等価: 綴りによらず解決結果を使う(失敗時は生
+綴りを保持 — 許可ルートに一致せず ask 側へ落ちる fail-safe)。 -/
 def cdTargets (env : GuardEnv) (command : String) : List String :=
   (cdFirstTokens command).map fun first =>
-    if first.startsWith "/" then pyPathStr first
-    else (env.resolved? first).getD (pyPathStr first)
+    (env.resolved? first).getD (pyPathStr first)
 
 /-- `cd_leaves_allowed_roots(command, cwd)` 等価: 許可ルート(CONTROL_ROOT ∪
 登録 PROJECT_ROOT)の外へ出る最初の cd 先。 -/
@@ -160,17 +162,15 @@ def cdLeavesAllowedRoots? (env : GuardEnv) (command : String) : Option String :=
 /-! ## install_allow_reason(§11.2 依存ゲートの allow 面) -/
 
 /-- `install_allow_reason(command, cwd)` 等価: 形状判定と 1 セグメント判定は
-`Core.Classify.Install`、`cd <dir> &&` 前置の許可ルート照合(絶対 cd 先は
-未解決比較・相対は解決必須)のみここで行う。 -/
+`Core.Classify.Install`、`cd <dir> &&` 前置の許可ルート照合(綴りによらず解決
+必須 — この allow が hook の唯一の自動許可面なので、解決できない cd 先は
+許可ルート内と認めない)のみここで行う。 -/
 def installAllowReason? (env : GuardEnv) (command : String) : Option String :=
   match installGateShape command with
   | .notGate => none
   | .bare seg => installAllowSegReason? env.declared seg
   | .withCd cdRaw seg =>
-    let resolvedCd? :=
-      if cdRaw.startsWith "/" then some (pyPathStr cdRaw)
-      else env.resolved? cdRaw
-    match resolvedCd? with
+    match env.resolved? cdRaw with
     | none => none
     | some p =>
       if (env.controlRoot :: env.projectRoots).any fun root => insideOf root p then
@@ -268,20 +268,19 @@ def readOnlySessionBashAllow? (env : GuardEnv) (command : String) :
 
 /-! ## 解決要求の列挙(IO シェルが GuardEnv.resolved を組むための純粋仕様) -/
 
-/-- family A(相対キー、`(cwd or ".") / key` 結合): write ターゲット
-(空文字列含む — Python は `(cwd/"").resolve()` を計算する)、Bash 変異
-ターゲット候補、cd 先頭トークン、install cd 前置。重複キーは IO 側で
-自然に単一化してよい(lookup は先頭一致)。 -/
+/-- family A(`(cwd or ".") / key` 結合): write ターゲット(空文字列含む —
+Python は `(cwd/"").resolve()` を計算する)、Bash 変異ターゲット候補、cd 先頭
+トークン、install cd 前置。絶対キーも列挙する — 結合は絶対側を優先するので
+`.resolve()` そのものになり、`..` 成分が畳まれた位置で判定できる。重複キーは
+IO 側で自然に単一化してよい(lookup は先頭一致)。 -/
 def familyARequests : ToolCall → List String
-  | .write targetRaw =>
-    if targetRaw.startsWith "/" then [] else [targetRaw]
+  | .write targetRaw => [targetRaw]
   | .bash command =>
-    (bashCandidateTokens command
-        ++ cdFirstTokens command
-        ++ match installGateShape command with
-           | .withCd cdRaw _ => [cdRaw]
-           | _ => []).filter
-      fun raw => !raw.startsWith "/"
+    bashCandidateTokens command
+      ++ cdFirstTokens command
+      ++ match installGateShape command with
+         | .withCd cdRaw _ => [cdRaw]
+         | _ => []
   | .other => []
 
 /-- family B(read-only セッション面の結合済みキー — 絶対キーも解決する)。
@@ -321,6 +320,21 @@ private def decided (staged : List String) (p : Permission) (reason : String) :
     GuardOutput :=
   ⟨staged, some ⟨p, reason⟩⟩
 
+/-- relaxed profile(§11.5)による ask 緩和 6 葉の共通形: standard は従来
+どおり ask、relaxed(auto-approve / unsandboxed — guard は両者を区別しない、
+§11.5)は監査可能な理由文言で allow。葉ごとに条件を書き分けるとバグ混入
+クラス(片葉だけ条件が逆・staging が落ちる等)が生まれるため、置換はこの
+1 関数に集約する。staging(`staged`)は profile によらず同一に渡る
+(§20.4-3 の before-hash 対合は profile 不変 — G-T6)。decision? が定義的に
+`some` になる形(profile 分岐を Decision 側に置く)なので、G-T4/G-T5 の
+isSome 証明は分岐追加なしに閉じる。G-T6(`profile_only_relaxes`)が展開する
+ため private にしない。 -/
+def askUnlessRelaxed (staged : List String) (profile : Profile)
+    (askReason surface : String) : GuardOutput :=
+  ⟨staged,
+   some (if profile == .standard then ⟨.ask, askReason⟩
+         else ⟨.allow, profileAllowReason surface⟩)⟩
+
 /-- WRITE_TOOLS 経路。read-only セッション(I-022/I-027)は Bash 面
 (`decideBash`)と対称に**最上段**で分岐し、handoff root の内側へ解決される
 書き込みだけを allow、ask 面 3 種 — live settings 修復
@@ -345,8 +359,14 @@ before-hash を stage するため(§20.4-3。Python の実順序)。
 旧順序ではレシピ原本(§29.2 の immutable surface)への Edit が ask へ降格し、
 同じ対象を Bash mutator で触ったときの deny(`decideBash` は controlSurface が
 先)と食い違っていた。deny 群が ask 群に先行するという決定木の順序不変量
-(頭注・G-T1)を Bash 面と揃える。ask→deny は R-6 の「deny 拡大方向」。 -/
-def decideWrite (env : GuardEnv) (targetRaw : String) : GuardOutput :=
+(頭注・G-T1)を Bash 面と揃える。ask→deny は R-6 の「deny 拡大方向」。
+
+profile は `decideWrite` が `env.profile` を渡す明示引数である(`decideBashWith`
+と同じ構図): 決定木本体が env の profile フィールドを参照しない形に
+しておくと、「profile だけを入れ替えた 2 つの判定」の比較(G-T6)が同一 env
+上の純粋な引数差になり、証明が決定木の場合分けだけで閉じる。 -/
+def decideWriteWith (profile : Profile) (env : GuardEnv)
+    (targetRaw : String) : GuardOutput :=
   if env.sessionMode == "triage" || env.sessionMode == "essence" then
     if resolvesIntoHandoff env targetRaw true then
       decided [] .allow (handoffWriteReason env.sessionMode)
@@ -365,20 +385,30 @@ def decideWrite (env : GuardEnv) (targetRaw : String) : GuardOutput :=
     if candidates.any isDenyPath then
       decided [] .deny (writeDenyReason targetRaw)
     else
+      -- match でなく Option 演算で書く: matcher 補助定義を挟まない形は
+      -- 証明側(G-T5/G-T6)が Bool 式そのものの場合分けで扱える。
       let controlHighRisk :=
-        match env.resolveTarget? targetRaw with
-        | some resolved => isControlPlaneTarget env resolved
-        | none => false
+        ((env.resolveTarget? targetRaw).map (isControlPlaneTarget env)).getD false
       let zoneHighRisk := candidates.any isHighRiskPath
       let staged := if zoneHighRisk && !controlHighRisk then [targetRaw] else []
       if controlHighRisk then
         decided staged .deny (controlPlaneDenyReason targetRaw)
       else if candidates.any isAskPath then
-        decided staged .ask (manifestAskReason targetRaw)
+        askUnlessRelaxed staged profile (manifestAskReason targetRaw)
+          "dependency-manifest edit (§11.2)"
       else if zoneHighRisk then
-        decided staged .ask (zoneAskReason targetRaw)
+        askUnlessRelaxed staged profile (zoneAskReason targetRaw)
+          "High-Risk Zone edit (§12)"
       else
+        -- Write 無意見葉は relaxed でも緩めない(§11.5): sandbox は Edit/Write
+        -- ツールを縛らないため、ここを allow にすると additionalDirectories 外
+        -- (`~/.zshrc` 等)への Edit が promptless になり「sandbox 維持」の宣言
+        -- と矛盾する。project 内 write は settings の allow が既に promptless。
         ⟨staged, none⟩
+
+/-- WRITE_TOOLS 経路(`decideWriteWith` 頭注参照)。 -/
+def decideWrite (env : GuardEnv) (targetRaw : String) : GuardOutput :=
+  decideWriteWith env.profile env targetRaw
 
 /-- Bash 経路の決定木(頭注の順序不変量)。
 
@@ -391,15 +421,19 @@ agent 所有の通常実装ファイル(§11.1)を指す。そのため cwd(`env
 から CONTROL_ROOT へ届く綴り(`../<control>/README.md` / 絶対パス)はそちらが
 deny する。cwd 不明・許可ルート外は従来どおりテキスト検査が生きる
 (fail-closed)。project cwd の `cp .tmp-readme.md README.md` が control-plane
-README 変異として deny された 2026-07-31 の過剰遮断(R-006)の是正。 -/
-def decideBash (env : GuardEnv) (command : String) : GuardOutput :=
+README 変異として deny された 2026-07-31 の過剰遮断(R-006)の是正。
+
+profile は `decideBash` が `env.profile` を渡す明示引数である(`decideWriteWith`
+と同じ構図 — G-T6 の証明形)。 -/
+def decideBashWith (profile : Profile) (env : GuardEnv)
+    (command : String) : GuardOutput :=
   if env.sessionMode == "triage" || env.sessionMode == "essence" then
     match readOnlySessionBashAllow? env command with
     | some reason => decided [] .allow reason
     | none =>
       let handoffDir := childPath env.controlRoot (".agent/tmp/" ++ env.sessionMode)
       decided [] .deny (readOnlyDenyReason env.sessionMode handoffDir)
-  else if isProtectedWriteTarget command && hasWriteRedirectOrMutator command then
+  else if isProtectedWriteTarget command && hasProtectedPathWriter command then
     decided [] .deny protectedWriteDenyReason
   else if isSecretBash command then
     decided [] .deny secretDenyReason
@@ -424,24 +458,47 @@ def decideBash (env : GuardEnv) (command : String) : GuardOutput :=
         let projectCwd := env.projectRoots.any (insideOf · env.base)
         let controlSurface := (!projectCwd && isControlSurfaceBashMutation command)
           || highRiskTargets.any (isControlPlaneTarget env)
+        -- §28.5-4「保護は綴りではなく解決済み位置で書く」を zone 面にも適用
+        -- する。テキスト検査 `isZoneBashMutation` は `>` と対象の間に区切り
+        -- 文字を要求する正規表現由来なので `>CLAUDE.md`(空白なし)を取り逃す。
+        -- control-plane 面は解決済みパス(`isControlPlaneTarget`)で二重化
+        -- されているのに zone 面だけ裏打ちが無く、取り逃すと §12 の ask と
+        -- §20.4-3 の before-hash staging が**同時に**落ちて、post が記録する
+        -- after-hash と対にならない(G-T5 の対合が実入力で崩れる)。
         let zone := isZoneBashMutation command
         let staged := if zone && !controlSurface then highRiskTargets else []
         if controlSurface then
           decided staged .deny controlSurfaceBashDenyReason
         else if zone then
-          decided staged .ask zoneBashAskReason
+          askUnlessRelaxed staged profile zoneBashAskReason
+            "High-Risk Zone Bash mutation (§12)"
         else if isDependencyInputBashMutation command then
-          decided staged .ask dependencyInputAskReason
+          askUnlessRelaxed staged profile dependencyInputAskReason
+            "dependency-resolution-input Bash mutation (§11.2)"
         else match cdLeavesAllowedRoots? env command with
-        | some target => decided staged .ask (unsafeCdAskReason target)
+        | some target =>
+          askUnlessRelaxed staged profile (unsafeCdAskReason target)
+            "cd outside the allowed roots (§11.2)"
         | none =>
           match installAllowReason? env command with
           | some reason => decided staged .allow reason
           | none =>
             if commandInstallsDependencies command then
-              decided staged .ask installAskReason
-            else
+              askUnlessRelaxed staged profile installAskReason
+                "unlisted dependency install (§11.2)"
+            else if profile == .standard then
               ⟨staged, none⟩
+            else
+              -- Bash 最終無意見葉のみ fallback allow(§11.5): settings の
+              -- allow リスト外のコマンドが headless の自動 deny に落ちない。
+              -- settings の deny / hook の deny 群はこの葉より先に確定して
+              -- おり(I-030)、Write 無意見葉は対称に緩めない。
+              decided staged .allow
+                (profileAllowReason "Bash command no other rule covers")
+
+/-- Bash 経路(`decideBashWith` 頭注参照)。 -/
+def decideBash (env : GuardEnv) (command : String) : GuardOutput :=
+  decideBashWith env.profile env command
 
 /-- `main()` 等価の純粋決定核(§3.3-2 の `GuardEnv → 入力 → 判定`)。 -/
 def decide (env : GuardEnv) : ToolCall → GuardOutput
@@ -704,7 +761,9 @@ private def essenceNewEnv : GuardEnv :=
 
 -- 解決要求の列挙(IO シェルの契約面)
 #guard familyARequests (.write "src/app.ts") == ["src/app.ts"]
-#guard familyARequests (.write "/abs/p.md") == []
+-- 絶対キーも解決要求に載る(`..` を畳んだ位置で containment を判定するため)
+#guard familyARequests (.write "/abs/p.md") == ["/abs/p.md"]
+#guard familyARequests (.bash "cd /abs/../.. && npm ci") == ["/abs/../..", "/abs/../.."]
 #guard familyARequests (.bash "tee prompts/x.md; cd sub")
   == ["prompts/x.md", "sub"]
 #guard familyARequests (.bash "cd ../proj && npm install typescript")
@@ -720,5 +779,79 @@ private def essenceNewEnv : GuardEnv :=
 #guard familyBRequests "/cr" "triage" (.write "note.txt") == ["/cr/note.txt"]
 #guard familyBRequests "/cr" "essence" (.write "/abs/x.md") == ["/abs/x.md"]
 #guard familyBRequests "/cr" "" (.write "note.txt") == []
+
+/-! ## relaxed profile(§11.5)のコンパイル時検査 -/
+
+private def relaxedEnv : GuardEnv := { env0 with profile := .autoApprove }
+private def unsandboxedEnv : GuardEnv := { env0 with profile := .unsandboxed }
+
+-- 緩和 6 葉: ask → 監査可能な理由文言つき allow(staging 不変)
+#guard decide relaxedEnv (.write "package.json")
+  == ⟨[], some ⟨.allow, profileAllowReason "dependency-manifest edit (§11.2)"⟩⟩
+#guard decide relaxedEnv (.write "prompts/x.md")
+  == ⟨["prompts/x.md"],
+    some ⟨.allow, profileAllowReason "High-Risk Zone edit (§12)"⟩⟩
+#guard decide relaxedEnv (.bash "tee prompts/x.md")
+  == ⟨["/ws/proj/prompts/x.md"],
+    some ⟨.allow, profileAllowReason "High-Risk Zone Bash mutation (§12)"⟩⟩
+#guard decide relaxedEnv (.bash "echo x > package.json")
+  == ⟨[], some ⟨.allow,
+    profileAllowReason "dependency-resolution-input Bash mutation (§11.2)"⟩⟩
+#guard decide relaxedEnv (.bash "cd /opt && ls")
+  == ⟨[], some ⟨.allow,
+    profileAllowReason "cd outside the allowed roots (§11.2)"⟩⟩
+#guard decide relaxedEnv (.bash "npm install left-pad")
+  == ⟨[], some ⟨.allow,
+    profileAllowReason "unlisted dependency install (§11.2)"⟩⟩
+-- Bash 最終無意見葉は fallback allow、Write 無意見葉は不変(§11.5)
+#guard decide relaxedEnv (.bash "ls -la")
+  == ⟨[], some ⟨.allow,
+    profileAllowReason "Bash command no other rule covers"⟩⟩
+#guard decide relaxedEnv (.write "src/app.ts") == ⟨[], none⟩
+#guard decide relaxedEnv .other == ⟨[], none⟩
+-- guard は auto-approve と unsandboxed を区別しない(§11.5)
+#guard decide unsandboxedEnv (.bash "ls -la")
+  == decide relaxedEnv (.bash "ls -la")
+#guard decide unsandboxedEnv (.write "package.json")
+  == decide relaxedEnv (.write "package.json")
+#guard decide unsandboxedEnv (.bash "npm install left-pad")
+  == decide relaxedEnv (.bash "npm install left-pad")
+-- bootstrap / build の ask は維持(§11.5 の意図的除外)
+#guard decide relaxedEnv (.bash "just bootstrap")
+  == ⟨[], some ⟨.ask, bootstrapAskReason⟩⟩
+-- 既存の allow 面(curated install / materialization)は理由文言ごと不変
+#guard (decide relaxedEnv (.bash "npm install typescript")).decision?
+  == (decide env0 (.bash "npm install typescript")).decision?
+-- deny 床は理由文言ごと不変(I-030)
+#guard decide relaxedEnv (.write "ESSENCE.md")
+  == ⟨[], some ⟨.deny, writeDenyReason "ESSENCE.md"⟩⟩
+#guard decide relaxedEnv (.write "essences/logo.png")
+  == ⟨[], some ⟨.deny, writeDenyReason "essences/logo.png"⟩⟩
+#guard decide relaxedEnv (.bash "cat .env")
+  == ⟨[], some ⟨.deny, secretDenyReason⟩⟩
+#guard decide relaxedEnv (.bash "git add .")
+  == ⟨[], some ⟨.deny, commitDenyReason⟩⟩
+#guard decide relaxedEnv (.bash "rm -rf prompts/")
+  == ⟨[], some ⟨.deny, dangerousDenyReason "\\brm\\s+-rf\\b"⟩⟩
+#guard decide relaxedEnv (.write "scripts/state.py")
+  == ⟨[], some ⟨.deny, controlPlaneDenyReason "scripts/state.py"⟩⟩
+#guard decide relaxedEnv (.bash "tee scripts/state.py")
+  == ⟨[], some ⟨.deny, controlSurfaceBashDenyReason⟩⟩
+#guard decide relaxedEnv (.bash "bash -c 'claude -p hi'")
+  == ⟨[], some ⟨.deny, claudeLaunchDenyReason⟩⟩
+#guard decide relaxedEnv
+    (.bash "bin/mercator state resume --project ../proj")
+  == ⟨[], some ⟨.deny, humanOnlyDenyReason⟩⟩
+#guard decide relaxedEnv (.bash "just state --project x record-progress")
+  == ⟨[], some ⟨.deny, loopOnlyDenyReason⟩⟩
+-- read-only セッションは profile を無視する(構造的に profile 葉に到達
+-- しない、I-022/I-027 — §11.5)
+#guard decide { triageEnv with profile := .autoApprove } (.bash "ls")
+  == decide triageEnv (.bash "ls")
+#guard decide { triageEnv with profile := .unsandboxed } (.write "src/app.ts")
+  == decide triageEnv (.write "src/app.ts")
+#guard decide { essenceNewEnv with profile := .unsandboxed }
+    (.write "/ws/proj/ESSENCE.md")
+  == decide essenceNewEnv (.write "/ws/proj/ESSENCE.md")
 
 end Mercator.Guard

@@ -173,7 +173,10 @@ def recommendationGatesLoop (rec : Json.Value) : Bool :=
 形状破損は診断に落として既定値へフォールバックする(gate は corruption が
 state_unreadable として表面化する間も働き続ける、I-021)。`stop_policy` の
 非 object 診断は idle 側だけが出す(infra 側は同一破損の重複報告を避ける)。
-`0` は未設定として既定値(Python `value or DEFAULT`)。 -/
+**非正の値は未設定として既定値**(Python `value or DEFAULT` の `0` に加えて
+負値も含む): カウンタは 0 未満になれないので、負の閾値は resume が
+カウンタを 0 に戻しても(S-T6)決して下回れない — どの resume 形でも解除
+できない停止、つまり「停止は必ず再開手順とともに可視」(I-017)の破れになる。 -/
 def stopThreshold (context : Json.Value) (key : String) (dflt : Int)
     (reportPolicyShape : Bool) : Int × List String :=
   let (policy, policyDiags) :=
@@ -191,7 +194,7 @@ def stopThreshold (context : Json.Value) (key : String) (dflt : Int)
       match pyInt? v with
       | some n => (n, [])
       | none => (0, [s!"context.json: stop_policy.{key} is not an integer"])
-  (if value == 0 then dflt else value, policyDiags ++ valueDiags)
+  (if value ≤ 0 then dflt else value, policyDiags ++ valueDiags)
 
 /-! ## gate ファイル読み(should_stop_payload 内部関数、I-021 fail-closed) -/
 

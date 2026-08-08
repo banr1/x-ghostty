@@ -731,26 +731,19 @@ private def runRaiseLoopGates (ctx : Ctx) : IO UInt32 := do
   for k in [suffixes.length:4] do
     suffixes := suffixes ++ [s!"x{k}"]
   let ids : List (String × String) := suffixes.map fun s => (stamp, s)
-  match Loop.raiseLoopGatesCore {
-      stopPayload := stopVerdict.payload
-      completion := completion.payload
-      todo := ← readRawText (ctxState ctx "todo.json")
-      recommendations := ← readRawText (ctxState ctx "recommendations.json")
-      ids
-      now := ← nowLocal } with
-  | .error e => throw (IO.userError e)
-  | .ok outcome =>
-    -- Python は recs/reflection を書いた後に sorted() の TypeError で落ちる
-    -- ことがある(payload の .error)— 書き込みを先に済ませる順序も同一
-    if let some recs := outcome.newRecs then
-      Io.Fs.writeJsonPretty (ctxState ctx "recommendations.json") recs
-    if let some reflection := outcome.reflection then
-      appendJsonlOrThrow (ctxState ctx "reflection.jsonl") reflection
-    match outcome.payload with
-    | .error e => throw (IO.userError e)
-    | .ok payload =>
-      IO.println payload.render
-      pure 0
+  let outcome := Loop.raiseLoopGatesCore {
+    stopPayload := stopVerdict.payload
+    completion := completion.payload
+    todo := ← readRawText (ctxState ctx "todo.json")
+    recommendations := ← readRawText (ctxState ctx "recommendations.json")
+    ids
+    now := ← nowLocal }
+  if let some recs := outcome.newRecs then
+    Io.Fs.writeJsonPretty (ctxState ctx "recommendations.json") recs
+  if let some reflection := outcome.reflection then
+    appendJsonlOrThrow (ctxState ctx "reflection.jsonl") reflection
+  IO.println outcome.payload.render
+  pure 0
 
 private def controlRunsPath (ctx : Ctx) : System.FilePath :=
   ctx.controlRoot / ".agent" / "state" / "control_runs.jsonl"

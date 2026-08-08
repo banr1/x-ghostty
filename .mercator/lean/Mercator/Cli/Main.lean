@@ -7,7 +7,7 @@ IO シェルであり、判定ロジック自体は `Mercator.Core` / `Mercator.
 -/
 
 def usage : String :=
-  "usage: mercator <subcommand>\nimplemented subcommands: version, hook stop, hook session-start, hook pre-compact, hook pre-tool, hook post-tool, recipe hash, trust status, trust ensure, state ensure, state validate, state should-stop, state should-complete, state should-reset, state record-progress, state raise-loop-gates, state start-run, state end-run, state reset-context, state resume, state status, util json-get, util stop-status, util token, util file-age-exceeds, util read-only-settings, util relpath, util render, util seed, util project-index, util json-check, util dangling-run, util settings-doctor, util static-config"
+  "usage: mercator <subcommand>\nimplemented subcommands: version, hook stop, hook session-start, hook pre-compact, hook pre-tool, hook post-tool, recipe hash, trust status, trust ensure, state ensure, state validate, state should-stop, state should-complete, state should-reset, state record-progress, state raise-loop-gates, state start-run, state end-run, state reset-context, state resume, state status, util json-get, util stop-status, util token, util file-age-exceeds, util read-only-settings, util relpath, util render, util seed, util project-index, util json-check, util dangling-run, util settings-doctor, util essence-profile, util static-config"
 
 def main (args : List String) : IO UInt32 := do
   match args with

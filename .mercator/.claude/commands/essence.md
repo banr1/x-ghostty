@@ -146,7 +146,19 @@ canonical order (META.md §2.1.4, §3.5 of the heading-contract design):
    wishes ("良い感じに", "使いやすく") — ask "それをどう観測しますか?".
 4. **前提事項** — tech stack, runtime environment, background/existing
    assets, data/secrets handling, deadlines; the assumptions whose
-   collapse the human wants reported.
+   collapse the human wants reported. Ask here about the execution
+   environment and autonomy level (`profile:` directive, META.md §11.5):
+   the default is `standard` (nothing to write — full approval gates and
+   the OS sandbox). Propose a relaxation ONLY when the answers show the
+   need, and always spell out the implication before recording it:
+   `auto-approve` makes the human-approval prompts on the framework's ask
+   gates (dependency / High-Risk / cd faces) disappear into audited
+   allows while the OS sandbox stays; `unsandboxed` additionally removes
+   the OS sandbox itself (needed only when the toolchain is structurally
+   blocked by sandboxing, e.g. xcodebuild — OS-level protection is gone
+   and only the deny floor remains). Never fish for a relaxation; record
+   an explicit choice as a single plain `profile: <value>` active line in
+   前提事項, and note that it takes effect through `just init` (§26).
 5. **思想** — pre-decide the plausible conflicts (quality vs speed, which
    必須対応事項 yields), and name the decisions that must always come back
    to the human. Derive candidate conflicts from the 必須対応事項/前提事項
@@ -191,6 +203,16 @@ Interview rules:
 - Ask the smallest set of essential questions that actually pins each
   decision down — thorough on the critical dimensions, never redundant.
   Batch related questions (one theme, at most ~3 questions per turn).
+- Two success layers — name the layer in the question itself. "成功/完成"
+  can mean two different states, and the design keeps them separate: the
+  realization of the excavated 本質的理想 (§2 — the backbone of
+  モチベーション, which may include deferred 非対応事項), and the completion
+  of 今回スコープ (every 必須対応事項 meeting its 成功条件, §19.3's must
+  boundary). Never ask with an unanchored 「完成したとき」— say which one
+  you mean (e.g. 「必須対応事項がすべて完了した時点で」/「延期分も含め理想が
+  すべて実現された世界で」). モチベーション questions anchor to the ideal
+  layer; 成功条件 questions anchor to the scope layer. When an answer could
+  be read at either layer, ask which before recording it.
 - Question tempo — two modes, never mixed in one turn: the excavation
   phase (§2) and any contradiction/shackle drilling run drill-style (ONE
   question per turn, always with a concrete strawman the human can react
@@ -238,7 +260,8 @@ revision, not a re-interview of settled decisions.
 4. **Interview only the affected decisions**, still critical-first among
    themselves, with the same refinement rules as new mode (observable
    wording, read-back confirmation, how placed by strength §2.1.3, deferred
-   非対応事項 with a promotion trigger).
+   非対応事項 with a promotion trigger, success questions anchored to a
+   named layer — 本質的理想 vs 今回スコープ).
 5. **Guard consistency with the carried-forward text.** A revised
    必須対応事項 may now contradict an untouched 必須対応事項, orphan a
    成功条件, or cross a 非対応事項 fence. Check each edit against the
@@ -251,7 +274,9 @@ revision, not a re-interview of settled decisions.
 7. **End with the change summary.** Alongside the complete draft, list what
    changed as before → after pairs (and what was deliberately left
    untouched), so the human can verify the wrapper's diff against their
-   intent.
+   intent. If the revision adds, removes, or changes a `profile:` line
+   (META.md §11.5), tell the human there that the new value takes effect
+   only after `just init ../<project>` re-renders the settings (§26).
 
 A "rewrite it all" intent is legitimate update-mode input: confirm the
 scope explicitly, then run the excavation of §2 and the full critical-first
@@ -315,6 +340,13 @@ The wrapper refuses drafts failing 1–2; the rest are your protocol:
    none dropped silently.
 9. 用語 is present and non-empty — either the confirmed term definitions,
    or the literal line "なし" if nothing needed defining.
+10. If the draft carries a `profile:` line (META.md §11.5): the human
+    explicitly chose it after hearing the implications (auto-approve = the
+    human-approval prompts disappear; unsandboxed = the OS sandbox is also
+    gone), the value is exactly one of standard / auto-approve /
+    unsandboxed, and the draft contains at most ONE such line, outside
+    comments and code fences. Never write a profile the human did not
+    explicitly select.
 
 ## Hard boundaries (hook/permission-enforced — do not fight them)
 

@@ -13,6 +13,7 @@ import Mercator.Core.Glob
 import Mercator.Core.Classify
 import Mercator.Core.Classify.Bash
 import Mercator.Core.Classify.Install
+import Mercator.Core.Classify.Profile
 import Mercator.Core.Classify.ReadOnly
 import Mercator.Core.Trust
 import Mercator.Core.Stop

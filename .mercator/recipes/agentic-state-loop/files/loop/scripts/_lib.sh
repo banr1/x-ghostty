@@ -310,10 +310,16 @@ create_guarded_checkpoint() {
 
   # Anything still dirty is either a protected leftover (human's own resume
   # checkpoint records it) or an anomaly worth failing loudly on.
-  local line path leftover="" anomaly=0
-  while IFS= read -r line; do
-    [[ -n "${line}" ]] || continue
-    path="${line:3}"
+  #
+  # -z (NUL-separated, C-quoting disabled) is mandatory: the default
+  # --porcelain quotes and C-escapes any non-ASCII path (core.quotePath=true),
+  # so `${line:3}` on a non-ASCII target directory or asset would misread the
+  # leftover path, fail to match it as a protected leftover, and turn a correct
+  # cycle checkpoint into a spurious exit 4. Each -z record is the 3-char
+  # `XY ` status prefix followed by the verbatim path.
+  local rec path leftover="" anomaly=0
+  while IFS= read -r -d '' rec; do
+    path="${rec:3}"
     if is_forbidden_checkpoint_path "${path}"; then
       continue
     fi
@@ -322,7 +328,7 @@ create_guarded_checkpoint() {
       continue
     fi
     anomaly=1
-  done < <(git -C "${GIT_ROOT}" status --porcelain --untracked-files=all)
+  done < <(git -C "${GIT_ROOT}" -c core.quotePath=false status --porcelain -z --untracked-files=all)
   if [[ "${anomaly}" -eq 1 ]]; then
     err "checkpoint completed, but the worktree is still dirty:"
     git -C "${GIT_ROOT}" status --short --untracked-files=all >&2
@@ -339,19 +345,22 @@ create_guarded_checkpoint() {
 # bookkeeping.
 worktree_has_non_state_changes() {
   [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
-  local line path state_prefix
+  local rec path state_prefix
   if [[ "${TARGET_REL}" == "." ]]; then
     state_prefix="${LOOP_DIR_NAME}/state/"
   else
     state_prefix="${TARGET_REL}/${LOOP_DIR_NAME}/state/"
   fi
-  while IFS= read -r line; do
-    [[ -n "${line}" ]] || continue
-    path="${line:3}"
+  # -z for the same reason as the checkpoint scan above: a C-quoted non-ASCII
+  # path would not compare equal to the verbatim state_prefix, so bookkeeping
+  # under a non-ASCII target would read as real product progress and poison
+  # the idle-cycle counter in both directions.
+  while IFS= read -r -d '' rec; do
+    path="${rec:3}"
     [[ "${path}" == "${state_prefix}"* ]] && continue
     is_forbidden_checkpoint_path "${path}" && continue
     return 0
-  done < <(git -C "${GIT_ROOT}" status --porcelain --untracked-files=all)
+  done < <(git -C "${GIT_ROOT}" -c core.quotePath=false status --porcelain -z --untracked-files=all)
   return 1
 }
 

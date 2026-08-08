@@ -4,7 +4,7 @@
     {
       "id": "R-001",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "requires_human_approval": true,
       "agent_action": "stop_until_human_review",
       "source": [
@@ -14,7 +14,10 @@
       "created_at": "2026-08-07T23:05:00+09:00",
       "reason": "OS sandbox が just test / just swift-test / just build-app の実行を阻むため、実装済みの T-001 を検証できない。検証経路の選択(sandbox 設定変更 or 人間による実行)が必要。",
       "title": "検証コマンドの実行手段について人間の判断が必要(sandbox 制約)",
-      "description": "T-001(ノートのモデル層)の実装とテストは書き上がりましたが、自律セッション内では Essence の成功条件が指す検証コマンドを一つも実行できませんでした。原因は 2 つ: (1) `just test` は Zig パッケージ取得先 deps.files.ghostty.org がネットワーク許可リストに無く 403 で失敗(リポジトリ内キャッシュ `just check zig` までは整備済み)。(2) `just swift-test` / `just build-app` の xcodebuild は OS sandbox 下で XPC サービス接続とユーザー一時領域への書込みを拒否され、リポジトリ内 DerivedData/TMPDIR を指定する `just check swift` を追加しても 'Could not resolve package dependencies: permissionDenied' で失敗。次のいずれかをご判断ください: (a) sandbox のネットワーク許可に deps.files.ghostty.org を追加(Zig テストのみ自律実行可能になります)。(b) xcodebuild 系は sandbox 下では動かないため、`just check`(全部)または `just swift-test` / `just build-app` を人間が手元で実行し、exit code を resume 時に伝える運用にする。(c) 配備側で xcodebuild を sandbox 例外にできるならその設定を行う。少なくとも (b) の一度の実行結果があれば、T-001 を evidence 付きで完了させ、以降の実装(T-002〜)を進められます。"
+      "description": "T-001(ノートのモデル層)の実装とテストは書き上がりましたが、自律セッション内では Essence の成功条件が指す検証コマンドを一つも実行できませんでした。原因は 2 つ: (1) `just test` は Zig パッケージ取得先 deps.files.ghostty.org がネットワーク許可リストに無く 403 で失敗(リポジトリ内キャッシュ `just check zig` までは整備済み)。(2) `just swift-test` / `just build-app` の xcodebuild は OS sandbox 下で XPC サービス接続とユーザー一時領域への書込みを拒否され、リポジトリ内 DerivedData/TMPDIR を指定する `just check swift` を追加しても 'Could not resolve package dependencies: permissionDenied' で失敗。次のいずれかをご判断ください: (a) sandbox のネットワーク許可に deps.files.ghostty.org を追加(Zig テストのみ自律実行可能になります)。(b) xcodebuild 系は sandbox 下では動かないため、`just check`(全部)または `just swift-test` / `just build-app` を人間が手元で実行し、exit code を resume 時に伝える運用にする。(c) 配備側で xcodebuild を sandbox 例外にできるならその設定を行う。少なくとも (b) の一度の実行結果があれば、T-001 を evidence 付きで完了させ、以降の実装(T-002〜)を進められます。",
+      "resolved_at": "2026-08-08T16:53:27+09:00",
+      "resolved_by": "human",
+      "resolution": "R-001 の選択肢 (c) を採る: ESSENCE に profile: unsandboxed を宣言し、再 init で OS sandbox を解除した(META.md §11.5)。これにより just test / just swift-test / just build-app が自律セッション内で実行可能になる。B-001 の原因(sandbox によるネットワーク不許可と xcodebuild の XPC/一時領域拒否)は解消したので、次サイクルで検証を実行のうえ B-001 を close し、blocked の T-001 を証跡付きで完了させること。XGhosttyUITests は従来どおり対象外。"
     }
   ]
 }

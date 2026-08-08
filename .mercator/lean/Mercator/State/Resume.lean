@@ -474,9 +474,23 @@ def transition (i : TransitionInputs) : Transition :=
   let phaseDecision := if i.steerOnly then none else i.phaseDecision
   let selectedBlockers := openBlockers.filter fun b =>
     (itemId? b).map selected.contains |>.getD false
+  -- §13.3-4''(a): supervise authorizing gate は、それを名指しした `--resolve`
+  -- だけでなく **phase 判断による一括選択からも** 除外する。除外しないと、
+  -- phase gate 形と authorizing 形を兼ねる Recommendation が `--approve-should`
+  -- で resolved になり、`just supervise` の preflight(open gate 要件)が恒久に
+  -- 満たせなくなる — `--resolve` 側で書込み前に拒否したのと同じ自壊である。
+  -- 拒否ではなく除外にするのは、人間が名指ししていない gate のせいで正当な
+  -- Must 境界の判断まで落とさないためであり、phase 遷移自体は
+  -- `phaseDecision` が独立に担う。
+  let authorizedIds :=
+    (Predicates.superviseAuthorizations openRecs
+      (objectItems (((readJsonOrEmpty "todo.json" i.todoRaw).1.get? "items").getD (.arr [])))
+    ).map (·.1)
+  let phaseSelectable (r : Json.Value) : Bool :=
+    isPhaseGateRec r && !((itemId? r).map authorizedIds.contains |>.getD false)
   let selectedRecs := openRecs.filter fun r =>
     ((itemId? r).map selected.contains |>.getD false)
-      || (phaseDecision.isSome && isPhaseGateRec r)
+      || (phaseDecision.isSome && phaseSelectable r)
   -- カウンタ(L2889–2895)。§13.1-12: infra streak も idle と同様に resume が
   -- ゼロ化する — 閾値未満の残滓が resume 直後の単発 infra 失敗で gate しない
   let (context0, _) := readJsonOrEmpty "context.json" i.contextRaw

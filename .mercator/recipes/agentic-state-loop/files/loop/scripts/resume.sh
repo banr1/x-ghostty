@@ -45,6 +45,12 @@ fi
 NOTE="$(printf '%s' "${NOTE}" | LC_ALL=C tr -d '\000-\010\013-\037\177')"
 
 acquire_loop_lock
+# An untrapped INT/TERM/HUP would free the lock (EXIT trap) while a foreground
+# child (`state resume`, git) is still mutating state. Trapping defers the
+# signal until the child returns, so the transition never outlives its lock.
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 RESUME_ARGS=(resume --note "${NOTE}")
 [[ "${FORCE}" -eq 1 ]] && RESUME_ARGS+=(--force)

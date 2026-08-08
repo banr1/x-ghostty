@@ -1,7 +1,9 @@
 {
   "schema_version": "2.0.0",
-  "last_validated_at": "2026-08-07T23:03:28+09:00",
-  "status": "ok",
+  "last_validated_at": "2026-08-08T16:52:23+09:00",
+  "status": "warning",
   "errors": [],
-  "warnings": []
+  "warnings": [
+    "ESSENCE.md changed since the last Spec projection; re-project Spec once the change is human-attested (the loop gates an unreviewed change as essence_unreviewed_change, §13.1-10)."
+  ]
 }

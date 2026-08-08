@@ -622,7 +622,8 @@ def installAllowSegReason? (declared : DeclaredPackages) (seg : String) :
     Option String :=
   match ShellLex.split seg with
   | .error _ => none
-  | .ok argv =>
+  | .ok rawArgv =>
+    let argv := normalizeCommandArgv rawArgv
     match materializationArgv? argv with
     | some source =>
       some ("Materialization (META.md §11.2): installs " ++ source
@@ -673,7 +674,7 @@ def commandInstallsDependencies (command : String) : Bool :=
   (Mercator.Core.Text.runsOf
       (fun c => c != ';' && c != '&' && c != '|' && c != '\n') command).any
     fun seg =>
-      let argv := tokensLenient (String.ofList seg)
+      let argv := normalizeCommandArgv (tokensLenient (String.ofList seg))
       !argv.isEmpty
         && ((installArgv? argv).isSome || (materializationArgv? argv).isSome
           || isUvPipSyncShape argv)

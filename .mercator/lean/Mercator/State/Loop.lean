@@ -254,11 +254,8 @@ structure RaiseOutcome where
   newRecs : Option Json.Value
   /-- reflection.jsonl へ追記する loop_gate レコード(同上)。 -/
   reflection : Option Json.Value
-  /-- stdout ペイロード。`.error` は `sorted(open_gates | ...)` の TypeError
-  (混在型)— Python では recs/reflection の書き込み **後** に起きるため、
-  外側の `.error`(書き込み前に落ちる unhashable)と区別して持つ。IO シェルは
-  書き込みを済ませてから ここの `.error` をハードエラーへ写す。 -/
-  payload : Except String Json.Value
+  /-- stdout ペイロード。 -/
+  payload : Json.Value
 
 private def truthyAt (payload : Json.Value) (k : String) : Bool :=
   ((payload.get? k).getD .null).truthy
@@ -268,26 +265,6 @@ private def intAt (payload : Json.Value) (k : String) : Int :=
 
 private def rawAt (payload : Json.Value) (k : String) : Json.Value :=
   (payload.get? k).getD .null
-
-/-- Python `sorted(open_gates | {...})`: 空・単一要素は比較が起きない
-(CPython 実挙動)。全 str はコードポイント順、全数値(bool 含む)は値順。
-混在は TypeError(ハードエラー)。 -/
-private def pySortedGates (vals : List Json.Value) : Except String (List Json.Value) :=
-  if vals.length ≤ 1 then .ok vals
-  else if vals.all (fun v => match v with | .str _ => true | _ => false) then
-    .ok ((vals.filterMap (·.asStr?)).mergeSort (· ≤ ·) |>.map .str)
-  else if vals.all (fun v => match v with | .num _ _ => true | .bool _ => true | _ => false) then
-    -- 有理値順(m1/10^e1 ≤ m2/10^e2 ⟺ m1·10^e2 ≤ m2·10^e1)。bool は 0/1。
-    let key : Json.Value → Int × Nat
-      | .num m e => (m, e)
-      | .bool b => (if b then 1 else 0, 0)
-      | _ => (0, 0)
-    .ok (vals.mergeSort (fun a b =>
-      let (m1, e1) := key a
-      let (m2, e2) := key b
-      m1 * Int.ofNat (10 ^ e2) ≤ m2 * Int.ofNat (10 ^ e1)))
-  else
-    .error "'<' not supported between gate values of mixed types (sorted)"
 
 /-- gate Recommendation の組み立て(Python `gate_rec` — キー順まで同一)。 -/
 private def gateRec (id created : String) (kind target reason : String)
@@ -306,20 +283,21 @@ private def gateRec (id created : String) (kind target reason : String)
     ("created_at", .str created)
   ]
 
-/-- `cmd_raise_loop_gates` の決定核(§13.4、I-017)。`.error` は Python の
-uncaught 例外(unhashable gate・混在型 sorted の TypeError)= ハードエラー
-チャネル。常に exit 0(エラー時を除く)。 -/
-def raiseLoopGatesCore (i : RaiseInputs) : Except String RaiseOutcome := do
+/-- `cmd_raise_loop_gates` の決定核(§13.4、I-017)。全域である — cycle の
+finalize はこの遷移を通るので、壊れた `gate` フィールド 1 つでハードエラーに
+なると checkpoint commit まで到達できず、次 cycle も I-014 で拒否される恒久
+デッドロックになる。 -/
+def raiseLoopGatesCore (i : RaiseInputs) : RaiseOutcome := Id.run do
   let sp := i.stopPayload
   -- I-021: state_unreadable なら recommendations.json を再構築せず skip
   if (rawAt sp "state_unreadable").truthy then
     return {
       newRecs := none, reflection := none,
-      payload := .ok (.obj [
+      payload := .obj [
         ("raised", .arr []),
         ("gates", .arr []),
         ("skipped", .str "state_unreadable"),
-        ("state_unreadable", rawAt sp "state_unreadable")]) }
+        ("state_unreadable", rawAt sp "state_unreadable")] }
   let completion := i.completion
   let (todo, _) := readJsonOrEmpty "todo.json" i.todo
   let items := objectItems ((todo.get? "items").getD (.arr []))
@@ -331,18 +309,14 @@ def raiseLoopGatesCore (i : RaiseInputs) : Except String RaiseOutcome := do
     | some (.arr xs) => (xs, true)
     | _ => (([] : List Json.Value), false)
   let recs := if itemsWasList then recs else recs.set "items" (.arr [])
-  -- open_gates(set 構築 — unhashable な gate 値は Python の TypeError)
-  let gateVals := ((objectItems (.arr recItems)).filter fun r =>
+  -- open_gates: `gate` は gate 種別の名前なので、文字列でない値はどの種別も
+  -- 名指ししていない = 冪等性(§13.4-7)の観点では不在として読む。壊れた値を
+  -- 遷移の失敗にしてはならない(頭注のデッドロック)。
+  let openGates := (((objectItems (.arr recItems)).filter fun r =>
     r.get? "status" == some (.str "proposed")
-      && r.get? "raised_by" == some (.str "mercator-loop")).map
-    fun r => (r.get? "gate").getD .null
-  if let some bad := gateVals.find? (fun v => match v with
-      | .arr _ | .obj _ => true | _ => false) then
-    throw (match bad with
-      | .arr _ => "unhashable type: 'list'"
-      | _ => "unhashable type: 'dict'")
-  let openGates := gateVals.eraseDups
-  let hasGate (k : String) : Bool := openGates.contains (.str k)
+      && r.get? "raised_by" == some (.str "mercator-loop")).filterMap
+    fun r => (r.get? "gate").bind (·.asStr?)).eraseDups
+  let hasGate (k : String) : Bool := openGates.contains k
   -- Agent が既に可視化した停止条件は重複マテリアライズしない(§13.4-2)。
   -- ファイル事実系の停止(essence_missing / essence_placeholder /
   -- essence_structure / essence_asset_integrity / essence_unreviewed_change)は
@@ -461,12 +435,11 @@ def raiseLoopGatesCore (i : RaiseInputs) : Except String RaiseOutcome := do
           ++ String.intercalate ", " raisedKinds)),
         ("recommendations", .arr raisedIds)]
       (some recs, some reflection)
-  let payload := pySortedGates
-    ((openGates ++ raisedKinds.map Json.Value.str).eraseDups) |>.map
-    fun allGates => Json.Value.obj [
-      ("raised", .arr raisedIds),
-      ("gates", .arr (raisedKinds.map Json.Value.str)),
-      ("open_gates", .arr allGates)]
+  let allGates := (openGates ++ raisedKinds).eraseDups.mergeSort (· ≤ ·)
+  let payload : Json.Value := .obj [
+    ("raised", .arr raisedIds),
+    ("gates", .arr (raisedKinds.map Json.Value.str)),
+    ("open_gates", .arr (allGates.map Json.Value.str))]
   pure { newRecs, reflection, payload }
 
 /-! ## run lifecycle(state.py `cmd_start_run` / `cmd_end_run` L2467–2523) -/

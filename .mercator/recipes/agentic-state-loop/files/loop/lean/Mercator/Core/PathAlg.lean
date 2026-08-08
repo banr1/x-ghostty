@@ -9,7 +9,7 @@ pre_tool_guard.py のパス判定は次の 3 プリミティブに集約され�
 1. `str(Path(raw))` — pathlib の字句正規化(guard の `path_candidates` が
    `.replace("\\", "/")` と組み合わせて使う)。`render ∘ parse` = `pureStr` が対応。
 2. `Path.is_relative_to` — セグメント列の prefix 判定(guard の `_inside` と
-   `path_candidates` のルート判定)。`isRelativeTo` / `inside` が対応。
+   `path_candidates` のルート判定)。`isRelativeTo` が対応。
 3. `Path.relative_to(...).as_posix()` — ルート相対の候補文字列生成。
    `relativeTo?` が対応。
 
@@ -67,11 +67,6 @@ def candidate (raw : String) : String :=
 等値(自分自身)も真(Python と同じ)。 -/
 def isRelativeTo (p other : PurePath) : Bool :=
   p.rootSlashes == other.rootSlashes && other.segs.isPrefixOf p.segs
-
-/-- guard `_inside(path, root)` 等価(`path == root or path.is_relative_to(root)`。
-等値は `is_relative_to` に含まれるため同義)。 -/
-def inside (p root : PurePath) : Bool :=
-  isRelativeTo p root
 
 /-- `PurePosixPath.relative_to(other).as_posix()` 等価。`is_relative_to` が
 偽なら `none`(Python の `ValueError`)。等値は `"."`。 -/

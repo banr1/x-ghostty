@@ -3,6 +3,7 @@ import Mercator.State.Predicates
 import Mercator.State.Status
 import Mercator.Core.StaticConfig
 import Mercator.Core.Text
+import Mercator.Core.Classify.Profile
 
 /-!
 `Mercator.State.Validate` — `cmd_validate` / `cmd_ensure` /
@@ -632,13 +633,39 @@ def essenceTraceItems (text : String) : List String :=
     else
       let item := (Text.itemBody? raw).getD stripped
       let normalized := Text.normalizeWs item
-      if normalized.startsWith "deps:" || normalized.startsWith "recipe:" then none
+      if normalized.startsWith "deps:" || normalized.startsWith "recipe:"
+          || normalized.startsWith "profile:" then none
       else some normalized)
 
 def essenceTraceItemsOf : EssenceRead → List String
   | .file bytes =>
     match String.fromUTF8? bytes with
     | some text => essenceTraceItems text
+    | none => []
+  | _ => []
+
+/-- §11.5 の profile 宣言検査(警告のみ 2 種 — §29.4 の recipe 前例に倣い
+停止ゲートは追加しない。正値の宣言は人間の意図そのものなので informational
+warning も置かない)。invalid / conflict はどちらも standard へ縮退して発効
+しない(`ProfileScan.effective`)ため、この warning は「宣言したつもりが
+効いていない」を人間へ可視化する唯一の面である。不正 UTF-8 は placeholder
+判定が先にハードエラーになるため [] で構わない(`essencePointersOf` と同じ
+裁定)。 -/
+def profileWarnings : EssenceRead → List String
+  | .file bytes =>
+    match String.fromUTF8? bytes with
+    | some text =>
+      match Classify.scanProfile text with
+      | .invalid raw =>
+        [s!"ESSENCE.md declares an invalid profile value {pyReprStr raw}; "
+          ++ "the closed set is standard / auto-approve / unsandboxed, and "
+          ++ "the deployment runs as standard until the human fixes the "
+          ++ "line (§11.5)."]
+      | .conflict =>
+        ["ESSENCE.md declares conflicting profile values; declare exactly "
+          ++ "one, and the deployment runs as standard until the human "
+          ++ "fixes the lines (§11.5)."]
+      | _ => []
     | none => []
   | _ => []
 
@@ -1296,6 +1323,8 @@ def validateCore (i : Inputs) : Except String Outcome := do
   let bindingWarns := bindingIntegrityWarnings i.projectIndex i.title
   let recipeWarns := recipePointerWarnings (essencePointersOf i.essence)
     i.recipeLocks i.recipeDirs
+  -- profile 宣言の可視化(§11.5 — invalid / conflict は standard へ縮退)
+  let profileWarns := profileWarnings i.essence
   let errors := essenceErrs ++ essenceStructureErrors i.essence ++ assetErrs
     ++ structErrs ++ jsonlErrs
     ++ specSectionErrors spec ++ todoUniqueErrors todo
@@ -1308,6 +1337,7 @@ def validateCore (i : Inputs) : Except String Outcome := do
   let warnings := (recSection recommendations).2 ++ (blockerSection blockers).2
     ++ todoTraceWarnings specIndex todoItems ++ mustWarns
     ++ driftWarns ++ wontWarns ++ successWarns ++ bindingWarns ++ recipeWarns
+    ++ profileWarns
   -- payload 組み立てと §20.5 温存判定
   let status := if !errors.isEmpty then "error"
     else if !warnings.isEmpty then "warning" else "ok"
@@ -1556,6 +1586,27 @@ def validateCore (i : Inputs) : Except String Outcome := do
 #guard activeBatchOf (.obj [("active_batch", .arr [.num 1 0])]) == []
 #guard activeBatchListErrors (.obj [("active_batch", .arr [.num 1 0])])
     == ["todo.json.active_batch[0] must be a non-empty string."]
+
+-- essenceTraceItems: directive 行(deps: / recipe: / profile:)は trace source
+-- にならない(§20.2-7)
+#guard essenceTraceItems
+    "# T\n- real item\ndeps: npm:x\nrecipe: asl@2\nprofile: auto-approve\n- another"
+  == ["real item", "another"]
+#guard essenceTraceItems "- profile: auto-approve" == []
+
+-- profileWarnings(§11.5): invalid / conflict のみ警告、正値・不在は沈黙
+#guard profileWarnings (.file "profile: auto-approve".toUTF8) == []
+#guard profileWarnings (.file "## 前提事項\n- x".toUTF8) == []
+#guard profileWarnings (.file "profile: poc".toUTF8)
+  == ["ESSENCE.md declares an invalid profile value 'poc'; the closed set is "
+    ++ "standard / auto-approve / unsandboxed, and the deployment runs as "
+    ++ "standard until the human fixes the line (§11.5)."]
+#guard profileWarnings
+    (.file "profile: standard\nprofile: unsandboxed".toUTF8)
+  == ["ESSENCE.md declares conflicting profile values; declare exactly one, "
+    ++ "and the deployment runs as standard until the human fixes the lines "
+    ++ "(§11.5)."]
+#guard profileWarnings .absent == []
 
 -- validateCore 全体(全 absent 入力): essence 1 + JSON 8 + JSONL 3 = 12 エラー
 #guard match validateCore {

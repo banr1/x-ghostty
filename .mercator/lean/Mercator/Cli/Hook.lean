@@ -4,7 +4,6 @@ import Mercator.Hook.PreCompact
 import Mercator.Hook.PostTool
 import Mercator.Guard.Decide
 import Mercator.Core.ProjectIndex
-import Mercator.Core.Time
 import Mercator.Io.Fs
 import Mercator.Io.Clock
 import Mercator.Io.Env
@@ -371,20 +370,34 @@ def runPreTool : IO UInt32 := do
         pure (← Io.Fs.resolveNonStrict
           ⟨Hook.PostTool.childPath controlRoot ".claude/settings.json"⟩).toString
       else pure ""
-    -- 精選リスト外の信頼源(§11.2): install 判定が届く経路でのみ読む
-    let declared ← match toolCall, readOnly with
-      | .bash _, false => do
+    -- 精選リスト外の信頼源(§11.2)と実行 profile(§11.5): ESSENCE を読むのは
+    -- 判定がそれらに届く経路のみ — `deps:` は Bash の install 判定、`profile:`
+    -- は Bash / Write の ask 緩和面。read-only セッション(I-022/I-027)は
+    -- どちらも読まず、profile は GuardEnv 既定の standard のまま(§11.5 —
+    -- 決定木の read-only 分岐も profile を参照しない構造的二重化)。
+    let (declared, profile) ← match toolCall, readOnly with
+      | .bash _, false | .write _, false => do
         let mut d : Core.Classify.DeclaredPackages := {}
+        let mut payloads : List String := []
         for root in projectRoots do
           if let some text ← Io.Fs.readFile? (System.FilePath.mk root / "ESSENCE.md") then
-            d := Core.Classify.essenceDeclaredInto d text
-        pure d
-      | _, _ => pure ({} : Core.Classify.DeclaredPackages)
+            if let .bash _ := toolCall then
+              d := Core.Classify.essenceDeclaredInto d text
+            payloads := payloads ++ Core.Classify.profileLinePayloads text
+        pure (d, (Core.Classify.scanProfilePayloads payloads).effective)
+      | _, _ =>
+        pure (({} : Core.Classify.DeclaredPackages),
+          Core.Classify.Profile.standard)
     -- 解決要求キー → 解決結果(GuardEnv.resolved の契約は Guard/Types 頭注)
     let mut resolved : List (String × Option String) := []
     for key in Guard.familyARequests toolCall do
+      -- `Path(cwd) / key` は Python 同様に絶対キー側を優先する(`childPath` の
+      -- 契約は相対 rel なので分岐で表す)。絶対キーの解決結果が要るのは、
+      -- `..` を畳んだ位置でだけ containment 判定が健全になるためである。
       let v? ← match anchorA? with
-        | some anchor => Io.Fs.resolveLenient? (Hook.PostTool.childPath anchor key)
+        | some anchor =>
+          Io.Fs.resolveLenient?
+            (if key.startsWith "/" then key else Hook.PostTool.childPath anchor key)
         | none => pure none
       resolved := resolved ++ [(key, v?)]
     for key in Guard.familyBRequests base sessionMode toolCall do
@@ -392,7 +405,8 @@ def runPreTool : IO UInt32 := do
       resolved := resolved ++ [(key, v?)]
     let env : Guard.GuardEnv :=
       { controlRoot, projectRoots, sessionMode, essenceMode, settingsFile,
-        base, handoffRoot, expectedProject?, stateScript, declared, resolved }
+        base, handoffRoot, expectedProject?, stateScript, declared, resolved,
+        profile }
     let out := Guard.decide env toolCall
     if ((← IO.getEnv "MERCATOR_GUARD_SHADOW").getD "") ≠ "" then
       let record := Guard.shadowRecord (← nowLocal) payload sessionMode

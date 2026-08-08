@@ -20,7 +20,7 @@ I-027 essence)の Bash 許可面の純粋部分。旧 Python guard との等価�
    かつ最終行の strip がデリミタに一致し、中間行のどの strip もデリミタに
    一致しないとき、生パス(クォート除去後)とデリミタを返す。抽出パスの
    handoff root への解決(`Path.resolve`)と内包判定は IO の責務
-   (`resolves_into_handoff` 相当。純粋側の内包判定は `PathAlg.inside`)。
+   (`resolves_into_handoff` 相当。純粋側の内包判定は `PathAlg.isRelativeTo`)。
 2. **複合シェル文法の遮断**(`hasReadOnlyShellMeta`)—
    `re.search(r"[;&|<>`$\r\n]", command)`。heredoc 以外の許可リストに入る
    コマンドから複合文法を締め出す(2 行以上のコマンドは `\n` で必ず落ちる

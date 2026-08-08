@@ -21,6 +21,18 @@ scripts/*agent*, scripts/*claude*, scripts/*loop*, scripts/*autonomous*,
 7. Developing agent-runtime configuration and verifying its behavior are separate acts (§12.3): an autonomous cycle records the High-Risk Todo/Recommendation and stops; after human approval, `just supervise --todo T-... --recommendation R-...` provides the interactive ask-gated edit path bound to that exact Todo and authorizing Recommendation. The wrapper's canonical preflight requires the Recommendation `source` to include the Todo ID and its `target` to exactly equal the Todo target. A later cycle verifies the committed result through a project-defined isolated runner (§10). Never mix the change and its behavioral verification in one batch (§9.3).
 8. A high-risk change never justifies reinterpreting `ESSENCE.md`.
 
+## Relaxed profile (META.md §11.5)
+
+When ESSENCE.md declares `profile: auto-approve` or `profile: unsandboxed`
+(a human-only active line, I-004), the High-Risk ask faces become audited
+allows, so an autonomous cycle may apply a High-Risk Todo directly without
+the supervise stop. Only the stop is waived — everything else above is
+unchanged: the `risk_level` / `risk_reason` / `target` declarations, the
+no-mixing batch rule, the mechanical before/after hash records (the guard's
+staging is profile-invariant, META.md §31.3 G-T6), the evidence linkage and
+reflection summary, and the isolated-runner-only verification boundary
+(§10, I-003). A relaxed profile never justifies reinterpreting ESSENCE.md.
+
 ## Self-reference guard (§12.2)
 
 - PROJECT_ROOT `.claude/**` / `CLAUDE.md` (if the target has them) are the project's own content — the In-Project Agent's configuration, and your development target. Never adopt them as your own configuration, and never write Mercator's vocabulary into them (§6.2, §17).

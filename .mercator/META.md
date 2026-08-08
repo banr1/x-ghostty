@@ -104,7 +104,7 @@ Mercator はそこから Spec / Todo / 実装 / 検証 / Reflection / Recommenda
 
 **H1(`# ESSENCE — <題名>`)+ この 9 見出しの H2 は、綴り・順序ともに固定の閉じた集合として強制される。** 見出しタイトルは正準綴りと完全一致でなければならず、欠落・重複・順序違反・集合外の H2 の出現・複数の H1 はすべて `essence_structure` として validate error(§20.1)かつ停止ゲート(§13.1-15)になる — 人間が構造を正して `just resume` するまでループは 1 cycle も開始しない。H3 以下の小見出しは各節の内部で完全に自由であり検査対象外である。`templates/project/ESSENCE.md` が実際に seed するのは同じ構造に書き方ガイドを添えた展開版であり(FILL マーカーは 9 節すべての冒頭部に置く)、テンプレの見出しそのものが既に正準集合であるため、人間はこの見出しを削除・改名・並べ替えできない。判定に効くのはファイル内に未消化の `<!-- FILL:` マーカーが残っているかだけ(位置には依存しない)なので、§13.1-8 の placeholder 判定は構造検査より先に働き、placeholder の間は構造検査を保留する(空ファイルへ構造エラーを重ねてもノイズになるだけであるため)。
 
-`deps:` / `recipe:` は**通常の本文行として実在するときだけ**機械可読 directive になる。HTML comment 内と fenced code block 内は説明・例示であって発効しない。この directive 行は見出しとは独立に**位置非依存**であり、コメント・フェンス外の 1 行プレーンテキストであれば `ESSENCE.md` のどの節にあっても等しく有効である — 専用の隔離節は存在しない。推奨の置き場は「前提事項」節であり、テンプレの例は comment 内に置くため、人間が必要な行だけを comment の外へコピーするまで権限や recipe 採用を広げない。この active-line 規則は依存 gate、recipe pointer、Essence→Spec trace のすべてで共有する(§11.2、§20.2、§29.1)。
+`deps:` / `recipe:` / `profile:` は**通常の本文行として実在するときだけ**機械可読 directive になる。HTML comment 内と fenced code block 内は説明・例示であって発効しない。この directive 行は見出しとは独立に**位置非依存**であり、コメント・フェンス外の 1 行プレーンテキストであれば `ESSENCE.md` のどの節にあっても等しく有効である — 専用の隔離節は存在しない。推奨の置き場は「前提事項」節であり、テンプレの例は comment 内に置くため、人間が必要な行だけを comment の外へコピーするまで権限や recipe 採用や profile 緩和を広げない。この active-line 規則は依存 gate、recipe pointer、実行 profile、Essence→Spec trace のすべてで共有する(§11.2、§11.5、§20.2、§29.1)。
 
 **Mercator の優先度体系は、MoSCoW から Could を意図的に除いた Must / Should / Won't である。** テンプレの `必須対応事項`(Must 相当)/ `任意対応事項`(Should 相当)は、投影された Todo の priority 2 段(must / should、§9.1)にそのまま対応し、`非対応事項`(Won't 相当)は要求外の宣言であり、Todo にはならず §2.1.2 の機械化 triage を受ける。Could を持たないのは、それが人間の書くどの場所にも対応せず、「Essence に根拠を持たない要求を作らない」(§2.2-1)への裏口になるためである(詳細は §19.3)。非対応事項には**自由記述の慣習**として「延期 Won't」— 理想には含まれるが現段階では実施しないと人間が決めた項目 — を置いてよい: 「〜(現段階では実施しない。<観測可能なトリガー>が観測されたら update-essence で 必須対応事項 / 任意対応事項 への昇格を検討)」の形で昇格トリガーを添える。これは将来の update-essence(§2.1.4)への申し送りであって機械可読区分ではない — 投影上はどちらの非対応事項も等しく Todo にならず、ループがトリガーを評価して自動昇格させることはない(Could 排除の根拠はここでも保たれる: 昇格は常に人間の Essence 改稿を通る)。
 
@@ -142,7 +142,7 @@ just update-essence ../{project-title}   # 既存 Essence の対話改稿(変更
                                          # 束縛後は `just new-essence` / `just update-essence`(対象が焼き込み済み)
 ```
 
-`mercator-essence.sh` は CONTROL_ROOT から対話モードの Claude セッション(slash command `/essence`、実体は `CONTROL_ROOT/.claude/commands/essence.md`)を起動する。new モードのセッションは、テンプレの書式規律と対象リポジトリ(存在すれば)を読んだ上で、まず**理想発掘(枷外し)フェーズ**を走らせる: 人間が最初に語るプロジェクト像は、本人の時間・技術・予算・既存資産による自己検閲で既に縮んでいるのが通例であり、それをそのまま書き起こすと**枷ごと転写した地形**になる。そこで本編の前に、一度に一問 + 具体的な叩き台(strawman)提示 + 回答間の矛盾の深掘りという drill 式テンポで、制約の一時停止(「制約が全部なかったら何が理想か」)・手段の遡行・スケール反転・逆プレモーテム・枷の名指し(検証済みの制約か自己検閲か)といった問いを投げ、人間承認済みの**本質的理想**(モチベーション の骨格・成功条件/必須対応事項 の物差し)と、**理想と今回スコープの差分**(現段階では実施しないと決めた部分 — それぞれ観測可能な昇格トリガー付きの延期 Won't として §2.1.1 の慣習で記録)を確定させる。このフェーズは**短縮可・省略不可**: 最低 1 巡は必ず実施し、以降は人間の明示宣言(「これ以上は不要」)で打ち切れる。続いて人間へ**クリティカルな決定から順に**質問する — 回答の欠如・曖昧さが Blocking 停止(§13.1)に直結する順、すなわち モチベーション(理想の発掘)→ 必須対応事項(交渉不可能の確定・矛盾の即時解消)→ 成功条件(must 成果ごとの観測可能な受け入れ基準)→ 前提事項(技術スタック・実行環境・背景・現状)→ 思想(ありうる衝突の事前裁定・人間に委ねる判断)→ 遂行順序(順序のこだわり。無ければ Mercator の裁量に任せると明記)→ 非対応事項(恒久/延期の区別と延期分のトリガー聴取)→ 任意対応事項 → 用語(対話中に出た用語の定義を確定)→ 実装のこだわり(how の能動的聴取)。最後の「実装のこだわり」は専用節ではなく取りこぼし防止の総ざらいであり、技術選定・設計方針・流儀のこだわりを明示的に尋ね、回答を強度に応じて 必須対応事項 / 任意対応事項 / 前提事項 へ振り分けて載せる(こだわりの how は本質であり歓迎される — §2.1.3。ただし人間がこだわっていない how を釣り出して書かせてはならない)。質問テンポは場面で使い分ける: 発掘と矛盾・枷の深掘りは drill 式(一問ずつ + 叩き台)、事実確認的な聴取(前提事項、技術スタック、how の総ざらい)は 1 テーマ最大 3 問のバッチ。曖昧な回答は検証可能な文面へ言い換えて読み戻し、承認を得てからドラフトに載せる。インタビューの終了は二重の収束条件で判定する: (1) セッション側の残存曖昧さ検査(観測可能な文面か・must 矛盾がないか・重要文に未検証の枷が残っていないか・人間が確認していない暗黙前提を持ち込んでいないか・延期 Won't にトリガーが揃っているか)が空になり、かつ (2) 理解の要約(本質的理想 → 今回スコープ → 必須対応事項 → 非対応事項)を読み戻して人間が「認識が揃った」と明示宣言する。人間はいつでも深掘りを打ち切れるが、その場合セッションは未解消項目を要約に明示して人間の了承を得る(黙って落とさない)。完成した完全準拠ドラフトは handoff dir(`.agent/tmp/essence/ESSENCE.draft.md`)に書かれ、wrapper が**全文**(既存の実 Essence を置換する場合は diff も)を端末に表示し、明示確認(y)を得た場合に**限り** `PROJECT_ROOT/ESSENCE.md` へ原子的に設置する。
+`mercator-essence.sh` は CONTROL_ROOT から対話モードの Claude セッション(slash command `/essence`、実体は `CONTROL_ROOT/.claude/commands/essence.md`)を起動する。new モードのセッションは、テンプレの書式規律と対象リポジトリ(存在すれば)を読んだ上で、まず**理想発掘(枷外し)フェーズ**を走らせる: 人間が最初に語るプロジェクト像は、本人の時間・技術・予算・既存資産による自己検閲で既に縮んでいるのが通例であり、それをそのまま書き起こすと**枷ごと転写した地形**になる。そこで本編の前に、一度に一問 + 具体的な叩き台(strawman)提示 + 回答間の矛盾の深掘りという drill 式テンポで、制約の一時停止(「制約が全部なかったら何が理想か」)・手段の遡行・スケール反転・逆プレモーテム・枷の名指し(検証済みの制約か自己検閲か)といった問いを投げ、人間承認済みの**本質的理想**(モチベーション の骨格・成功条件/必須対応事項 の物差し)と、**理想と今回スコープの差分**(現段階では実施しないと決めた部分 — それぞれ観測可能な昇格トリガー付きの延期 Won't として §2.1.1 の慣習で記録)を確定させる。このフェーズは**短縮可・省略不可**: 最低 1 巡は必ず実施し、以降は人間の明示宣言(「これ以上は不要」)で打ち切れる。続いて人間へ**クリティカルな決定から順に**質問する — 回答の欠如・曖昧さが Blocking 停止(§13.1)に直結する順、すなわち モチベーション(理想の発掘)→ 必須対応事項(交渉不可能の確定・矛盾の即時解消)→ 成功条件(must 成果ごとの観測可能な受け入れ基準)→ 前提事項(技術スタック・実行環境・背景・現状)→ 思想(ありうる衝突の事前裁定・人間に委ねる判断)→ 遂行順序(順序のこだわり。無ければ Mercator の裁量に任せると明記)→ 非対応事項(恒久/延期の区別と延期分のトリガー聴取)→ 任意対応事項 → 用語(対話中に出た用語の定義を確定)→ 実装のこだわり(how の能動的聴取)。最後の「実装のこだわり」は専用節ではなく取りこぼし防止の総ざらいであり、技術選定・設計方針・流儀のこだわりを明示的に尋ね、回答を強度に応じて 必須対応事項 / 任意対応事項 / 前提事項 へ振り分けて載せる(こだわりの how は本質であり歓迎される — §2.1.3。ただし人間がこだわっていない how を釣り出して書かせてはならない)。質問テンポは場面で使い分ける: 発掘と矛盾・枷の深掘りは drill 式(一問ずつ + 叩き台)、事実確認的な聴取(前提事項、技術スタック、how の総ざらい)は 1 テーマ最大 3 問のバッチ。「成功 / 完成」を問う質問は**どちらの層の話か質問文自身で名指しする**。この設計は 2 つの状態を意図的に分けている — 発掘した本質的理想の実現(モチベーション の骨格。延期 非対応事項 を含みうる)と、今回スコープの完了(全 必須対応事項 が 成功条件 を満たす = §19.3 の must 境界)であり、無アンカーの「完成したとき」は両方に読める。モチベーション 系の問いは理想層に、成功条件 系の問いはスコープ層にアンカーし、回答がどちらにも読めるときは記録前にどちらかを確認する。曖昧な回答は検証可能な文面へ言い換えて読み戻し、承認を得てからドラフトに載せる。インタビューの終了は二重の収束条件で判定する: (1) セッション側の残存曖昧さ検査(観測可能な文面か・must 矛盾がないか・重要文に未検証の枷が残っていないか・人間が確認していない暗黙前提を持ち込んでいないか・延期 Won't にトリガーが揃っているか)が空になり、かつ (2) 理解の要約(本質的理想 → 今回スコープ → 必須対応事項 → 非対応事項)を読み戻して人間が「認識が揃った」と明示宣言する。人間はいつでも深掘りを打ち切れるが、その場合セッションは未解消項目を要約に明示して人間の了承を得る(黙って落とさない)。完成した完全準拠ドラフトは handoff dir(`.agent/tmp/essence/ESSENCE.draft.md`)に書かれ、wrapper が**全文**(既存の実 Essence を置換する場合は diff も)を端末に表示し、明示確認(y)を得た場合に**限り** `PROJECT_ROOT/ESSENCE.md` へ原子的に設置する。
 
 モードは 2 つあり、前提は wrapper が起動前に強制する(「実体のある Essence」の判定 — 非 placeholder・非空 — は §13.1-8 と同一): **new**(`just new-essence`)は前段の全節クリティカル順インタビューを行い、実体のある Essence が既に存在すれば **exit 2 で拒否**する — 確定済み正典の改稿は update の仕事であり、ゼロから聞き直すインタビューを既存正典の上に走らせない。**update**(`just update-essence`)は実体のある Essence が無ければ **exit 2 で拒否**し(先に `just new-essence`)、セッションは現行 `ESSENCE.md` の全文を人間の既往発言として読んだ上で、**最初に変更意図を質問**する(何を・なぜ変えたいか)。変更意図の直後に**軽量の枷外し**を 1 巡だけ行う: その変更の背後にある理想は何か・変更は理想への根治か対症療法か(叩き台付きの一問。枷が表面化したら名指しの追撃を一問)、および既存の延期 Won't のうち記録済み昇格トリガーが満たされたと読めるものを列挙して今回昇格するかを確認する — いずれも人間の「このままでよい」で即座に閉じる。以降のインタビューは意図が触れる決定だけに絞り(その中では同じクリティカル順・同じ洗練規則、延期 Won't にはトリガー)、改稿が繰り越し文と矛盾しないか(must 間の矛盾、成功条件の孤立、won't の柵越え)を検査し、意図の外の文は一字一句そのまま繰り越す。ドラフトは常に全文であり、wrapper の diff 表示が変更意図との照合になる。
 
@@ -169,7 +169,7 @@ just update-essence ../{project-title}   # 既存 Essence の対話改稿(変更
 
 **構造(最大 3 階層)。** essences/ 配下はサブディレクトリで整理してよい。資産は `essences/` からの相対パスで識別し、そのセグメント数は **1 以上 3 以下**(`essences/<a>`・`essences/<a>/<b>`・`essences/<a>/<b>/<c>`)でなければならない。4 セグメント以上に置かれたエントリは validate エラーで停止する(内容は読まない)。各セグメントは `[A-Za-z0-9._-]` のみを用い、先頭・末尾の `.` を禁じる。空ディレクトリは違反ではない。`essences` が PROJECT_ROOT にディレクトリでない形(ファイル等)で存在するのは違反である。この上限は「添付資産は Essence の付属物であって第二のリポジトリではない」という位置づけを保つための人間可読性の床であり、深い階層が要るなら実装ファイル側(Agent 所有)へ置くべき、という設計判断である。
 
-**双方向整合。** essences/ の各ファイルは `ESSENCE.md` 本文で言及されなければならない。言及は、その資産の相対パス自身(`essences/input/main.csv`)でも、**祖先ディレクトリ**(`essences/input/`)でもよい — ディレクトリ 1 行の言及がその配下の資産すべてを覆う。どちらの言及も無いファイルは **orphan** エラーである。逆に、`ESSENCE.md` が言及する `essences/<path>` は essences/ にファイルまたはディレクトリとして実在しなければならない(不在 = **dangling** エラー)。言及判定は directive(`deps:` / `recipe:`)と同じ安全境界に従う(§2.1.1、§20.2): HTML コメント・fenced code block の**外**にある semantic 行だけを見る。言及トークンは `essences/` 直後の `[A-Za-z0-9._-/]` の極大 run から末尾の `.` 連(文末句点)と `/` 連(ディレクトリ言及の末尾スラッシュ)を剥いだものであり、`essences/` の直前が path 構成文字(`[A-Za-z0-9._-]` または `/`。例 `src/essences/x`)の場合は言及と見なさない。Markdown のリンク/画像構文でも素のテキストでも成立する。`ESSENCE.md` が不在・placeholder の間は言及検査を**保留**する(構造検査は常時行う) — placeholder テンプレは言及を持たず全ファイルが偽 orphan になるためであり、その間は `essence_missing` / `essence_placeholder` が先に立つ(§13.1-8)。
+**双方向整合。** essences/ の各ファイルは `ESSENCE.md` 本文で言及されなければならない。言及は、その資産の相対パス自身(`essences/input/main.csv`)でも、**祖先ディレクトリ**(`essences/input/`)でもよい — ディレクトリ 1 行の言及がその配下の資産すべてを覆う。どちらの言及も無いファイルは **orphan** エラーである。逆に、`ESSENCE.md` が言及する `essences/<path>` は essences/ にファイルまたはディレクトリとして実在しなければならない(不在 = **dangling** エラー)。言及判定は directive(`deps:` / `recipe:` / `profile:`)と同じ安全境界に従う(§2.1.1、§20.2): HTML コメント・fenced code block の**外**にある semantic 行だけを見る。言及トークンは `essences/` 直後の `[A-Za-z0-9._-/]` の極大 run から末尾の `.` 連(文末句点)と `/` 連(ディレクトリ言及の末尾スラッシュ)を剥いだものであり、`essences/` の直前が path 構成文字(`[A-Za-z0-9._-]` または `/`。例 `src/essences/x`)の場合は言及と見なさない。Markdown のリンク/画像構文でも素のテキストでも成立する。`ESSENCE.md` が不在・placeholder の間は言及検査を**保留**する(構造検査は常時行う) — placeholder テンプレは言及を持たず全ファイルが偽 orphan になるためであり、その間は `essence_missing` / `essence_placeholder` が先に立つ(§13.1-8)。
 
 **マニフェスト。** attestation(§13.1-10)が突き合わせる essences/ マニフェストのキーは `essences/` からの相対パス(`input/main.csv`)であり、値はその SHA-256 である。深さ上限を超えたエントリは構造違反として先に停止するため、マニフェストには現れない。
 
@@ -252,6 +252,9 @@ Mercator v2.0 は次を目的にしない。
 事実の違いである。** 内包するかどうかは対象の Essence が決めることであって、Mercator が対象を格付けする
 ための機構ではない。したがって本書は、この違いを支配的な分岐として全編に張り巡らせない — In-Project
 Agent や対象側 `.claude/**` に言及する箇所は、単に「対象がそれを内包する場合の話」として読めばよい。
+実行 profile(§11.5)も同じ原則に立つ: その値は「PoC か本番か」のような対象の格付けではなく、
+「この配備で何の保護を緩めるか」という実行環境の事実申告であり、命名(auto-approve / unsandboxed)も
+用途ラベルではなく緩める対象の名指しである。
 
 **対象側 `CLAUDE.md` / `.claude/**` は対象の内容物である。** それは対象プロダクトの一部であり、対象の
 Essence から普通に生まれる(あるいは人間が対象リポジトリに置く)。Mercator はそこに**雛形を seed せず、
@@ -299,6 +302,7 @@ Mercator 固有の語彙を書き込まない**(§6, §17)。エージェント�
 │       ├── mercator-triage.sh
 │       ├── mercator-supervise.sh
 │       ├── mercator-essence.sh
+│       ├── mercator-xlsx-dump.py
 │       └── claude-trust.sh
 │
 └── {project-title}/
@@ -589,7 +593,7 @@ PROJECT_ROOT/.mercator/state/
 
 投影文書の item id は一意でなければならず、`S-###`(Spec)/ `T-###`(Todo)/ `R-###`(Recommendation — framework が実体化する loop gate のみ `R-LG-<timestamp>-<suffix>`、§21.5)/ `B-###`(Blocker)の形を用いる。id 本体の文字クラスは `<prefix>-[A-Za-z0-9_+-]+` である(正本は `Mercator/Core/Text.lean` の `isIdChar` / `validIdShape`)。`+` はこのクラスの必須要素である: loop gate id は UTC オフセット付きローカル時刻を埋め込むため、UTC 以東のすべての配備で `R-LG-20260726T044234+0900-b7f8` の形になる。id を argv へ載せる前に形状を見るシェル側の pre-filter は、この canonical 形状**そのもの**でなければならない(綴りは `_lib.sh` の `valid_item_id` 1 箇所のみ。engine より厳しいクラスは、engine なら解決できる正当な id を握り潰す — §13.6-5 の実障害、凍結は matrix C-026 / SH-011..012)。
 
-各 Spec item は `essence_refs` に、現在の `ESSENCE.md` の active な人間内容行を正規化した文字列を 1 件以上持つ。見出し、空行、`deps:` / `recipe:` directive、HTML comment、fenced code 内は参照先にならない。参照は現在の Essence 内容との**完全一致**で検査される: 投影 hash(spec.json の `projected_from_essence_sha256`)が現 `ESSENCE.md` と一致している通常状態では、存在しない根拠・古い根拠を指す Spec は validate error になる(§20.2-7)。投影 hash が乖離している間 — 人間が Essence を編集し、まだ再投影されていない設計上の一時状態 — は、ref の不一致は**構造的必然**(編集された行を参照していた全 Spec が機械的に stale になる)なので per-Spec error にせず、単一の projection-drift warning に不一致 Spec の一覧として集約する。この緩和が安全なのは、apply-projection が spec.json を含む bundle に現 `ESSENCE.md` hash の stamp 一致を要求する(stale 投影は**書けない**、§20.2-8)ため、乖離状態が「人間の Essence 編集の後・再投影の前」以外に発生し得ないからである。これは「投影がどの原文に由来するか」の機械的 provenance であり、その解釈が正しいことまで保証するものではない(§22)。
+各 Spec item は `essence_refs` に、現在の `ESSENCE.md` の active な人間内容行を正規化した文字列を 1 件以上持つ。見出し、空行、`deps:` / `recipe:` / `profile:` directive、HTML comment、fenced code 内は参照先にならない。参照は現在の Essence 内容との**完全一致**で検査される: 投影 hash(spec.json の `projected_from_essence_sha256`)が現 `ESSENCE.md` と一致している通常状態では、存在しない根拠・古い根拠を指す Spec は validate error になる(§20.2-7)。投影 hash が乖離している間 — 人間が Essence を編集し、まだ再投影されていない設計上の一時状態 — は、ref の不一致は**構造的必然**(編集された行を参照していた全 Spec が機械的に stale になる)なので per-Spec error にせず、単一の projection-drift warning に不一致 Spec の一覧として集約する。この緩和が安全なのは、apply-projection が spec.json を含む bundle に現 `ESSENCE.md` hash の stamp 一致を要求する(stale 投影は**書けない**、§20.2-8)ため、乖離状態が「人間の Essence 編集の後・再投影の前」以外に発生し得ないからである。これは「投影がどの原文に由来するか」の機械的 provenance であり、その解釈が正しいことまで保証するものではない(§22)。
 
 High-Risk Todo は `risk_level: "high"` / non-empty `risk_reason` に加えて、supervised 変更面を表す non-empty `target` を持つ。対応する承認 Recommendation は `source` に Todo ID を含め、同じ `target` を完全一致で持つ(§12.1)。
 
@@ -866,6 +870,10 @@ Over-Project Agent は `CONTROL_ROOT` から動いているため、`CONTROL_ROO
 
 この分離は規律だけに頼らない。permissions は CONTROL_ROOT 配下への Edit/Write を deny し、hook は `scripts/**`(commit guard `_lib.sh` を含む)、`templates/**`(束縛ファイルの描画元)、`recipes/**`(レシピ原本、§29)、`CLAUDE.md` / `.claude/**`、`justfile`、`META.md`、`README.md`、`.agent/prompts/**`、`.agent/state/workspace.json` / `project_index.json`、および **enforcement の実体である `bin/**`(hook / guard / state エンジンのバイナリ)と `lean/**`(その Lean ソース)** への変異を deny する。後 2 面を hook にも持たせるのは、settings が陳腐化した配備(§28.5-3 が read-only セッションの修復面として明示的に想定する状態)で、判定を実行している当のバイナリとソースについて hook が無意見になる層を作らないためである。**この deny は §11.2 の依存マニフェスト `ask` に優先し、Edit 経路と Bash 経路で同一である。** 両者は実際に重なる — 配布物の `recipes/agentic-state-loop/files/loop/lean/`(`lakefile.lean` / `lean-toolchain` / `lake-manifest.json`)は制御プレーン面かつマニフェスト名であり、ここで ask に降格すれば人間同席の `just supervise` がレシピ原本(§29.2 の immutable surface)を書き換えられてしまう。deny 群が ask 群に先行するという決定木の順序不変量(§31.3 G-T1 と同型)は WRITE_TOOLS 面にも及ぶ。OS sandbox の `denyWrite` も静的 enforcement surface を重ねて保護する。例外は、正規 transition が必要とする動的 state 書込みだけである: `bin/mercator state` / wrapper / hook が PROJECT_STATE_ROOT の canonical state、control run log、attestation、tmp を所定の意味論で更新する。agent に許される state 変異コマンドは permissions/hook で限定し、resume/loop-only transition は別途 deny する(§18.2、§19.1)。この CONTROL_ROOT 相対判定は `PROJECT_ROOT/README.md`(通常実装、§11.1)や対象自身の `scripts/**` を巻き込まない。Bash による control surface 変異は保守的なテキスト検査でも deny する — ただしテキスト検査は CONTROL_ROOT-cwd の相対綴りを写した過剰近似なので、セッション cwd が登録 PROJECT_ROOT 配下にあるとき(同じ綴りが agent 所有の project ファイルを指すとき)は適用せず、解決済みパス判定に委ねる(project cwd の `cp .tmp-readme.md README.md` を control-plane README 変異として deny した 2026-07-31 の過剰遮断の是正。settings 側の同型過剰マッチは §19.1-5)。未知の Bash は cycle の fail-closed 床(§19.1-5)により実行されない。
 
+**保護パス直書きの層構造と、投影 4 ファイルの単層問題。** Bash 経由の保護パス直書き deny は「コマンドが保護パスを名指ししている」×「書き得るコマンドである」の連言で判定する。前者は生テキストだけでなく**字句解析後のトークン**でも照合する — 生の部分一致だけでは、shell が同じ 1 パスとして解決する綴りをクォートで分断するだけで判定を外せた(`cp a ../p/'ESSENCE'.md`)。後者はこの連言専用に広い集合を使い(`>` / `>>` / `sed -i` / `tee` / `mv` / `cp` / `rm` に加えて `truncate` / `install` / `ln` / `dd` / `patch` と汎用インタプリタ `perl` / `python` / `python3` / `ruby` / `node`)、静的に読取専用と示せないインタプリタは保護パスを名指しした時点で deny 側へ倒す。**この広い集合を control-surface / zone / manifest と共有してはならない** — それらは mutator が対象パスの前に出現するかを見るため、インタプリタを足すと `python3 scripts/x.py validate` のような読取まで deny になる(凍結検査が実際にこれを捕捉した)。
+
+この mutator 集合はヒューリスティックであり、権威ある第 2 層は OS sandbox の `denyWrite` / `denyRead`(§16.1、I-029)である。`ESSENCE.md` / `essences/` / `.env` / `secrets/**` / `config/credentials.json` / `PROJECT_STATE_ROOT/state/project.json` / CONTROL_ROOT 一式はいずれもその列挙に載っている。**唯一の例外が投影 4 ファイル(`PROJECT_STATE_ROOT/state/{spec,todo,recommendations,blockers}.json`)であり、hook が単層の柵になっている。** これらを `denyWrite` へ足せるかは未解決である: 正規の書込み経路 `bin/mercator state apply-projection` は agent の Bash から起動されるため、sandbox が `bin/mercator` 自身の書込みを捉えるなら足した瞬間に投影が不可能になる。`project.json` が `denyWrite` に載っている一方でそれを書く `ensure` も agent 実行コマンドである、という非対称がこの問いの中身であり、実セッションでの実測で決着させるべき maintainer task として残す(§28.5-8 の扱い)。
+
 ### 11.4 Secrets — Supply and Leakage Guard
 
 §11.3 と §16 は Mercator が secret input surface として定義する `.env` / `.env.*` / `secrets/**` / `config/credentials.json`、および列挙済み home credential stores(`~/.ssh`, `~/.aws`, `~/.config/gcloud`, `~/.kube`, Docker/npm/PyPI/netrc、`~/.claude/**` / `~/.claude.json` の Claude credential/config/history files)の**読取を deny**する。ただし文字列 hook だけでは `x=.en; y=v; cat "$x$y"` のような動的パスを判定できず、親 shell の環境変数は `env` で列挙できる。ゆえに I-024 は次の強制可能な形に固定する: **Mercator が起動する Agent に秘密の環境変数も、上記の定義済み secret input surface の読取権限も渡さない。秘密を要する検証は Agent session 外で人間が実行し、exit code と redact 済み要約だけを state に返す。** 対象の通常 source path や別の home toolchain directory に秘密を置けば Agent は読めるため、それらを secret store として扱う運用はこの保証の対象外であり、上記 path へ移す必要がある。任意の source tree を読みながら「どこに置かれた秘密でも読めない」とは主張しない。
@@ -880,6 +888,48 @@ secret-required な Todo は自律 cycle で command を走らせない。Human-
 - 隔離 runner の出力も同じ扱いである: `exit_code` と redact 済み要約だけを evidence に残し、逐語は載せない(§10、§22)。
 
 **政策 — secret-required Todo(B)を重ねる。** 本番資格情報・課金・外部権限を触る Todo には `secret_required: true` を付け、**Agent に実行させず**、§21.4 の人間ゲートへ落とす。これは「Agent 子プロセスだけに秘密を見せる」という実現不能な仮定を捨て、秘密と Agent のプロセス境界を完全に分ける分類である。
+
+### 11.5 Execution Profile — 実行環境の事実申告(`profile:`)
+
+最厳格の権限設定を一律に配ると、guard の ask(headless では自動 deny、§19.1-5)が PoC 級の配備でも自律ループを止め、OS sandbox が `xcodebuild` 等のネイティブ toolchain を構造的に阻む(DerivedData 書込み・XPC・コード署名)。この緩和の決定は依存宣言(§11.2)や recipe 採用(§29.1)と同じ型の**人間の決定**であるため、`ESSENCE.md` の第 3 の機械可読 directive として固定する:
+
+```text
+profile: standard | auto-approve | unsandboxed     例: profile: auto-approve
+```
+
+書式・安全境界は `deps:` / `recipe:` と同一である(§2.1.1): `semanticLines` 経由で HTML comment / fenced code block の**外**にある active line だけが発効し、位置非依存(推奨: 「前提事項」節)。値は**閉集合 3 段**であり、それ以外の綴りは発効しない。安全論拠も同一 — `ESSENCE.md` は人間専用(I-004)でエージェントには deny され、その active line は人間の承認そのものである。命名は用途ラベル(poc / prod 等)ではなく「何を緩めるか」の事実申告である: §5.0 のとおり Mercator は対象を格付けする機構ではなく、profile も対象の種別ではなく実行環境の事実を申告する。
+
+**3 段の意味論(単調包含)。**
+
+| 値 | guard の ask 面 | 無意見 Bash | OS sandbox |
+|---|---|---|---|
+| `standard`(省略時・既定) | 従来どおり ask | 従来どおり無意見(headless では settings 床が deny) | 必須(I-029) |
+| `auto-approve` | 緩和対象の ask 面を監査可能な理由文言つき allow へ | hook が明示 allow | 必須のまま |
+| `unsandboxed` | auto-approve と同一(guard は両者を区別しない) | 同左 | `sandbox.enabled: false` |
+
+**緩和されるのは次の ask 6 葉と Bash 最終無意見葉だけである**(guard 決定木 `Guard/Decide.lean` の完全列挙。理由文言は profile 由来であることを明示し、監査ログに残る):
+
+1. Bash: High-Risk Zone 変異(§12)— staging(before-hash 記録、§20.4-3)は**不変**のまま allow。
+2. Bash: dependency-resolution input 変異(§11.2)。
+3. Bash: 許可ルート外への `cd`(§11.2 の cd フェンス)。
+4. Bash: 未宣言依存の install(§11.2 — curated ∪ `deps:` 外)。
+5. Write: 依存マニフェスト編集(§11.2)。
+6. Write: High-Risk Zone 編集(§12)— staging 不変。
+7. 加えて **Bash 最終無意見葉のみ** fallback allow(settings の allow リスト外のコマンドが headless の自動 deny に落ちない)。
+
+**緩めないもの(意図的な除外)。** bootstrap / build の ask(初期化・運用操作 — 日常サイクルの効率と無関係であり、cycle 内で走ると I-018 ロックを継承して通ってしまうため allow 化は危険)。Write の最終無意見葉(sandbox は Edit/Write ツールを縛らないため、緩めると additionalDirectories 外 — `~/.zshrc` 等 — への Edit が promptless になり「sandbox 維持」の宣言と矛盾する。project 内 write は settings の `Edit(/PROJECT/**)` allow が既に promptless)。
+
+**deny 床は全 profile で不変である(I-030、機械証明済み(§31.3 G-T6))。** ESSENCE.md / essences(I-004)、秘密(I-024)、control-plane 15 面(§11.3、I-028)、git stage/commit(I-015)、危険 Bash、claude ネスト起動(I-003)は、どの profile でも同一理由で deny される。profile が変えるのは ask / 無意見の葉だけであり、deny を弱める経路も、High-Risk staging(§20.4-3)を変える経路も存在しない。read-only セッション(triage / essence、I-022/I-027)は profile を**無視**する — guard の read-only 分岐は決定木の最上段にあり、profile 条件は非 read-only 葉にのみ現れるため、これは規律ではなく構造で成立する。
+
+**guard は auto-approve と unsandboxed を区別しない。** hook の判定条件は「profile が standard か否か」の 1 条件だけである。sandbox の解除は rendered settings 専任であり(`sandbox.enabled: false`)、hook に sandbox 固有の分岐を作ることは実権限の帰属を誤らせる — sandbox を外すのは init が描画した settings であって hook ではない。
+
+**settings 側の対応(relaxed 2 態)。** hook の allow は settings の ask に勝てない(§11.2 L833 と同じ評価順)ため、relaxed 2 態の rendered settings からは project 側 ask 3 面(`CLAUDE.md` / `.claude/**` / `.mcp.json` — §16.1 の ask 配列)を**除去**する(残すと profile が該当面で無効化される)。control-plane の live settings 修復面の ask(§28.5-3)は全 profile で維持する — これは配備欠陥からの回復経路であり日常サイクルの効率と無関係である。relaxed 2 態のテンプレを手で 3 枚持つことはしない: **正本は 1 枚のテンプレ + 純関数 `deriveProfileTemplate`**(§16.1)であり、派生は「固定リテラル行の完全一致削除 3 本 + `"enabled": true` の置換 1 本」だけをレンダ前のテンプレテキストへ適用し、どれか 1 つでも期待どおりに一致しなければ描画自体を拒否する(fail-closed)。
+
+**発効は init 経由のみ(§26)。** `profile:` は hook が ESSENCE を読む都度 ask 面の判定に効くが、settings 側(ask 3 面の除去・sandbox 解除)は `just init` の再実行でのみ反映される。宣言と rendered settings の不一致は**両方向とも安全側**に倒れる: ESSENCE=relaxed × settings=standard では settings の ask 3 面が headless deny で止め(sandbox も維持)、ESSENCE=standard × settings=relaxed では hook が即時に厳格判定へ戻り ask = headless deny で止める(残るのは sandbox 解除だけだが、動くのは settings の allow リストに載る検証コマンドだけである)。暴走方向が存在しないため、loop / supervise に起動前 mismatch 検査は置かず、検査は doctor に一本化する(§28.5 の流儀)。validate は invalid 値と conflict(相異なる複数宣言)を warning で可視化し、いずれも `standard` へ縮退する — 緩和方向の機能は不確実性があれば発効しない。
+
+**エージェントの自己拡権経路は既に閉じている。** ESSENCE への書込みは permissions deny + hook deny + sandbox denyWrite の 3 層封鎖(I-004)。guard は relaxed 2 値を区別しないため、仮にエージェントが ESSENCE を書き換えても guard 挙動の増分は「ask 面の allow 化」まで — 実権限の増分である sandbox 解除は human-only の init(I-011、§18.2)経由でしか起きない。ゆえに profile 発効に attestation 台帳照合の専用ゲートは置かない。unsandboxed 配備での ESSENCE 改変は既存の `essence_unreviewed_change`(§13.1-10)が cycle 境界で検出する。
+
+**unsandboxed の信頼モデルは正直に縮退する(§16.1 L1422 の流儀)。** `unsandboxed` では I-029 の「autonomous Bash は OS sandbox 必須」が人間の明示宣言によって外れ、実行境界は deny 床(I-030: permissions deny + hook deny)と、ガバナンス検出(attestation・High-Risk hash 記録・cycle commit 監査)まで縮退する。動的パス構築や環境変数経由の秘密読取に対する OS 層の裏打ちは失われる — これは「安全のまま速くなる」ではなく「人間が OS 層の保護を降ろした」であり、その事実が ESSENCE の active line として人間の署名つきで残ることが本設計の要点である。
 
 ---
 
@@ -941,6 +991,8 @@ High-Risk Todo は次を満たさなければならない。
 
 これらは、対象に存在する High-Risk パスに対して働く — 通常のプロダクトでも `.github/workflows/**`
 などがあれば対象になり、対象がエージェントを内包する場合は agent runtime 構成系も加わる。
+
+**relaxed profile 下の High-Risk ワークフロー(§11.5)。** `auto-approve` / `unsandboxed` では High-Risk Zone の ask 面が監査可能な理由文言つき allow になるため、自律 cycle は supervise 停止を経ずに High-Risk Todo を直接実行できる。免除されるのは**停止(supervise の人間同席)だけ**であり、残りの規律は不変である: before/after hash の機械記録(§20.4-3 — guard の staging は profile 非依存、§31.3 G-T6)、項 1–3 の `risk_level` / `risk_reason` / `target` 宣言、単独 batch(項 4)、diff summary と reflection 要約(項 6–8)、そして振る舞い検証が project-defined isolated runner 経由でのみ許される境界(§10、I-003)。relaxed が外すのは「変更前の人間承認プロンプト」であって「変更の監査可能性」ではない。
 
 ### 12.2 Self-reference Guard
 
@@ -1074,7 +1126,7 @@ resume は人間専用である。steering モードも同様である — commi
 
 1. **Canonical state**: 停止条件は Recommendation / Blocker または直接評価できる canonical fact として実体を持つ。Essence 判断系はエージェントが記録する。loop 検出系(`no_runnable_todos` / `idle_cycles` / `infra_unreachable` / `must_complete_awaiting_phase_approval`)は `mercator state raise-loop-gates` が cycle 終端で Human-input Recommendation として実体化する。直接 fact の例外は `essence_missing` / `essence_placeholder` / `essence_structure` / `essence_asset_integrity` / `essence_unreviewed_change` / `state_unreadable`、および「最終 must の更新後、gate 実体化前に crash した」場合の `todo.json + context.phase` が示す `must_complete_awaiting_phase_approval` である。後者も `should-stop` が直接止め、同じ人間 resume が phase approval として処理するため、余計な cycle や二度目の resume は不要である。可視性は第 2・第 3 層が保証する。
 2. **`just status` の出力**: `mercator state status`(`just status` / `mercator-status.sh` 経由)は、現在の停止評価(reasons / message / idle カウンタ / must 完了数 / completion phase)と、停止中なら再開手順を正本 state から都度計算して表示する。この表示は `should-stop` の**別実装であってはならない**: status は gate 述語の入力(`StopInputs`)を独自に組み立てず、`should-stop` と同一の観測をそのまま渡して同一の述語を呼ぶ。表示側が入力を組み直すと、観測面が 1 つ増えるたびに「型は通るが片方だけ欠けた観測で評価する」余地が生まれ、`just status` の Gate 行と `should-stop` の reasons が同時刻に食い違う。gate 述語が依存する human-owned 面の観測は、構造体の既定値を持たない必須フィールドとして表現し、注入忘れがコンパイルで落ちるようにする。通常 gate は正確な `--resolve <ID>` を案内する。フェーズ境界停止(`must_complete_awaiting_phase_approval`)では `--approve-should` と `--close-at-must` の二択を明示する。**未 attestation の人間所有入力編集**(`essence_unreviewed_change`)の締めは、open gate があるときは `just resume --steer-only --note "..."`(§13.3-4''' — 編集だけを記録し gate は開いたまま残す)であり、gate が無いときだけ素の resume である。編集の記録と gate の決定は別の仕事なので、同じ message の中で別々の exact 形が別々の仕事を名指しする — この 2 つを 1 つの形に畳むと、人間は解決する意思のない gate を潰すことでしか自分の編集を記録できない(2026-08-05 の実障害)。supervise authorizing gate(§13.3-4'')では `--resolve` を**案内しない**(この状態では拒否される形である)— 代わりに `just supervise --todo T-... --recommendation R-...` の exact 形と、明示撤回 `just resume --retract-approval <ID>` を案内し、payload には同じ集合を `supervise_authorizations` として機械可読に出す(triage wrapper の縮小がこれを消費する)。案内された supervise 形が preflight に受理されることはテストが凍結する — 拒否される形を写させる案内を出さない綴り規律は、resume 形だけでなく supervise 形にも及ぶ。詳細(gate Recommendation の全文)は canonical state の `recommendations.json` にある。この message は status と loop 終了だけでなく、resume 形を人間に綴る他の wrapper 面も消費する: `mercator-resume.sh` の拒否表示(§13.3「拒否は建設的でなければならない」)と `mercator-essence.sh` の設置後案内(§2.1.4-5)である。resume の exact 形を人間に提示する面は、常にこの単一導出点を写す — 面ごとに固定文言を持つと、gate の有無で受理形が変わる度に一部の面だけが陳腐化する(2026-07-27 / 2026-08-04 の実障害はいずれもこの形)。
-3. **ループの終了メッセージ**: `mercator-loop.sh` は停止で exit するとき、停止理由の JSON と、確認先(`just status`)および**対象を明示した** resume の選択肢を必ず出力する。この終了は仕様どおりの終端であるため、**正常終了(exit code 0)とし、`STOP:` として報告する — `ERROR:` として報告してはならない**(`mercator-status.sh` の STOP / COMPLETE / RUNNABLE と同じ語彙)。エラー扱いは「フレームワークが壊れた」と「ワークフローが人間の手番になった」を混同させ、`just` 等の呼び出し側にも偽の失敗表示(`error: Recipe failed`)を強いる。停止中かどうかの機械可読な照会は exit code ではなく `mercator state should-stop` が担う(§19.1-5)。
+3. **ループの終了メッセージ**: `mercator-loop.sh` は停止で exit するとき、停止理由の JSON と、確認先(`just status`)および**対象を明示した** resume の選択肢を必ず出力する。この終了は仕様どおりの終端であるため、**正常終了(exit code 0)とし、`STOP:` として報告する — `ERROR:` として報告してはならない**(`mercator-status.sh` の STOP / COMPLETE / RUNNABLE と同じ語彙)。エラー扱いは「フレームワークが壊れた」と「ワークフローが人間の手番になった」を混同させ、`just` 等の呼び出し側にも偽の失敗表示(`error: Recipe failed`)を強いる。停止中かどうかの機械可読な照会は exit code ではなく `mercator state should-stop` が担う(§19.1-6)。
 
 **ゲート済み再実行は副作用ゼロ(I-019)。** `mercator-loop.sh` は各 cycle の**開始前**に should-stop / should-complete を評価する(pre-gate)。ラッチ済みの停止(または完了)を検出した場合、run 記録を書かず、カウンタを変えず、commit も作らずに、理由と再開手順を表示して終了する。ラッチ中に `just loop` を何度実行しても、状態も Git 履歴も一切変化しない。停止条件が cycle **中**に新たに発生した場合のみ、その cycle は通常どおり finalize され(end-run → record-progress → raise-loop-gates → validate → checkpoint commit)、その後にループが終了する。
 
@@ -1420,7 +1472,7 @@ Claude Code hooks は、ツール実行前後、セッション開始、停止�
 
 `Bash(claude *)` は `deny` である。対象の arbitrary runtime をライブ起動しても sibling control/state を守れないため、project-defined isolated runner だけを通常の verification command として許す(§10)。`ask` の `Edit(../PROJECT_TITLE/CLAUDE.md)` / `.claude/**` は、人間が `just supervise` で承認しながら対象 runtime を開発する High-Risk 経路である(§12)。依存 install が `ask` に現れない理由は §11.2 のとおりで、判定は hook が単独で担う。
 
-本節および §16.2 / §17 の JSON / Markdown ブロックは構造を示す**代表例**であり、許可/秘密 path の網羅的な正本ではない。正確な配布内容は `templates/control/*.tmpl` が正本である。配布テンプレートは Over-Project Agent の既定 model も固定するが、model 値は安全境界ではない。cycle 内の脚仕事の知能配分は §30 が定め、subagent model は `.claude/agents/*.md` frontmatter が正本である。
+本節および §16.2 / §17 の JSON / Markdown ブロックは構造を示す**代表例**であり、許可/秘密 path の網羅的な正本ではない。正確な配布内容は `templates/control/*.tmpl` が正本である。**profile(§11.5)の relaxed 2 態にテンプレの複製は存在しない**: 正本は同じ 1 枚の `settings.json.tmpl` と純関数 `deriveProfileTemplate`(`Core/Classify/Profile.lean`)であり、init は宣言された profile に応じてレンダ前のテンプレテキストへ派生(project 側 ask 3 面の行削除、unsandboxed ではさらに `"enabled": true` → `false`)を適用してから束縛版を描画する。派生パターンが期待どおりに一致しない場合は描画自体を拒否する(fail-closed)— 手書きの派生テンプレはテンプレ間ドリフトの温床であり、置かない。配布テンプレートは Over-Project Agent の既定 model も固定するが、model 値は安全境界ではない。cycle 内の脚仕事の知能配分は §30 が定め、subagent model は `.claude/agents/*.md` frontmatter が正本である。
 
 **session model は配備方針であり、単発上書きの逃げ道を持つ。** 束縛済み `CONTROL_ROOT/.claude/settings.json` の `model` フィールドが配備既定の正本である(配布既定: 公式 alias `best`)。人間はこのフィールドを別の公式 alias へ書き換えて既定を恒久的に変えてよい — model 値は安全境界ではないので、permissions / hooks / sandbox は何も変わらない(§30)。加えて、既定モデルが**その時だけ**使えない場合(利用上限到達、提供終了、provider 障害)に束縛済み設定を書き換えずに続行できるよう、全 Claude launcher(loop / once / triage / essence / supervise)は環境変数 `MERCATOR_MODEL` を単発上書きとして受け、`--model <value>` を CLI へ渡す:
 
@@ -1496,7 +1548,7 @@ PROJECT_STATE_ROOT = ../PROJECT_TITLE/.mercator
 
 ## Non-negotiable Rules
 
-1. Never edit `../PROJECT_TITLE/ESSENCE.md`.
+1. Never edit `../PROJECT_TITLE/ESSENCE.md` or anything under `../PROJECT_TITLE/essences/**` (both human-only, I-004).
 2. Never run Claude Code from the workspace root.
 3. Treat `../PROJECT_TITLE/.mercator/state/*.json` as the project canonical state, and mutate it only through `bin/mercator state`.
 4. Treat `./.agent/state/*.json` as Mercator control-plane state.
@@ -1547,6 +1599,7 @@ CONTROL_ROOT/scripts/
 | `mercator-triage.sh`        | 人間専用: 停止ゲートの対話的 triage(§13.6)。read-only の対話 Claude セッション(`/triage`)を起動し、人間必須の項目は手順に分解、調査で決着する項目は代行で打ち取り、note と exact decision list を表示して確認(y)を得た場合のみ targeted resume へ引き継ぐ |
 | `mercator-supervise.sh`     | 人間専用: 必須 `--todo T-...`(任意 `--recommendation R-...`)で承認済み High-Risk Todo 1 件へ束縛する single-flight session。sanitize 済み環境、同じ permissions/hooks/sandbox の下で人間が ask を判断し、dirty diff を exact Recommendation の `just resume --resolve` へ引き渡す(§12.1、§21.3) |
 | `mercator-essence.sh`       | 人間専用: `ESSENCE.md` の対話起草/改稿(Essence interview、§2.1.4)。read-only の対話 Claude セッション(`/essence`)を起動し、wrapper が全文(既存の実 Essence を置換する場合は REPLACE 明示 + diff、§2.1.4-4)を表示して確認(y)を得た場合のみ設置する。`--mode new`(`just new-essence`)は理想発掘(枷外し)フェーズ → クリティカル順の全節インタビュー — 実体のある Essence が既にあれば拒否。`--mode update`(`just update-essence`)は**変更意図を最初に質問**し、背後の理想の軽量発掘と延期 Won't の昇格点検を経て意図の範囲だけを改稿 — 実体のある Essence が無ければ拒否。束縛前後どちらでも動く |
+| `mercator-xlsx-dump.py`     | `mercator-essence.sh` の起動前処理(§2.1.4-2): `PROJECT_ROOT/essences/` 配下の Excel ブックをテキストのセル一覧として handoff dir へダンプする。stdlib のみのゼロ依存で、セッションの許可面・書込み面を一切変えない人間側前処理 |
 | `claude-trust.sh`           | 人間の明示操作として Claude Code trust を `~/.claude.json` に設定(`just trust` = `--apply`)/検査のみ(`just trust-check` = `--check`、書込みなし)。実体は `bin/mercator trust ensure|status`(§31.2-8)   |
 
 Mercator は特定プロジェクトに依存しない汎用テンプレートとして配布される。配布状態の `.claude/settings.json` / `CLAUDE.md` / `justfile` は**どの対象にも束縛されていない安全版**であり、`mercator-init.sh`(`just init`)が `templates/control/` の bind テンプレートから対象名を差し込んで束縛版を生成する。1 つの制御プレーンは 1 つの対象に束縛する(別対象への再束縛は `--force`)。
@@ -1587,7 +1640,7 @@ Workspace root からの Claude Code 起動は禁止する。
 | **運用レシピ** | 束縛された対象プロジェクト | ワークスペースの運用者 | `CONTROL_ROOT/justfile`(`templates/control/justfile.tmpl` が束縛版を生成) |
 | **ソースレシピ** | Mercator 自身のソース | フレームワークの保守者 | フレームワークリポジトリの **root の `justfile`**(配布ディレクトリの外) |
 
-`loop` / `once` / `status` / `resume` / `triage` / `supervise` / `init` / `doctor` / `bootstrap` / `trust` / `trust-check` / `new-essence` / `update-essence` / `state` は運用レシピである。`lint` / `format` / `fmt-check` / `test` / `render-static` はソースレシピである。
+`loop` / `once` / `status` / `resume` / `triage` / `supervise` / `init` / `doctor` / `bootstrap` / `build` / `trust` / `trust-check` / `new-essence` / `update-essence` / `state` は運用レシピである。`lint` / `format` / `fmt-check` / `test` / `proofs` / `purity-gate` / `render-static` / `sync-recipe-lean` / `recipe-lean-build` はソースレシピである。
 
 **静的設定の投影(`render-static`)。** 制御プレーンの静的設定 JSON(§8.1 の workspace.json と未束縛 project_index.json シード)の正本は `lean/Mercator/Core/StaticConfig.lean` であり、`mercator util static-config {workspace|project-index-seed}` が rendered バイト列を stdout へ出力する純 render 面(`util render` / `util seed` の隣)を提供する。配布物の再生成は maintainer の仕事なので、再生成レシピ `just render-static` はこの root justfile に置く(`sync-recipe-lean` と同格)。定義変更 + JSON 未再生成のコミットは D-008 が `just test` で検出する。
 
@@ -1650,7 +1703,7 @@ mercator-loop.sh
 2. **cycle 中に発生**: その cycle は通常どおり finalize され、`raise-loop-gates` が停止条件を Recommendation として実体化した上で、checkpoint commit の run status に停止/完了理由が刻まれる。その後 post-gate でループが終了する。
 3. **predicate の失敗**(exit code 2 以上)は「停止条件なし」と解釈してはならない。ループはハードエラーとして即終了する。壊れた predicate が停止ゲートを静かに外すことを防ぐためである(`mercator-status.sh` の表示も同じ規則に従い、predicate の失敗を「RUNNABLE」と報告しない)。
 4. **claude が非ゼロ exit した cycle の次セッションは fresh で開始する。** 失敗した継続(`-c`)を継続し続けると、継続不能な状態(再開すべき会話が無い等)から自己回復できない。正しさは fresh 再開に依存する(§14、§28.4)ため、失敗後の継続に価値はない。その非ゼロ exit が infra 起因(§13.1-12)なら、loop は `record-progress` に run status を渡して `progress.infra_fails_since_ok` を進め、`ok` cycle でゼロに戻す。連続が閾値に達した cycle は `raise-loop-gates` が `infra_unreachable` ゲートを実体化し、post-gate で停止する(§13.4)。
-5. **cycle の設定 source・環境を起動時に固定する。** ループは `claude -p` を `--setting-sources project --strict-mcp-config` 付き、`--mcp-config` なしで起動する。user/local settings をロードせず、通常の user/project/local MCP 構成からサーバを受け取らない。組織が外部から強制する managed policy はこの wrapper が除去できると主張せず、導入時の trust base とする。求める性質は **fail-closed の床**である: project settings が構文エラー・将来差分で拒否されても、prompt-worthy な操作を自動許可しない。project settings の明示 allow と hook の allow だけが実行でき、ask は headless session で自動 deny される。さらに `env -i` + 非秘密 allowlist + subprocess credential scrub で operator/parent の秘密を子プロセスから除去し、必須 OS sandbox が利用不能なら起動自体を失敗させる(§11.4、§16)。
+5. **cycle の設定 source・環境を起動時に固定する。** ループは `claude -p` を `--setting-sources project --strict-mcp-config` 付き、`--mcp-config` なしで起動する。user/local settings をロードせず、通常の user/project/local MCP 構成からサーバを受け取らない。組織が外部から強制する managed policy はこの wrapper が除去できると主張せず、導入時の trust base とする。求める性質は **fail-closed の床**である: project settings が構文エラー・将来差分で拒否されても、prompt-worthy な操作を自動許可しない。project settings の明示 allow と hook の allow だけが実行でき、ask は headless session で自動 deny される。relaxed profile(§11.5)下でもこの床の**機構**は不変である — 変わるのは「hook が明示 allow を返す面」が緩和 6 葉 + Bash 無意見葉へ広がることだけであり、依然として settings allow ∪ hook allow の外は実行されない(deny 床 I-030 は hook / settings の deny として残る)。さらに `env -i` + 非秘密 allowlist + subprocess credential scrub で operator/parent の秘密を子プロセスから除去し、必須 OS sandbox が利用不能なら起動自体を失敗させる(§11.4、§16。`profile: unsandboxed` の配備だけは人間の明示宣言により sandbox 必須が外れる — §11.5 の信頼モデル縮退)。
 
    **床を支えているのは 2 つの機構であり、片方は現行 CLI で不活性である(実測: Claude Code 2.1.209)。**
 
@@ -1773,7 +1826,7 @@ runnable(T) := T.status ∈ {pending, in_progress}
 2. No done Todo lacks evidence. (V)
 3. No active Todo references blocked Spec. (V)
 4. No Agent changed `ESSENCE.md`. (R: Over-Project Agent の deny hook/permissions + `should-stop` の `essence_unreviewed_change` 検出(§13.1-10)。validate も projection hash 乖離を warning で示す)
-5. No cycle change appears to violate a mechanizable `won't`. (V+A: §2.1.2 の軽い won't 違反フラグ。例「won't が『依存を増やさない』なのに `package.json` が変わった」→ warning。柵の薄い機械化であり、確定的な deny は §2.1.2-1 の High-risk Recommendation 経由で人間が張る)
+5. No cycle change appears to violate a mechanizable `won't`. (V+A: §2.1.2 の軽い won't 違反フラグ。例「won't が『依存を増やさない』なのに `package.json` が変わった」→ warning。柵の薄い機械化であり、確定的な deny は §2.1.2-2 の High-risk Recommendation 経由で人間が張る)
 6. Every ESSENCE `## 成功条件`(厳密一致。旧別名「成功の定義」/「success condition」等は抽出されない — §2.1.1)maps to acceptance-check evidence. (V+A: `成功条件` の各項目に対応する evidence(acceptance check 由来の command evidence、§2.1.1 / §22)が見つからない場合に warning。この warning は**must フェーズ完了時**(この補助線がレビューされる §13.1-13 のゲート地点)に限って出す — must 未完の早期 cycle では acceptance evidence がまだ揃わないのが正常であり、そこで warning を出すのはノイズだからである。対応の探索はヒューリスティックであり確定的な機械照合ではない — §22 の可視化とセットで、must 完了ゲート(§13.1-13)の人間レビューを支援する補助線である)
 7. Every Spec has current Essence provenance. (V: 各 Spec の `essence_refs` は非空 string list で、各参照は `ESSENCE.md` の active な人間内容行(comment/fence/heading/directive を除外し、list marker と空白を正規化)のいずれかと完全一致しなければならない。欠落・形状違反は常に error。stale / fabricated ref は、投影 hash が現 Essence と一致している限り error — 投影 hash 乖離中(人間の Essence 編集後・再投影前)は per-Spec error ではなく §20.2-4 の drift warning に不一致 Spec 一覧として集約する。乖離中の per-Spec error は情報を増やさない冗長ノイズであり、正当な人間の Essence 編集を resume が記録するたびに「エラーの壁」を出すことになる。乖離中も stale 投影を**書く**ことはできない(§20.2-8 の stamp 一致要求が安全前提)。これは由来の実在を保証するが、原文の解釈の正しさは A 層に残る)
 8. Projection writes are prevalidated. (R+V: Agent が更新する 4 正本は `state apply-projection --file` だけを通し、未指定の現行正本を含む prospective snapshot 全体を validate してから書く。bundle の空・未知 key・重複 key・非 object value は拒否する。spec.json を含む bundle は `projected_from_essence_sha256` が現 `ESSENCE.md` の SHA-256 と一致しなければ拒否する — stale 投影は書けず、投影 hash 乖離は「人間の Essence 編集後・再投影前」にしか存在しない(§20.2-7 の drift 集約の安全前提)。validation error 時は副作用ゼロ。成功時は各ファイル atomic replace だが multi-file transaction ではない — §8.2)
@@ -2022,7 +2075,8 @@ I-022: Gate triage is advisory and read-only: the triage session mutates neither
 I-024: No Mercator-launched Agent receives secret environment variables or read access to Mercator's defined secret input surfaces (target .env/.env.*/secrets/credentials plus the enumerated home credential stores in §11.4). Secret-bearing verification is run by the human outside the Agent session; only its exit status and a redacted summary may enter evidence/state. Before every Mercator checkpoint, the exact staged blobs are scanned for a conservative set of high-confidence credential signatures; a hit aborts before commit and reports filenames only. This is a backstop, not a claim of complete secret detection.
 I-027: The Essence interview is advisory and read-only: the interview session mutates neither project files nor canonical state (its only freely writable path is the CONTROL_ROOT/.agent/tmp/essence/ handoff; its only ask-gated write surfaces are the live settings repair (§28.5-3) and — new mode only — the direct ESSENCE.md install fallback), and ESSENCE.md is installed only through a human-confirmed act: primarily by the human-only wrapper after the human reviews the full draft on the terminal and explicitly confirms; in new mode, as a fallback second path, by a session Write the human explicitly approves on the permission prompt after reviewing the same full draft on screen — I-004 preserved: the installed content originates from the human's answers and confirmation, never from unreviewed agent text.
 I-028: Distribution-unit/maintainer-plane purity: CONTROL_ROOT holds only what a bound control plane needs to OPERATE. Files and just recipes whose subject is Mercator's own source (lint / format / fmt-check / test and their dev tooling) live in the framework repository's root, outside the distributed directory; bound Agent sessions never mutate the distributed control surface. The test is §18.4's: "does this command mean anything in a distributed, bound control plane?"
-I-029: Every Mercator-launched Claude session receives only an allowlisted non-secret environment, selects only `project` among the user/project/local setting sources, and requests no MCP server (`--strict-mcp-config` with no `--mcp-config`); unavoidable managed policy remains the deployment trust base. Autonomous Bash requires the OS sandbox, fails if it is unavailable, and has no unsandboxed escape. Autonomous settings carry an enumerated, global-wildcard-free network domain allowlist; strict unknown-domain denial beyond headless prompt behavior requires managed policy and is not claimed.
+I-029: Every Mercator-launched Claude session receives only an allowlisted non-secret environment, selects only `project` among the user/project/local setting sources, and requests no MCP server (`--strict-mcp-config` with no `--mcp-config`); unavoidable managed policy remains the deployment trust base. Under the standard and auto-approve profiles (§11.5), autonomous Bash requires the OS sandbox, fails if it is unavailable, and has no unsandboxed escape; only a human-authored `profile: unsandboxed` line in ESSENCE.md, applied by a human-only init, removes the OS sandbox — narrowing that deployment's boundary to the deny floor plus governance detection (I-030, §11.5). Autonomous settings carry an enumerated, global-wildcard-free network domain allowlist; strict unknown-domain denial beyond headless prompt behavior requires managed policy and is not claimed.
+I-030: The guard's deny floor is profile-invariant: ESSENCE.md/essences (I-004), secret surfaces (I-024), the enumerated control-plane surfaces (§11.3, I-028), git stage/commit (I-015), dangerous Bash, and nested claude launches (I-003) are denied with identical reasons under every profile; a relaxed profile (§11.5) only converts the enumerated ask faces and the final no-opinion Bash leaf into audited allows, never weakens a deny, never changes high-risk staging (§20.4-3), and never applies to read-only sessions (I-022/I-027). Machine-checked (§31.3 G-T6).
 ```
 
 (番号 I-005 / I-006 / I-009 / I-012 / I-025 は欠番である。I-005 / I-006 は「対象 runtime が Mercator を
@@ -2030,8 +2084,8 @@ I-029: Every Mercator-launched Claude session receives only an allowlisted non-s
 no-live-launch に置き換えた。I-009 / I-012 / I-025 は生成 view・旧委譲概念の撤去による。番号は振り直さない。)
 
 I-003 と I-020 の `CLAUDE.md` / `.claude/**` 部分は、対象がエージェントを内包するときだけ適用対象を持つ。
-残りは対象種別によらない。I-029 は sandbox path deny の文字列 heuristic ではなく、sandbox 必須化・unsandboxed
-escape 禁止・launcher environment sanitize・settings source/MCP の CLI 固定・network allowlist の配備検査という実装可能な境界を述べる。未知 domain の絶対的 deny まで含めない理由は §28.5-6 の vendor/managed-policy 境界である。
+残りは対象種別によらない。I-029 は sandbox path deny の文字列 heuristic ではなく、(standard / auto-approve での)sandbox 必須化・unsandboxed
+escape 禁止・launcher environment sanitize・settings source/MCP の CLI 固定・network allowlist の配備検査という実装可能な境界を述べる。未知 domain の絶対的 deny まで含めない理由は §28.5-7 の vendor/managed-policy 境界である。sandbox 必須が外れる唯一の経路は人間の `profile: unsandboxed` 宣言 + human-only init であり(§11.5)、そのときの縮退した信頼モデルは I-030 が下限を固定する。
 
 **将来不変条件(実装時に有効化)。** 次は現行 v2.0 では**未実装**の機能に対する予約であり、その機能を実装したときに有効化する。
 
@@ -2254,7 +2308,9 @@ proofs/.lake/
 
 ```text
 1. Create workspace (one git repo).
-2. Place the project-agnostic Mercator template in ./.mercator (unbound).
+2. Place the project-agnostic Mercator template in ./.mercator (unbound), then build its
+   runtime once: cd ./.mercator && just build. Every command below runs through
+   bin/mercator, so an unbuilt control plane refuses each of them with exit 2 (§31 R-1).
 3. Create ./{project-title}.
 4. Human writes the project requirements into the single Mercator input file: ./{project-title}/ESSENCE.md before init.
    - bootstrap never overwrites an existing ESSENCE.md, so the initial canonical
@@ -2280,6 +2336,7 @@ Commands:
 
 ```bash
 cd ./.mercator
+just build                     # once: trust / new-essence / init / doctor / loop all run through bin/mercator
 $EDITOR ../{project-title}/ESSENCE.md   # human-only; init keeps existing files
 # or, interview-driven (§2.1.4): just trust ../{project-title} && just new-essence ../{project-title}
 just init ../{project-title}   # bind + bootstrap
@@ -2293,10 +2350,13 @@ just loop
 
 一度 `just init` で束縛すれば、以降のレシピ(`doctor` / `trust` / `trust-check` / `bootstrap` / `status` / `once` / `loop` / `triage` / `supervise` / `resume` / `state`)は `--project` の再指定なしで動作する。別の対象へ束縛し直すときだけ `just init ../other --force` を使う(1 制御プレーン = 1 対象)。この 1:1 は運用規則であると同時に機械強制でもある: `bin/mercator state` の変異コマンドは束縛外の `--project` を拒否する(§18.2)。
 
+**profile(§11.5)の宣言・変更は再 init で発効させる。** `ESSENCE.md` に `profile:` 行を書いた(または値を変えた)後は、`just init ../{project-title}` を再実行して settings を再描画し、続けて `just resume` で Essence 編集を attestation として記録する(記録しないと次の loop が `essence_unreviewed_change` で停止する、§13.1-10)。同一 project への再 init は 1:1 ガードを素通りするため `--force` は不要であり、再描画された settings の diff は resume checkpoint が収める。init は invalid な profile 宣言を exit 2 で拒否する — 緩和方向の機能は不確実な綴りのまま発効しない(§11.5)。
+
 ### 26.2 Existing Project
 
 ```text
-1. Add the unbound Mercator template as a sibling ./.mercator inside the project's git repo.
+1. Add the unbound Mercator template as a sibling ./.mercator inside the project's git repo,
+   then build its runtime once: cd ./.mercator && just build (§31 R-1; unbuilt = exit 2).
 2. Add or review PROJECT_ROOT/ESSENCE.md before init (the single Mercator requirement input file).
 3. Bind + bootstrap: cd ./.mercator && just init ../{project-title}
    (creates PROJECT_ROOT/.mercator/state; never overwrites an existing ESSENCE.md.
@@ -2310,7 +2370,7 @@ just loop
 
 ### 26.3 When the Loop Stops (Runbook)
 
-ループが停止を報告して終わったら(`STOP:` 行と再開手順を表示して正常終了する — 停止は仕様どおりの終端でありエラーではない、§13.4-3 / §19.1-5)、順に:
+ループが停止を報告して終わったら(`STOP:` 行と再開手順を表示して正常終了する — 停止は仕様どおりの終端でありエラーではない、§13.4-3 / §19.1-6)、順に:
 
 ```bash
 just status                      # 停止理由(gate 評価)と次アクション
@@ -2420,6 +2480,7 @@ Claude Code の hooks / settings / permissions / CLI flags は変化し得る。
 6. `disableBypassPermissionsMode` など安全系設定が有効か確認する。
 7. `sandbox.network.allowedDomains` の必須 allowlist と wildcard 不在を doctor で検査する。ただし project settings の allowlist は、未知 domain で proxy が permission prompt を要求し、headless がそれを deny するという vendor behavior に依存する。Claude Code が strict な自動 deny として文書化する `allowManagedDomainsOnly` は managed settings 専用で、Mercator の project settings から強制できない。したがって unknown-domain egress の完全遮断を hard invariant とはしない。厳格な組織配備では managed policy で同 setting を有効化する。
 8. 仕様差分がある場合は source repository の maintainer task として扱い、修正版をレビュー・テストして再配布する。bound Agent session から live control plane を更新しない(§11.3)。
+9. **大小文字を区別しないファイルシステムでは、綴りは同一性を代表しない。** macOS 既定の APFS では `Scripts/x.sh` と `scripts/x.sh`、`META.MD` と `META.md` は同じファイルである。一方でパス解決(`Io.Fs.resolveNonStrict`)は CPython `pathlib.resolve()` 等価性のため symlink でない成分の綴りを保存するので、分類器が綴りを厳密照合していると綴り替えだけで分類を外せる。**人間所有入力(§11.3 の deny 面)と enforcement 面(CONTROL_ROOT)はこの照合を大小文字非依存にした** — どちらも名前の集合がフレームワーク側で固定されており、利用者のファイルが大小文字違いで正当に衝突しないので、過剰一致の余地がない。**zone(§12)と依存マニフェスト(§11.2)は綴り厳密のまま残す**: これらは対象プロジェクトのファイルを分類するため、case-sensitive な FS では `Hooks/` と `hooks/` が別物であり、過剰一致させると headless セッションで ask が自動 deny になって正当な実装作業が止まる(§19.1-5 の床がそのまま実害に変わる)。したがって「大小文字を区別しない FS 上では、zone / マニフェスト分類は綴り違いを取り逃す」ことが残る既知の限界である。実効の第 2 層は OS sandbox(`denyWrite` は OS の照合規則に従うため case-insensitive FS では綴り違いも捉える見込みだが、これは vendor/OS の挙動であり Mercator は実測していない — §28.5 冒頭の「残る未検査部分」と同じ扱い)。教訓の一般化: **綴りで書いた保護は、綴りと同一性が一致しない環境で崩れる。** 保護の適用範囲は「名前が誰の所有か」で決め、フレームワークが名前を固定している面だけ正規化を強められる。
 
 ただし、`additionalDirectories` が対象プロジェクトの `.claude` を Over-Project Agent の制御設定として取り込まないことは、ベンダー実装に依存する**設定分離の前提**である。この前提が崩れれば対象の任意 hook/settings が Over session に混入するため、no-live-target-runtime(I-003)とは別に Over-Project Agent の境界設計を再検証しなければならない。ただし Mercator の存在理由全体や In-Project Agent の隔離を二重 root だけに依存させてはいない(§6、§10)。
 
@@ -2462,7 +2523,7 @@ Claude Code の hooks / settings / permissions / CLI flags は変化し得る。
 recipe: <name>@<major>        例: recipe: agentic-state-loop@2
 ```
 
-`ESSENCE.md` が持つ機械可読行はこの `recipe:` と、依存宣言 `deps:`(§11.2)の 2 つである。HTML comment 内と fenced code block 内の同形行は説明・例示として無視され、comment 外へ出した行だけが発効する。いずれも「人間が Essence に書いた決定を、機械が決定論的に読む」という同じ型に属する — 前者は採用する実装テンプレートを、後者はエージェントが人手の承認なしに install してよい依存を宣言する。どちらも人間専用ファイルの active line に書かれる以上、エージェントが自分で足すことはできない(I-004)。
+`ESSENCE.md` が持つ機械可読行はこの `recipe:` と、依存宣言 `deps:`(§11.2)、実行 profile 宣言 `profile:`(§11.5)の 3 つである。HTML comment 内と fenced code block 内の同形行は説明・例示として無視され、comment 外へ出した行だけが発効する。いずれも「人間が Essence に書いた決定を、機械が決定論的に読む」という同じ型に属する — 第一は採用する実装テンプレートを、第二はエージェントが人手の承認なしに install してよい依存を、第三は実行環境の緩和段階を宣言する。いずれも人間専用ファイルの active line に書かれる以上、エージェントが自分で足すことはできない(I-004)。
 
 **seed 禁止規範(§5.0, §17)との整合。** Mercator は対象の agent-runtime に雛形を押し付けない — この規範の実体は「**Essence 由来でない**押し付けの禁止」である。レシピの採用はポインタとして Essence に明示された人間の決定であり、instance は won't や must と同格の「Essence から生まれた内容物」である。したがってレシピ instantiation は規範の例外ではなく、規範が守ろうとした当のもの(対象の形は対象の Essence が決める)の機械可読な実現である。Essence がポインタを持たない対象へ Mercator がレシピを seed することは、従来どおり無い。
 
@@ -2629,12 +2690,13 @@ R-1 の含意: 現行の「ネットワーク不要」という性質は、**実
 
 | ID | 主張(移行計画書 §4.6 カタログ) | 定理 | 前提(スコープ) |
 |----|--------------------------------|------|----------------|
-| G-T1 | `DANGEROUS_BASH` 分類に該当する Bash 入力に対し guard の `decide` は `deny` 以外を返さず、high-risk staging も行わない(deny 先行の決定木順序不変量 — dangerous が zone ask / install allow / 無意見へ降格する経路は存在しない) | `Proofs.Guard.dangerous_bash_is_denied` | read-only セッション(`sessionMode ∈ {triage, essence}`)を除く。read-only 面は決定木の最上段で分岐し、handoff heredoc の**本文**(実行されないファイル内容)が DANGEROUS_BASH 文字列判定に一致し得るため対象外 — Python `main()` と同一の分岐順序であり緩和ではない。read-only 面の健全性は G-T2 の対象 |
+| G-T1 | `DANGEROUS_BASH` 分類に該当する Bash 入力に対し guard の `decide` は `deny` 以外を返さず、high-risk staging も行わない(deny 先行の決定木順序不変量 — dangerous が zone ask / install allow / 無意見へ降格する経路は存在しない) | `Proofs.Guard.dangerous_bash_is_denied` | read-only セッション(`sessionMode ∈ {triage, essence}`)を除く。read-only 面は決定木の最上段で分岐し、handoff heredoc の**本文**(実行されないファイル内容)が DANGEROUS_BASH 文字列判定に一致し得るため対象外 — Python `main()` と同一の分岐順序であり緩和ではない。read-only 面の健全性は G-T2 の対象。deny 段は profile 分岐(§11.5 — ask 6 葉と Bash 最終無意見葉のみ)に先行するため、主張は全 profile で成立する |
 | (G-T2 の土台) | read-only セッションの Bash / WRITE_TOOLS は決して無意見に落ちない — 判定は常に明示的な allow(許可面)、ask(WRITE_TOOLS の人間承認 2 面)、または deny(教示付き拒否)である(I-022/I-027 の「限定許可 + 既定拒否」構造) | `Proofs.Guard.readonly_bash_never_silent` + `readonly_write_never_silent` | `sessionMode ∈ {triage, essence}` |
 | G-T2 | read-only セッションの Bash で `decide` が `allow` を返す経路は 3 許可面(heredoc handoff write / シェルメタなし `mkdir -p` / triage 限定 state 読み取り)の完全列挙であり、書き込みを伴う 2 面の書き込み先(heredoc の mkdir 前置・本体ターゲット、mkdir の引数)はすべて handoff root の内側に解決済みである(結合キーの解決成功 + `insideOf handoffRoot` が allow の必要条件)— 土台補題の「allow 以外は必ず明示的 deny」と合わせて handoff root 外への書き込みが許可される経路は存在しない(I-022/I-027)。第 3 面は `triageStateShape?` + `triageStateSubcommandsOk` 一致が必要条件で、resume 等の変異サブコマンドが読み取り面をすり抜けないこと(G-T3 の残余)も同時に閉じる。**WRITE_TOOLS 面**(§13.6-3): read-only セッションでは `decideWrite` も最上段で分岐し、allow の必要条件は書き込み先の `resolvesIntoHandoff`(strict — handoff root 自身は不可)通過 — Write ツール経由でも handoff root 外への書き込みが許可される経路は存在しない。**ask 面**(§28.5-3 / I-027 第二経路): read-only セッションで ask が立つのは列挙 3 面 — live settings 修復(`resolvesToLiveSettings` = `CONTROL_ROOT/.claude/settings.json` への解決一致)、essence-new 限定の ESSENCE.md 直接設置 fallback(`resolvesToEssenceInstall` = `expectedProject?/ESSENCE.md` への解決一致)、essence-new 限定の essences/ 資産設置(`resolvesToEssenceAssetInstall` = `expectedProject?/essences` からの相対パスが 3 階層以内の妥当な資産パスになる位置への解決一致、§2.1.5 面)— に限り、ask は人間の permission prompt 承認を要求する判定であって自動 allow ではない | `Proofs.Guard.readonly_allow_is_handoff_confined`(`decide` 全体への逆転)+ `readOnlySessionBashAllow_faces`(許可面の列挙)+ `resolvesIntoHandoff_inside`(解決先の handoff root 内包)+ `readonly_write_allow_is_handoff_confined`(WRITE_TOOLS 面)+ `readonly_write_ask_is_enumerated`(ask 面の列挙)+ `resolvesToLiveSettings_resolved` / `resolvesToEssenceInstall_target` / `resolvesToEssenceAssetInstall_target`(各 ask 面の必要条件) | `sessionMode ∈ {triage, essence}`。「handoff root 内」は解決表(`GuardEnv.resolved` — IO シェルの realpath 解決結果)上の `insideOf` 判定として表現される — 解決そのものの正しさは §3.3-4 の信頼境界(公理側)であり、本定理は「解決済みパス上の判定が正しい」側を担う |
-| G-T3 | state サブコマンド抽出が `resume` / loop-only 集合(start-run / end-run / record-progress / reset-context / raise-loop-gates)を捉えた Bash 入力に対し guard の `decide` は必ず `deny` を返し、high-risk staging も行わない(I-011 / §19.1 — human-only・loop 所有遷移の agent 遮断。human-only / loop-only 段は全 ask/allow・無意見分岐に先行する) | `Proofs.Guard.resume_subcommand_is_denied` + `Proofs.Guard.loop_only_subcommand_is_denied` | read-only セッション(`sessionMode ∈ {triage, essence}`)を除く(G-T1 と同一スコープ — handoff heredoc の本文が字句判定に一致し得るため。read-only 面で resume が state 読み取り許可面をすり抜けないことは `#guard` で凍結済み(§31.2-19)、定理化は G-T2 の対象)。仮定は抽出器 `statePySubcommands`(`--flag` をスキップして positional を取る)の出力に載る — カタログの「引数順序に関わらず」はこの抽出器の仕様として表現される |
+| G-T3 | state サブコマンド抽出が `resume` / loop-only 集合(start-run / end-run / record-progress / reset-context / raise-loop-gates)を捉えた Bash 入力に対し guard の `decide` は必ず `deny` を返し、high-risk staging も行わない(I-011 / §19.1 — human-only・loop 所有遷移の agent 遮断。human-only / loop-only 段は全 ask/allow・無意見分岐に先行する) | `Proofs.Guard.resume_subcommand_is_denied` + `Proofs.Guard.loop_only_subcommand_is_denied` | read-only セッション(`sessionMode ∈ {triage, essence}`)を除く(G-T1 と同一スコープ — handoff heredoc の本文が字句判定に一致し得るため。read-only 面で resume が state 読み取り許可面をすり抜けないことは `#guard` で凍結済み(§31.2-19)、定理化は G-T2 の対象)。仮定は抽出器 `statePySubcommands`(`--flag` をスキップして positional を取る)の出力に載る — カタログの「引数順序に関わらず」はこの抽出器の仕様として表現される。deny 段は profile 分岐(§11.5)に先行するため、主張は全 profile で成立する |
 | G-T4 | install 形状(`commandInstallsDependencies`)の Bash 入力は無意見(素通り)に落ちない — 判定は必ず明示的な deny / ask / allow のいずれかになる(§11.2 の依存ゲート単一決定点: `decideBash` で唯一無意見を返す最終葉は `commandInstallsDependencies = false` に守られている)。カタログの「allow は trusted 単一 install / materialization のみ」の残り半分は、allow 葉が `installAllowReason?` の some 側にしか存在しない決定木構造そのものが与える | `Proofs.Guard.install_shape_never_silent` | 前提なし(read-only 面は土台補題 `readonly_bash_never_silent` の「常に some」を再利用し、非 read-only 面は決定木全段の場合分けで閉じる) |
-| G-T5 | post の high-risk 分類は pre の部分集合(D-002 の定理化)— post(`Hook.PostTool.isHighRiskTarget`)が high-risk と分類する WRITE_TOOLS 書き込みに対し、pre の `decide` は無意見で素通りせず必ず deny / ask を返す(§20.4-3 の before/after ハッシュ対合: post が after-hash を記録する書き込みは pre が必ずゲートしている)。核は候補表記列の包含 `post_write_candidates_subset`(post の 4 候補 — 生表記・解決済み・project 相対・CONTROL_ROOT 相対 — はすべて pre の候補列に現れる)。分類パターン集合そのものの一致は `Core.Classify` / `bashCandidateTokens` の単一定義共有で構成的に成立(Bash 面の staging 対象は pre が post の定義を import する同一関数) | `Proofs.Guard.post_write_high_risk_never_silent` + `post_write_candidates_subset` + `decideWrite_high_risk_never_silent` | 既知の意図差を前提として明示: (1) `raw` は空でない(post の `writeTarget?` は falsy を落とすため空 raw は post の分類に到達しない)、(2) `raw` は表記正規化の不動点(`pyPathStr raw = raw` — post は生表記・pre は `str(Path(raw))` を候補に使う表記差)、(3) 両 hook が同一の解決結果 `t` を見る(`env.resolveTarget? raw = some t`。解決の正しさは §3.3-4 の信頼境界)、(4) post の project root が pre の登録ルート集合に含まれる(post は `find_project_state_root` 探索・pre は登録ルート表 — 未登録 root 相対の post 記録は pre のゲート対象外という fail-open 監査側の既知差)。read-only セッションでは post 監査 hook 自体が無条件に無作用(§20.4)なので before/after 対合の実質は非 read-only 面 — pre の read-only WRITE_TOOLS 面(§13.6-3)は常に明示的判定であり、形式主張(`decision?.isSome`)はそのまま成立する |
+| G-T5 | post の high-risk 分類は pre の部分集合(D-002 の定理化)— post(`Hook.PostTool.isHighRiskTarget`)が high-risk と分類する WRITE_TOOLS 書き込みに対し、pre の `decide` は無意見で素通りせず必ず明示的判定を返し、staging は不変である(standard では deny / ask、relaxed profile では該当 ask 面が監査可能な allow — §11.5。§20.4-3 の before/after ハッシュ対合: post が after-hash を記録する書き込みは pre が必ずゲートまたは監査可能に明示 allow しており、before-hash staging はどの profile でも同一に走る)。核は候補表記列の包含 `post_write_candidates_subset`(post の 4 候補 — 生表記・解決済み・project 相対・CONTROL_ROOT 相対 — はすべて pre の候補列に現れる)。分類パターン集合そのものの一致は `Core.Classify` / `bashCandidateTokens` の単一定義共有で構成的に成立(Bash 面の staging 対象は pre が post の定義を import する同一関数) | `Proofs.Guard.post_write_high_risk_never_silent` + `post_write_candidates_subset` + `decideWrite_high_risk_never_silent` | 既知の意図差を前提として明示: (1) `raw` は空でない(post の `writeTarget?` は falsy を落とすため空 raw は post の分類に到達しない)、(2) `raw` は表記正規化の不動点(`pyPathStr raw = raw` — post は生表記・pre は `str(Path(raw))` を候補に使う表記差)、(3) 両 hook が同一の解決結果 `t` を見る(`env.resolveTarget? raw = some t`。解決の正しさは §3.3-4 の信頼境界)、(4) post の project root が pre の登録ルート集合に含まれる(post は `find_project_state_root` 探索・pre は登録ルート表 — 未登録 root 相対の post 記録は pre のゲート対象外という fail-open 監査側の既知差)。read-only セッションでは post 監査 hook 自体が無条件に無作用(§20.4)なので before/after 対合の実質は非 read-only 面 — pre の read-only WRITE_TOOLS 面(§13.6-3)は常に明示的判定であり、形式主張(`decision?.isSome`)はそのまま成立する |
+| G-T6 | profile は緩和方向にしか作用しない(I-030 の機械化)— 任意の GuardEnv・ToolCall について、profile を standard に固定した判定と実際の profile での判定は、(a) 完全に同一であるか、(b) high-risk staging(`highRiskPre`)を変えないまま、standard 側の ask または無意見の判定だけが allow に変わったもの、のいずれかである。系として deny は理由文言ごと保存され、staging は全 profile で不変であり、判定差分は allow 方向のみに限られる(§11.5、I-030) | `Proofs.Guard.profile_only_relaxes` | 前提なし(`decide` 全域 — write / bash / other の全経路と全 profile 値。read-only セッション(I-022/I-027)の分岐は profile を参照しないため (a) 側で自明に成立する) |
 | S-T1 | gate 保持 7 面(blockers / recommendations / context / reflection / runs / project / attestation ledger — I-021)のいずれかの読取が診断を出すとき、`shouldStopPayload` が `.ok` で返るなら `should_stop = true` かつ `reasons` の**先頭**が `state_unreadable`(D-005 正準順の最優先理由) | `Proofs.State.state_unreadable_stops`(+ corruption class 別の系: 初期化済み欠損 / JSON I/O エラー / JSONL I/O エラー) | `.ok` 経路。`.error` 経路(Python の uncaught 例外 = exit 2 に対応)はシェル側 `state_predicate()` の fail-closed(§2.1)がハード停止するため、どちらの経路でも「読めない gate は停止」が成立する。形状崩れ診断(items 非 list / progress 非 object / カウンタ非整数)への前提拡張は後続弾 |
 | S-T2 | `mustPhaseComplete` ⇒ runnable な must Todo が存在しない — 完了述語(全 must が `done`)と実行可否述語(`pending` / `in_progress` を要求)は**どの phase でも**両立しない(§19.3 の完了セマンティクス) | `Proofs.State.must_phase_complete_no_runnable_must`(述語間の両立不能性)+ `completion_must_phase_complete_no_runnable_must`(実行される `completionPayload` が `must_phase_complete = true` を報告した当の items への接地系) | 前提なし(述語は §19.3 の単一定義であり全呼び出し点が共有) |
 | S-T3 | `mustPhaseComplete ∧ phase = must` ⇒ 停止かつ `must_complete_awaiting_phase_approval ∈ reasons` — 完了 scope 未決定と停止の整合(§13.1-13 の直接述語。raise-loop-gates の Recommendation 具現化前のクラッシュにも fail-closed) | `Proofs.State.awaiting_of_payload_fields`(payload の `must_phase_complete = true` ∧ `phase = must` ⇒ `awaitingPhaseApproval`)+ `must_complete_awaiting_phase_approval_stops`(そのとき `shouldStopPayload` は `.ok` なら停止し当該 reason を含む) | `.ok` 経路(`.error` 経路の扱いは S-T1 と同一)。`closed_at_must` は人間決定済み terminal phase なので前提外 |

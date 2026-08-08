@@ -70,6 +70,36 @@ def atBoundary (pfx s : String) : Bool :=
   let p := pfx.toList
   (boundarySuffixes s).any (p.isPrefixOf ·)
 
+/-! ## 大小文字を区別しないファイルシステム上の照合(§28.5-9)
+
+macOS 既定の APFS では `Scripts/x.sh` と `scripts/x.sh`、`META.MD` と
+`META.md` は**同じファイル**である。一方でパス解決(`Io.Fs.resolveNonStrict`)
+は CPython `pathlib.resolve()` 等価性のため symlink でない成分の綴りを保存
+するので、綴り = オブジェクト同一性という分類器の前提が崩れ、綴りを変える
+だけで分類を外せた。
+
+**適用範囲は人間所有入力(`isDenyPath`)と enforcement 面
+(`isControlPlaneHighRisk`)に限る。** どちらも名前の集合がフレームワーク側で
+固定されており、利用者のファイルが大小文字違いで正当に衝突することがないので、
+case-insensitive 化は「同じファイルを同じに分類する」以上の意味を持たない。
+
+対照的に zone(`isHighRiskPath`)と依存マニフェスト(`isAskPath`)は**対象
+プロジェクトのファイル**を分類する。case-sensitive な FS では `Hooks/` と
+`hooks/` は別物であり、そこで過剰一致させると headless セッションでは ask が
+自動 deny になって正当な実装作業が止まる。ゆえにこの 2 群は綴り厳密のままと
+し、残る限界は §28.5-9 に明記する。 -/
+
+private def lower (s : String) : String :=
+  String.ofList (s.toList.map Char.toLower)
+
+/-- `atBoundaryEnd` の大小文字非依存版。 -/
+def atBoundaryEndCI (name s : String) : Bool :=
+  atBoundaryEnd (lower name) (lower s)
+
+/-- `atBoundary` の大小文字非依存版。 -/
+def atBoundaryCI (pfx s : String) : Bool :=
+  atBoundary (lower pfx) (lower s)
+
 /-- Python `\w`(unicode)の方言実装: ASCII は `[A-Za-z0-9_]`、非 ASCII は
 空白以外すべて語構成文字(ask 拡大方向の裁定。モジュール頭注)。 -/
 def isWordChar (c : Char) : Bool :=
@@ -96,17 +126,17 @@ WRITE_TOOLS 経路で deny する(§20.2-8、rules/state.md「in-place 編集禁
 context.json / *.jsonl(reflection / high_risk_changes)は agent が直接書くため
 対象外。バイナリ自身の書込みは WRITE_TOOLS ではないので影響しない。 -/
 def isDenyPath (cand : String) : Bool :=
-  atBoundaryEnd "ESSENCE.md" cand
-    || atBoundary "essences/" cand
-    || atBoundaryEnd ".env" cand || atBoundary ".env." cand
-    || atBoundary "secrets/" cand
-    || atBoundaryEnd "config/credentials.json" cand
-    || atBoundaryEnd "essence_attestations.jsonl" cand
-    || atBoundaryEnd ".mercator/state/project.json" cand
-    || atBoundaryEnd ".mercator/state/spec.json" cand
-    || atBoundaryEnd ".mercator/state/todo.json" cand
-    || atBoundaryEnd ".mercator/state/recommendations.json" cand
-    || atBoundaryEnd ".mercator/state/blockers.json" cand
+  atBoundaryEndCI "ESSENCE.md" cand
+    || atBoundaryCI "essences/" cand
+    || atBoundaryEndCI ".env" cand || atBoundaryCI ".env." cand
+    || atBoundaryCI "secrets/" cand
+    || atBoundaryEndCI "config/credentials.json" cand
+    || atBoundaryEndCI "essence_attestations.jsonl" cand
+    || atBoundaryEndCI ".mercator/state/project.json" cand
+    || atBoundaryEndCI ".mercator/state/spec.json" cand
+    || atBoundaryEndCI ".mercator/state/todo.json" cand
+    || atBoundaryEndCI ".mercator/state/recommendations.json" cand
+    || atBoundaryEndCI ".mercator/state/blockers.json" cand
 
 /-! ## ASK_PATTERNS(依存解決入力、META.md §11.2) -/
 
@@ -159,7 +189,8 @@ read-only セッションの修復面として明示的に想定する状態)で
 当のバイナリとソースについて hook が何も言わない層になる。deny 拡大方向なので
 R-6 により自動採用。 -/
 def isControlPlaneHighRisk (rel : String) : Bool :=
-  [ "CLAUDE.md", "justfile", "META.md", "README.md",
+  let rel := String.ofList (rel.toList.map Char.toLower)
+  [ "claude.md", "justfile", "meta.md", "readme.md",
     ".agent/state/workspace.json", ".agent/state/project_index.json"
   ].any (eqToEol · rel)
     || [ ".claude/", "scripts/", "templates/", "recipes/", ".agent/prompts/",
@@ -217,6 +248,59 @@ def tokensLenient (segment : String) : List String :=
 def lastComponent (tok : String) : String :=
   ((tok.splitOn "/").getLast?).getD tok
 
+/-- `env` の前置代入 `NAME=VALUE`(先頭は英字か `_`、以降は英数字か `_`)。 -/
+private def isEnvAssignment (tok : String) : Bool :=
+  match tok.toList.span (· != '=') with
+  | (name, _ :: _) =>
+    match name with
+    | c :: rest =>
+      (c.isAlpha || c == '_') && rest.all fun c => c.isAlphanum || c == '_'
+    | [] => false
+  | _ => false
+
+/-- **実行ファイルの綴りを判定に持ち込まない正規化**(依存ゲート §11.2 と
+human-only / loop-only 遮断 I-011・§19.1 の共有前処理)。argv 先頭を basename
+へ落とし(`/usr/local/bin/npm` → `npm`)、`env [NAME=VALUE...]` と `command`
+の前置ラッパを剥がす。`env` の flag 形(`-i` / `-u`)は剥がさない — 剥がし
+損ねても従来どおり判定不成立に落ちるだけで、緩む側には倒れない。 -/
+def normalizeCommandArgv : List String → List String
+  | [] => []
+  | tok :: rest =>
+    match lastComponent tok with
+    | "env" =>
+      match rest.dropWhile isEnvAssignment with
+      | [] => []
+      | inner :: tail => lastComponent inner :: tail
+    | "command" =>
+      match rest with
+      | [] => []
+      | inner :: tail => lastComponent inner :: tail
+    | name => name :: rest
+
+/-- `-c` の引数(`bash -c '<cmd>'` / 結合フラグ `bash -lc '<cmd>'`)。
+positional が先に来たら `-c` 形ではない(`bash script.sh` は none)。 -/
+private def dashCArg? : List String → Option String
+  | [] => none
+  | tok :: rest =>
+    if !tok.startsWith "-" then none
+    else if tok == "-c" || (!tok.startsWith "--" && tok.toList.contains 'c') then
+      rest.head?
+    else dashCArg? rest
+
+/-- shell 起動の名前(`-c` 引数が**実行される文字列**になるもの)。 -/
+private def shellEntryNames : List String := ["bash", "sh", "zsh", "dash", "ksh"]
+
+/-- セグメントが shell 起動なら、その `-c` 引数 = 実行される文字列。
+`echo '...'` や heredoc の本文のような**実行されない**文字列は対象にしない —
+全トークンを再帰展開すると、手順や文書を文字列として書くだけの正当な操作
+(`echo 'just state resume'`、手順を綴る heredoc)まで deny になり、安全を
+足さずに実害だけを生む。 -/
+private def shellDashCPayload? (toks : List String) : Option String :=
+  match toks with
+  | [] => none
+  | tok :: rest =>
+    if shellEntryNames.contains (lastComponent tok) then dashCArg? rest else none
+
 /-- `state.py` 直後、`mercator state` 直後(agent 向け配線面。`state` が
 直後トークンでなければ entry ではない)、
 または `just [--flags...] state` 直後のトークン列。`just` のフラグ走査が
@@ -250,13 +334,26 @@ private def firstPositional : List String → Option String
     else if tok.startsWith "-" then firstPositional rest
     else some tok
 
+private def statePySubcommandsAux : Nat → String → List String
+  | 0, _ => []
+  | fuel + 1, command =>
+    (commandSegments command).flatMap fun seg =>
+      let toks := normalizeCommandArgv (tokensLenient seg)
+      ((afterStateEntry toks).bind firstPositional).toList
+        ++ (match shellDashCPayload? toks with
+            | some inner => statePySubcommandsAux fuel inner
+            | none => [])
+
 /-- `state_py_subcommands(command)` 等価(先頭出現順・重複なし。Python の
 set に対しファザーはソート比較)。フラグがどの位置にあっても positional の
 サブコマンドを取り逃さない — resume / loop-only 遮断(I-011、§19.1)が
-`state.py --project X resume` のようなフラグ先行綴りで素通りしないための核。 -/
+`state.py --project X resume` のようなフラグ先行綴りで素通りしないための核。
+実行ファイルの綴り(絶対パス・`env` / `command` 前置)と、shell の `-c` 引数
+(`bash -c 'bin/mercator state ... resume'` — **実行される**文字列)も同じ
+遮断に載せる。実行されない文字列(`echo '...'`・heredoc 本文)は対象外で、
+その境界は `shellDashCPayload?` の頭注が持つ。 -/
 def statePySubcommands (command : String) : List String :=
-  dedup ((commandSegments command).filterMap fun seg =>
-    (afterStateEntry (tokensLenient seg)).bind firstPositional)
+  dedup (statePySubcommandsAux (command.length + 1) command)
 
 /-! ## command_launches_claude(pre_tool_guard.py、META.md §10) -/
 
@@ -389,6 +486,22 @@ CPython 3.14 実測。方言差 1 点のみ注記) -/
 #guard isControlPlaneHighRisk "lean/lakefile.lean" == true
 #guard isControlPlaneHighRisk "xbin/mercator" == false
 #guard isControlPlaneHighRisk "src/lean/x" == false
+-- 大小文字を区別しない FS(macOS 既定)では綴り違いは同じファイルなので
+-- 同じに分類する。適用範囲は人間所有入力と enforcement 面だけ(§28.5-9)。
+#guard isControlPlaneHighRisk "Scripts/x.sh" == true
+#guard isControlPlaneHighRisk "META.MD" == true
+#guard isControlPlaneHighRisk "JustFile" == true
+#guard isControlPlaneHighRisk "Bin/mercator" == true
+#guard isDenyPath "../p/essence.md" == true
+#guard isDenyPath "../p/Essences/logo.png" == true
+#guard isDenyPath "../p/.ENV" == true
+#guard isDenyPath "../p/.mercator/State/Todo.json" == true
+-- 対象プロジェクトのファイルを分類する 2 群は綴り厳密のまま(case-sensitive
+-- な FS で別物を過剰一致させると headless の自動 deny が正当な作業を止める)
+#guard isHighRiskPath "Hooks/Foo.cs" == false
+#guard isHighRiskPath "hooks/foo.py" == true
+#guard isAskPath "Package.json" == false
+#guard isAskPath "package.json" == true
 
 -- isHighRiskPath
 #guard isHighRiskPath "CLAUDE.md" == true
@@ -452,6 +565,19 @@ CPython 3.14 実測。方言差 1 点のみ注記) -/
 #guard statePySubcommands "mercator state status" == ["status"]
 #guard statePySubcommands "bin/mercator trust ensure" == []
 #guard statePySubcommands "mercator util token state resume" == []
+-- shell の `-c` 引数(= 実行される文字列)は同じ遮断に載る。実行されない
+-- 文字列(`echo '...'`・heredoc 本文)は対象外という境界も同時に凍結する。
+#guard statePySubcommands "bash -c 'bin/mercator state --project x resume'"
+  == ["resume"]
+#guard statePySubcommands "sh -c 'just state resume'" == ["resume"]
+#guard statePySubcommands "bash -lc 'mercator state start-run'" == ["start-run"]
+#guard statePySubcommands "env bash -c 'mercator state resume'" == ["resume"]
+#guard statePySubcommands "echo 'state.py resume'" == []
+#guard statePySubcommands "bash script.sh" == []
+#guard statePySubcommands "bash -c 'echo hi'" == []
+-- ラッパ前置の basename 正規化(依存ゲートと共有する `normalizeCommandArgv`)
+#guard statePySubcommands "env /cr/bin/mercator state resume" == ["resume"]
+#guard statePySubcommands "command mercator state validate" == ["validate"]
 #guard statePySubcommands "echo mercator; state.py validate" == ["validate"]
 #guard statePySubcommands "mercator; mercator state validate" == ["validate"]
 -- flag-first with the supervise-check value flags (--todo / --recommendation):

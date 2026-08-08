@@ -7,6 +7,8 @@ import Mercator.Core.Path
 import Mercator.Core.Render
 import Mercator.Core.ProjectIndex
 import Mercator.Core.Runs
+import Mercator.Core.Classify.Profile
+import Mercator.State.Model
 import Mercator.Io.Fs
 import Mercator.Io.Clock
 
@@ -64,12 +66,18 @@ init / bootstrap / doctor 向け:
 
 doctor の settings 検査:
 
-- `settings-doctor <settings.json> <project> <control>`  doctor の
+- `settings-doctor <settings.json> <project> <control> [<profile>]`  doctor の
   `.claude/settings.json` 安全配線検査(検査本体は `Core.SettingsDoctor`)。
-  issue を 1 行ずつ stdout に出力し常に exit 0(空出力 = 検査全通過。
-  doctor.sh の `report_issues` が集約する)。パース不能・読取不能も
-  「is not valid JSON」の issue 1 行(置換元インライン Python の except
-  分岐と同じ扱い)。
+  第 4 引数は ESSENCE 宣言の実行 profile(§11.5。省略 = standard、
+  閉集合外の値は usage + exit 2)。issue を 1 行ずつ stdout に出力し常に
+  exit 0(空出力 = 検査全通過。doctor.sh の `report_issues` が集約する)。
+  パース不能・読取不能も「is not valid JSON」の issue 1 行(置換元インライン
+  Python の except 分岐と同じ扱い)。
+- `essence-profile <essence-path>`  ESSENCE.md の `profile:` 宣言(§11.5)を
+  読み、発効値(standard / auto-approve / unsandboxed)を 1 行出力する。
+  不在・読取不能・不正 UTF-8・placeholder(§13.1-8 と同一判定)は
+  `standard` + exit 0(最厳格への縮退)。invalid 値・conflict は stderr +
+  exit 2 — init はこの拒否で緩和方向の誤発効を止める(§26)。
 
 静的設定の Lean 昇格(META.md §8.1、D-008):
 
@@ -85,7 +93,7 @@ namespace Mercator.Cli.Util
 open Mercator
 
 private def usage : String :=
-  "usage: mercator util {json-get|stop-status|token|file-age-exceeds|read-only-settings|relpath|render|seed|project-index|json-check|dangling-run|settings-doctor|static-config} ..."
+  "usage: mercator util {json-get|stop-status|token|file-age-exceeds|read-only-settings|relpath|render|seed|project-index|json-check|dangling-run|settings-doctor|essence-profile|static-config} ..."
 
 /-! ## json-get -/
 
@@ -262,28 +270,57 @@ private structure RenderArgs where
   rel : Option String := none
   abs : Option String := none
   controlAbs : Option String := none
+  profile : Option String := none
 
-private def parseRenderFlags : List String → RenderArgs → Option Core.Render.Binding
+private def parseRenderFlags : List String → RenderArgs →
+    Option (Core.Render.Binding × Option String)
   | [], acc => do
-    pure { title := ← acc.title, rel := ← acc.rel,
-           abs := ← acc.abs, controlAbs := ← acc.controlAbs }
+    pure ({ title := ← acc.title, rel := ← acc.rel,
+            abs := ← acc.abs, controlAbs := ← acc.controlAbs }, acc.profile)
   | "--title" :: v :: rest, acc => parseRenderFlags rest { acc with title := some v }
   | "--rel" :: v :: rest, acc => parseRenderFlags rest { acc with rel := some v }
   | "--abs" :: v :: rest, acc => parseRenderFlags rest { acc with abs := some v }
   | "--control-abs" :: v :: rest, acc =>
     parseRenderFlags rest { acc with controlAbs := some v }
+  | "--profile" :: v :: rest, acc =>
+    parseRenderFlags rest { acc with profile := some v }
   | _, _ => none
 
 private def renderUsage : String :=
-  "usage: mercator util render <src> <dst> {json|just|raw} --title <t> --rel <r> --abs <a> --control-abs <c>"
+  "usage: mercator util render <src> <dst> {json|just|raw} --title <t> --rel <r> --abs <a> --control-abs <c> [--profile standard|auto-approve|unsandboxed]"
 
 private def runRender (src dst mode : String) (flags : List String) : IO UInt32 := do
   let some mode := Core.Render.Mode.parse? mode
     | do IO.eprintln renderUsage; pure 2
-  let some binding := parseRenderFlags flags {}
+  let some (binding, profileStr?) := parseRenderFlags flags {}
     | do IO.eprintln renderUsage; pure 2
+  -- `--profile` は settings.json.tmpl(json モード)専用(§11.5、§16.1)。
+  -- 他モードのテンプレは profile で派生しないため、指定自体を配線ミスとして
+  -- 拒否する。
+  let profile ← match profileStr? with
+    | none => pure Core.Classify.Profile.standard
+    | some s =>
+      match Core.Classify.Profile.parse? s with
+      | some p =>
+        if mode != .json then
+          IO.eprintln
+            "mercator: render: --profile applies only to the json mode (settings.json.tmpl, §16.1)"
+          return 2
+        pure p
+      | none => do
+        IO.eprintln s!"mercator: render: unknown profile '{s}' (standard|auto-approve|unsandboxed)"
+        return 2
   let some text ← Io.Fs.readFile? src
     | do IO.eprintln s!"mercator: render: cannot read {src}"; pure 2
+  -- §11.5: profile 派生はレンダ(トークン置換)前のテンプレテキストへ適用
+  -- する。パターン不一致 = テンプレが期待の形から動いた、なので描画自体を
+  -- 拒否する(fail-closed — 壊れた/中途半端な live settings を作らない)。
+  let some text := Core.Classify.deriveProfileTemplate profile text
+    | do
+      IO.eprintln <|
+        s!"mercator: render: template does not match the profile derivation " ++
+        s!"patterns (profile '{profile.tag}', §11.5); refusing to render"
+      pure 2
   match Core.Render.renderBind mode binding text with
   | .error e =>
     IO.eprintln s!"mercator: render: {e}"
@@ -395,7 +432,14 @@ private def runDanglingRun (path : String) : IO UInt32 := do
 
 /-! ## settings-doctor -/
 
-private def runSettingsDoctor (path project control : String) : IO UInt32 := do
+private def runSettingsDoctor (path project control profileStr : String) :
+    IO UInt32 := do
+  -- 第 4 引数は `util essence-profile` の出力(閉集合の正値)を渡す契約。
+  -- 閉集合外は配線ミスなので usage 側の exit 2 で大きく落とす(fail-closed)。
+  let some profile := Core.Classify.Profile.parse? profileStr
+    | do
+      IO.eprintln s!"mercator: settings-doctor: unknown profile '{profileStr}' (standard|auto-approve|unsandboxed)"
+      pure 2
   let some text ← Io.Fs.readFile? path
     | do IO.println s!".claude/settings.json is not valid JSON: cannot read {path}"; pure 0
   match Core.Json.parse text with
@@ -404,9 +448,43 @@ private def runSettingsDoctor (path project control : String) : IO UInt32 := do
     pure 0
   | .ok settings =>
     let cwd := (← IO.currentDir).toString
-    for issue in Core.SettingsDoctor.check settings project control cwd do
+    for issue in Core.SettingsDoctor.check settings project control cwd profile do
       IO.println issue
     pure 0
+
+/-! ## essence-profile -/
+
+private def runEssenceProfile (path : String) : IO UInt32 := do
+  match ← Io.Fs.readFile? path with
+  | none =>
+    -- 不在・読取不能・不正 UTF-8 は standard(§11.5 — 最厳格への縮退)。
+    -- 欠損 Essence 自体の停止は bootstrap 後の validate / loop が担う。
+    IO.println Core.Classify.Profile.standard.tag
+    pure 0
+  | some text =>
+    -- placeholder(§13.1-8 と同一判定: ガイドブロック残存・空白のみ・未消化
+    -- FILL マーカー)は standard — テンプレ由来のテキストから profile を
+    -- 発効させない。
+    if Core.Text.containsSub text State.Model.placeholderMarker
+        || (Core.Text.pyStrip text).isEmpty
+        || Core.Text.containsSub text State.Model.fillMarker then
+      IO.println Core.Classify.Profile.standard.tag
+      pure 0
+    else
+      match Core.Classify.scanProfile text with
+      | .invalid raw =>
+        IO.eprintln <|
+          s!"mercator: essence-profile: invalid profile value '{raw}' — " ++
+          "the closed set is standard | auto-approve | unsandboxed (§11.5)"
+        pure 2
+      | .conflict =>
+        IO.eprintln <|
+          "mercator: essence-profile: conflicting profile declarations — " ++
+          "declare exactly one (§11.5)"
+        pure 2
+      | scan =>
+        IO.println scan.effective.tag
+        pure 0
 
 /-! ## static-config -/
 
@@ -443,7 +521,10 @@ def run : List String → IO UInt32
   | ["json-check", path] => runJsonCheck path
   | ["dangling-run", path] => runDanglingRun path
   | ["settings-doctor", path, project, control] =>
-    runSettingsDoctor path project control
+    runSettingsDoctor path project control "standard"
+  | ["settings-doctor", path, project, control, profile] =>
+    runSettingsDoctor path project control profile
+  | ["essence-profile", path] => runEssenceProfile path
   | ["static-config", name] => runStaticConfig name
   | _ => do
     IO.eprintln usage

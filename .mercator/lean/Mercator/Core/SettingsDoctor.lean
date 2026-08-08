@@ -1,5 +1,6 @@
 import Mercator.Core.Json
 import Mercator.Core.Path
+import Mercator.Core.Classify.Profile
 
 /-!
 `Mercator.Core.SettingsDoctor` — doctor の `.claude/settings.json` 安全配線検査の
@@ -36,6 +37,7 @@ stale 配線として報告する。
 namespace Mercator.Core.SettingsDoctor
 
 open Mercator.Core.Json (Value)
+open Mercator.Core.Classify (Profile projectAskSurfaces)
 
 /-- Python `{s!r}` の再現(シングルクォート固定。ヘッダの意図差参照)。 -/
 private def reprStr (s : String) : String := "'" ++ s ++ "'"
@@ -88,8 +90,17 @@ private def expectedHooks : List (String × String) :=
 
 /-- settings.json の安全配線検査。`project` は解決済み PROJECT_ROOT、
 `control` は CONTROL_ROOT、`cwd` は `additionalDirectories` の相対エントリの
-解決基準(doctor の CWD = CONTROL_ROOT)。issue を検出順に返す。 -/
-def check (settings : Value) (project control cwd : String) : List String := Id.run do
+解決基準(doctor の CWD = CONTROL_ROOT)。issue を検出順に返す。
+
+`profile` は ESSENCE 宣言の実行 profile(§11.5、`util essence-profile` の
+出力。既定 standard = 後方互換)。検査は「宣言 → 期待される実態」の対称
+3 分岐で照合する: standard は project 側 ask 3 面あり ∧ sandbox.enabled、
+auto-approve は ask 3 面なし ∧ enabled、unsandboxed は ask 3 面なし ∧
+enabled=false。他の sandbox 検査(failIfUnavailable / network / filesystem)
+は全 profile 共通である。rendered settings への専用マーカー埋め込みは
+置かない — 宣言の二重管理と mismatch の新クラスを生むだけである(§11.5)。 -/
+def check (settings : Value) (project control cwd : String)
+    (profile : Profile := .standard) : List String := Id.run do
   let mut issues : Array String := #[]
 
   let permissions := (settings.get? "permissions").getD (.obj [])
@@ -144,6 +155,23 @@ def check (settings : Value) (project control cwd : String) : List String := Id.
     issues := issues.push <|
       s!"permissions.ask must contain {reprStr liveSettingsAsk} (human-" ++
       "approved live-settings repair surface for read-only sessions, §28.5-3)"
+  -- §11.5 の対称 3 分岐(project 側 ask 3 面): standard は存在が床、relaxed
+  -- 2 態は不在が床 — settings の ask は hook の allow に常に勝つため、残すと
+  -- profile が該当面で無効化される。面の列挙は derive と共有の単一定義点
+  -- (`Classify.projectAskSurfaces`)。
+  for surface in projectAskSurfaces do
+    let rule := s!"Edit(/{project}/{surface})"
+    if profile == .standard then
+      if !permissionAsk.contains rule then
+        issues := issues.push <|
+          s!"permissions.ask must contain {reprStr rule} (project agent-" ++
+          "runtime ask floor, §16.1; declared profile 'standard')"
+    else
+      if permissionAsk.contains rule then
+        issues := issues.push <|
+          s!"permissions.ask must not contain {reprStr rule} (declared " ++
+          s!"profile '{profile.tag}' removes the project ask surfaces — a " ++
+          "settings ask outranks the hook's allow, §11.5; re-run init)"
   -- §19.1-5 / §28.5: パスルールは control-plane 側も含めすべて解決済み絶対
   -- (`//<abs>` か `~`)。相対ルールは CLI 依存の基準で解決される — `../` 形は
   -- 黙ってどれにもマッチせず、cwd 相対形は additionalDirectories 配下の
@@ -168,8 +196,16 @@ def check (settings : Value) (project control cwd : String) : List String := Id.
       "`Edit(../PROJECT/**)` grants nothing (§19.1-5, §28.5)"
 
   let sandbox := (settings.get? "sandbox").getD (.obj [])
-  if sandbox.get? "enabled" != some (.bool true) then
-    issues := issues.push "sandbox.enabled must be true"
+  -- §11.5 の対称 3 分岐(sandbox): unsandboxed だけが enabled=false を期待
+  -- する。他の sandbox 検査(failIfUnavailable / network / filesystem)は
+  -- 全 profile 共通 — sandbox を降ろした配備でも宣言の床は陳腐化させない。
+  if profile == .unsandboxed then
+    if sandbox.get? "enabled" != some (.bool false) then
+      issues := issues.push
+        "sandbox.enabled must be false (declared profile 'unsandboxed', §11.5; re-run init)"
+  else
+    if sandbox.get? "enabled" != some (.bool true) then
+      issues := issues.push "sandbox.enabled must be true"
   if sandbox.get? "failIfUnavailable" != some (.bool true) then
     issues := issues.push "sandbox.failIfUnavailable must be true (never degrade to unsandboxed Bash)"
   if sandbox.get? "autoAllowBashIfSandboxed" != some (.bool false) then

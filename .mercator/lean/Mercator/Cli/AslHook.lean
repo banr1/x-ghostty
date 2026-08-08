@@ -1,7 +1,6 @@
 import Mercator.Asl.Hooks
 import Mercator.Core.Json
 import Mercator.Core.PathAlg
-import Mercator.Core.Time
 import Mercator.Io.Fs
 import Mercator.Io.Clock
 
@@ -36,7 +35,6 @@ open Mercator.Asl
 /-- hooks 用の実行文脈(Python の TARGET_ROOT / LOOP_DIR / SCHEMA_PATH /
 AUDIT_LOG に対応)。 -/
 private structure HookCtx where
-  loopRoot : System.FilePath
   targetRoot : String
   loopDir : String
   schemaPath : System.FilePath
@@ -45,7 +43,7 @@ private structure HookCtx where
 private def mkCtx (loopRoot : System.FilePath) : Except String HookCtx :=
   match loopRoot.parent, loopRoot.fileName with
   | some parent, some loopDir =>
-    .ok { loopRoot, targetRoot := parent.toString, loopDir,
+    .ok { targetRoot := parent.toString, loopDir,
           schemaPath := loopRoot / "schema.json",
           auditLog := loopRoot / "state" / "tool_audit.jsonl" }
   | _, _ =>
