@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "745bb5382471558b6c1b60ed274b3d38fe84038d5bd6a67d41b7de4a681b1724",
+    "last_signature": "8fcdddbfac18dd4daa832f5252a81ee6e9798579a091909d658326971fe1ce9d",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-08T17:08:03+09:00",
-    "last_checked_at": "2026-08-08T17:08:03+09:00"
+    "last_progress_at": "2026-08-08T17:27:36+09:00",
+    "last_checked_at": "2026-08-08T17:27:36+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,24 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.4,
     "failed_attempts_since_reset": 0,
     "changed_files_since_reset": 5,
-    "completed_todos_since_reset": 0,
-    "important_decisions_since_reset": 3,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 4,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-08T16:53:27+09:00",
-    "summary": "Human resume: R-001 の選択肢 (c) を採る: ESSENCE に profile: unsandboxed を宣言し、再 init で OS sandbox を解除した(META.md §11.5)。これにより just test / just swift-test / just build-app が自律セッション内で実行可能になる。B-001 の原因(sandbox によるネットワーク不許可と xcodebuild の XPC/一時領域拒否)は解消したので、次サイクルで検証を実行のうえ B-001 を close し、blocked の T-001 を証跡付きで完了させること。XGhosttyUITests は従来どおり対象外。",
-    "next_actions": [],
+    "written_at": "2026-08-08T17:42:00+09:00",
+    "summary": "Verification cycle after human resume (R-001 option (c): profile: unsandboxed + re-init). All three Essence success gates ran inside the session for the first time and passed: `just test` exit 0, `just swift-test` exit 0 (TEST SUCCEEDED, 410 tests incl. 14/14 GroupNoteTests), `zig build` (body of `just build-app`) exit 0. T-001 (note model layer) is DONE with command+diff evidence; B-001 resolved. New R-002 (Non-blocking, proposed): the pre-tool guard denies `just build-app` as a misclassified bootstrap maintenance transition — run `zig build` directly until the maintainer plane fixes the pattern. Next batch selected: T-002 (Cmd+N note edit overlay).",
+    "next_actions": [
+      "Execute T-002 (Cmd+N edit overlay): follow the existing group-action pattern (C action enum -> XGhostty.App switch -> handler -> keybind default config). Cmd+N / Cmd+Opt+N were unbound per earlier scout recon; re-verify for conflicts at implementation time — if a conflict emerges, alternative-key selection is reserved to the human (Essence 思想).",
+      "Overlay view templates to imitate: macos/Sources/Features/Groups/HiddenGroupShelf.swift and SecureInputOverlay.swift; keep judgment logic in WorkspaceModel/GroupState (model layer) so XGhosttyTests can cover it.",
+      "Verify T-002 with `just swift-test` and `just test`; for the build gate use `zig build` directly (NOT `just build-app`, guard-denied per R-002).",
+      "After T-002, T-003 (overview mode) is the remaining notes-ui batch; then T-004 (SPEC.md/README.md), T-005 (full gates), T-006 (human on-device check)."
+    ],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }

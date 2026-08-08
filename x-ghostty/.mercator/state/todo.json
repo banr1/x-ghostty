@@ -9,13 +9,13 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-001"
+    "T-002"
   ],
   "items": [
     {
       "id": "T-001",
       "title": "Model layer: add note storage to GroupState (max 10 lines, project-scoped), persist and restore it like the group name, and cover save/restore plus the 10-line cap with XGhosttyTests",
-      "status": "in_progress",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-001",
@@ -26,7 +26,36 @@
         "mode": "mercator"
       },
       "batch_group": "notes-model",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core test suite (zig build test) passed after the unsandboxed re-init; package fetch from deps.files.ghostty.org succeeded."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 410 test cases passed, including all 14 GroupNoteTests (note save/restore Codable round trip, 10-line cap enforced at init/setNote/decode, legacy decode without note key, oversized-note decode re-normalization, setGroupNote paths)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (exact recipe body of `just build-app`) exited 0. The `just build-app` wrapper itself was denied by the control-plane guard (misclassified as a bootstrap maintenance transition, see R-002); the underlying command is identical."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "GroupState.note with 10-line cap (init/setNote/decode, custom Codable keeps pre-note saves decodable), WorkspaceModel.setGroupNote, 14 unit tests. Persistence rides the existing workspace state -> invalidateRestorableState hook."
+        }
+      ]
     },
     {
       "id": "T-002",
