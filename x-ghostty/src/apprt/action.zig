@@ -340,6 +340,11 @@ pub const Action = union(Key) {
     /// compatibility; see the note above.
     goto_group_index: GotoGroup,
 
+    /// Open the note editor overlay for the current group. It is up to the
+    /// apprt to present the editor. Appended last (rather than next to
+    /// `rename_group`) to preserve C ABI compatibility; see the note above.
+    edit_group_note,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -409,6 +414,7 @@ pub const Action = union(Key) {
         close_group,
         move_group,
         goto_group_index,
+        edit_group_note,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

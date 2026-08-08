@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "8fcdddbfac18dd4daa832f5252a81ee6e9798579a091909d658326971fe1ce9d",
+    "last_signature": "25e468fa53efac80f63476a3a6555e81563c9c2aeee26902962eeb87ff8168d3",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-08T17:27:36+09:00",
-    "last_checked_at": "2026-08-08T17:27:36+09:00"
+    "last_progress_at": "2026-08-08T17:57:31+09:00",
+    "last_checked_at": "2026-08-08T17:57:31+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,22 +20,23 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.4,
+    "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 5,
-    "completed_todos_since_reset": 1,
-    "important_decisions_since_reset": 4,
+    "changed_files_since_reset": 18,
+    "completed_todos_since_reset": 2,
+    "important_decisions_since_reset": 5,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-08T17:42:00+09:00",
-    "summary": "Verification cycle after human resume (R-001 option (c): profile: unsandboxed + re-init). All three Essence success gates ran inside the session for the first time and passed: `just test` exit 0, `just swift-test` exit 0 (TEST SUCCEEDED, 410 tests incl. 14/14 GroupNoteTests), `zig build` (body of `just build-app`) exit 0. T-001 (note model layer) is DONE with command+diff evidence; B-001 resolved. New R-002 (Non-blocking, proposed): the pre-tool guard denies `just build-app` as a misclassified bootstrap maintenance transition — run `zig build` directly until the maintainer plane fixes the pattern. Next batch selected: T-002 (Cmd+N note edit overlay).",
+    "written_at": "2026-08-08T18:22:00+09:00",
+    "summary": "T-002 (Cmd+N note edit overlay) DONE with evidence: new edit_group_note action wired end to end on the rename_group pattern (Zig Binding/apprt/Surface/command/Config + xghostty.h tag appended last for C ABI + Swift XGhostty.App -> ghosttyEditGroupNote -> BaseTerminalController -> WorkspaceModel), model-layer session state (noteEditingGroup, begin*/endNoteEditing always-saves), SwiftUI GroupNoteEditor overlay in TerminalWorkspaceView (10-line-tall TextEditor, Esc/backdrop save-and-close, focus returned to surface). Gates: zig build 0, just test 0, just swift-test 0 (420 tests, 9 new). cmd+n confirmed conflict-free (config defaults + menu xibs). T-001 also done, B-001 resolved, R-002 (guard denies `just build-app`; use `zig build`) still proposed. Next batch: T-003 (Cmd+Opt+N overview mode) — the last UI must item, then T-004 docs, T-005 full gates, T-006 human visual check.",
     "next_actions": [
-      "Execute T-002 (Cmd+N edit overlay): follow the existing group-action pattern (C action enum -> XGhostty.App switch -> handler -> keybind default config). Cmd+N / Cmd+Opt+N were unbound per earlier scout recon; re-verify for conflicts at implementation time — if a conflict emerges, alternative-key selection is reserved to the human (Essence 思想).",
-      "Overlay view templates to imitate: macos/Sources/Features/Groups/HiddenGroupShelf.swift and SecureInputOverlay.swift; keep judgment logic in WorkspaceModel/GroupState (model layer) so XGhosttyTests can cover it.",
-      "Verify T-002 with `just swift-test` and `just test`; for the build gate use `zig build` directly (NOT `just build-app`, guard-denied per R-002).",
-      "After T-002, T-003 (overview mode) is the remaining notes-ui batch; then T-004 (SPEC.md/README.md), T-005 (full gates), T-006 (human on-device check)."
+      "Execute T-003 (Cmd+Opt+N overview mode): add a toggle_note_overview-style action mirroring edit_group_note's plumbing — append the C tag AFTER XGHOSTTY_ACTION_EDIT_GROUP_NOTE in both apprt/action.zig Key and include/xghostty.h (ABI: append-only), register in Binding.zig (enum + surface scope list + parse test), Surface.zig dispatch, command.zig empty-palette list, Config.zig default cmd+opt+n (.super+.alt, unicode 'n'; no existing binding).",
+      "T-003 model layer (must be XGhosttyTests-covered per S-012): overview-active state on WorkspaceModel; entering releases zoom (zoomedGroup = nil) BEFORE showing; display set == visible groups only (drive from state.effectiveVisibleGroupTree / hiddenGroupIDs exclusion); read-only: while active, beginNoteEditing* are no-ops and entering does not change focusedGroup; exit via same action or Esc.",
+      "T-003 UI: per-group note overlays rendered over each visible group (GroupSplitTreeView knows each group's frame; consider overlaying inside GroupView or via the tree view), truncation without layout break (lineLimit + fixed frame), no interaction. Esc-to-exit: no focused text view exists in overview, so use the CommandPalette hidden-Button pattern (.keyboardShortcut(.cancelAction)) or a focusable container with onExitCommand; verify the surface does not swallow Esc — the palette resigns first responder via BaseTerminalController when opening (toggleCommandPalette precedent).",
+      "Verify with: zig build (NOT `just build-app`, guard-denied per R-002), just test, just swift-test.",
+      "After T-003: T-004 adds the note layer to SPEC.md (new numbered section; existing §12 is 復元仕様 — do not reuse) and README.md, and may add section refs to GroupNoteEditor/WorkspaceModel comments; then T-005 full gates; then stop for T-006 (human on-device visual check of Cmd+N and Cmd+Opt+N)."
     ],
     "open_questions": [],
     "pending_cycle": false

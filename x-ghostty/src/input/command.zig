@@ -634,6 +634,7 @@ fn actionCommands(action: Action.Key) []const Command {
         .show_group,
         .rename_group,
         .set_group_title,
+        .edit_group_note,
         .close_group,
         => comptime &.{},
 

@@ -437,6 +437,10 @@ extension XGhostty.Notification {
     /// group, or the tab/window closes when it was the only group (`SPEC.md` §11.9, §18.5).
     static let ghosttyCloseGroup = Notification.Name("com.mitchellh.xghostty.closeGroup")
 
+    /// Posted when `edit_group_note` is requested. The sending object is the surface that had
+    /// focus; the focused group's note editor overlay opens.
+    static let ghosttyEditGroupNote = Notification.Name("com.mitchellh.xghostty.editGroupNote")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 

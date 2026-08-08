@@ -141,4 +141,103 @@ struct GroupNoteTests {
         #expect(restored.components(separatedBy: "\n").count == GroupState.maxNoteLines)
         #expect(restored.hasSuffix("line 10"))
     }
+
+    // MARK: Note editing session (edit_group_note, SPEC §12)
+
+    @Test func beginNoteEditingFocusedGroupTargetsFocusedGroup() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        model.beginNoteEditingFocusedGroup()
+
+        #expect(model.noteEditingGroup == ids.0)
+    }
+
+    @Test func beginNoteEditingUnknownGroupIsNoOp() throws {
+        let (state, _) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        model.beginNoteEditing(GroupID())
+
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func beginNoteEditingWithoutFocusIsNoOp() throws {
+        let model = WorkspaceModel()
+
+        model.beginNoteEditingFocusedGroup()
+
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func endNoteEditingSavesDraftAndCloses() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.1)
+
+        model.endNoteEditing(saving: "deploy after review\nping the team")
+
+        #expect(model.state.groups[ids.1]?.note == "deploy after review\nping the team")
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func endNoteEditingCapsAtTenLines() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.0)
+
+        model.endNoteEditing(saving: (1...25).map { "line \($0)" }.joined(separator: "\n"))
+
+        let stored = try #require(model.state.groups[ids.0]?.note)
+        #expect(stored.components(separatedBy: "\n").count == GroupState.maxNoteLines)
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func endNoteEditingWithoutSessionIsNoOp() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        model.endNoteEditing(saving: "orphan text")
+
+        #expect(model.state.groups[ids.0]?.note == "")
+        #expect(model.state.groups[ids.1]?.note == "")
+    }
+
+    @Test func restoreStateClearsNoteEditingForVanishedGroup() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.1)
+
+        // A snapshot in which the edited group no longer exists.
+        let solo = GroupID()
+        let snapshot = WorkspaceState(
+            canonicalGroupTree: .init(view: GroupRef(id: solo)),
+            groups: [solo: GroupState(
+                id: solo, name: "solo", paneTree: .init(), createdAt: Date())],
+            focusedGroup: solo)
+
+        model.restoreState(snapshot)
+
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func restoreStateKeepsNoteEditingForSurvivingGroup() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.0)
+
+        model.restoreState(state)
+
+        #expect(model.noteEditingGroup == ids.0)
+    }
+
+    @Test func removeAllGroupsClearsNoteEditing() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.0)
+
+        model.removeAllGroups()
+
+        #expect(model.noteEditingGroup == nil)
+    }
 }

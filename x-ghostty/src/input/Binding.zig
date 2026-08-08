@@ -656,6 +656,11 @@ pub const Action = union(enum) {
     /// Set the name of the current group to the given value.
     set_group_title: []const u8,
 
+    /// Open the note editor overlay for the current group. The note is a
+    /// short free-form text (at most 10 lines) attached to the group and
+    /// persisted with it.
+    edit_group_note,
+
     /// Close the current group, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_group,
@@ -1322,6 +1327,7 @@ pub const Action = union(enum) {
             .show_group,
             .rename_group,
             .set_group_title,
+            .edit_group_note,
             .close_group,
             .inspector,
             => .surface,
@@ -3443,6 +3449,10 @@ test "parse: group split actions" {
     {
         const binding = try parseSingle("a=rename_group");
         try testing.expect(binding.action == .rename_group);
+    }
+    {
+        const binding = try parseSingle("a=edit_group_note");
+        try testing.expect(binding.action == .edit_group_note);
     }
     {
         const binding = try parseSingle("a=close_group");

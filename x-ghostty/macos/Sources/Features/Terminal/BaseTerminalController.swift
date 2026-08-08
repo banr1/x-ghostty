@@ -289,6 +289,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidEditGroupNote(_:)),
+            name: XGhostty.Notification.ghosttyEditGroupNote,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidSetGroupTitle(_:)),
             name: XGhostty.Notification.ghosttySetGroupTitle,
             object: nil)
@@ -961,6 +966,16 @@ class BaseTerminalController: NSWindowController,
 
         // `rename_group` targets the focused group; enter inline-rename mode.
         workspace.beginRenamingFocusedGroup()
+    }
+
+    @objc private func ghosttyDidEditGroupNote(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // `edit_group_note` targets the focused group; open the note editor.
+        workspace.beginNoteEditingFocusedGroup()
     }
 
     @objc private func ghosttyDidSetGroupTitle(_ notification: Notification) {

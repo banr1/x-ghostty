@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-002"
+    "T-003"
   ],
   "items": [
     {
@@ -60,7 +60,7 @@
     {
       "id": "T-002",
       "title": "Cmd+N note edit overlay: opens for the focused project, multi-line editing with full text visible, Esc saves and closes, terminal returns to full view",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-003",
@@ -70,7 +70,46 @@
         "mode": "mercator"
       },
       "batch_group": "notes-ui",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (recipe body of `just build-app`, per R-002 guard workaround) exited 0 with the new edit_group_note action compiled through the Zig core, the regenerated C header, and the Swift app."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite passed, including the xghostty.h enum-sync check (checkXGhosttyHEnum) covering the appended XGHOSTTY_ACTION_EDIT_GROUP_NOTE tag and the new edit_group_note keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 420 test cases passed, including 9 new note-editing-session tests (begin targets focused group, unknown-group/no-focus no-ops, end saves draft with 10-line cap and closes, no-session no-op, restoreState clears/keeps editing state, removeAllGroups clears)."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "New edit_group_note action following the rename_group pattern end to end: keybind action (default cmd+n, no conflict — config defaults and menu xibs have no existing N binding), C ABI tag appended last, Swift dispatch posts ghosttyEditGroupNote, controller opens the model's note-editing session (noteEditingGroup on WorkspaceModel, begin/end methods, cleared when the group vanishes), and a SwiftUI GroupNoteEditor overlay in TerminalWorkspaceView: multi-line TextEditor sized to the full 10-line cap, Esc (onExitCommand) and backdrop click save-and-close, focus handed back to the terminal surface on dismissal. Overlay renders only while editing, so no permanent terminal area is occupied."
+        }
+      ]
     },
     {
       "id": "T-003",

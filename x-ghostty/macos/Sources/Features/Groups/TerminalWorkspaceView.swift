@@ -12,6 +12,10 @@ import SwiftUI
 struct TerminalWorkspaceView: View {
     @ObservedObject var workspace: WorkspaceModel
 
+    /// The last-focused terminal surface, used to hand keyboard focus back to
+    /// the terminal when the note editor overlay closes.
+    @Environment(\.ghosttyLastFocusedSurface) private var lastFocusedSurface
+
     /// Pane-level operations, forwarded to each rendered group. In Phase 1 only
     /// the focused group exists, so this routes to the controller's
     /// `surfaceTree`-based handler.
@@ -70,6 +74,29 @@ struct TerminalWorkspaceView: View {
             if !hiddenGroups.isEmpty {
                 HiddenGroupShelf(groups: hiddenGroups, onShow: onShowGroup)
                     .padding(6)
+            }
+
+            // Note editor overlay: presented while a note is being edited,
+            // absent otherwise so the terminal keeps the full area. The group
+            // is resolved through live state, so the overlay vanishes if the
+            // group disappears mid-edit.
+            if let noteID = workspace.noteEditingGroup,
+               let group = workspace.state.groups[noteID] {
+                GroupNoteEditor(
+                    groupName: group.name,
+                    note: group.note,
+                    onEnd: { workspace.endNoteEditing(saving: $0) })
+            }
+        }
+        .onChange(of: workspace.noteEditingGroup) { newValue in
+            // When the note editor closes, hand keyboard focus back to the
+            // terminal (same pattern as the command palette's dismissal).
+            if newValue == nil {
+                DispatchQueue.main.async {
+                    if let surface = lastFocusedSurface?.value {
+                        surface.window?.makeFirstResponder(surface)
+                    }
+                }
             }
         }
     }

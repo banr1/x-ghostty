@@ -38,6 +38,12 @@ final class WorkspaceModel: ObservableObject {
     /// they share one editing path (`SPEC.md` §7.1).
     @Published var renamingGroup: GroupID?
 
+    /// The group whose note editor overlay is open, or `nil`. Transient UI
+    /// state like `renamingGroup`: it lives on the model (not in
+    /// `WorkspaceState`) so it is never persisted. Set by the
+    /// `edit_group_note` action.
+    @Published var noteEditingGroup: GroupID?
+
     /// An empty workspace with no groups. Used as the controller's initial
     /// value before `init(wrapping:)` wraps the real pane tree.
     init() {
@@ -639,6 +645,27 @@ final class WorkspaceModel: ObservableObject {
         state.groups[id] = group
     }
 
+    /// Open the note editor for `id`. No-op if the group is unknown.
+    func beginNoteEditing(_ id: GroupID) {
+        guard state.groups[id] != nil else { return }
+        noteEditingGroup = id
+    }
+
+    /// Open the note editor for the focused group (`edit_group_note`).
+    func beginNoteEditingFocusedGroup() {
+        guard let id = state.focusedGroup else { return }
+        beginNoteEditing(id)
+    }
+
+    /// Close the note editor, saving `text` (normalized to the 10-line cap by
+    /// `setGroupNote`) to the group being edited. Escape closes the editor
+    /// through this path, so leaving the editor always saves.
+    func endNoteEditing(saving text: String) {
+        defer { noteEditingGroup = nil }
+        guard let id = noteEditingGroup else { return }
+        setGroupNote(id, to: text)
+    }
+
     // MARK: Undo (group-aware undo cross-cutting task)
 
     /// Restore an entire captured `WorkspaceState` wholesale. Used by the
@@ -660,6 +687,9 @@ final class WorkspaceModel: ObservableObject {
         if let renamingGroup, state.groups[renamingGroup] == nil {
             self.renamingGroup = nil
         }
+        if let noteEditingGroup, state.groups[noteEditingGroup] == nil {
+            self.noteEditingGroup = nil
+        }
     }
 
     // MARK: Teardown
@@ -674,5 +704,6 @@ final class WorkspaceModel: ObservableObject {
     func removeAllGroups() {
         state = WorkspaceState(canonicalGroupTree: .init(), groups: [:])
         renamingGroup = nil
+        noteEditingGroup = nil
     }
 }
