@@ -8,12 +8,14 @@
     "avoid_mixing_high_risk_items": true,
     "avoid_mixing_executors": true
   },
-  "active_batch": [],
+  "active_batch": [
+    "T-001"
+  ],
   "items": [
     {
       "id": "T-001",
       "title": "Model layer: add note storage to GroupState (max 10 lines, project-scoped), persist and restore it like the group name, and cover save/restore plus the 10-line cap with XGhosttyTests",
-      "status": "blocked",
+      "status": "in_progress",
       "priority": "must",
       "spec": [
         "S-001",
@@ -24,9 +26,7 @@
         "mode": "mercator"
       },
       "batch_group": "notes-model",
-      "risk_level": "normal",
-      "blocked_reason": "Implementation and tests are written (GroupState.note + normalizedNote cap, WorkspaceModel.setGroupNote, macos/Tests/Groups/GroupNoteTests.swift), but no verification command can run inside the autonomous session: the OS sandbox blocks both zig dependency fetch (network host deps.files.ghostty.org not allowlisted) and xcodebuild (XPC service connections and per-user temp/log writes denied). See Blocker B-001 / Recommendation R-001.",
-      "blocker": "B-001"
+      "risk_level": "normal"
     },
     {
       "id": "T-002",
@@ -104,6 +104,34 @@
         "mode": "human"
       },
       "batch_group": "notes-verify",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-007",
+      "title": "Optional mouse affordance: open the focused project's note from the header band (or equivalent) by mouse",
+      "status": "pending",
+      "priority": "should",
+      "spec": [
+        "S-014"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-optional",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-008",
+      "title": "Optional visual refinement of the note edit overlay and overview mode (colors, margins, animation)",
+      "status": "pending",
+      "priority": "should",
+      "spec": [
+        "S-015"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-optional",
       "risk_level": "normal"
     }
   ]

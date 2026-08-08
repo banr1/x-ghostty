@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "ca7f47e1a1527a960c14a59a1dbb7678f3a4e8e961ea4a24693d02f5f70356e0",
+    "last_signature": "745bb5382471558b6c1b60ed274b3d38fe84038d5bd6a67d41b7de4a681b1724",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-07T23:05:14+09:00",
-    "last_checked_at": "2026-08-07T23:05:14+09:00"
+    "last_progress_at": "2026-08-08T17:08:03+09:00",
+    "last_checked_at": "2026-08-08T17:08:03+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,

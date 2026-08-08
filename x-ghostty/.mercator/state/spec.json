@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0.0",
-  "projected_from_essence_sha256": "f50f8382fb446c20eabf3ac9d5494b8eaa51c4e3139320a439738ed2536b0a47",
-  "projected_at": "2026-08-07T22:41:00+09:00",
+  "projected_from_essence_sha256": "cdb873a608b440a95a8e19c13c103840b808c87f436340fe3916504b731e2942",
+  "projected_at": "2026-08-08T16:56:02+09:00",
   "items": [
     {
       "id": "S-001",
@@ -138,6 +138,25 @@
       "essence_refs": [
         "すべての実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
         "確認が取れるまで完了とはしない。"
+      ]
+    },
+    {
+      "id": "S-014",
+      "title": "Optional: mouse affordance to open a note (e.g. clicking the header band); keybinds alone suffice this time",
+      "status": "active",
+      "priority": "should",
+      "essence_refs": [
+        "ヘッダー帯のクリック等、マウスからノートを開く導線(今回はキーバインドのみで足りる。",
+        "余力があれば)。"
+      ]
+    },
+    {
+      "id": "S-015",
+      "title": "Optional: visual refinement of the note edit overlay and overview mode (colors, margins, animation)",
+      "status": "active",
+      "priority": "should",
+      "essence_refs": [
+        "ノート編集オーバーレイおよび一望モードの見た目の洗練(配色・余白・アニメーション)。"
       ]
     }
   ]
