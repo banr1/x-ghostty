@@ -142,7 +142,7 @@ struct GroupNoteTests {
         #expect(restored.hasSuffix("line 10"))
     }
 
-    // MARK: Note editing session (edit_group_note, SPEC §12)
+    // MARK: Note editing session (edit_group_note, SPEC §21.2)
 
     @Test func beginNoteEditingFocusedGroupTargetsFocusedGroup() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
@@ -201,6 +201,29 @@ struct GroupNoteTests {
 
         #expect(model.state.groups[ids.0]?.note == "")
         #expect(model.state.groups[ids.1]?.note == "")
+    }
+
+    @Test func cancelNoteEditingKeepsPreOpenTextAndCloses() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.setGroupNote(ids.1, to: "original line 1\noriginal line 2")
+        model.beginNoteEditing(ids.1)
+
+        model.cancelNoteEditing()
+
+        #expect(model.state.groups[ids.1]?.note == "original line 1\noriginal line 2")
+        #expect(model.noteEditingGroup == nil)
+    }
+
+    @Test func cancelNoteEditingWithoutSessionIsNoOp() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.setGroupNote(ids.0, to: "keep me")
+
+        model.cancelNoteEditing()
+
+        #expect(model.state.groups[ids.0]?.note == "keep me")
+        #expect(model.noteEditingGroup == nil)
     }
 
     @Test func restoreStateClearsNoteEditingForVanishedGroup() throws {

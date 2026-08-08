@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0.0",
-  "projected_from_essence_sha256": "cdb873a608b440a95a8e19c13c103840b808c87f436340fe3916504b731e2942",
-  "projected_at": "2026-08-08T16:56:02+09:00",
+  "projected_from_essence_sha256": "6b8a35322c8dd580e0944f27e7b528728d42c6f2701da7987f9b55f2ffd0f328",
+  "projected_at": "2026-08-08T21:04:43+09:00",
   "items": [
     {
       "id": "S-001",
@@ -27,12 +27,12 @@
     },
     {
       "id": "S-003",
-      "title": "Cmd+N opens a multi-line note edit overlay for the focused project; Esc saves and closes; the edit overlay shows the full text",
+      "title": "Cmd+N opens a multi-line note edit overlay for the focused project; Cmd+Enter saves and closes; the edit overlay shows the full text",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`Cmd+N` で focused プロジェクトのノート編集オーバーレイが開き、複数行を編集でき、",
-        "Esc で保存して閉じる。",
+        "`Cmd+Enter` で保存して閉じる。",
         "編集オーバーレイでは全文が見える。"
       ]
     },
@@ -95,35 +95,41 @@
     },
     {
       "id": "S-010",
-      "title": "No regression of existing group features (enumeration, zoom, ordinal jump, hide/show, resize/equalize, rename, close) or upstream-derived terminal behavior",
+      "title": "No regression of existing group features or upstream-derived terminal behavior, with the removal of Cmd+Enter's default fullscreen assignment as the single sanctioned exception (fullscreen stays reachable via Ctrl+Cmd+F, the Window menu, and the green button)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "既存の group 機能(列挙・zoom・序数ジャンプ・hide/show・resize/equalize・rename・",
-        "close)および上流由来のターミナル動作を退行させない。"
+        "close)および上流由来のターミナル動作を退行させない。ただし `Cmd+Enter` の",
+        "fullscreen 既定割り当ての解除はこの例外とする(fullscreen は `Ctrl+Cmd+F`・",
+        "Window メニュー・緑ボタンから引き続き到達できる)。"
       ]
     },
     {
       "id": "S-011",
-      "title": "Update SPEC.md and README.md to match the implemented note layer",
+      "title": "Update SPEC.md and README.md to match the implemented note layer; README's Building section lists all three verification commands (zig build / just test / just swift-test)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`SPEC.md` と `README.md` を、実装したノート層の仕様に合わせて更新する。"
+        "`SPEC.md` と `README.md` を、実装したノート層の仕様に合わせて更新する。",
+        "`README.md` の Building 節には `zig build` / `just test` / `just swift-test` の",
+        "3 つの検証コマンドをすべて載せる。"
       ]
     },
     {
       "id": "S-012",
-      "title": "Success gates: just build-app / just test / just swift-test exit 0, and XGhosttyTests contains passing tests for note save/restore, 10-line cap, visible-only display set, zoom release on overview entry, and no focus movement or note editing during overview",
+      "title": "Success gates: zig build / just test / just swift-test exit 0, and XGhosttyTests contains passing tests for note save/restore, 10-line cap, save-and-close keeps the edited text, discard-and-close keeps the pre-open text, visible-only display set, zoom release on overview entry, and no focus movement or note editing during overview",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`just build-app` が exit 0 で終わる。",
+        "`zig build` が exit 0 で終わる。",
         "`just test` が exit 0 で終わる。",
         "`just swift-test` が exit 0 で終わる。",
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
         "ノートを持つプロジェクトを保存し復元すると、同じノート本文が復元される",
         "ノートは 10 行を超えて保持されない",
+        "ノート編集を保存して閉じると、編集後の本文が保持される",
+        "ノート編集を破棄して閉じると、開く前の本文が保持される",
         "一望モードの表示対象集合が visible なプロジェクトのみと一致し、hidden な",
         "プロジェクトを含まない",
         "zoom 中に一望モードへ入ると zoom が解除される",
@@ -157,6 +163,25 @@
       "priority": "should",
       "essence_refs": [
         "ノート編集オーバーレイおよび一望モードの見た目の洗練(配色・余白・アニメーション)。"
+      ]
+    },
+    {
+      "id": "S-016",
+      "title": "Esc in the note edit overlay discards the edits and closes, keeping the pre-open text; no confirmation dialog on discard",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノート編集オーバーレイで Esc を押すと、編集内容を破棄して閉じ、開く前の本文が",
+        "保持される。破棄に確認は挟まない。"
+      ]
+    },
+    {
+      "id": "S-017",
+      "title": "Remove the default fullscreen assignment of Cmd+Enter",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+Enter` の既定割り当てである fullscreen を解除する。"
       ]
     }
   ]

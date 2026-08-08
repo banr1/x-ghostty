@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "d6da3d72bca8e1829b95f36a503f6399f8512cc56c42ffe3fb5f2d4aa8aace7a",
+    "last_signature": "d67e9ea48f7b51cdf7746d0667727b5bf83836a513ddc17b086deeedce5a111a",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-08T18:29:16+09:00",
-    "last_checked_at": "2026-08-08T18:29:16+09:00"
+    "last_progress_at": "2026-08-08T21:22:23+09:00",
+    "last_checked_at": "2026-08-08T21:22:23+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -33,6 +33,6 @@
     "summary": "Human resume: T-006 の実機目視確認を実施し、更新前の仕様(Esc で保存して閉じる)に対しては Cmd+N オーバーレイの開閉・保存・再起動後の復元、Cmd+Opt+N 一望モードの表示と再トグル/Esc 退出、見た目、一望モード時の可読性のすべてが期待どおり動作した。ただし実機で触った結果として update-essence で ESSENCE.md を更新した: ノート編集の確定を Cmd+Enter に、Esc を破棄に変更し、Cmd+Enter の既定 fullscreen 割り当ての解除を必須化し、成功条件 1 と検証コマンドの記述を zig build 基準に正した。\nしたがって R-003 は解除するが T-006 は done にしないこと — 新しい成功条件 5 は現行実装が満たしていない項目(Cmd+Enter で保存、Esc で破棄、Cmd+Enter で fullscreen にならない)を含む。新 Essence から Spec/Todo を再射影し、新規 must(編集の確定/破棄セマンティクス変更、Cmd+Enter fullscreen 既定の解除、対応する XGhosttyTests 2 件、README Building 節の 3 コマンド記載)を実装したうえで、改めて人間の実機再確認をゲートとして立てること。\nR-002 は新 Essence が zig build を正式な検証コマンドと明記したため次サイクルで整理してよい(非ブロッキング)。",
     "next_actions": [],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }

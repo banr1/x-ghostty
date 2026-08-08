@@ -672,12 +672,19 @@ final class WorkspaceModel: ObservableObject {
     }
 
     /// Close the note editor, saving `text` (normalized to the 10-line cap by
-    /// `setGroupNote`) to the group being edited. Escape closes the editor
-    /// through this path, so leaving the editor always saves.
+    /// `setGroupNote`) to the group being edited. This is the Cmd+Enter
+    /// (and backdrop-click) path; Escape goes through `cancelNoteEditing`.
     func endNoteEditing(saving text: String) {
         defer { noteEditingGroup = nil }
         guard let id = noteEditingGroup else { return }
         setGroupNote(id, to: text)
+    }
+
+    /// Close the note editor, discarding the draft so the group keeps the
+    /// text it had when the editor opened. This is the Escape path; no
+    /// confirmation is asked before the draft is dropped (SPEC.md §21.2).
+    func cancelNoteEditing() {
+        noteEditingGroup = nil
     }
 
     // MARK: Note overview

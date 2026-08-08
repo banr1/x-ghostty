@@ -86,7 +86,8 @@ struct TerminalWorkspaceView: View {
                 GroupNoteEditor(
                     groupName: group.name,
                     note: group.note,
-                    onEnd: { workspace.endNoteEditing(saving: $0) })
+                    onEnd: { workspace.endNoteEditing(saving: $0) },
+                    onCancel: { workspace.cancelNoteEditing() })
             }
 
             // Note overview interaction layer: while the viewing-only mode is

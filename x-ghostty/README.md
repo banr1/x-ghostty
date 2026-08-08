@@ -30,10 +30,12 @@ its window management with a single model:
   [SPEC.md](SPEC.md) for the design.
 - **Notes.** Each group holds a short handwritten note (up to 10 lines),
   persisted with the group and restored across restarts. `Cmd+N` opens a
-  note editor overlay for the focused group (Esc saves and closes);
-  `Cmd+Opt+N` toggles a read-only overview that lays every visible group's
-  note over it at once (press `Cmd+Opt+N` again or Esc to leave). See
-  SPEC.md §21.
+  note editor overlay for the focused group (`Cmd+Enter` saves and closes,
+  Esc discards and closes; to keep `Cmd+Enter` free for this, the upstream
+  `cmd+enter` fullscreen default is unbound — fullscreen remains on
+  `Ctrl+Cmd+F` and the Window menu); `Cmd+Opt+N` toggles a read-only
+  overview that lays every visible group's note over it at once (press
+  `Cmd+Opt+N` again or Esc to leave). See SPEC.md §21.
 - **Splits** work as they do upstream, nested inside each group.
 
 Everything else — the VT implementation, renderer, font stack, shell
@@ -52,7 +54,8 @@ Requires Zig 0.15.x and Xcode.
 
 ```shell-session
 zig build            # builds the Zig core and the macOS app bundle
-zig build test       # runs the Zig test suite
+just test            # runs the Zig test suite (zig build test)
+just swift-test      # runs the Swift unit tests (XGhosttyTests)
 ```
 
 See [HACKING.md](HACKING.md) for details, [Justfile](Justfile) for common

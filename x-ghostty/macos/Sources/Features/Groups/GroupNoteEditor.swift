@@ -9,8 +9,9 @@ import SwiftUI
 ///
 /// The editor shows the full note — the model caps notes at
 /// `GroupState.maxNoteLines` lines, and the editor is sized to fit that many
-/// lines — and Escape saves the draft and closes (there is no separate
-/// cancel path; leaving the editor always saves).
+/// lines. Cmd+Enter (or a backdrop click) saves the draft and closes;
+/// Escape discards the draft and closes without confirmation, keeping the
+/// text the note had when the editor opened.
 struct GroupNoteEditor: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
@@ -20,8 +21,11 @@ struct GroupNoteEditor: View {
     /// The note text at open time; seeds the draft.
     let note: String
 
-    /// Save the given draft and close the editor.
+    /// Save the given draft and close the editor (Cmd+Enter / backdrop click).
     let onEnd: (String) -> Void
+
+    /// Discard the draft and close the editor (Escape).
+    let onCancel: () -> Void
 
     @State private var draft: String = ""
     @FocusState private var editorFocused: Bool
@@ -30,13 +34,25 @@ struct GroupNoteEditor: View {
         // Fill the workspace so the panel centers regardless of the parent
         // ZStack's alignment. The backdrop dims the terminal slightly so the
         // panel reads as a transient layer above it, and a click on the
-        // backdrop saves and closes like Escape does.
+        // backdrop saves and closes like Cmd+Enter does (only Escape
+        // discards).
         ZStack {
             Color.black.opacity(0.25)
                 .contentShape(Rectangle())
                 .onTapGesture { onEnd(draft) }
 
             panel
+
+            // Cmd+Enter save chord. The system key-equivalent pass delivers
+            // it here even while the TextEditor owns keyboard focus (same
+            // hidden-button pattern as GroupNoteOverviewKeyCatcher). Only
+            // works because this fork unbinds the upstream
+            // cmd+enter=toggle_fullscreen default (Config.zig).
+            Button { onEnd(draft) } label: { Color.clear }
+                .buttonStyle(PlainButtonStyle())
+                .keyboardShortcut(.return, modifiers: [.command])
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -52,7 +68,7 @@ struct GroupNoteEditor: View {
                 .frame(minHeight: editorHeight, maxHeight: editorHeight)
                 .padding(8)
                 .focused($editorFocused)
-                .onExitCommand { onEnd(draft) }
+                .onExitCommand { onCancel() }
         }
         .frame(width: 480)
         .background(ghostty.config.backgroundColor)
@@ -62,7 +78,7 @@ struct GroupNoteEditor: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .shadow(radius: 8)
-        .onExitCommand { onEnd(draft) }
+        .onExitCommand { onCancel() }
         .onAppear {
             draft = note
             // Grab focus on appearance. Dispatching to the next runloop turn
@@ -74,14 +90,14 @@ struct GroupNoteEditor: View {
         }
     }
 
-    /// Header band: the group name plus the save-and-close affordance. Styled
+    /// Header band: the group name plus the save/discard affordances. Styled
     /// like `GroupLabel`'s band so the overlay reads as part of the group UI.
     private var header: some View {
         HStack {
             Text(groupName)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("esc to save & close")
+            Text("⌘↩ save · esc discard")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }

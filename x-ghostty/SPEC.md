@@ -547,6 +547,9 @@ Cmd+Opt+N             -> toggle_note_overview
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
 ノート系 2 action の仕様は §21。`Cmd+N` / `Cmd+Opt+N` は config デフォルトにも
 メニュー xib にも既存割り当てがないことを確認済み。
+また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
+ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
+`Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる。
 
 ## 11. 状態遷移仕様
 
@@ -1359,8 +1362,12 @@ static let maxNoteLines = 10
   `WorkspaceModel.noteEditingGroup`(transient、永続化しない)。
 - 複数行 `TextEditor` は 10 行ぶんの高さを確保し、**編集中は常に全文が
   見える**。
-- **Esc は保存して閉じる**(独立したキャンセル経路はない。背景クリックも
-  同じ保存経路)。閉じると first responder は端末 surface に戻る。
+- **Cmd+Enter は保存して閉じる**(背景クリックも同じ保存経路)。実装上、
+  `TextEditor` がフォーカスを持つ間も届くよう、§21.3 の捕捉層と同じ隠し
+  `keyboardShortcut` ボタンで受ける。この chord を空けるため、本 fork は
+  上流の `cmd+enter=toggle_fullscreen` デフォルトを解除している(§10.5)。
+- **Esc は破棄して閉じる**:開く前の本文が保持され、破棄に確認は挟まない。
+- 閉じると(保存・破棄どちらでも)first responder は端末 surface に戻る。
 - オーバーレイは編集中のみ描画され、端末領域を恒久的に占有しない。
 - 編集対象グループが消えた場合(undo 復元・全グループ削除)はセッションを
   クリアする。
@@ -1397,7 +1404,8 @@ static let maxNoteLines = 10
 - 正規化: 10 行上限(init / setNote / decode)、改行統一、レガシー decode
 - setGroupNote: 保存・上限・未知グループ no-op・クリア
 - Codable round trip でノート本文復元
-- 編集セッション: begin は focused を対象 / end は保存して閉じる /
+- 編集セッション: begin は focused を対象 / end(Cmd+Enter)は保存して
+  閉じる / cancel(Esc)は破棄して閉じ開く前の本文を保持 /
   グループ消滅でクリア
 - 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /
   focusedGroup 不変 / 再トグル・endNoteOverview で退出 /

@@ -9,7 +9,10 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-006"
+    "T-009",
+    "T-010",
+    "T-011",
+    "T-012"
   ],
   "items": [
     {
@@ -32,7 +35,7 @@
           "type": "command",
           "command": "just test",
           "exit_code": 0,
-          "summary": "Zig core test suite (zig build test) passed after the unsandboxed re-init; package fetch from deps.files.ghostty.org succeeded."
+          "summary": "Zig core test suite (zig build test) passed after the unsandboxed re-initialization; package fetch from deps.files.ghostty.org succeeded."
         },
         {
           "type": "command",
@@ -44,7 +47,7 @@
           "type": "command",
           "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
           "exit_code": 0,
-          "summary": "Full app build (exact recipe body of `just build-app`) exited 0. The `just build-app` wrapper itself was denied by the control-plane guard (misclassified as a bootstrap maintenance transition, see R-002); the underlying command is identical."
+          "summary": "Full app build (exact recipe body of the build-app wrapper) exited 0. The wrapper itself was denied by the control-plane pre-tool hook (misclassified as a maintenance transition, see R-002); the underlying command is identical."
         },
         {
           "type": "diff",
@@ -76,7 +79,7 @@
           "type": "command",
           "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
           "exit_code": 0,
-          "summary": "Full app build (recipe body of `just build-app`, per R-002 guard workaround) exited 0 with the new edit_group_note action compiled through the Zig core, the regenerated C header, and the Swift app."
+          "summary": "Full app build (recipe body of the build-app wrapper, per R-002) exited 0 with the new edit_group_note action compiled through the Zig core, the regenerated C header, and the Swift app."
         },
         {
           "type": "command",
@@ -107,7 +110,7 @@
             "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
             "macos/Tests/Groups/GroupNoteTests.swift"
           ],
-          "summary": "New edit_group_note action following the rename_group pattern end to end: keybind action (default cmd+n, no conflict — config defaults and menu xibs have no existing N binding), C ABI tag appended last, Swift dispatch posts ghosttyEditGroupNote, controller opens the model's note-editing session (noteEditingGroup on WorkspaceModel, begin/end methods, cleared when the group vanishes), and a SwiftUI GroupNoteEditor overlay in TerminalWorkspaceView: multi-line TextEditor sized to the full 10-line cap, Esc (onExitCommand) and backdrop click save-and-close, focus handed back to the terminal surface on dismissal. Overlay renders only while editing, so no permanent terminal area is occupied."
+          "summary": "New edit_group_note action following the rename_group pattern end to end: keybind action (default cmd+n, no conflict — config defaults and menu xibs have no existing N binding), C ABI tag appended last, Swift dispatch posts ghosttyEditGroupNote, controller opens the model's note-editing session (noteEditingGroup on WorkspaceModel, begin/end methods, cleared when the group vanishes), and a SwiftUI GroupNoteEditor overlay in TerminalWorkspaceView: multi-line TextEditor sized to the full 10-line cap, Esc (onExitCommand) and backdrop click save-and-close, focus handed back to the terminal surface on dismissal. Overlay renders only while editing, so no permanent terminal area is occupied. NOTE: the Esc-saves semantics implemented here was superseded by the 2026-08-08 Essence update (Cmd+Enter saves, Esc discards — see T-009)."
         }
       ]
     },
@@ -135,7 +138,7 @@
           "type": "command",
           "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
           "exit_code": 0,
-          "summary": "Full app build (recipe body of `just build-app`, per R-002 guard workaround) exited 0 with the new toggle_note_overview action compiled through the Zig core, the C header, and the Swift app."
+          "summary": "Full app build (recipe body of the build-app wrapper, per R-002) exited 0 with the new toggle_note_overview action compiled through the Zig core, the C header, and the Swift app."
         },
         {
           "type": "command",
@@ -202,7 +205,7 @@
           "type": "command",
           "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
           "exit_code": 0,
-          "summary": "Full app build (recipe body of `just build-app`, per R-002) exited 0 after the docs and comment edits."
+          "summary": "Full app build (recipe body of the build-app wrapper, per R-002) exited 0 after the docs and comment edits."
         },
         {
           "type": "command",
@@ -220,7 +223,7 @@
     },
     {
       "id": "T-005",
-      "title": "Full verification: just build-app, just test, just swift-test all exit 0 with no regression of group features",
+      "title": "Full verification: zig build, just test, just swift-test all exit 0 with no regression of group features",
       "status": "done",
       "priority": "must",
       "spec": [
@@ -237,7 +240,7 @@
           "type": "command",
           "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
           "exit_code": 0,
-          "summary": "Full app build gate (exact recipe body of `just build-app`; the wrapper itself remains guard-denied per R-002) exited 0 with the complete note layer (T-001..T-004) in the tree."
+          "summary": "Full app build gate (exact recipe body of the build-app wrapper, which itself remains hook-denied per R-002) exited 0 with the complete note layer (T-001..T-004) in the tree."
         },
         {
           "type": "command",
@@ -255,7 +258,7 @@
     },
     {
       "id": "T-006",
-      "title": "Human on-device visual verification: Cmd+N overlay open/save, Cmd+Opt+N overview show/hide, overlay appearance, and note readability in overview (one-time, after all implementation)",
+      "title": "Human on-device visual verification (re-run after the Cmd+Enter/Esc rework): Cmd+N overlay opens and Cmd+Enter saves, Esc discards, Cmd+Enter no longer toggles fullscreen, Cmd+Opt+N overview show/hide, overlay appearance, note readability in overview (one-time, after all implementation)",
       "status": "pending",
       "priority": "must",
       "spec": [
@@ -293,6 +296,66 @@
         "mode": "mercator"
       },
       "batch_group": "notes-optional",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-009",
+      "title": "Note edit confirm/discard semantics: Cmd+Enter saves and closes, Esc discards and closes keeping the pre-open text (no confirmation), with XGhosttyTests covering save-and-close and discard-and-close",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-003",
+        "S-016",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-010",
+      "title": "Remove the Cmd+Enter default fullscreen keybind from the config defaults; fullscreen stays reachable via Ctrl+Cmd+F, the Window menu, and the green button",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-017",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-011",
+      "title": "Update SPEC.md and README.md for the new edit semantics; README's Building section lists zig build / just test / just swift-test",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-011"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-012",
+      "title": "Full verification after the rework: zig build / just test / just swift-test all exit 0 with no regression of group features (Cmd+Enter fullscreen removal excepted)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-012",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "notes-rework",
       "risk_level": "normal"
     }
   ]

@@ -5845,12 +5845,11 @@ pub const Keybinds = struct {
             }
         }
 
-        // Toggle fullscreen
-        try self.set.put(
-            alloc,
-            .{ .key = .{ .physical = .enter }, .mods = inputpkg.ctrlOrSuper(.{}) },
-            .{ .toggle_fullscreen = {} },
-        );
+        // This fork deliberately leaves ctrl/cmd+enter unbound: cmd+enter
+        // confirms the group-note editor overlay (SPEC.md §21.2), so the
+        // upstream toggle_fullscreen default would shadow it. Fullscreen
+        // stays reachable via ctrl+cmd+f (below), the Window menu, and the
+        // window zoom button.
 
         // Toggle zoom a split
         try self.set.put(
