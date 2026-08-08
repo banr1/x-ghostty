@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The read-only note panel the note overview (`toggle_note_overview`,
-/// Cmd+Opt+N) lays over one visible group.
+/// Cmd+Opt+N, `SPEC.md` §21.3) lays over one visible group.
 ///
 /// `GroupView` renders this over its own content while the overview is
 /// active, so every visible group shows its note at once. The panel never

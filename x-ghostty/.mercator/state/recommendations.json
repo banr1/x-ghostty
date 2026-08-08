@@ -29,6 +29,20 @@
       "created_at": "2026-08-08T17:35:00+09:00",
       "title": "制御プレーンのガードが `just build-app` を bootstrap 系メンテナンス遷移と誤分類して deny する",
       "description": "unsandboxed 化後の検証で、対象プロジェクトの通常ビルドコマンド `just build-app` が pre-tool ガードに『Mercator maintenance transition requires explicit human approval (bootstrap re-seeds project files outside the normal cycle flow)』として拒否されました。`just test` / `just swift-test` は通過するため、`build-app` という recipe 名がガードの bootstrap 判定パターンに誤って一致していると推測されます。実害は回避可能で、本サイクルでは recipe の実体である `zig build` を直接実行して exit 0 を確認済み(T-001 evidence)。恒久対応はメンテナプレーンでのガードのパターン修正が望ましいです。それまでの間、エージェントは `zig build` 直接実行で代替します。"
+    },
+    {
+      "id": "R-003",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "source": [
+        "T-006"
+      ],
+      "created_at": "2026-08-08T19:05:00+09:00",
+      "reason": "自律実行可能な must Todo がすべて完了し、残る must は human executor の T-006(実機目視確認)のみ。GUI の見た目は自動検証できない(Essence 前提事項)ため、人間の一度の実機確認が必要。",
+      "title": "T-006: ノート機能の実機目視確認をお願いします(最後の must)",
+      "description": "実装は全て完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0、434 テスト)。Essence 成功条件 5 の一度きりの目視確認をお願いします。手順: アプリを起動し、(1) Cmd+N で focused プロジェクトのノート編集オーバーレイが開き、入力後 Esc で閉じると内容が保存されている(再度 Cmd+N で確認可、アプリ再起動でも復元)。(2) Cmd+Opt+N で visible な全プロジェクトの上にノートが同時表示され、再度 Cmd+Opt+N または Esc で消える(zoom 中に入ると zoom が解除される。モード中はクリック・キー入力が端末に届かない=閲覧専用)。(3) オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる。(4) 一望モードのノートが読める(長いノートは末尾切り詰め表示。全文は編集オーバーレイで見える)。既知の実装上の注意: keybind を toggle_note_overview のデフォルト(cmd+opt+n)から変更した場合、一望モードからの再トグル退出は効かず Esc のみになります(モード中は端末 surface が unfocused で keybind 経路が働かないため、退出 chord はデフォルトを SwiftUI 側で再照合しています)。確認が取れたら `just resume` で T-006 の完了(と、見た目に不満があればその指摘)を記録してください。見た目の調整要望は should の T-008(視覚洗練)として拾えます。must 完了後は phase 境界の判断(--approve-should / --close-at-must)も併せてご検討ください。"
     }
   ]
 }

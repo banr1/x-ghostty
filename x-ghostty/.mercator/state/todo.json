@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-004"
+    "T-006"
   ],
   "items": [
     {
@@ -175,7 +175,7 @@
     {
       "id": "T-004",
       "title": "Update SPEC.md and README.md to describe the note layer as implemented",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-011"
@@ -184,12 +184,44 @@
         "mode": "mercator"
       },
       "batch_group": "notes-docs",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md",
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/GroupNoteOverview.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupState.swift"
+          ],
+          "summary": "SPEC.md: new §21 ノート仕様 (21.1 data model with 10-line normalization at init/setNote/decode and name-path persistence; 21.2 edit overlay semantics incl. Esc-saves-and-closes and full-text visibility; 21.3 overview semantics incl. visible-only display set, zoom release before showing, viewing-only guards, truncated display, exit paths and the rebound-key Esc-only caveat; 21.4 GroupNoteTests inventory), plus edit_group_note/toggle_note_overview added to the §9.1 action list, Cmd+N/Cmd+Opt+N added to §10.5 default keybinds with the conflict-check note, and GroupNoteEditor.swift/GroupNoteOverview.swift added to the §16 file layout. README.md: new Notes bullet in About (10-line per-group note, persistence, Cmd+N editor, Cmd+Opt+N read-only overview, exit keys, SPEC §21 pointer). Source doc comments now reference the new SPEC sections (GroupNoteEditor §21.2, GroupNoteOverview §21.3, WorkspaceModel note session/overview §21.2-3, GroupState.note §21.1) — the section did not exist when they were written."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (recipe body of `just build-app`, per R-002) exited 0 after the docs and comment edits."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite passed after the docs and comment edits."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 434 test cases passed after the docs and comment edits."
+        }
+      ]
     },
     {
       "id": "T-005",
       "title": "Full verification: just build-app, just test, just swift-test all exit 0 with no regression of group features",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-012",
@@ -199,7 +231,27 @@
         "mode": "mercator"
       },
       "batch_group": "notes-verify",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build gate (exact recipe body of `just build-app`; the wrapper itself remains guard-denied per R-002) exited 0 with the complete note layer (T-001..T-004) in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core gate exited 0, including the xghostty.h enum-sync check over both appended note action tags and both note keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Swift gate: TEST SUCCEEDED, 434 test cases, 0 failures — the full pre-note suite (group enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) plus all 37 GroupNoteTests. No regression of group features observed; run at the point where every implementation Todo (T-001..T-004) is complete."
+        }
+      ]
     },
     {
       "id": "T-006",

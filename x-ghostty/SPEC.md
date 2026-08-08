@@ -461,6 +461,9 @@ show_group:<group-id-or-name>
 rename_group
 set_group_title:<name>
 
+edit_group_note
+toggle_note_overview
+
 close_group
 ```
 
@@ -537,9 +540,13 @@ Cmd+Ctrl+Opt+Shift+Down     -> resize_group:down,10
 Cmd+Opt+Enter         -> toggle_group_zoom
 Cmd+Opt+H             -> hide_group
 Cmd+Opt+R             -> rename_group
+Cmd+N                 -> edit_group_note
+Cmd+Opt+N             -> toggle_note_overview
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
+ノート系 2 action の仕様は §21。`Cmd+N` / `Cmd+Opt+N` は config デフォルトにも
+メニュー xib にも既存割り当てがないことを確認済み。
 
 ## 11. 状態遷移仕様
 
@@ -1121,6 +1128,8 @@ macos/Sources/Features/Groups/
   GroupLabel.swift
   HiddenGroupShelf.swift
   CloseGroupConfirmation.swift
+  GroupNoteEditor.swift
+  GroupNoteOverview.swift
 ```
 
 既存 split と密接に関わるため、最終的には `Features/Splits` 配下に統合してもよい。
@@ -1319,6 +1328,83 @@ restore:
 ```
 
 この仕様の核は、**`canonicalGroupTree` を唯一のグループ配置source of truthにし、hide/zoomを派生表示状態として扱うこと**です。これにより、グループは第一級レイアウト単位になりつつ、既存のペイン分割・surface lifetime・GhosttyのSplitTree設計を壊さずに拡張できます。また、**表示上限 9 と動的序数により、UI の安定性と操作性を両立**させています。
+
+## 21. ノート仕様
+
+グループ(=プロジェクト)ごとに人間が手書きする短いメモを保持する層。
+判断ロジック(保持・復元・表示対象)はすべてモデル層に置き、`XGhosttyTests`
+から検証する。
+
+### 21.1 データモデル
+
+```swift
+// GroupState に追加
+var note: String = ""            // 常に正規化済み
+static let maxNoteLines = 10
+```
+
+- ノートは**グループに属する**。ペイン(split)には属さない。
+- 正規化 `GroupState.normalizedNote`: 改行を `\n` に統一し、
+  `maxNoteLines`(10 行)を超える行を捨てる。init / `setNote` / decode の
+  3 経路すべてで適用されるため、レガシー保存(note キーなし → `""`)や
+  改竄された保存(10 行超)も読み込み時に再正規化される。
+- 永続化はグループ名と同一経路(workspace state の Codable →
+  `invalidateRestorableState`)。再起動後、同じグループへ復元される。
+- `WorkspaceModel.setGroupNote(_:to:)` が唯一の書込み口。正規化後に変化が
+  なければ状態を発行しない。
+
+### 21.2 編集オーバーレイ(edit_group_note / Cmd+N)
+
+- focused グループのノート編集オーバーレイを開く。セッション状態は
+  `WorkspaceModel.noteEditingGroup`(transient、永続化しない)。
+- 複数行 `TextEditor` は 10 行ぶんの高さを確保し、**編集中は常に全文が
+  見える**。
+- **Esc は保存して閉じる**(独立したキャンセル経路はない。背景クリックも
+  同じ保存経路)。閉じると first responder は端末 surface に戻る。
+- オーバーレイは編集中のみ描画され、端末領域を恒久的に占有しない。
+- 編集対象グループが消えた場合(undo 復元・全グループ削除)はセッションを
+  クリアする。
+
+### 21.3 一望モード(toggle_note_overview / Cmd+Opt+N)
+
+- visible な全グループの上に、それぞれのノートを同時に読み取り専用
+  オーバーレイ表示するトグルモード。状態は
+  `WorkspaceModel.noteOverviewActive`(transient、永続化しない)。
+- **進入時に zoom を先に解除**してから表示する(`zoomedGroup = nil`)。
+  `focusedGroup` は変更しない。
+- **表示対象集合は visible グループのみ**:
+  `noteOverviewGroupIDs == WorkspaceState.visibleGroupIDs`
+  (canonical tree の葉 = visible。hidden グループは含まれない)。
+- **閲覧専用**: モード中は `beginNoteEditing*` と focus 移動 3 経路
+  (`gotoGroupTarget` / `gotoGroupIndexTarget` / `switchFocusedGroup`)が
+  すべて no-op。ワークスペース全面の捕捉層がマウス操作も遮断する。
+- ノート編集オーバーレイが開いている間のトグルは no-op(編集ドラフトを
+  黙って破棄しない)。
+- 退出は**再度 Cmd+Opt+N または Esc**。退出時に first responder は端末
+  surface に戻る。実装上、モード中は surface が unfocused で keybind 経路が
+  効かないため、Esc は捕捉層内の focused field の `onExitCommand`、
+  再トグルはデフォルト chord (cmd+opt+n) を再照合する隠し
+  `keyboardShortcut` ボタンで受ける(keybind を変更した場合の退出は Esc)。
+- **切り詰め表示**: 各グループのパネルは `lineLimit(maxNoteLines)` +
+  末尾切り詰めをグループ境界内のフレームで行い、レイアウトを壊さない。
+  全文表示は編集オーバーレイの役割。
+- undo 復元(`restoreState`)・全グループ削除はモードを終了させる
+  (復元された zoom が「zoom 解除済み」不変条件と矛盾しないように)。
+
+### 21.4 テスト(GroupNoteTests)
+
+```text
+- 正規化: 10 行上限(init / setNote / decode)、改行統一、レガシー decode
+- setGroupNote: 保存・上限・未知グループ no-op・クリア
+- Codable round trip でノート本文復元
+- 編集セッション: begin は focused を対象 / end は保存して閉じる /
+  グループ消滅でクリア
+- 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /
+  focusedGroup 不変 / 再トグル・endNoteOverview で退出 /
+  モード中はノート編集・focus 移動 3 経路とも no-op /
+  編集オーバーレイ表示中のトグルは no-op /
+  restoreState・removeAllGroups で終了
+```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"
 [2]: https://rexbrahh.github.io/ghostty-knowledge-base/reference/macos/Sources/Features/Splits/SplitTree.swift/ "macos/Sources/Features/Splits/SplitTree.swift | Ghostty Knowledge Base"

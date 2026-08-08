@@ -24,9 +24,10 @@ struct GroupState: Identifiable {
     /// `SurfaceView.id`.
     var focusedSurface: SurfaceID?
 
-    /// The human-written note attached to this group. Belongs to the group as
-    /// a whole, never to individual panes. Always normalized: at most
-    /// `maxNoteLines` lines, `\n` separators. Empty means "no note".
+    /// The human-written note attached to this group (`SPEC.md` §21.1).
+    /// Belongs to the group as a whole, never to individual panes. Always
+    /// normalized: at most `maxNoteLines` lines, `\n` separators. Empty means
+    /// "no note".
     private(set) var note: String
 
     var createdAt: Date

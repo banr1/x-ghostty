@@ -28,6 +28,12 @@ its window management with a single model:
   `GroupTree` within the single window and can be created, moved, resized,
   zoomed, hidden, shown, renamed, and jumped to by ordinal (Cmd+1-9). See
   [SPEC.md](SPEC.md) for the design.
+- **Notes.** Each group holds a short handwritten note (up to 10 lines),
+  persisted with the group and restored across restarts. `Cmd+N` opens a
+  note editor overlay for the focused group (Esc saves and closes);
+  `Cmd+Opt+N` toggles a read-only overview that lays every visible group's
+  note over it at once (press `Cmd+Opt+N` again or Esc to leave). See
+  SPEC.md §21.
 - **Splits** work as they do upstream, nested inside each group.
 
 Everything else — the VT implementation, renderer, font stack, shell

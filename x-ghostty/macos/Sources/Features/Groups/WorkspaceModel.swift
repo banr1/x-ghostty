@@ -41,12 +41,13 @@ final class WorkspaceModel: ObservableObject {
     /// The group whose note editor overlay is open, or `nil`. Transient UI
     /// state like `renamingGroup`: it lives on the model (not in
     /// `WorkspaceState`) so it is never persisted. Set by the
-    /// `edit_group_note` action.
+    /// `edit_group_note` action (`SPEC.md` §21.2).
     @Published var noteEditingGroup: GroupID?
 
-    /// Whether the read-only note overview is active (`toggle_note_overview`).
-    /// Transient UI state like `renamingGroup`; never persisted. While active,
-    /// note editing and focus moves are no-ops — the mode is viewing-only.
+    /// Whether the read-only note overview is active (`toggle_note_overview`,
+    /// `SPEC.md` §21.3). Transient UI state like `renamingGroup`; never
+    /// persisted. While active, note editing and focus moves are no-ops —
+    /// the mode is viewing-only.
     @Published private(set) var noteOverviewActive = false
 
     /// An empty workspace with no groups. Used as the controller's initial

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The note editor overlay, opened by the `edit_group_note` action (Cmd+N)
-/// for the focused group.
+/// for the focused group (`SPEC.md` §21.2).
 ///
 /// `TerminalWorkspaceView` presents this over the whole group layer while
 /// `WorkspaceModel.noteEditingGroup` is set, and removes it entirely when the
