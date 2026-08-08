@@ -33,7 +33,7 @@
     {
       "id": "R-003",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "requires_human_approval": true,
       "agent_action": "stop_until_human_review",
       "source": [
@@ -42,7 +42,10 @@
       "created_at": "2026-08-08T19:05:00+09:00",
       "reason": "自律実行可能な must Todo がすべて完了し、残る must は human executor の T-006(実機目視確認)のみ。GUI の見た目は自動検証できない(Essence 前提事項)ため、人間の一度の実機確認が必要。",
       "title": "T-006: ノート機能の実機目視確認をお願いします(最後の must)",
-      "description": "実装は全て完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0、434 テスト)。Essence 成功条件 5 の一度きりの目視確認をお願いします。手順: アプリを起動し、(1) Cmd+N で focused プロジェクトのノート編集オーバーレイが開き、入力後 Esc で閉じると内容が保存されている(再度 Cmd+N で確認可、アプリ再起動でも復元)。(2) Cmd+Opt+N で visible な全プロジェクトの上にノートが同時表示され、再度 Cmd+Opt+N または Esc で消える(zoom 中に入ると zoom が解除される。モード中はクリック・キー入力が端末に届かない=閲覧専用)。(3) オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる。(4) 一望モードのノートが読める(長いノートは末尾切り詰め表示。全文は編集オーバーレイで見える)。既知の実装上の注意: keybind を toggle_note_overview のデフォルト(cmd+opt+n)から変更した場合、一望モードからの再トグル退出は効かず Esc のみになります(モード中は端末 surface が unfocused で keybind 経路が働かないため、退出 chord はデフォルトを SwiftUI 側で再照合しています)。確認が取れたら `just resume` で T-006 の完了(と、見た目に不満があればその指摘)を記録してください。見た目の調整要望は should の T-008(視覚洗練)として拾えます。must 完了後は phase 境界の判断(--approve-should / --close-at-must)も併せてご検討ください。"
+      "description": "実装は全て完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0、434 テスト)。Essence 成功条件 5 の一度きりの目視確認をお願いします。手順: アプリを起動し、(1) Cmd+N で focused プロジェクトのノート編集オーバーレイが開き、入力後 Esc で閉じると内容が保存されている(再度 Cmd+N で確認可、アプリ再起動でも復元)。(2) Cmd+Opt+N で visible な全プロジェクトの上にノートが同時表示され、再度 Cmd+Opt+N または Esc で消える(zoom 中に入ると zoom が解除される。モード中はクリック・キー入力が端末に届かない=閲覧専用)。(3) オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる。(4) 一望モードのノートが読める(長いノートは末尾切り詰め表示。全文は編集オーバーレイで見える)。既知の実装上の注意: keybind を toggle_note_overview のデフォルト(cmd+opt+n)から変更した場合、一望モードからの再トグル退出は効かず Esc のみになります(モード中は端末 surface が unfocused で keybind 経路が働かないため、退出 chord はデフォルトを SwiftUI 側で再照合しています)。確認が取れたら `just resume` で T-006 の完了(と、見た目に不満があればその指摘)を記録してください。見た目の調整要望は should の T-008(視覚洗練)として拾えます。must 完了後は phase 境界の判断(--approve-should / --close-at-must)も併せてご検討ください。",
+      "resolved_at": "2026-08-08T21:01:37+09:00",
+      "resolved_by": "human",
+      "resolution": "T-006 の実機目視確認を実施し、更新前の仕様(Esc で保存して閉じる)に対しては Cmd+N オーバーレイの開閉・保存・再起動後の復元、Cmd+Opt+N 一望モードの表示と再トグル/Esc 退出、見た目、一望モード時の可読性のすべてが期待どおり動作した。ただし実機で触った結果として update-essence で ESSENCE.md を更新した: ノート編集の確定を Cmd+Enter に、Esc を破棄に変更し、Cmd+Enter の既定 fullscreen 割り当ての解除を必須化し、成功条件 1 と検証コマンドの記述を zig build 基準に正した。\nしたがって R-003 は解除するが T-006 は done にしないこと — 新しい成功条件 5 は現行実装が満たしていない項目(Cmd+Enter で保存、Esc で破棄、Cmd+Enter で fullscreen にならない)を含む。新 Essence から Spec/Todo を再射影し、新規 must(編集の確定/破棄セマンティクス変更、Cmd+Enter fullscreen 既定の解除、対応する XGhosttyTests 2 件、README Building 節の 3 コマンド記載)を実装したうえで、改めて人間の実機再確認をゲートとして立てること。\nR-002 は新 Essence が zig build を正式な検証コマンドと明記したため次サイクルで整理してよい(非ブロッキング)。"
     }
   ]
 }
