@@ -53,7 +53,7 @@
     {
       "id": "R-004",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "requires_human_approval": true,
       "agent_action": "stop_until_human_review",
       "source": [
@@ -62,7 +62,10 @@
       "created_at": "2026-08-08T21:32:25+09:00",
       "reason": "自律実行可能な must Todo(T-009〜T-012)がすべて完了し、残る must は human executor の T-006(実機目視確認の再実施)のみ。GUI の見た目とキー操作の実挙動は自動検証できない(Essence 前提事項)ため、更新後の成功条件 5 に対する人間の実機確認が必要。",
       "title": "T-006: 更新後のノート編集セマンティクス(Cmd+Enter 保存 / Esc 破棄)の実機目視確認をお願いします(最後の must)",
-      "description": "Cmd+Enter/Esc セマンティクス変更・fullscreen 既定解除・README Building 節の実装が完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0、436 テスト)。更新後の Essence 成功条件 5 の目視確認をお願いします。手順: アプリを起動し、(1) Cmd+N で focused プロジェクトのノート編集オーバーレイが開き、入力後 Cmd+Enter で閉じると内容が保存されている(再度 Cmd+N で確認可、アプリ再起動でも復元)。(2) 入力後 Esc で閉じると入力が破棄され、開く前の本文が残っている(破棄に確認は挟まれない)。(3) Cmd+Enter で fullscreen にならない(fullscreen は Ctrl+Cmd+F・Window メニュー・緑ボタンで引き続き到達可)。(4) Cmd+Opt+N で visible な全プロジェクトの上にノートが同時表示され、再度 Cmd+Opt+N または Esc で消える。(5) オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる。(6) 一望モードのノートが読める(切り詰め表示含む)。補足: 編集オーバーレイの背景クリックは保存扱い(Cmd+Enter と同経路)です。ヘッダー帯のヒント表示は『⌘↩ save · esc discard』に更新済み。確認が取れたら resume で T-006 の完了(見た目に不満があればその指摘も)を記録してください。must 完了後は phase 境界の判断(should の T-007/T-008 に進むか、must で閉じるか)も併せてご検討ください。"
+      "description": "Cmd+Enter/Esc セマンティクス変更・fullscreen 既定解除・README Building 節の実装が完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0、436 テスト)。更新後の Essence 成功条件 5 の目視確認をお願いします。手順: アプリを起動し、(1) Cmd+N で focused プロジェクトのノート編集オーバーレイが開き、入力後 Cmd+Enter で閉じると内容が保存されている(再度 Cmd+N で確認可、アプリ再起動でも復元)。(2) 入力後 Esc で閉じると入力が破棄され、開く前の本文が残っている(破棄に確認は挟まれない)。(3) Cmd+Enter で fullscreen にならない(fullscreen は Ctrl+Cmd+F・Window メニュー・緑ボタンで引き続き到達可)。(4) Cmd+Opt+N で visible な全プロジェクトの上にノートが同時表示され、再度 Cmd+Opt+N または Esc で消える。(5) オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる。(6) 一望モードのノートが読める(切り詰め表示含む)。補足: 編集オーバーレイの背景クリックは保存扱い(Cmd+Enter と同経路)です。ヘッダー帯のヒント表示は『⌘↩ save · esc discard』に更新済み。確認が取れたら resume で T-006 の完了(見た目に不満があればその指摘も)を記録してください。must 完了後は phase 境界の判断(should の T-007/T-008 に進むか、must で閉じるか)も併せてご検討ください。",
+      "resolved_at": "2026-08-08T21:59:34+09:00",
+      "resolved_by": "human",
+      "resolution": "T-006 の実機目視確認を実施し、更新後の成功条件 5 の全 6 項目が期待どおり動作することを確認した(Cmd+N オーバーレイ→Cmd+Enter で保存・再起動後も復元、Esc で破棄して開く前の本文が残る、Cmd+Enter で fullscreen にならない、Cmd+Opt+N の一望モードの表示と再トグル/Esc 退出、オーバーレイの見た目、一望モード時のノート可読性)。\nしたがって R-004 を解除し、T-006 を人間確認の証跡付きで done とすること。これで must は全 10 件完了となる。\n次サイクルは must 境界に到達するので、should の T-007(マウス導線)/T-008(視覚洗練)へ進むか must で閉じるかの phase 判断ゲートを人間に提示すること。"
     }
   ]
 }

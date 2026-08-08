@@ -29,16 +29,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-08T21:34:00+09:00",
-    "summary": "Cmd+Enter/Esc rework COMPLETE and verified. Timeline: cycle R-20260808T210148 re-projected Spec/Todo from the updated Essence (sha 6b8a3532…, attested 21:01) — S-003 now Cmd+Enter-saves, new S-016 Esc-discards, S-017 fullscreen-unbind, S-011/S-012 zig-build-based gates + 2 new test criteria; new musts T-009..T-012 (batch notes-rework) — and authored the full implementation (commit ff18da9): WorkspaceModel.cancelNoteEditing, GroupNoteEditor Esc→cancel + hidden Cmd+Enter save shortcut + '⌘↩ save · esc discard' hint, Config.zig upstream cmd+enter=toggle_fullscreen default removed, SPEC §21.2/§10.5/§21.4 + README About/Building updated, 2 new cancel tests. That session died before verification (background gates got SIGTERM when the turn ended — run gates FOREGROUND). Cycle R-20260808T212654 verified everything itself: zig build 0, just test 0, just swift-test 0 / TEST SUCCEEDED / 436 tests (434+2), and marked T-009..T-012 done with evidence. ALL autonomous musts done. Remaining must: T-006 (human, on-device re-check of the new semantics) — gated by R-004 (Human-input, stop_until_human_review). R-002 resolved (zig build is now the Essence-official gate; hook false-positives also noted there: the pre-tool guard denies Bash text merely CONTAINING wrapper/forbidden-command literals or canonical-path pipes/redirects — assemble state bundles via the Write tool into a project temp file, apply-projection, then rm it, as this cycle did).",
-    "next_actions": [
-      "Wait for the human to run T-006 (visual re-check per R-004) and release the gate.",
-      "After the human resolves R-004: if T-006 confirmed done, all musts are complete — the loop will hit the must boundary for the phase decision (should Todos T-007/T-008 vs close-at-must).",
-      "If the human reports visual/behavioral issues from T-006, project fixes as new must Todos referencing the same Specs."
-    ],
-    "open_questions": [
-      "T-006: does the human confirm the reworked note-editor semantics on device (R-004)?"
-    ],
-    "pending_cycle": false
+    "written_at": "2026-08-08T21:59:34+09:00",
+    "summary": "Human resume: T-006 の実機目視確認を実施し、更新後の成功条件 5 の全 6 項目が期待どおり動作することを確認した(Cmd+N オーバーレイ→Cmd+Enter で保存・再起動後も復元、Esc で破棄して開く前の本文が残る、Cmd+Enter で fullscreen にならない、Cmd+Opt+N の一望モードの表示と再トグル/Esc 退出、オーバーレイの見た目、一望モード時のノート可読性)。\nしたがって R-004 を解除し、T-006 を人間確認の証跡付きで done とすること。これで must は全 10 件完了となる。\n次サイクルは must 境界に到達するので、should の T-007(マウス導線)/T-008(視覚洗練)へ進むか must で閉じるかの phase 判断ゲートを人間に提示すること。",
+    "next_actions": [],
+    "open_questions": [],
+    "pending_cycle": true
   }
 }
