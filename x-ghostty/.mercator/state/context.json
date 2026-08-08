@@ -7,10 +7,10 @@
   },
   "progress": {
     "last_signature": "d67e9ea48f7b51cdf7746d0667727b5bf83836a513ddc17b086deeedce5a111a",
-    "idle_cycles_since_progress": 0,
+    "idle_cycles_since_progress": 1,
     "infra_fails_since_ok": 0,
     "last_progress_at": "2026-08-08T21:22:23+09:00",
-    "last_checked_at": "2026-08-08T21:22:23+09:00"
+    "last_checked_at": "2026-08-08T21:26:54+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
