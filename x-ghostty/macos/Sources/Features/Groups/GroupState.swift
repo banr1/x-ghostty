@@ -112,6 +112,18 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
         primaryPane == paneID
     }
 
+    /// The pane tree the overall (non-zoomed) view renders for this group: a
+    /// single-leaf tree holding only the primary pane (SPEC §22.3). The
+    /// zoomed local view renders `paneTree` unchanged. An empty group renders
+    /// nothing; a missing primary (unreachable while the invariant holds)
+    /// falls back to the full tree rather than blanking the group.
+    var overallViewPaneTree: SplitTree<Pane> {
+        guard let primary = primaryPane else { return paneTree }
+        guard let node = paneTree.find(id: primary.rawValue),
+              case .leaf(let pane) = node else { return paneTree }
+        return paneTree.subtreeContainingOnly(pane)
+    }
+
     /// Move the primary flag to `paneID` (`set_primary`, SPEC §22.4). The
     /// former primary is demoted implicitly — the flag is single-valued, so
     /// uniqueness cannot break.

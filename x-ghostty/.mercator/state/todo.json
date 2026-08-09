@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-013"
+    "T-014"
   ],
   "items": [
     {
@@ -498,7 +498,7 @@
     {
       "id": "T-014",
       "title": "Overall view behavior: render only each group's primary pane (zoomed local view unchanged), direct keyboard input/focus to the primary, snap focus to the primary on zoom release, and no-op guards for pane operations (split, inter-pane focus movement, pane zoom, resize/equalize) outside zoom; guards covered by XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-020",
@@ -510,7 +510,43 @@
         "mode": "mercator"
       },
       "batch_group": "primary-view",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift",
+            "macos/Tests/Groups/WorkspaceModelTests.swift"
+          ],
+          "summary": "Overall-view behavior (SPEC §22.3-22.5, to be written in T-016). Model layer: WorkspaceState.paneOperationsEnabled (true only while zoomedGroup != nil && zoomedGroup == focusedGroup) and mutating snapFocusToPrimaryInOverallView() (outside zoom the focused group's focusedSurface snaps to its primary), called from every mutation that can land un-zoomed: replaceFocusedPaneTree (covers primary shell-exit promotion), setFocusedSurface, switchFocusedGroup, gotoGroup, toggleGroupZoom (the zoom-release snap), hideFocusedGroup, showGroup, closeFocusedGroup. GroupState.overallViewPaneTree derives the single-primary-leaf display tree. Rendering: TerminalWorkspaceView passes primaryOnly (zoomedGroup == nil) through GroupSplitTreeView/GroupSplitSubtreeView to GroupView, which renders overallViewPaneTree outside zoom and the full paneTree while zoomed. No-op guards: BaseTerminalController.newSplit, performSplitAction (divider resize + drop), ghosttyDidFocusSplit/ghosttyDidToggleSplitZoom/ghosttyDidResizeSplit/ghosttyDidEqualizeSplits all guard on workspace.paneOperationsEnabled; XGhostty.App performability checks (newSplit, gotoSplit, resizeSplit, toggleSplitZoom, equalizeSplits) decline before posting so performable keybinds fall through unconsumed; validateMenuItem grays out the 16 pane-op menu selectors. Focus wiring: ghosttyDidToggleGroupZoom targets the primary on release, ghosttyDidPresentTerminal and replaceSurfaceTree retarget focus to the primary while un-zoomed. Design judgment (recorded as R-005): canToggleGroupZoom now requires only a focused group — with pane ops zoom-only, a single-group workspace would otherwise never reach a split; zoom is the gateway to the local view."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 461 test cases, 0 failures — the full prior suite plus 7 new GroupPrimaryPaneTests (overall-view pane tree contains exactly the primary leaf and empty for an empty group; paneOperationsEnabled only while the focused group is zoomed, disabled when a different group is zoomed; setFocusedSurface outside zoom snaps to primary while zoomed focus is free; zoom release snaps focus to primary; switchFocusedGroup outside zoom lands on the target's primary despite a stored non-primary focus; primary close outside zoom moves focus to the promoted primary) and the updated canToggleGroupZoomRequiresOnlyAFocusedGroup covering the single-group zoom change."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the overall-view render path and action guards) exited 0. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage from the Swift-only edits)."
+        }
+      ]
     },
     {
       "id": "T-015",

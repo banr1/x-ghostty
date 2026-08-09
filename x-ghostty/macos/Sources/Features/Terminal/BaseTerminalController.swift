@@ -396,6 +396,12 @@ class BaseTerminalController: NSWindowController,
         direction: SplitTree<XGhostty.SurfaceView>.NewDirection,
         baseConfig config: XGhostty.SurfaceConfiguration? = nil
     ) -> XGhostty.SurfaceView? {
+        // Pane operations are zoom-only (SPEC §22.5): in the overall view only
+        // the primary pane is rendered, so a split would create an invisible
+        // pane. The action layer already declines to post outside zoom; this
+        // is the backstop for direct callers (menu items, drops, undo).
+        guard workspace.paneOperationsEnabled else { return nil }
+
         // We can only create new splits for surfaces in our tree.
         guard surfaceTree.root?.node(view: oldView) != nil else { return nil }
 
@@ -692,9 +698,22 @@ class BaseTerminalController: NSWindowController,
         // Setup our new split tree
         let oldTree = surfaceTree
         surfaceTree = newTree
-        if let newView {
+
+        // In the overall view keyboard focus always lands on the primary pane
+        // (SPEC §22.4): the requested focus target may not even be rendered.
+        // This retarget covers every tree replacement outside zoom — pane
+        // close (shell exit / Cmd+W promotes a new primary) and undo restores
+        // alike. The model's stored focus was snapped by the mirror already.
+        var focusView = newView
+        if !workspace.paneOperationsEnabled,
+           let primaryID = workspace.focusedGroupState?.primaryPane,
+           let primaryNode = newTree.find(id: primaryID.rawValue),
+           case .leaf(let primaryView) = primaryNode {
+            focusView = primaryView
+        }
+        if let focusView {
             DispatchQueue.main.async {
-                XGhostty.moveFocus(to: newView, from: oldView)
+                XGhostty.moveFocus(to: focusView, from: oldView)
             }
         }
 
@@ -1110,7 +1129,20 @@ class BaseTerminalController: NSWindowController,
         // so focus lands inside the window rather than on a stale view.
         workspace.toggleGroupZoom()
         window?.makeKeyAndOrderFront(nil)
-        let focusTarget = surfaceTree.contains(view) ? view : (surfaceTree.first ?? view)
+
+        // Releasing the zoom lands in the overall view, where only the primary
+        // pane is rendered and keyboard focus belongs on it (SPEC §22.4). The
+        // model has already snapped its stored focus; mirror that with the
+        // AppKit first responder. While zoomed, the previous behavior holds.
+        let focusTarget: XGhostty.SurfaceView
+        if workspace.state.zoomedGroup == nil,
+           let primaryID = workspace.focusedGroupState?.primaryPane,
+           let primaryNode = surfaceTree.find(id: primaryID.rawValue),
+           case .leaf(let primaryView) = primaryNode {
+            focusTarget = primaryView
+        } else {
+            focusTarget = surfaceTree.contains(view) ? view : (surfaceTree.first ?? view)
+        }
         DispatchQueue.main.async {
             XGhostty.moveFocus(to: focusTarget)
         }
@@ -1147,6 +1179,8 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidEqualizeSplits(_ notification: Notification) {
+        // Pane operations are zoom-only (SPEC §22.5).
+        guard workspace.paneOperationsEnabled else { return }
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
 
         // Check if target surface is in current controller's tree
@@ -1157,6 +1191,10 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidFocusSplit(_ notification: Notification) {
+        // Inter-pane focus movement is zoom-only (SPEC §22.5): in the overall
+        // view keyboard focus stays on the primary pane.
+        guard workspace.paneOperationsEnabled else { return }
+
         // The target must be within our tree
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard surfaceTree.root?.node(view: target) != nil else { return }
@@ -1190,6 +1228,10 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidToggleSplitZoom(_ notification: Notification) {
+        // Pane zoom is zoom-only (SPEC §22.5): the overall view already shows
+        // exactly one pane per group.
+        guard workspace.paneOperationsEnabled else { return }
+
         // The target must be within our tree
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard let targetNode = surfaceTree.root?.node(view: target) else { return }
@@ -1218,6 +1260,9 @@ class BaseTerminalController: NSWindowController,
     }
 
     @objc private func ghosttyDidResizeSplit(_ notification: Notification) {
+        // Pane resize is zoom-only (SPEC §22.5).
+        guard workspace.paneOperationsEnabled else { return }
+
         // The target must be within our tree
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard let targetNode = surfaceTree.root?.node(view: target) else { return }
@@ -1272,13 +1317,24 @@ class BaseTerminalController: NSWindowController,
         // Bring the window to front and focus the surface.
         window?.makeKeyAndOrderFront(nil)
 
+        // In the overall view only the primary pane is rendered, so a
+        // non-primary target's view is detached and cannot take focus; focus
+        // goes to the group's primary instead (SPEC §22.4).
+        var focusTarget = target
+        if !workspace.paneOperationsEnabled,
+           let primaryID = workspace.focusedGroupState?.primaryPane,
+           let primaryNode = surfaceTree.find(id: primaryID.rawValue),
+           case .leaf(let primaryView) = primaryNode {
+            focusTarget = primaryView
+        }
+
         // We use a small delay to ensure this runs after any UI cleanup
         // (e.g., command palette restoring focus to its original surface).
-        XGhostty.moveFocus(to: target)
-        XGhostty.moveFocus(to: target, delay: 0.1)
+        XGhostty.moveFocus(to: focusTarget)
+        XGhostty.moveFocus(to: focusTarget, delay: 0.1)
 
         // Show a brief highlight to help the user locate the presented terminal.
-        target.highlight()
+        focusTarget.highlight()
     }
 
     // MARK: Local Events
@@ -1385,6 +1441,11 @@ class BaseTerminalController: NSWindowController,
     }
 
     func performSplitAction(_ action: TerminalSplitOperation) {
+        // Pane operations (divider resize, pane drop) are zoom-only
+        // (SPEC §22.5). The overall view renders no pane dividers or drop
+        // zones anyway; this keeps the rule total.
+        guard workspace.paneOperationsEnabled else { return }
+
         switch action {
         case .resize(let resize):
             splitDidResize(node: resize.node, to: resize.ratio)
@@ -2121,6 +2182,19 @@ extension BaseTerminalController: NSMenuItemValidation {
         switch item.action {
         case #selector(findHide):
             return focusedSurface?.searchState != nil
+
+        // Pane operations are zoom-only (SPEC §22.5): their menu items gray
+        // out in the overall view, matching the action-layer no-op guards.
+        case #selector(splitRight), #selector(splitLeft),
+             #selector(splitDown), #selector(splitUp),
+             #selector(splitZoom),
+             #selector(splitMoveFocusPrevious), #selector(splitMoveFocusNext),
+             #selector(splitMoveFocusAbove), #selector(splitMoveFocusBelow),
+             #selector(splitMoveFocusLeft), #selector(splitMoveFocusRight),
+             #selector(equalizeSplits(_:)),
+             #selector(moveSplitDividerUp), #selector(moveSplitDividerDown),
+             #selector(moveSplitDividerLeft), #selector(moveSplitDividerRight):
+            return workspace.paneOperationsEnabled
 
         default:
             return true

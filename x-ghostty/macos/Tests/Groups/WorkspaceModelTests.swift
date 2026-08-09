@@ -499,12 +499,18 @@ struct WorkspaceModelTests {
         #expect(model.state.zoomedGroup == nil)
     }
 
-    @Test func canToggleGroupZoomReflectsVisibleGroupCount() throws {
-        // A single visible group would zoom to itself (a no-op), so it declines.
-        let single = WorkspaceModel(wrapping: .init())
-        #expect(single.canToggleGroupZoom == false)
+    @Test func canToggleGroupZoomRequiresOnlyAFocusedGroup() throws {
+        // With no focused group there is nothing to zoom.
+        #expect(WorkspaceModel().canToggleGroupZoom == false)
 
-        // More than one visible group → zoom is meaningful.
+        // Since the overall view renders only each group's primary pane and
+        // disables pane operations (SPEC §22.3, §22.5), zoom is the gateway
+        // to a group's full pane layout — meaningful even for a single
+        // visible group.
+        let single = WorkspaceModel(wrapping: .init())
+        #expect(single.canToggleGroupZoom == true)
+
+        // More than one visible group → zoom is meaningful as before.
         let (model, _, right) = try Self.makeTwoGroupHorizontal()
         #expect(model.canToggleGroupZoom == true)
 

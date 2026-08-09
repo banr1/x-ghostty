@@ -141,6 +141,34 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         return result
     }
 
+    // MARK: Overall-view focus & pane operations (SPEC §22.4–22.5)
+
+    /// Whether pane-level operations (split, inter-pane focus movement, pane
+    /// zoom, resize/equalize) are currently allowed: only while the focused
+    /// group is zoomed (SPEC §22.5). In the overall view they are no-ops —
+    /// only the primary pane is even rendered there — and a zoom on a
+    /// *different* group (a transient divergence) disables them too, since
+    /// they would act on an invisible tree.
+    var paneOperationsEnabled: Bool {
+        zoomedGroup != nil && zoomedGroup == focusedGroup
+    }
+
+    /// While in the overall (non-zoomed) view, keyboard input and focus always
+    /// go to the focused group's primary pane (SPEC §22.4): it is the only
+    /// pane rendered. Called after every mutation that can land the state in
+    /// the overall view, so a zoom release — or any focus move outside zoom —
+    /// snaps the stored focus onto the primary. No-op while zoomed, and for
+    /// an empty pane tree (no primary to snap to).
+    mutating func snapFocusToPrimaryInOverallView() {
+        guard zoomedGroup == nil,
+              let id = focusedGroup,
+              var group = groups[id],
+              let primary = group.primaryPane,
+              group.focusedSurface != primary else { return }
+        group.focusedSurface = primary
+        groups[id] = group
+    }
+
     // MARK: Mutations
 
     /// Persist `paneTree` into the focused group. No-op when nothing is focused.

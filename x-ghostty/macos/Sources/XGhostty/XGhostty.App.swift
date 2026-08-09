@@ -797,6 +797,11 @@ extension XGhostty {
                 guard let surface = target.target.surface else { return }
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
 
+                // Pane operations are zoom-only (SPEC §22.5): in the overall
+                // view a split would create a pane the view never renders.
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController,
+                      controller.workspace.paneOperationsEnabled else { return }
+
                 NotificationCenter.default.post(
                     name: Notification.ghosttyNewSplit,
                     object: surfaceView,
@@ -1393,6 +1398,10 @@ extension XGhostty {
                     guard let surfaceView = self.surfaceView(from: surface) else { return false }
                     guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
+                    // Inter-pane focus movement is zoom-only (SPEC §22.5); in
+                    // the overall view the keybind falls through unconsumed.
+                    guard controller.workspace.paneOperationsEnabled else { return false }
+
                     // If the window has no splits, the action is not performable
                     guard controller.surfaceTree.isSplit else { return false }
 
@@ -1441,6 +1450,9 @@ extension XGhostty {
                     guard let surfaceView = self.surfaceView(from: surface) else { return false }
                     guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
+                    // Pane resize is zoom-only (SPEC §22.5).
+                    guard controller.workspace.paneOperationsEnabled else { return false }
+
                     // If the window has no splits, the action is not performable
                     guard controller.surfaceTree.isSplit else { return false }
 
@@ -1472,6 +1484,11 @@ extension XGhostty {
             case XGHOSTTY_TARGET_SURFACE:
                 guard let surface = target.target.surface else { return }
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
+
+                // Pane equalize is zoom-only (SPEC §22.5).
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController,
+                      controller.workspace.paneOperationsEnabled else { return }
+
                 NotificationCenter.default.post(
                     name: Notification.didEqualizeSplits,
                     object: surfaceView
@@ -1494,6 +1511,10 @@ extension XGhostty {
                 guard let surface = target.target.surface else { return false }
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Pane zoom is zoom-only (SPEC §22.5); in the overall view the
+                // keybind falls through unconsumed.
+                guard controller.workspace.paneOperationsEnabled else { return false }
 
                 // If the window has no splits, the action is not performable
                 guard controller.surfaceTree.isSplit else { return false }

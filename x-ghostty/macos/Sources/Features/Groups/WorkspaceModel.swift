@@ -121,10 +121,17 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         }
 
         state.groups[id] = group
+        // In the overall view the only rendered — and therefore focusable —
+        // pane is the primary, so the mirrored focus follows it (SPEC §22.4).
+        // This is what moves focus onto the promoted primary when the old one
+        // left the tree (shell exit / Cmd+W / process death) outside zoom.
+        state.snapFocusToPrimaryInOverallView()
     }
 
     /// Record the focused surface for the focused group. Ignored when the
-    /// surface is not part of the focused group's pane tree.
+    /// surface is not part of the focused group's pane tree. In the overall
+    /// (non-zoomed) view focus always lands on the primary pane (SPEC §22.4):
+    /// an attempt to record any other pane snaps back to the primary.
     func setFocusedSurface(_ surfaceID: SurfaceID?, now: Date = Date()) {
         guard let groupID = state.focusedGroup, var group = state.groups[groupID] else { return }
         if let surfaceID, group.paneTree.find(id: surfaceID.rawValue) == nil { return }
@@ -132,6 +139,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         group.focusedSurface = surfaceID
         if surfaceID != nil { group.lastFocusedAt = now }
         state.groups[groupID] = group
+        state.snapFocusToPrimaryInOverallView()
     }
 
     // MARK: Group numbering & the visible-group cap (SPEC §4.1)
@@ -230,6 +238,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         var next = state
         next.saveOutgoingPaneTree(outgoing)
         next.focusedGroup = id
+        // Outside zoom, focus entering a group lands on its primary pane
+        // (SPEC §22.4) rather than the stored last-focused pane.
+        next.snapFocusToPrimaryInOverallView()
         state = next
 
         return state.groups[id]?.focusedSurface
@@ -309,6 +320,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             next.saveOutgoingPaneTree(outgoing)
             next.focusedGroup = target
         }
+        // The jump lands in the overall view, where focus goes to the primary
+        // pane (SPEC §22.4).
+        next.snapFocusToPrimaryInOverallView()
         state = next
 
         return (target, state.groups[target]?.focusedSurface)
@@ -404,14 +418,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     // MARK: Zoom / hide / show (Phase 5)
 
     /// Whether `toggle_group_zoom` would change anything (`SPEC.md` §11.6).
-    /// Zooming is meaningful only when more than one group is visible (so there
-    /// is something to zoom into), or when a zoom is already active (so it can be
-    /// cleared). A single visible group zooms to itself — a no-op — so the
-    /// keybind should fall through rather than be consumed.
+    /// Any focused group can be zoomed: since the overall view renders only
+    /// each group's primary pane and disables pane operations (SPEC §22.3,
+    /// §22.5), zoom is the gateway to a group's full pane layout — meaningful
+    /// even when it is the only visible group. (Before the primary-pane layer
+    /// this declined for a single visible group, whose zoom changed nothing.)
     var canToggleGroupZoom: Bool {
-        guard state.focusedGroup != nil else { return false }
-        if state.zoomedGroup != nil { return true }
-        return state.effectiveVisibleGroupTree?.isSplit ?? false
+        state.focusedGroup != nil
     }
 
     /// Toggle group-level zoom for the focused group (`SPEC.md` §11.6). Zoom is
@@ -420,9 +433,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// (outer→inner, §14.15) because the inner pane tree keeps its own
     /// `zoomed` node. The focused group is always visible, so the §14.5 "zoom is
     /// visible-only" invariant holds.
+    ///
+    /// Releasing the zoom lands in the overall view, so focus snaps to the
+    /// primary pane if it was on any other pane (SPEC §22.4).
     func toggleGroupZoom() {
         guard let focusedID = state.focusedGroup else { return }
         state.zoomedGroup = (state.zoomedGroup == focusedID) ? nil : focusedID
+        state.snapFocusToPrimaryInOverallView()
     }
 
     /// The group that would receive focus if `id` were hidden: the nearest other
@@ -484,6 +501,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // §18.3: a hidden group cannot remain zoomed.
         if next.zoomedGroup == hideID { next.zoomedGroup = nil }
         next.focusedGroup = neighbor.id
+        // Outside zoom the neighbor's focus lands on its primary (SPEC §22.4).
+        next.snapFocusToPrimaryInOverallView()
         state = next
 
         return (neighbor.id, state.groups[neighbor.id]?.focusedSurface)
@@ -536,6 +555,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             .appendingAtTrailingLeaf(GroupRef(id: id))
         next.zoomedGroup = nil
         next.focusedGroup = id
+        // The reveal lands in the overall view, so the shown group's focus
+        // goes to its primary pane (SPEC §22.4).
+        next.snapFocusToPrimaryInOverallView()
         state = next
 
         return state.groups[id]?.focusedSurface
@@ -586,6 +608,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
                 .appendingAtTrailingLeaf(GroupRef(id: targetID))
         }
         next.focusedGroup = targetID
+        // Outside zoom the surviving group's focus lands on its primary
+        // (SPEC §22.4).
+        next.snapFocusToPrimaryInOverallView()
         state = next
 
         return .switched(target: targetID, focus: state.groups[targetID]?.focusedSurface)
@@ -691,6 +716,14 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// empty pane tree (SPEC §22.1).
     func primaryPaneID(of id: GroupID) -> SurfaceID? {
         state.groups[id]?.primaryPane
+    }
+
+    /// Whether pane-level operations (split, inter-pane focus movement, pane
+    /// zoom, resize/equalize) are currently allowed: only while the focused
+    /// group is zoomed (SPEC §22.5). Forwarded from the state so the action
+    /// guards and tests share one judgment.
+    var paneOperationsEnabled: Bool {
+        state.paneOperationsEnabled
     }
 
     // MARK: Note overview

@@ -35,6 +35,11 @@ struct GroupSplitTreeView: View {
     /// rendered group lays its note over its content.
     let noteOverview: Bool
 
+    /// Whether each group renders only its primary pane (SPEC §22.3): true in
+    /// the overall (non-zoomed) view, false while a group is zoomed — the
+    /// local view keeps the full pane layout.
+    let primaryOnly: Bool
+
     let paneAction: (TerminalSplitOperation) -> Void
 
     /// Label focus / rename callbacks.
@@ -55,6 +60,7 @@ struct GroupSplitTreeView: View {
                 ordinals: ordinals,
                 renamingGroup: renamingGroup,
                 noteOverview: noteOverview,
+                primaryOnly: primaryOnly,
                 paneAction: paneAction,
                 labelActions: labelActions,
                 onEqualize: onEqualize,
@@ -78,6 +84,7 @@ private struct GroupSplitSubtreeView: View {
     let ordinals: [GroupID: Int]
     let renamingGroup: GroupID?
     let noteOverview: Bool
+    let primaryOnly: Bool
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: GroupLabelActions
     let onEqualize: () -> Void
@@ -94,6 +101,7 @@ private struct GroupSplitSubtreeView: View {
                     isFocused: ref.id == focusedGroup,
                     ordinal: ordinals[ref.id],
                     isRenaming: ref.id == renamingGroup,
+                    primaryOnly: primaryOnly,
                     paneAction: paneAction,
                     labelActions: labelActions,
                     showsNoteOverlay: noteOverview)
@@ -122,6 +130,7 @@ private struct GroupSplitSubtreeView: View {
                         ordinals: ordinals,
                         renamingGroup: renamingGroup,
                         noteOverview: noteOverview,
+                        primaryOnly: primaryOnly,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,
@@ -135,6 +144,7 @@ private struct GroupSplitSubtreeView: View {
                         ordinals: ordinals,
                         renamingGroup: renamingGroup,
                         noteOverview: noteOverview,
+                        primaryOnly: primaryOnly,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,

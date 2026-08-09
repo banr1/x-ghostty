@@ -32,6 +32,11 @@ struct GroupView: View {
     /// Whether this group's header is currently in inline-rename mode.
     let isRenaming: Bool
 
+    /// Whether only the primary pane is rendered (SPEC §22.3): true in the
+    /// overall (non-zoomed) view, false in the zoomed local view, which keeps
+    /// the full pane layout.
+    let primaryOnly: Bool
+
     /// Pane-level operations within this group's terminal split tree. Only the
     /// focused group's tree is mirrored to the controller's `surfaceTree`, so
     /// this routes there.
@@ -58,7 +63,7 @@ struct GroupView: View {
                 onCancelRename: labelActions.cancelRename)
 
             TerminalSplitTreeView(
-                tree: group.paneTree,
+                tree: primaryOnly ? group.overallViewPaneTree : group.paneTree,
                 action: paneAction)
         }
         .overlay {

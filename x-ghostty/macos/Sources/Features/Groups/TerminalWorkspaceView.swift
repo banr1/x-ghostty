@@ -64,6 +64,10 @@ struct TerminalWorkspaceView: View {
                     ordinals: workspace.state.groupOrdinals,
                     renamingGroup: workspace.renamingGroup,
                     noteOverview: workspace.noteOverviewActive,
+                    // The overall (non-zoomed) view draws only each group's
+                    // primary pane; the zoomed local view keeps the full
+                    // layout (SPEC §22.3).
+                    primaryOnly: workspace.state.zoomedGroup == nil,
                     paneAction: paneAction,
                     labelActions: labelActions,
                     onEqualize: onEqualizeGroups)

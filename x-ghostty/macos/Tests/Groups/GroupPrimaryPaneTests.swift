@@ -304,6 +304,131 @@ struct GroupPrimaryPaneTests {
         #expect(model.primaryPaneID(of: groupA.id) == SurfaceID(rawValue: a2.id))
     }
 
+    // MARK: Overall-view behavior (SPEC §22.3–22.5)
+
+    /// A focused model around one group holding the row [a | b] with `a` the
+    /// (default) primary — the smallest layout where primary and non-primary
+    /// panes differ.
+    private static func makeTwoPaneModel() throws -> (
+        model: TestWorkspaceModel, groupID: GroupID, a: TestPane, b: TestPane
+    ) {
+        let a = TestPane()
+        let b = TestPane()
+        let model = TestWorkspaceModel(wrapping: .init(view: a), name: "amber-owl")
+        let split = try model.focusedPaneTree.inserting(view: b, at: a, direction: .right)
+        model.replaceFocusedPaneTree(split)
+        return (model, model.state.focusedGroup!, a, b)
+    }
+
+    @Test func overallViewPaneTreeContainsExactlyThePrimaryLeaf() throws {
+        let a1 = TestPane(); let a2 = TestPane()
+        var group = Self.makeGroup(.init(view: a1))
+        group.paneTree = try group.paneTree.inserting(view: a2, at: a1, direction: .right)
+        group.setPrimaryPane(SurfaceID(rawValue: a2.id))
+
+        // The overall view renders a single-leaf tree: the primary, nothing else.
+        let display = group.overallViewPaneTree
+        #expect(display.map(\.id) == [a2.id])
+
+        // An empty group renders nothing.
+        #expect(Self.makeGroup(.init()).overallViewPaneTree.isEmpty)
+    }
+
+    @Test func paneOperationsAreEnabledOnlyWhileTheFocusedGroupIsZoomed() throws {
+        let (model, groupID, _, _) = try Self.makeTwoPaneModel()
+
+        // The overall (non-zoomed) view: pane operations are no-ops.
+        #expect(model.paneOperationsEnabled == false)
+
+        // Zoomed into the focused group: pane operations are allowed.
+        model.toggleGroupZoom()
+        #expect(model.state.zoomedGroup == groupID)
+        #expect(model.paneOperationsEnabled == true)
+
+        // Released again: back to no-ops.
+        model.toggleGroupZoom()
+        #expect(model.paneOperationsEnabled == false)
+    }
+
+    @Test func paneOperationsAreDisabledWhenTheZoomedGroupIsNotFocused() throws {
+        // A zoom on a *different* group (transient divergence) must not allow
+        // pane operations on the focused group's invisible tree.
+        let (model, _, _, _) = try Self.makeTwoPaneModel()
+        let other = TestGroupState(
+            id: GroupID(), name: "other", paneTree: .init(view: TestPane()), createdAt: Date())
+
+        var state = model.state
+        state.groups[other.id] = other
+        state.canonicalGroupTree = state.canonicalGroupTree
+            .appendingAtTrailingLeaf(GroupRef(id: other.id))
+        state.zoomedGroup = other.id
+        let diverged = TestWorkspaceModel(state)
+
+        #expect(diverged.paneOperationsEnabled == false)
+    }
+
+    @Test func setFocusedSurfaceInOverallViewSnapsToPrimary() throws {
+        let (model, groupID, a, b) = try Self.makeTwoPaneModel()
+
+        // Outside zoom, focus can only rest on the primary (SPEC §22.4).
+        model.setFocusedSurface(SurfaceID(rawValue: b.id))
+        #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: a.id))
+
+        // While zoomed, any pane in the tree can hold focus.
+        model.toggleGroupZoom()
+        model.setFocusedSurface(SurfaceID(rawValue: b.id))
+        #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: b.id))
+    }
+
+    @Test func zoomReleaseSnapsFocusToPrimary() throws {
+        let (model, groupID, a, b) = try Self.makeTwoPaneModel()
+
+        // Zoom in and focus the non-primary pane.
+        model.toggleGroupZoom()
+        model.setFocusedSurface(SurfaceID(rawValue: b.id))
+        #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: b.id))
+
+        // Releasing the zoom lands in the overall view: focus snaps to the
+        // primary (SPEC §22.4).
+        model.toggleGroupZoom()
+        #expect(model.state.zoomedGroup == nil)
+        #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: a.id))
+    }
+
+    @Test func switchFocusedGroupInOverallViewLandsOnPrimary() throws {
+        // Group B stores a non-primary last-focused pane; switching to it in
+        // the overall view focuses its primary instead.
+        let (model, _, _, _) = try Self.makeTwoPaneModel()
+        let b1 = TestPane(); let b2 = TestPane()
+        var groupB = Self.makeGroup(.init(view: b1), name: "b")
+        groupB.paneTree = try groupB.paneTree.inserting(view: b2, at: b1, direction: .right)
+        groupB.focusedSurface = SurfaceID(rawValue: b2.id)
+
+        var state = model.state
+        state.groups[groupB.id] = groupB
+        state.canonicalGroupTree = state.canonicalGroupTree
+            .appendingAtTrailingLeaf(GroupRef(id: groupB.id))
+        let workspace = TestWorkspaceModel(state)
+
+        let focus = workspace.switchFocusedGroup(
+            to: groupB.id, savingOutgoingPaneTree: workspace.focusedPaneTree)
+
+        #expect(focus == SurfaceID(rawValue: b1.id))
+        #expect(workspace.state.groups[groupB.id]?.focusedSurface == SurfaceID(rawValue: b1.id))
+    }
+
+    @Test func primaryCloseInOverallViewMovesFocusToPromotedPrimary() throws {
+        // The primary's pane leaves the tree outside zoom (shell exit, Cmd+W,
+        // process death): the promoted primary also takes the focus.
+        let (model, groupID, a, b) = try Self.makeTwoPaneModel()
+        #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: a.id))
+
+        model.replaceFocusedPaneTree(model.focusedPaneTree.removing(.leaf(view: a)))
+
+        #expect(model.primaryPaneID(of: groupID) == SurfaceID(rawValue: b.id))
+        #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: b.id))
+    }
+
     @Test func paneTreeMirrorKeepsPrimaryThroughModelReplace() throws {
         // The controller mirrors every surface-tree change through
         // `replaceFocusedPaneTree`; the primary must survive the mirror and
