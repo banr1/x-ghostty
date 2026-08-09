@@ -70,7 +70,7 @@
     {
       "id": "R-LG-20260810T004836+0900-3a36",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "raised_by": "mercator-loop",
       "gate": "must_complete_awaiting_phase_approval",
       "target": "todo.json",
@@ -93,7 +93,10 @@
       },
       "requires_human_approval": true,
       "agent_action": "stop_until_human_review",
-      "created_at": "2026-08-10T00:48:36+09:00"
+      "created_at": "2026-08-10T00:48:36+09:00",
+      "resolved_at": "2026-08-10T02:01:41+09:00",
+      "resolved_by": "human",
+      "resolution": "ノート機能の must 完了に伴うフェーズ承認ゲート R-LG-20260810T004836+0900-3a36 を解除する。ただし should フェーズは承認せず、phase は must のまま据え置く: 2026-08-10 01:55 の Essence 更新でプライマリーペイン機能が新たな必須対応事項 17〜27・成功条件 6/7・遂行順序として追加され、「must 完了」は現行 Essence に対しては既に成立していないため。\n次サイクルはまず現行 ESSENCE.md(b58362…)から Spec/Todo を再射影すること。現 spec.json は旧 Essence(6b8a353…)由来で、S-010(退行禁止の例外列挙が拡張)と S-015(見た目の洗練にプライマリー印が追加)の essence_refs が陳腐化しており、任意対応事項のペイン数バッジも未射影である。\nその上で遂行順序どおり、モデル層(既定付与・唯一性・昇格・永続化と復元時正規化・全体ビューの表示対象判定)→ 全体ビュー描画とペイン系操作の no-op ガード → Cmd+P とプライマリー印 → SPEC.md/README.md → 人間の実機目視確認、の順でプライマリーペインの must を進める。T-007/T-008 等の should は、新しい must が全て完了して再び must 境界に達したときに改めて判断する。"
     }
   ]
 }
