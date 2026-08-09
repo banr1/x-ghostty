@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-006"
+    "T-013"
   ],
   "items": [
     {
@@ -292,7 +292,7 @@
     },
     {
       "id": "T-008",
-      "title": "Optional visual refinement of the note edit overlay and overview mode (colors, margins, animation)",
+      "title": "Optional visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)",
       "status": "pending",
       "priority": "should",
       "spec": [
@@ -444,6 +444,147 @@
           "summary": "Success-criterion 3+4 gate: TEST SUCCEEDED, 436 test cases, 0 failures — full group-feature suite (enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) plus all 39 GroupNoteTests covering every §S-012 test criterion (save/restore round trip, 10-line cap, save-and-close keeps edited text, discard-and-close keeps pre-open text, visible-only overview set, zoom release on entry, no focus move / no note editing during overview). No regression observed; the only intended behavior change is the unbound cmd+enter fullscreen default (S-010's sanctioned exception). Run in cycle R-20260808T212654."
         }
       ]
+    },
+    {
+      "id": "T-013",
+      "title": "Model layer: primary pane flag in the split-tree model — default assignment to a group's first pane, per-group uniqueness, nearest-leaf promotion when the primary closes, persistence through the pane-layout path with restore normalization of 0/multiple primaries to exactly 1, and the overall-view display-target judgment — covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-018",
+        "S-019",
+        "S-020",
+        "S-024",
+        "S-025",
+        "S-027",
+        "S-029"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "primary-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift"
+          ],
+          "summary": "Primary-pane model layer (SPEC §22 to be written in T-016). GroupState gains primaryPane (private(set) SurfaceID?, exactly one per non-empty tree by construction): init/decode normalize via SplitTree.normalizedPrimary (first stored valid flag wins, else first leaf — the 0/dangling/multiple repair), a paneTree didSet observer reconciles on every tree replacement via SplitTree.reconciledPrimary (later splits never take the flag; a departed primary promotes its nearest surviving leaf measured on the previous tree — shell exit / Cmd+W / process death all reach the model as such a replacement), setPrimaryPane rejects panes outside the tree and demotes the former primary implicitly, and the save format is a primaryPanes id-list riding the same GroupState record as the pane layout so a corrupt save can hold 0/dangling/several flags and decode repairs it. WorkspaceState gains overallViewPaneIDs ([GroupID: SurfaceID], visible groups -> their primary — the overall-view display-target judgment), forwarded by WorkspaceModel with primaryPaneID(of:). Testability refactor per Essence 思想 4: GroupState/WorkspaceState/WorkspaceModel became generic GroupStateOf/WorkspaceStateOf/WorkspaceModelOf over the pane element (runtime typealiases keep every call site unchanged; static stored properties became computed; WorkspaceError/CloseGroupOutcome moved to top-level non-generic enums WorkspaceModelError/WorkspaceCloseGroupOutcome with aliases, since Sendable synthesis inside the generic class would demand Pane: Sendable), so XGhosttyTests exercises the identical model code with value-type panes — real leaves in the trees, which SurfaceView construction (needs a live app) never allowed."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 453 test cases, 0 failures — the full prior suite plus 18 new GroupPrimaryPaneTests: initial pane primary on new group and on WorkspaceModel(wrapping:), empty tree has none, later splits non-primary with the flag staying put, setPrimaryPane moves/demotes and rejects outside panes, nearest-leaf promotion on primary close ([A|B] and [A|[B|C]] rows), non-primary close keeps the flag, last-pane close clears it, GroupState Codable round trip keeps a non-default primary on the same pane, decode normalizes zero/missing-key/multiple/dangling primaryPanes to exactly one, whole-workspace round trip restores every group's primary, overall-view display set == each visible group's primary only (hidden excluded), and the controller-mirror path (replaceFocusedPaneTree) keeps/promotes the flag."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the generic model layer) exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-014",
+      "title": "Overall view behavior: render only each group's primary pane (zoomed local view unchanged), direct keyboard input/focus to the primary, snap focus to the primary on zoom release, and no-op guards for pane operations (split, inter-pane focus movement, pane zoom, resize/equalize) outside zoom; guards covered by XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-020",
+        "S-021",
+        "S-022",
+        "S-029"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "primary-view",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-015",
+      "title": "set_primary action bound to Cmd+P (effective only while zoomed; demotes the former primary) and the primary mark at the primary pane's top-right, shown only while zoomed with multiple panes; model logic covered by XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-023",
+        "S-026",
+        "S-029"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "primary-action",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-016",
+      "title": "Update SPEC.md and README.md to describe the primary pane layer as implemented",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-028"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "primary-docs",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-017",
+      "title": "Full verification of the primary pane layer: zig build / just test / just swift-test all exit 0, all S-029 tests present and passing, no regression of group features beyond the sanctioned exceptions",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-029",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "primary-verify",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-018",
+      "title": "Human on-device visual verification of the primary pane layer (one-time, after all implementation): overall view shows only primaries, zoom shows all panes with the mark visible on multi-pane groups, Cmd+P reassigns while zoomed and the overall view shows that pane after unzoom, primary shell exit promotes the nearest pane and swaps the overall-view display, mark appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-030"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "primary-verify",
+      "risk_level": "normal"
+    },
+    {
+      "id": "T-019",
+      "title": "Optional pane-count badge: subtle overall-view indicator that a group has non-primary panes",
+      "status": "pending",
+      "priority": "should",
+      "spec": [
+        "S-031"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "primary-optional",
+      "risk_level": "normal"
     }
   ]
 }

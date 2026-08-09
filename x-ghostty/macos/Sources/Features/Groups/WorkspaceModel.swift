@@ -9,28 +9,19 @@ import Foundation
 /// (`TerminalWorkspaceView`) re-renders on group-structure changes that do not
 /// flow through a `surfaceTree` change (e.g. switching the focused group, and —
 /// later — rename). See `SPEC.md` §6.2.
-final class WorkspaceModel: ObservableObject {
-    enum WorkspaceError: Error {
-        /// There is no focused group to anchor a new group split against.
-        case noFocusedGroup
+///
+/// Generic over the pane element for the same reason as `GroupStateOf`:
+/// `WorkspaceModel` is the runtime specialization, and `XGhosttyTests`
+/// exercises the same code with value-type panes.
+final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: ObservableObject where Pane.ID == UUID {
+    // The error and outcome enums live outside the class (below) so their
+    // Sendable conformance does not pick up a `Pane: Sendable` requirement
+    // from the generic context; these aliases keep the established
+    // `WorkspaceModel.WorkspaceError` / `.CloseGroupOutcome` spelling working.
+    typealias WorkspaceError = WorkspaceModelError
+    typealias CloseGroupOutcome = WorkspaceCloseGroupOutcome
 
-        /// `WorkspaceState.maxVisibleGroups` groups are already visible, so
-        /// there is no number left to give a new one. Rejected silently (no
-        /// toast, no beep): the caller simply does nothing.
-        case visibleGroupLimitReached
-    }
-
-    /// The result of closing the focused group (`SPEC.md` §11.9).
-    enum CloseGroupOutcome: Equatable {
-        /// Focus moved to `target` (its stored last-focused surface in `focus`).
-        case switched(target: GroupID, focus: SurfaceID?)
-        /// The focused group was the only group; the caller delegates to
-        /// tab/window close (`SPEC.md` §18.5). The model is left unchanged so the
-        /// close can be undone via the existing tab/window-close path.
-        case closedLast
-    }
-
-    @Published private(set) var state: WorkspaceState
+    @Published private(set) var state: WorkspaceStateOf<Pane>
 
     /// The group currently in inline-rename mode, or `nil`. Transient UI state:
     /// it lives on the model (not in `WorkspaceState`) so it is never persisted.
@@ -53,13 +44,13 @@ final class WorkspaceModel: ObservableObject {
     /// An empty workspace with no groups. Used as the controller's initial
     /// value before `init(wrapping:)` wraps the real pane tree.
     init() {
-        state = WorkspaceState(canonicalGroupTree: .init(), groups: [:])
+        state = WorkspaceStateOf<Pane>(canonicalGroupTree: .init(), groups: [:])
     }
 
     /// Construct a model around an existing `WorkspaceState`. Used to rehydrate a
     /// decoded state on restore (`SPEC.md` §12.3) and by tests that need to set
     /// up multi-group / zoomed / hidden states directly.
-    init(_ state: WorkspaceState) {
+    init(_ state: WorkspaceStateOf<Pane>) {
         self.state = state
     }
 
@@ -71,14 +62,14 @@ final class WorkspaceModel: ObservableObject {
     /// regenerates (`SPEC.md` §8). `name` is injectable so tests stay
     /// deterministic; production passes `nil` to draw a random name.
     init(
-        wrapping paneTree: SplitTree<XGhostty.SurfaceView>,
+        wrapping paneTree: SplitTree<Pane>,
         now: Date = Date(),
         name: String? = nil
     ) {
         let groupID = GroupID()
         let focused = paneTree.firstLeaf.map { SurfaceID(rawValue: $0.id) }
 
-        let group = GroupState(
+        let group = GroupStateOf<Pane>(
             id: groupID,
             name: name ?? GroupNameGenerator.make(existing: []),
             paneTree: paneTree,
@@ -87,7 +78,7 @@ final class WorkspaceModel: ObservableObject {
             lastFocusedAt: focused == nil ? nil : now
         )
 
-        state = WorkspaceState(
+        state = WorkspaceStateOf<Pane>(
             canonicalGroupTree: .init(view: GroupRef(id: groupID)),
             groups: [groupID: group],
             focusedGroup: groupID
@@ -96,12 +87,12 @@ final class WorkspaceModel: ObservableObject {
 
     // MARK: Focused group access
 
-    var focusedGroupState: GroupState? {
+    var focusedGroupState: GroupStateOf<Pane>? {
         guard let id = state.focusedGroup else { return nil }
         return state.groups[id]
     }
 
-    var focusedPaneTree: SplitTree<XGhostty.SurfaceView> {
+    var focusedPaneTree: SplitTree<Pane> {
         get { focusedGroupState?.paneTree ?? .init() }
         set { replaceFocusedPaneTree(newValue) }
     }
@@ -110,8 +101,8 @@ final class WorkspaceModel: ObservableObject {
     /// consistent: an explicit focus wins; otherwise a still-present stored
     /// focus is kept; otherwise it falls back to the first leaf.
     func replaceFocusedPaneTree(
-        _ paneTree: SplitTree<XGhostty.SurfaceView>,
-        focusedSurface: XGhostty.SurfaceView? = nil,
+        _ paneTree: SplitTree<Pane>,
+        focusedSurface: Pane? = nil,
         now: Date = Date()
     ) {
         guard let id = state.focusedGroup, var group = state.groups[id] else { return }
@@ -156,7 +147,7 @@ final class WorkspaceModel: ObservableObject {
     /// `WorkspaceState.maxVisibleGroups` are visible right now. Gates both
     /// `new_group_split` and `show_group`; at the cap both are silent no-ops.
     var canAddVisibleGroup: Bool {
-        state.visibleGroupCount < WorkspaceState.maxVisibleGroups
+        state.visibleGroupCount < WorkspaceStateOf<Pane>.maxVisibleGroups
     }
 
     // MARK: Group structure
@@ -181,9 +172,9 @@ final class WorkspaceModel: ObservableObject {
     ///   `SplitTree.SplitError` if the canonical insert fails. The model is left
     ///   unchanged on throw.
     func openNewGroup(
-        _ newGroup: GroupState,
+        _ newGroup: GroupStateOf<Pane>,
         direction: SplitTree<GroupRef>.NewDirection,
-        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) throws {
         guard let anchorID = state.focusedGroup else {
             throw WorkspaceError.noFocusedGroup
@@ -229,7 +220,7 @@ final class WorkspaceModel: ObservableObject {
     @discardableResult
     func switchFocusedGroup(
         to id: GroupID,
-        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> SurfaceID? {
         // The note overview is viewing-only: no focus moves while it is up.
         guard !noteOverviewActive else { return nil }
@@ -306,7 +297,7 @@ final class WorkspaceModel: ObservableObject {
     @discardableResult
     func gotoGroup(
         index: Int,
-        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> (target: GroupID, focus: SurfaceID?)? {
         guard let target = gotoGroupIndexTarget(index) else { return nil }
 
@@ -476,7 +467,7 @@ final class WorkspaceModel: ObservableObject {
     ///   group, §18.2).
     @discardableResult
     func hideFocusedGroup(
-        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> (target: GroupID, focus: SurfaceID?)? {
         guard let hideID = state.focusedGroup else { return nil }
         guard let neighbor = neighborAfterHiding(hideID) else { return nil }
@@ -534,7 +525,7 @@ final class WorkspaceModel: ObservableObject {
     @discardableResult
     func showGroup(
         _ id: GroupID,
-        savingOutgoingPaneTree outgoing: SplitTree<XGhostty.SurfaceView>
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> SurfaceID? {
         guard canShowGroup(id) else { return nil }
 
@@ -687,6 +678,21 @@ final class WorkspaceModel: ObservableObject {
         noteEditingGroup = nil
     }
 
+    // MARK: Primary pane (SPEC §22)
+
+    /// The overall (non-zoomed) view's display target per group: exactly each
+    /// visible group's primary pane (SPEC §22.3). Forwarded from the state so
+    /// the render path and tests share one judgment.
+    var overallViewPaneIDs: [GroupID: SurfaceID] {
+        state.overallViewPaneIDs
+    }
+
+    /// The primary pane of group `id`, or `nil` for an unknown group or an
+    /// empty pane tree (SPEC §22.1).
+    func primaryPaneID(of id: GroupID) -> SurfaceID? {
+        state.groups[id]?.primaryPane
+    }
+
     // MARK: Note overview
 
     /// The display set of the note overview: every *visible* group, in
@@ -742,7 +748,7 @@ final class WorkspaceModel: ObservableObject {
     /// Any in-progress inline rename whose target no longer exists in the
     /// restored state is cancelled, so the transient editing UI can't outlive its
     /// group.
-    func restoreState(_ snapshot: WorkspaceState) {
+    func restoreState(_ snapshot: WorkspaceStateOf<Pane>) {
         state = snapshot
         if let renamingGroup, state.groups[renamingGroup] == nil {
             self.renamingGroup = nil
@@ -767,9 +773,33 @@ final class WorkspaceModel: ObservableObject {
     /// keeps their processes alive past the close and lets a stale `undoState` be
     /// registered for a window that is already gone.
     func removeAllGroups() {
-        state = WorkspaceState(canonicalGroupTree: .init(), groups: [:])
+        state = WorkspaceStateOf<Pane>(canonicalGroupTree: .init(), groups: [:])
         renamingGroup = nil
         noteEditingGroup = nil
         noteOverviewActive = false
     }
+}
+
+/// The runtime specialization: pane elements are live surface views.
+typealias WorkspaceModel = WorkspaceModelOf<XGhostty.SurfaceView>
+
+/// Errors thrown by `WorkspaceModelOf` group-structure transitions.
+enum WorkspaceModelError: Error {
+    /// There is no focused group to anchor a new group split against.
+    case noFocusedGroup
+
+    /// `WorkspaceState.maxVisibleGroups` groups are already visible, so
+    /// there is no number left to give a new one. Rejected silently (no
+    /// toast, no beep): the caller simply does nothing.
+    case visibleGroupLimitReached
+}
+
+/// The result of closing the focused group (`SPEC.md` §11.9).
+enum WorkspaceCloseGroupOutcome: Equatable {
+    /// Focus moved to `target` (its stored last-focused surface in `focus`).
+    case switched(target: GroupID, focus: SurfaceID?)
+    /// The focused group was the only group; the caller delegates to
+    /// tab/window close (`SPEC.md` §18.5). The model is left unchanged so the
+    /// close can be undone via the existing tab/window-close path.
+    case closedLast
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0.0",
-  "projected_from_essence_sha256": "6b8a35322c8dd580e0944f27e7b528728d42c6f2701da7987f9b55f2ffd0f328",
-  "projected_at": "2026-08-08T21:04:43+09:00",
+  "projected_from_essence_sha256": "b58362492468e27c84eb422b7154565cf746e6603e084bc6f5254dc968bb75fb",
+  "projected_at": "2026-08-10T02:03:55+09:00",
   "items": [
     {
       "id": "S-001",
@@ -95,14 +95,16 @@
     },
     {
       "id": "S-010",
-      "title": "No regression of existing group features or upstream-derived terminal behavior, with the removal of Cmd+Enter's default fullscreen assignment as the single sanctioned exception (fullscreen stays reachable via Ctrl+Cmd+F, the Window menu, and the green button)",
+      "title": "No regression of existing group features or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter's fullscreen default (fullscreen stays reachable via Ctrl+Cmd+F, the Window menu, and the green button), overall-view rendering of primary panes only, no-op pane operations in the overall view, and focus snapping to the primary on zoom release",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "既存の group 機能(列挙・zoom・序数ジャンプ・hide/show・resize/equalize・rename・",
-        "close)および上流由来のターミナル動作を退行させない。ただし `Cmd+Enter` の",
-        "fullscreen 既定割り当ての解除はこの例外とする(fullscreen は `Ctrl+Cmd+F`・",
-        "Window メニュー・緑ボタンから引き続き到達できる)。"
+        "close)および上流由来のターミナル動作を退行させない。ただし以下の意図的変更は",
+        "例外とする:`Cmd+Enter` の fullscreen 既定割り当ての解除(fullscreen は",
+        "`Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる)、全体ビューの",
+        "描画をプライマリーペインのみに変えること、全体ビューでのペイン系操作の no-op 化、",
+        "zoom 解除時に focus をプライマリーペインへ寄せること。"
       ]
     },
     {
@@ -138,7 +140,7 @@
     },
     {
       "id": "S-013",
-      "title": "Human performs a one-time on-device visual verification after all implementation is in place; not complete until confirmed",
+      "title": "Human performs a one-time on-device visual verification after all note-layer implementation is in place; not complete until confirmed",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -158,11 +160,12 @@
     },
     {
       "id": "S-015",
-      "title": "Optional: visual refinement of the note edit overlay and overview mode (colors, margins, animation)",
+      "title": "Optional: visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)",
       "status": "active",
       "priority": "should",
       "essence_refs": [
-        "ノート編集オーバーレイおよび一望モードの見た目の洗練(配色・余白・アニメーション)。"
+        "ノート編集オーバーレイ・一望モード・プライマリー印の見た目の洗練(配色・余白・",
+        "アニメーション)。"
       ]
     },
     {
@@ -182,6 +185,166 @@
       "priority": "must",
       "essence_refs": [
         "`Cmd+Enter` の既定割り当てである fullscreen を解除する。"
+      ]
+    },
+    {
+      "id": "S-018",
+      "title": "Primary pane flag: every pane carries a primary flag; the first pane of a group is primary, panes created afterwards are not",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "各ペインはプライマリーフラグを持つ。グループ内の最初のペインはプライマリーとし、",
+        "それ以降に作られたペインは非プライマリーとする。"
+      ]
+    },
+    {
+      "id": "S-019",
+      "title": "Exactly one primary pane exists per group at all times",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーペインはグループ内で常に 1 つのみとする。"
+      ]
+    },
+    {
+      "id": "S-020",
+      "title": "Overall view (non-zoom) renders only each group's primary pane; the zoomed local view shows all panes in their layout as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "全体ビュー(非 zoom)では、各グループはプライマリーペインのみを描画する。",
+        "グループに zoom した局所視点では従来どおり全ペインをレイアウトのまま表示する。"
+      ]
+    },
+    {
+      "id": "S-021",
+      "title": "Keyboard input and focus in the overall view go to the primary pane; on zoom release, focus resting on a non-primary pane snaps to the primary",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "全体ビューでのキーボード入力・focus はプライマリーペインへ向く。zoom 解除時に",
+        "focus がプライマリー以外のペインにあった場合はプライマリーへ寄せる。"
+      ]
+    },
+    {
+      "id": "S-022",
+      "title": "Pane operations (split, inter-pane focus movement, pane zoom, pane resize/equalize) are no-ops in the overall view; pane operations are effective only while zoomed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "全体ビューではペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・ペインの",
+        "resize/equalize)を no-op とする。ペイン操作は zoom 中のみ有効とする。"
+      ]
+    },
+    {
+      "id": "S-023",
+      "title": "New action that assigns the focused pane as primary while zoomed, bound to Cmd+P (plain Cmd+P confirmed unassigned); the former primary is demoted on assignment",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "zoom 中に focused ペインをプライマリーへ指定する action を追加し、`Cmd+P` に",
+        "割り当てる(素の `Cmd+P` に既存割り当てが無いことは確認済み)。指定時、元の",
+        "プライマリーは解除される。"
+      ]
+    },
+    {
+      "id": "S-024",
+      "title": "When the primary pane closes (shell exit, Cmd+W, or process death), the nearest leaf in the split tree is promoted if other panes remain; if the primary was the last pane the group closes as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーペインが閉じた場合(シェルの exit・`Cmd+W`・process 死のいずれでも)、",
+        "グループに他のペインがあれば分割木上の最近傍 leaf を昇格する。プライマリーが",
+        "最後のペインなら既存挙動どおりグループを閉じる。"
+      ]
+    },
+    {
+      "id": "S-025",
+      "title": "Primary flag persisted through the same path as the pane layout and restored to the same pane after app restart; invalid saves (zero or multiple primaries) are normalized to exactly one on restore",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーフラグはペインレイアウトと同じ経路で永続化され、アプリ再起動後に",
+        "同じペインへ復元される。不正な保存(プライマリー 0 個/複数)は復元時に 1 つへ",
+        "正規化する。"
+      ]
+    },
+    {
+      "id": "S-026",
+      "title": "Primary mark shown at the primary pane's top-right only while zoomed with multiple panes in the group; never in the overall view or in single-pane groups",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーの印は、zoom 中かつグループ内に複数ペインがあるときだけ、プライマリー",
+        "ペインの右上に表示する。全体ビューおよび単一ペインのグループでは表示しない。"
+      ]
+    },
+    {
+      "id": "S-027",
+      "title": "Primary judgment logic (default assignment, uniqueness, promotion, restore normalization, overall-view display target) lives in the model layer, verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーの判断ロジック(既定付与・唯一性・昇格・復元時正規化・全体ビューの",
+        "表示対象)はモデル層に置き、`XGhosttyTests` から検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-028",
+      "title": "Update SPEC.md and README.md to match the implemented primary pane layer",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装したプライマリーペイン層の仕様に合わせて更新する。"
+      ]
+    },
+    {
+      "id": "S-029",
+      "title": "Success gates for the primary pane layer: XGhosttyTests contains passing tests for default primary on a new group's initial pane, non-primary later splits with per-group uniqueness, restore round trip with 0/multiple normalization, nearest-leaf promotion on primary close, overall-view display set == primaries only, pane-op no-ops in the overall view, focus snap to primary on zoom release, and set_primary reassignment while zoomed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "新規グループの初期ペインがプライマリーになっている",
+        "後続分割で作られたペインはプライマリーでなく、グループ内のプライマリーは",
+        "常に 1 つである",
+        "保存し復元すると同じペインにプライマリーが復元され、不正な保存(0 個/複数)は",
+        "復元時に 1 つへ正規化される",
+        "プライマリーが閉じたとき、残ペインがあれば分割木上の最近傍 leaf が昇格する",
+        "全体ビュー(非 zoom)の描画対象が各グループのプライマリーのみと一致する",
+        "全体ビューではペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・",
+        "resize/equalize)が no-op になる",
+        "zoom 解除時に focus がプライマリーへ寄る",
+        "zoom 中の set_primary で focused ペインがプライマリーになり、元のプライマリーは",
+        "解除される"
+      ]
+    },
+    {
+      "id": "S-030",
+      "title": "Human performs a one-time on-device visual verification of the primary pane layer after its implementation is in place; not complete until confirmed (overall view shows only primaries, zoom shows all panes with the mark on multi-pane groups, Cmd+P reassignment carries into the overall view, promotion on primary shell exit, mark appearance fits the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーペインの実装が揃った後、人間が実機で一度だけ以下を目視確認し、",
+        "確認が取れる。確認が取れるまで完了とはしない。",
+        "全体ビューで各グループにプライマリーペインだけが表示される",
+        "zoom すると全ペインがレイアウトのまま表示され、複数ペインのときプライマリーの",
+        "右上に印が見える",
+        "zoom 中 `Cmd+P` で focused ペインがプライマリーになり、zoom を抜けると",
+        "全体ビューにそのペインが表示される",
+        "プライマリーのシェルを exit すると、残ペインの最近傍が昇格して全体ビューの",
+        "表示が入れ替わる",
+        "印の見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-031",
+      "title": "Optional: subtle indicator (e.g. a pane-count badge) in the overall view showing that a group has non-primary panes",
+      "status": "active",
+      "priority": "should",
+      "essence_refs": [
+        "全体ビューで、グループに非プライマリーペインがあるとき、その存在が分かる控えめな",
+        "インジケータ(例:ペイン数バッジ)の表示。"
       ]
     }
   ]

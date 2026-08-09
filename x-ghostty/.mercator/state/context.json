@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "757b078e1899542b77e0430a50f8bbb0d1e3dcfdc61f7675f8eecdcae2a4f53b",
+    "last_signature": "0e8833dafb2a39451603bdc2fefccd8ea9e551f67df4a65166e7587a73394a95",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T00:48:36+09:00",
-    "last_checked_at": "2026-08-10T00:48:36+09:00"
+    "last_progress_at": "2026-08-10T02:30:18+09:00",
+    "last_checked_at": "2026-08-10T02:30:18+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,25 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.3,
+    "context_usage_estimate": 0.7,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 0,
-    "completed_todos_since_reset": 1,
-    "important_decisions_since_reset": 0,
-    "major_spec_rewrite_since_reset": false,
+    "changed_files_since_reset": 4,
+    "completed_todos_since_reset": 2,
+    "important_decisions_since_reset": 1,
+    "major_spec_rewrite_since_reset": true,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T02:01:41+09:00",
-    "summary": "Human resume: ノート機能の must 完了に伴うフェーズ承認ゲート R-LG-20260810T004836+0900-3a36 を解除する。ただし should フェーズは承認せず、phase は must のまま据え置く: 2026-08-10 01:55 の Essence 更新でプライマリーペイン機能が新たな必須対応事項 17〜27・成功条件 6/7・遂行順序として追加され、「must 完了」は現行 Essence に対しては既に成立していないため。\n次サイクルはまず現行 ESSENCE.md(b58362…)から Spec/Todo を再射影すること。現 spec.json は旧 Essence(6b8a353…)由来で、S-010(退行禁止の例外列挙が拡張)と S-015(見た目の洗練にプライマリー印が追加)の essence_refs が陳腐化しており、任意対応事項のペイン数バッジも未射影である。\nその上で遂行順序どおり、モデル層(既定付与・唯一性・昇格・永続化と復元時正規化・全体ビューの表示対象判定)→ 全体ビュー描画とペイン系操作の no-op ガード → Cmd+P とプライマリー印 → SPEC.md/README.md → 人間の実機目視確認、の順でプライマリーペインの must を進める。T-007/T-008 等の should は、新しい must が全て完了して再び must 境界に達したときに改めて判断する。",
-    "next_actions": [],
+    "written_at": "2026-08-10T02:28:29+09:00",
+    "summary": "このサイクルで (1) 現行 ESSENCE.md(b58362…)から Spec/Todo を再射影し(S-010/S-015 の refs 更新、プライマリーペインの S-018〜S-031 を追加、T-013〜T-019 に分解、警告ゼロ)、(2) T-013(プライマリーペインのモデル層)を完了した。全ゲート green: just swift-test exit 0(453 テスト、新規 GroupPrimaryPaneTests 18 件)、zig build exit 0、just test exit 0。\n実装の要点: GroupState.primaryPane(private(set)、非空ツリーで常に 1 つ)。保存形式は primaryPanes の id リストで、ペインレイアウトと同じ GroupState レコードに載る(0/複数/迷子の不正保存を decode で 1 つへ正規化)。paneTree の didSet で毎回照合し、プライマリー消失時は旧ツリー上の SplitTree.nearestLeaf(空間距離)で生存ペインへ昇格(hide/close の焦点移動と同じ意味論、SPEC §22 として T-016 で文書化予定)。setPrimaryPane はツリー外を拒否。WorkspaceState.overallViewPaneIDs が全体ビューの表示対象判定(visible グループ→プライマリー)。\n重要な設計判断(思想 4): SurfaceView はテストで実生成できない(要ライブアプリ)ため、GroupState/WorkspaceState/WorkspaceModel をペイン要素についてジェネリック化(GroupStateOf/WorkspaceStateOf/WorkspaceModelOf、typealias で既存呼び出しは不変)。値型 TestPane で葉つきツリーの実テストが可能になった。注意点: ジェネリック型では static stored property が使えず computed に変更済み。ネスト enum は Pane: Sendable 要求を避けるためトップレベル WorkspaceModelError / WorkspaceCloseGroupOutcome に移し typealias で旧名を維持。SwiftLint が force cast を deny する(テストは try #require(... as? ...) を使う)。",
+    "next_actions": [
+      "次バッチは T-014(全体ビュー挙動): (a) 非 zoom 時は各グループのプライマリーペインのみ描画(GroupSplitTreeView/GroupView/TerminalWorkspaceView が WorkspaceModel.overallViewPaneIDs / primaryPaneID(of:) を消費する形に)。zoom 中は従来どおり全ペイン表示。(b) 全体ビューのキーボード入力・focus をプライマリーへ向け、zoom 解除時に focus がプライマリー以外なら寄せる(toggleGroupZoom 解除経路のモデル判定 + BaseTerminalController の focus 移動)。(c) ペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・resize/equalize)を非 zoom 時に no-op 化 — モデル層に判定(例: paneOperationsEnabled == (zoomedGroup == focusedGroup))を置き、controller/keybind の performable 判定から参照。モデル判定は WorkspaceModelOf<TestPane> でテスト可能。",
+      "検証は毎回 foreground で: just swift-test / zig build / just test(just build-app はガードに deny される、R-002)。",
+      "状態バンドルは Write ツールで ../x-ghostty/.mercator/tmp/ に作り apply-projection 後 rm。reflection.jsonl への追記は Edit ツール(Bash リダイレクトはガードが deny)。",
+      "T-014 の後は T-015(set_primary action Cmd+P + プライマリー印)→ T-016(SPEC §22 / README)→ T-017(全ゲート)→ T-018(人間の実機目視、Human-input Recommendation を立てて停止)。",
+      "SPEC §22 執筆時(T-016)に記録すべき解釈: 「分割木上の最近傍 leaf」は SplitTree.nearestLeaf の空間距離最近傍(タイは走査順で先勝ち)として実装した。"
+    ],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }

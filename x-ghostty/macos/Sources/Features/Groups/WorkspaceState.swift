@@ -6,8 +6,12 @@ import Foundation
 /// `canonicalGroupTree` is the single source of truth for group placement.
 /// Visibility (`hiddenGroupIDs`) and `zoomedGroup` are derived display state
 /// that must never be persisted (see `SPEC.md` §4.1, §12.2, §13).
-struct WorkspaceState {
-    static let currentVersion = 1
+///
+/// Generic over the pane element for the same reason as `GroupStateOf`:
+/// `WorkspaceState` is the runtime specialization, and `XGhosttyTests`
+/// exercises the same code with value-type panes.
+struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID == UUID {
+    static var currentVersion: Int { 1 }
 
     /// The maximum number of simultaneously *visible* groups.
     ///
@@ -16,7 +20,7 @@ struct WorkspaceState {
     /// hard ceiling: `new_group_split` and `show_group` are silently rejected
     /// once it is reached, and a restore caps the visible set at this many
     /// (the extras stay alive on the hidden shelf).
-    static let maxVisibleGroups = 9
+    static var maxVisibleGroups: Int { 9 }
 
     var version: Int
 
@@ -28,7 +32,7 @@ struct WorkspaceState {
     /// *visible* groups: hiding removes a group's leaf from the canonical tree
     /// while its `GroupState` (and its live panes) stay here, so the entries not
     /// covered by a leaf are exactly `hiddenGroupIDs` (§14.2).
-    var groups: [GroupID: GroupState]
+    var groups: [GroupID: GroupStateOf<Pane>]
 
     // MARK: Runtime-only (never persisted; cleared on decode)
 
@@ -38,11 +42,11 @@ struct WorkspaceState {
 
     init(
         canonicalGroupTree: SplitTree<GroupRef>,
-        groups: [GroupID: GroupState],
+        groups: [GroupID: GroupStateOf<Pane>],
         hiddenGroupIDs: Set<GroupID> = [],
         focusedGroup: GroupID? = nil,
         zoomedGroup: GroupID? = nil,
-        version: Int = WorkspaceState.currentVersion
+        version: Int = Self.currentVersion
     ) {
         self.version = version
         self.canonicalGroupTree = canonicalGroupTree
@@ -119,12 +123,30 @@ struct WorkspaceState {
         return result
     }
 
+    // MARK: Overall-view display target (SPEC §22.3)
+
+    /// The single pane each group draws in the overall (non-zoomed) view:
+    /// exactly the group's primary pane. This is the model-layer judgment the
+    /// render path consumes — a group appears here iff it is visible, and its
+    /// value is its one flagged pane (a group with an empty pane tree has
+    /// nothing to draw and is absent). The zoomed local view does not use
+    /// this: it shows the full pane layout as before.
+    var overallViewPaneIDs: [GroupID: SurfaceID] {
+        var result: [GroupID: SurfaceID] = [:]
+        for id in visibleGroupIDs {
+            if let primary = groups[id]?.primaryPane {
+                result[id] = primary
+            }
+        }
+        return result
+    }
+
     // MARK: Mutations
 
     /// Persist `paneTree` into the focused group. No-op when nothing is focused.
     /// Called before every focused-group switch so the outgoing group's layout
     /// is not lost.
-    mutating func saveOutgoingPaneTree(_ paneTree: SplitTree<XGhostty.SurfaceView>) {
+    mutating func saveOutgoingPaneTree(_ paneTree: SplitTree<Pane>) {
         guard let id = focusedGroup, var group = groups[id] else { return }
         group.paneTree = paneTree
         groups[id] = group
@@ -211,7 +233,7 @@ struct WorkspaceState {
     /// `focusedGroup` is validated against the surviving groups and the canonical
     /// tree; if it no longer points at a *visible* group — including when the cap
     /// pushed it onto the shelf — it falls back to the canonical tree's first leaf.
-    static func restoring(_ saved: WorkspaceState) -> WorkspaceState {
+    static func restoring(_ saved: Self) -> Self {
         var restored = saved
         restored.applyRestoreLayout()
 
@@ -228,7 +250,10 @@ struct WorkspaceState {
 
 // MARK: Codable
 
-extension WorkspaceState: Codable {
+/// The runtime specialization: pane elements are live surface views.
+typealias WorkspaceState = WorkspaceStateOf<XGhostty.SurfaceView>
+
+extension WorkspaceStateOf: Codable {
     enum CodingKeys: String, CodingKey {
         // Runtime-only fields (`hiddenGroupIDs`, `zoomedGroup`) are intentionally
         // omitted; `focusedGroup` is persisted per `SPEC.md` §12.1.
@@ -241,13 +266,13 @@ extension WorkspaceState: Codable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.version = try c.decodeIfPresent(Int.self, forKey: .version)
-            ?? WorkspaceState.currentVersion
+            ?? Self.currentVersion
         self.canonicalGroupTree = try c.decode(SplitTree<GroupRef>.self, forKey: .canonicalGroupTree)
 
         // Dictionaries with non-String/Int keys encode as JSON arrays by
         // default; we persist `groups` as a keyed object using uuid strings so
         // the JSON stays a readable object (see `encode(to:)`).
-        let keyed = try c.decode([String: GroupState].self, forKey: .groups)
+        let keyed = try c.decode([String: GroupStateOf<Pane>].self, forKey: .groups)
         self.groups = Dictionary(uniqueKeysWithValues: keyed.compactMap { key, value in
             UUID(uuidString: key).map { (GroupID(rawValue: $0), value) }
         })
