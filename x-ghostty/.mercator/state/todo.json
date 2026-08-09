@@ -9,10 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-009",
-    "T-010",
-    "T-011",
-    "T-012"
+    "T-006"
   ],
   "items": [
     {
@@ -259,7 +256,7 @@
     {
       "id": "T-006",
       "title": "Human on-device visual verification (re-run after the Cmd+Enter/Esc rework): Cmd+N overlay opens and Cmd+Enter saves, Esc discards, Cmd+Enter no longer toggles fullscreen, Cmd+Opt+N overview show/hide, overlay appearance, note readability in overview (one-time, after all implementation)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-013"
@@ -268,7 +265,16 @@
         "mode": "human"
       },
       "batch_group": "notes-verify",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-08T21:59:34+09:00",
+          "reference": "R-004 resolution / reflection.jsonl human_resume entry at 2026-08-08T21:59:34+09:00",
+          "summary": "The human performed the one-time on-device visual verification against the updated success criterion 5 and confirmed all six items behave as expected: (1) Cmd+N opens the focused project's note edit overlay and Cmd+Enter saves and closes, with the content restored after an app restart; (2) Esc discards the edit and the pre-open text remains; (3) Cmd+Enter no longer toggles fullscreen; (4) Cmd+Opt+N shows notes over all visible projects simultaneously and exits via re-toggle or Esc; (5) the overlay appearance (position, margins, colors) fits the terminal; (6) overview-mode notes are readable including truncated display. Recorded by the human in the R-004 resolution during the 2026-08-08T21:59:34+09:00 resume (gate release), which instructed marking T-006 done with this confirmation as evidence."
+        }
+      ]
     },
     {
       "id": "T-007",

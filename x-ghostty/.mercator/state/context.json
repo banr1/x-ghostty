@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "0ab42725ad588a666cd783ad6aa77a0c861b96f94c7803e7b68fbffb66a9edf9",
+    "last_signature": "757b078e1899542b77e0430a50f8bbb0d1e3dcfdc61f7675f8eecdcae2a4f53b",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-08T21:36:21+09:00",
-    "last_checked_at": "2026-08-08T21:36:21+09:00"
+    "last_progress_at": "2026-08-10T00:48:36+09:00",
+    "last_checked_at": "2026-08-10T00:48:36+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,26 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.3,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 13,
-    "completed_todos_since_reset": 6,
-    "important_decisions_since_reset": 5,
+    "changed_files_since_reset": 0,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 0,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-08T21:59:34+09:00",
-    "summary": "Human resume: T-006 の実機目視確認を実施し、更新後の成功条件 5 の全 6 項目が期待どおり動作することを確認した(Cmd+N オーバーレイ→Cmd+Enter で保存・再起動後も復元、Esc で破棄して開く前の本文が残る、Cmd+Enter で fullscreen にならない、Cmd+Opt+N の一望モードの表示と再トグル/Esc 退出、オーバーレイの見た目、一望モード時のノート可読性)。\nしたがって R-004 を解除し、T-006 を人間確認の証跡付きで done とすること。これで must は全 10 件完了となる。\n次サイクルは must 境界に到達するので、should の T-007(マウス導線)/T-008(視覚洗練)へ進むか must で閉じるかの phase 判断ゲートを人間に提示すること。",
-    "next_actions": [],
-    "open_questions": [],
-    "pending_cycle": true
+    "written_at": "2026-08-10T00:50:00+09:00",
+    "summary": "MUST PHASE COMPLETE (10/10). This cycle executed the human's 2026-08-08T21:59 resume instruction: T-006 (human on-device visual verification of the reworked note semantics) is now done, with the human's R-004 resolution as its evidence (all six items of success criterion 5 confirmed: Cmd+Enter saves + restart persistence, Esc discards, no fullscreen on Cmd+Enter, Cmd+Opt+N overview show/exit, overlay appearance, overview readability). should-stop latches must_complete_awaiting_phase_approval — the designed §13.1-13 phase boundary; the loop materializes it at cycle end. No agent-side duplicate Recommendation was raised (§21.5-4). Validate is green except one §20.2-6 warning (11/22 成功条件 items match no command-evidence text) — expected heuristic residue: those items are covered by the aggregate swift-test evidence (436 tests, 39 GroupNoteTests) and the human T-006 confirmation; the human can review the mapping via `just status`. No implementation files changed this cycle.",
+    "next_actions": [
+      "WAIT for the human's phase decision — exactly one of: `just resume --approve-should --note ...` (gives should Todos T-007 mouse affordance / T-008 visual refinement their autonomous budget) or `just resume --close-at-must --note ...` (adopts the must scope as the final result). A bare resume or --resolve alone does not clear this gate.",
+      "If the should phase is approved: T-007 and T-008 (batch_group notes-optional, both mercator-executor, normal risk) become runnable; start with a fresh batch, verify with zig build / just test / just swift-test (NOT `just build-app`, guard-denied per R-002).",
+      "If closed at must: no further autonomous work; the project completes at the must scope.",
+      "Operational reminders that still apply: run verification gates FOREGROUND (backgrounded gates get SIGTERM at turn end); assemble state bundles via the Write tool into a project temp file then apply-projection then rm (Bash redirects/pipes touching canonical state paths are guard-denied, as re-confirmed this cycle for a reflection.jsonl heredoc append — use the Edit tool to append to the .jsonl logs instead)."
+    ],
+    "open_questions": [
+      "Human phase decision at the must boundary: --approve-should (T-007/T-008) or --close-at-must?"
+    ],
+    "pending_cycle": false
   }
 }
