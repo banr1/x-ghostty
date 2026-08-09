@@ -726,6 +726,45 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.paneOperationsEnabled
     }
 
+    /// Whether `set_primary` would change anything (SPEC §22.4): only while
+    /// zoomed into the focused group (assignment is a zoom-only operation),
+    /// with a focused pane that is not already the primary. Callers use this
+    /// both to perform the action and to answer the keybind's performability
+    /// check, so the two always agree.
+    var canSetPrimaryToFocusedPane: Bool {
+        guard state.paneOperationsEnabled,
+              let group = focusedGroupState,
+              let focused = group.focusedSurface,
+              group.paneTree.find(id: focused.rawValue) != nil,
+              group.primaryPane != focused else { return false }
+        return true
+    }
+
+    /// Make the focused pane the primary pane of its group (`set_primary`,
+    /// SPEC §22.4). The former primary is demoted implicitly — the flag is
+    /// single-valued. No-op outside zoom, with no focused pane, or when the
+    /// focused pane already holds the flag.
+    ///
+    /// - Returns: whether the flag moved.
+    @discardableResult
+    func setPrimaryToFocusedPane() -> Bool {
+        guard canSetPrimaryToFocusedPane else { return false }
+        guard let groupID = state.focusedGroup,
+              var group = state.groups[groupID],
+              let focused = group.focusedSurface else { return false }
+
+        let moved = group.setPrimaryPane(focused)
+        if moved { state.groups[groupID] = group }
+        return moved
+    }
+
+    /// The marked pane per group — the primary, only while that group is
+    /// zoomed and holds multiple panes (SPEC §22.6). Forwarded from the
+    /// state so the render path and tests share one judgment.
+    var primaryMarkPaneIDs: [GroupID: SurfaceID] {
+        state.primaryMarkPaneIDs
+    }
+
     // MARK: Note overview
 
     /// The display set of the note overview: every *visible* group, in

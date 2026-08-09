@@ -37,6 +37,11 @@ struct GroupView: View {
     /// the full pane layout.
     let primaryOnly: Bool
 
+    /// The pane carrying the primary mark, or `nil` for no mark
+    /// (SPEC §22.6): set only while this group is zoomed with multiple
+    /// panes, so the overall view and single-pane groups never show it.
+    let primaryMarkPane: SurfaceID?
+
     /// Pane-level operations within this group's terminal split tree. Only the
     /// focused group's tree is mirrored to the controller's `surfaceTree`, so
     /// this routes there.
@@ -64,6 +69,7 @@ struct GroupView: View {
 
             TerminalSplitTreeView(
                 tree: primaryOnly ? group.overallViewPaneTree : group.paneTree,
+                markedPane: primaryMarkPane?.rawValue,
                 action: paneAction)
         }
         .overlay {

@@ -27,6 +27,12 @@ enum TerminalSplitOperation {
 
 struct TerminalSplitTreeView: View {
     let tree: SplitTree<XGhostty.SurfaceView>
+
+    /// The pane to draw a small top-right mark badge on, if any. The group
+    /// layer marks the primary pane while its group is zoomed (`SPEC.md`
+    /// §22.6); this layer only knows "mark this leaf".
+    var markedPane: UUID? = nil
+
     let action: (TerminalSplitOperation) -> Void
 
     var body: some View {
@@ -34,6 +40,7 @@ struct TerminalSplitTreeView: View {
             TerminalSplitSubtreeView(
                 node: node,
                 isRoot: node == tree.root,
+                markedPane: markedPane,
                 action: action)
             // This is necessary because we can't rely on SwiftUI's implicit
             // structural identity to detect changes to this view. Due to
@@ -49,12 +56,17 @@ private struct TerminalSplitSubtreeView: View {
 
     let node: SplitTree<XGhostty.SurfaceView>.Node
     var isRoot: Bool = false
+    var markedPane: UUID? = nil
     let action: (TerminalSplitOperation) -> Void
 
     var body: some View {
         switch node {
         case .leaf(let leafView):
-            TerminalSplitLeaf(surfaceView: leafView, isSplit: !isRoot, action: action)
+            TerminalSplitLeaf(
+                surfaceView: leafView,
+                isSplit: !isRoot,
+                isMarked: leafView.id == markedPane,
+                action: action)
 
         case .split(let split):
             let splitViewDirection: SplitViewDirection = switch split.direction {
@@ -72,10 +84,10 @@ private struct TerminalSplitSubtreeView: View {
                 dividerColor: ghostty.config.splitDividerColor,
                 resizeIncrements: .init(width: 1, height: 1),
                 left: {
-                    TerminalSplitSubtreeView(node: split.left, action: action)
+                    TerminalSplitSubtreeView(node: split.left, markedPane: markedPane, action: action)
                 },
                 right: {
-                    TerminalSplitSubtreeView(node: split.right, action: action)
+                    TerminalSplitSubtreeView(node: split.right, markedPane: markedPane, action: action)
                 },
                 onEqualize: {
                     guard let surface = node.leftmostLeaf().surface else { return }
@@ -89,6 +101,7 @@ private struct TerminalSplitSubtreeView: View {
 private struct TerminalSplitLeaf: View {
     let surfaceView: XGhostty.SurfaceView
     let isSplit: Bool
+    var isMarked: Bool = false
     let action: (TerminalSplitOperation) -> Void
 
     @State private var dropState: DropState = .idle
@@ -119,6 +132,11 @@ private struct TerminalSplitLeaf: View {
                         .allowsHitTesting(false)
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if isMarked {
+                    PaneMarkBadge()
+                }
+            }
             .onPreferenceChange(XGhostty.DraggingSurfaceKey.self) { value in
                 isSelfDragging = value == surfaceView.id
                 if isSelfDragging {
@@ -133,6 +151,22 @@ private struct TerminalSplitLeaf: View {
     private enum DropState: Equatable {
         case idle
         case dropping(TerminalSplitDropZone)
+    }
+
+    /// The small top-right badge drawn on a marked pane (the group layer's
+    /// primary mark, `SPEC.md` §22.6). Kept subtle — a dimmed star on a thin
+    /// material chip — so it reads as terminal chrome rather than content.
+    private struct PaneMarkBadge: View {
+        var body: some View {
+            Image(systemName: "star.fill")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .padding(4)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
+                .padding(6)
+                .allowsHitTesting(false)
+                .accessibilityLabel("Primary pane")
+        }
     }
 
     private struct SplitDropDelegate: DropDelegate {

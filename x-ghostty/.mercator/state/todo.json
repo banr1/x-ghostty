@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-014"
+    "T-015"
   ],
   "items": [
     {
@@ -551,7 +551,7 @@
     {
       "id": "T-015",
       "title": "set_primary action bound to Cmd+P (effective only while zoomed; demotes the former primary) and the primary mark at the primary pane's top-right, shown only while zoomed with multiple panes; model logic covered by XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-023",
@@ -562,7 +562,49 @@
         "mode": "mercator"
       },
       "batch_group": "primary-action",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Splits/TerminalSplitTreeView.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift"
+          ],
+          "summary": "New set_primary action following the edit_group_note pattern end to end: keybind action with doc comment and parse test (src/input/Binding.zig incl. the .surface scope list), apprt action + Key enum entry appended last for C ABI (src/apprt/action.zig), Surface.zig dispatch, command.zig palette-exclusion list, default keybind cmd+p in Config.zig (plain Cmd+P is free — the command palette uses Cmd+Shift+P), and XGHOSTTY_ACTION_SET_PRIMARY appended to xghostty.h (checkXGhosttyHEnum keeps the header in sync). Swift: App.setPrimary performability declines unless workspace.canSetPrimaryToFocusedPane (zoom-only, focused pane in tree, not already primary — keybind falls through unconsumed otherwise), posts ghosttySetPrimary; BaseTerminalController.ghosttyDidSetPrimary calls workspace.setPrimaryToFocusedPane(), which moves the single-valued flag (former primary demoted implicitly, SPEC §22.4). Primary mark (SPEC §22.6): WorkspaceState.primaryMarkPaneIDs returns the zoomed group's primary only while that group holds multiple panes (empty in the overall view and for single-pane groups), threaded TerminalWorkspaceView → GroupSplitTreeView → GroupView → TerminalSplitTreeView.markedPane; TerminalSplitLeaf overlays a subtle top-right PaneMarkBadge (dimmed star on ultraThinMaterial chip, hit-testing disabled) on the marked pane. The split layer only knows the neutral 'mark this leaf' concept; the group layer owns the judgment."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with the new action, regenerated C header consumption, macOS app with the mark overlay) exited 0. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the appended XGHOSTTY_ACTION_SET_PRIMARY tag and the new set_primary keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 467 test cases, 0 failures — the full prior suite plus 6 new GroupPrimaryPaneTests: set_primary while zoomed moves the flag to the focused pane and demotes the former primary (S-029 criterion), declines outside zoom and when the focused pane is already primary; the primary mark shows only while a multi-pane group is zoomed (empty in the overall view), disappears on zoom release, stays hidden for single-pane groups, and follows a set_primary reassignment."
+        }
+      ]
     },
     {
       "id": "T-016",

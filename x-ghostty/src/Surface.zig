@@ -5368,6 +5368,12 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .set_primary => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .set_primary,
+            {},
+        ),
+
         .close_group => return try self.rt_app.performAction(
             .{ .surface = self },
             .close_group,

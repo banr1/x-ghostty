@@ -40,6 +40,11 @@ struct GroupSplitTreeView: View {
     /// local view keeps the full pane layout.
     let primaryOnly: Bool
 
+    /// The pane carrying the primary mark, keyed by group
+    /// (`WorkspaceState.primaryMarkPaneIDs`, SPEC §22.6): non-empty only
+    /// while a multi-pane group is zoomed.
+    let primaryMarks: [GroupID: SurfaceID]
+
     let paneAction: (TerminalSplitOperation) -> Void
 
     /// Label focus / rename callbacks.
@@ -61,6 +66,7 @@ struct GroupSplitTreeView: View {
                 renamingGroup: renamingGroup,
                 noteOverview: noteOverview,
                 primaryOnly: primaryOnly,
+                primaryMarks: primaryMarks,
                 paneAction: paneAction,
                 labelActions: labelActions,
                 onEqualize: onEqualize,
@@ -85,6 +91,7 @@ private struct GroupSplitSubtreeView: View {
     let renamingGroup: GroupID?
     let noteOverview: Bool
     let primaryOnly: Bool
+    let primaryMarks: [GroupID: SurfaceID]
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: GroupLabelActions
     let onEqualize: () -> Void
@@ -102,6 +109,7 @@ private struct GroupSplitSubtreeView: View {
                     ordinal: ordinals[ref.id],
                     isRenaming: ref.id == renamingGroup,
                     primaryOnly: primaryOnly,
+                    primaryMarkPane: primaryMarks[ref.id],
                     paneAction: paneAction,
                     labelActions: labelActions,
                     showsNoteOverlay: noteOverview)
@@ -131,6 +139,7 @@ private struct GroupSplitSubtreeView: View {
                         renamingGroup: renamingGroup,
                         noteOverview: noteOverview,
                         primaryOnly: primaryOnly,
+                        primaryMarks: primaryMarks,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,
@@ -145,6 +154,7 @@ private struct GroupSplitSubtreeView: View {
                         renamingGroup: renamingGroup,
                         noteOverview: noteOverview,
                         primaryOnly: primaryOnly,
+                        primaryMarks: primaryMarks,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,

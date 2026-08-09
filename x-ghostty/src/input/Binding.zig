@@ -666,6 +666,12 @@ pub const Action = union(enum) {
     /// releases the zoom first. Hidden groups are not shown.
     toggle_note_overview,
 
+    /// Make the focused pane the primary pane of its group: the one pane
+    /// the overall (non-zoomed) view renders for the group. Only effective
+    /// while zoomed into the group; the former primary is demoted (there is
+    /// always exactly one primary per group).
+    set_primary,
+
     /// Close the current group, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_group,
@@ -1334,6 +1340,7 @@ pub const Action = union(enum) {
             .set_group_title,
             .edit_group_note,
             .toggle_note_overview,
+            .set_primary,
             .close_group,
             .inspector,
             => .surface,
@@ -3463,6 +3470,10 @@ test "parse: group split actions" {
     {
         const binding = try parseSingle("a=toggle_note_overview");
         try testing.expect(binding.action == .toggle_note_overview);
+    }
+    {
+        const binding = try parseSingle("a=set_primary");
+        try testing.expect(binding.action == .set_primary);
     }
     {
         const binding = try parseSingle("a=close_group");

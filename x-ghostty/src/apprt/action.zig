@@ -350,6 +350,12 @@ pub const Action = union(Key) {
     /// compatibility; see the note above.
     toggle_note_overview,
 
+    /// Make the focused pane the primary pane of its group (the pane the
+    /// overall view renders). It is up to the apprt to apply it — only
+    /// effective while zoomed into the group. Appended last to preserve
+    /// C ABI compatibility; see the note above.
+    set_primary,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -421,6 +427,7 @@ pub const Action = union(Key) {
         goto_group_index,
         edit_group_note,
         toggle_note_overview,
+        set_primary,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

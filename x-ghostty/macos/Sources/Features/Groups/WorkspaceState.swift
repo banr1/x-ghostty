@@ -141,6 +141,21 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         return result
     }
 
+    // MARK: Primary mark (SPEC §22.6)
+
+    /// The pane that shows the primary mark, keyed by group: the zoomed
+    /// group's primary pane, and only while that group holds multiple panes.
+    /// Empty in the overall view (which renders nothing but primaries, so a
+    /// mark would be noise) and for single-pane groups (the only pane is
+    /// trivially the primary).
+    var primaryMarkPaneIDs: [GroupID: SurfaceID] {
+        guard let zoomedGroup,
+              let group = groups[zoomedGroup],
+              group.paneTree.isSplit,
+              let primary = group.primaryPane else { return [:] }
+        return [zoomedGroup: primary]
+    }
+
     // MARK: Overall-view focus & pane operations (SPEC §22.4–22.5)
 
     /// Whether pane-level operations (split, inter-pane focus movement, pane

@@ -445,6 +445,10 @@ extension XGhostty.Notification {
     /// had focus; the read-only note overview over all visible groups is toggled.
     static let ghosttyToggleNoteOverview = Notification.Name("com.mitchellh.xghostty.toggleNoteOverview")
 
+    /// Posted when `set_primary` is requested. The sending object is the surface that had
+    /// focus; the focused pane becomes its group's primary pane (zoom-only, `SPEC.md` §22.4).
+    static let ghosttySetPrimary = Notification.Name("com.mitchellh.xghostty.setPrimary")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 

@@ -5985,6 +5985,13 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true, .alt = true } },
                 .{ .toggle_note_overview = {} },
             );
+            // Plain Cmd+P has no other default binding (the command palette
+            // uses Cmd+Shift+P), so the primary-pane assignment takes it.
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'p' }, .mods = .{ .super = true } },
+                .{ .set_primary = {} },
+            );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },

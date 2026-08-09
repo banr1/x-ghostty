@@ -299,6 +299,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidSetPrimary(_:)),
+            name: XGhostty.Notification.ghosttySetPrimary,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidSetGroupTitle(_:)),
             name: XGhostty.Notification.ghosttySetGroupTitle,
             object: nil)
@@ -1014,6 +1019,19 @@ class BaseTerminalController: NSWindowController,
         if workspace.toggleNoteOverview() {
             _ = focusedSurface?.resignFirstResponder()
         }
+    }
+
+    @objc private func ghosttyDidSetPrimary(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // `set_primary` moves the primary flag to the focused pane; the model
+        // enforces the zoom-only rule and rejects a no-op reassignment
+        // (SPEC §22.4). Keyboard focus is untouched — the pane is focused
+        // already — and the mark overlay re-renders via the state change.
+        workspace.setPrimaryToFocusedPane()
     }
 
     @objc private func ghosttyDidSetGroupTitle(_ notification: Notification) {

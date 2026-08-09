@@ -429,6 +429,82 @@ struct GroupPrimaryPaneTests {
         #expect(model.state.groups[groupID]?.focusedSurface == SurfaceID(rawValue: b.id))
     }
 
+    // MARK: set_primary (SPEC §22.4)
+
+    @Test func setPrimaryWhileZoomedMovesFlagToFocusedPane() throws {
+        let (model, groupID, a, b) = try Self.makeTwoPaneModel()
+
+        // Zoom in and focus the non-primary pane; reassignment is allowed.
+        model.toggleGroupZoom()
+        model.setFocusedSurface(SurfaceID(rawValue: b.id))
+        #expect(model.canSetPrimaryToFocusedPane)
+
+        #expect(model.setPrimaryToFocusedPane())
+
+        // The focused pane took the flag and the former primary is demoted.
+        #expect(model.primaryPaneID(of: groupID) == SurfaceID(rawValue: b.id))
+        #expect(model.state.groups[groupID]?.isPrimary(SurfaceID(rawValue: a.id)) == false)
+    }
+
+    @Test func setPrimaryOutsideZoomIsNoOp() throws {
+        let (model, groupID, a, _) = try Self.makeTwoPaneModel()
+
+        // The overall view: assignment is zoom-only.
+        #expect(!model.canSetPrimaryToFocusedPane)
+        #expect(!model.setPrimaryToFocusedPane())
+        #expect(model.primaryPaneID(of: groupID) == SurfaceID(rawValue: a.id))
+    }
+
+    @Test func setPrimaryOnAlreadyPrimaryPaneIsNoOp() throws {
+        let (model, groupID, a, _) = try Self.makeTwoPaneModel()
+
+        // Zoomed with the primary itself focused: nothing would change, so
+        // the action declines (and the keybind falls through).
+        model.toggleGroupZoom()
+        model.setFocusedSurface(SurfaceID(rawValue: a.id))
+
+        #expect(!model.canSetPrimaryToFocusedPane)
+        #expect(!model.setPrimaryToFocusedPane())
+        #expect(model.primaryPaneID(of: groupID) == SurfaceID(rawValue: a.id))
+    }
+
+    // MARK: Primary mark (SPEC §22.6)
+
+    @Test func primaryMarkShowsOnlyWhileZoomedWithMultiplePanes() throws {
+        let (model, groupID, a, _) = try Self.makeTwoPaneModel()
+
+        // Overall view: no mark anywhere.
+        #expect(model.primaryMarkPaneIDs.isEmpty)
+
+        // Zoomed multi-pane group: exactly the primary is marked.
+        model.toggleGroupZoom()
+        #expect(model.primaryMarkPaneIDs == [groupID: SurfaceID(rawValue: a.id)])
+
+        // Released again: the mark disappears with the zoom.
+        model.toggleGroupZoom()
+        #expect(model.primaryMarkPaneIDs.isEmpty)
+    }
+
+    @Test func primaryMarkHiddenForSinglePaneGroup() {
+        let a = TestPane()
+        let model = TestWorkspaceModel(wrapping: .init(view: a), name: "amber-owl")
+
+        // Zoomed, but the group has a single pane: the only pane is
+        // trivially the primary, so no mark is shown.
+        model.toggleGroupZoom()
+        #expect(model.primaryMarkPaneIDs.isEmpty)
+    }
+
+    @Test func primaryMarkFollowsReassignment() throws {
+        let (model, groupID, _, b) = try Self.makeTwoPaneModel()
+
+        model.toggleGroupZoom()
+        model.setFocusedSurface(SurfaceID(rawValue: b.id))
+        model.setPrimaryToFocusedPane()
+
+        #expect(model.primaryMarkPaneIDs == [groupID: SurfaceID(rawValue: b.id)])
+    }
+
     @Test func paneTreeMirrorKeepsPrimaryThroughModelReplace() throws {
         // The controller mirrors every surface-tree change through
         // `replaceFocusedPaneTree`; the primary must survive the mirror and

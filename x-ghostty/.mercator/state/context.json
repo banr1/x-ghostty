@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "a8dd2296c764bd122b06dec5b2bcaf152faf33becbe814680d0ec7fbad80f489",
+    "last_signature": "cd27656f3fbafc27efba85978605096cf22d3c79c40132bf96013890eb8ec964",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T02:54:58+09:00",
-    "last_checked_at": "2026-08-10T02:54:58+09:00"
+    "last_progress_at": "2026-08-10T03:09:51+09:00",
+    "last_checked_at": "2026-08-10T03:09:51+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,23 +20,23 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.75,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 10,
-    "completed_todos_since_reset": 1,
+    "changed_files_since_reset": 26,
+    "completed_todos_since_reset": 2,
     "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T02:53:30+09:00",
-    "summary": "このサイクルで T-014(全体ビュー挙動)を完了した。全ゲート green: just swift-test exit 0(461 テスト、新規 GroupPrimaryPaneTests 7 件+canToggleGroupZoomRequiresOnlyAFocusedGroup 更新)、zig build exit 0、just test exit 0。\n実装の要点: (a) 描画 — TerminalWorkspaceView が primaryOnly(= zoomedGroup == nil)を GroupSplitTreeView/GroupSplitSubtreeView 経由で GroupView へ通し、非 zoom 時は GroupState.overallViewPaneTree(プライマリー葉 1 枚の派生ツリー、subtreeContainingOnly ベース)を、zoom 中は従来どおり paneTree を TerminalSplitTreeView に渡す。(b) focus — WorkspaceState.snapFocusToPrimaryInOverallView()(非 zoom 時に focused グループの focusedSurface をプライマリーへ寄せる)を、非 zoom に着地しうる全変異(replaceFocusedPaneTree / setFocusedSurface / switchFocusedGroup / gotoGroup / toggleGroupZoom / hideFocusedGroup / showGroup / closeFocusedGroup)の末尾で呼ぶ。AppKit 側は ghosttyDidToggleGroupZoom(zoom 解除時)・ghosttyDidPresentTerminal・replaceSurfaceTree がプライマリーの view へ moveFocus を retarget。(c) no-op ガード — WorkspaceState.paneOperationsEnabled(zoomedGroup != nil かつ == focusedGroup)を単一判定として、controller の newSplit/performSplitAction(divider resize+drop)/ghosttyDidFocusSplit/ghosttyDidToggleSplitZoom/ghosttyDidResizeSplit/ghosttyDidEqualizeSplits、App 層の performable 判定(newSplit/gotoSplit/resizeSplit/toggleSplitZoom/equalizeSplits、キーは未消費で fall through)、validateMenuItem(ペイン系 16 セレクタをグレーアウト)から参照。\n重要な設計判断(R-005 として proposed 記録済み): canToggleGroupZoom を「focused グループがあれば true」に緩和。ペイン操作が zoom 中のみになった帰結として、従来の「単一 visible グループは zoom 拒否」のままだと 1 グループ構成でペイン分割へ永遠に到達できない dead end になるため。S-010 の明示例外リスト外の軽微な意図的変更なので、T-018 の実機確認で人間に見てもらう。",
+    "written_at": "2026-08-10T03:07:30+09:00",
+    "summary": "このサイクルで T-015(set_primary action + プライマリー印)を完了した。全ゲート green: zig build exit 0、just test exit 0(enum 同期検査+parse test)、just swift-test exit 0(467 テスト、新規 GroupPrimaryPaneTests 6 件)。\n実装の要点: (a) set_primary action を edit_group_note と同じ流儀で end-to-end 追加(Binding.zig enum/scope/parse-test、apprt action+Key は C ABI のため末尾追記、Surface.zig dispatch、command.zig はパレット除外リスト、Config.zig default cmd+p〔素の Cmd+P は空き。パレットは Cmd+Shift+P〕、xghostty.h に XGHOSTTY_ACTION_SET_PRIMARY 追記)。(b) Swift: App.setPrimary の performable 判定は workspace.canSetPrimaryToFocusedPane(paneOperationsEnabled=zoom 中のみ+focused ペインがツリー内+既にプライマリーでない。不成立時はキー未消費で fall through)→ ghosttySetPrimary 通知 → controller ghosttyDidSetPrimary → workspace.setPrimaryToFocusedPane()(単一値フラグなので旧プライマリー解除は自動、キーボード focus は不変)。(c) 印: WorkspaceState.primaryMarkPaneIDs(zoom 中のグループのプライマリー、複数ペイン時のみ。全体ビュー/単一ペインは空)を TerminalWorkspaceView → GroupSplitTreeView → GroupView → TerminalSplitTreeView.markedPane と通し、TerminalSplitLeaf が右上に PaneMarkBadge(star.fill 9pt secondary + ultraThinMaterial チップ、hit-test 無効)をオーバーレイ。split 層は中立な「mark this leaf」概念しか知らない(見た目の洗練は should T-008 で拾える)。\n未解決の proposed Recommendation: R-005(単一グループでも zoom 許可の設計解釈)— T-018 の実機確認に同梱して人間に見てもらう予定。",
     "next_actions": [
-      "次バッチは T-015(set_primary action + プライマリー印): (a) set_primary action を edit_group_note/toggle_note_overview と同じ流儀で end-to-end 追加(src/input/Binding.zig・src/apprt/action.zig・src/Surface.zig・src/input/command.zig・src/config/Config.zig の default keybind cmd+p〔素の Cmd+P に既存割り当て無しは Essence が確認済み〕・include/xghostty.h は enum 末尾に追記〔checkXGhosttyHEnum が同期検査〕・App.swift dispatch)。performable 判定は zoom 中のみ(workspace.paneOperationsEnabled)+ focused ペインが既にプライマリーなら false。(b) モデル: WorkspaceModel に setPrimaryToFocusedSurface() 相当を追加(paneOperationsEnabled ガード + GroupState.setPrimaryPane 呼び出し。旧プライマリー解除は単一値なので自動)。WorkspaceModelOf<TestPane> でテスト(zoom 中のみ有効・focused がプライマリーになる・非 zoom では no-op)。(c) 印: zoom 中かつグループ内複数ペインのときだけプライマリーペイン右上に表示。表示判定はモデル層に置く(例: GroupState/WorkspaceState に primaryMarkVisible 判定を追加しテスト)。描画は GroupView か TerminalSplitTreeView 側のオーバーレイで、primaryOnly=false(zoom 中)のときのみ。",
+      "次バッチは T-016(SPEC.md / README.md をプライマリーペイン層の仕様に合わせて更新)。SPEC.md に §22 プライマリーペイン仕様を新設し、既存の §21(ノート)構成に倣うこと: §22.1 データモデル(GroupState.primaryPane、非空ツリーで常に 1 つ、保存形式は primaryPanes id リスト〔ペインレイアウトと同一レコード〕、init/decode の正規化=最初の有効フラグ勝ち・無効なら first leaf、0/複数/迷子の復元修復)。§22.2 昇格(paneTree didSet の reconciledPrimary: 後続分割はフラグを取らない、プライマリー消失時は旧ツリー上の SplitTree.nearestLeaf〔空間距離、タイは走査順先勝ち〕で生存ペインへ昇格。shell exit/Cmd+W/process 死はすべてツリー置換としてモデルに届く)。§22.3 全体ビュー描画(overallViewPaneIDs / overallViewPaneTree、visible グループ→プライマリーのみ、zoom 中は全ペイン)。§22.4 focus とset_primary(snapFocusToPrimaryInOverallView の呼び出し点列挙、zoom 解除時の寄せ、canSetPrimaryToFocusedPane/setPrimaryToFocusedPane、Cmd+P、旧プライマリー解除)。§22.5 ペイン系操作の no-op(paneOperationsEnabled、ガード地点=controller 6 箇所+App performable 5 箇所+validateMenuItem、単一グループ zoom 許可の変更〔R-005〕)。§22.6 プライマリー印(primaryMarkPaneIDs、zoom 中かつ複数ペインのみ、PaneMarkBadge)。§22.7 テスト一覧(GroupPrimaryPaneTests 31 件)。加えて §9.1 action リストと §10.5 default keybinds に set_primary / Cmd+P を追記、§16 ファイルレイアウトに変更があれば反映。README.md: About にプライマリーペインの bullet(全体ビュー=プライマリーのみ、zoom で全ペイン、Cmd+P で付け替え、印、exit 時昇格)を追加。",
+      "T-016 では実装ファイルの doc コメントの『SPEC §22 to be written』的表現を実セクション参照に整えること(GroupState/WorkspaceState/WorkspaceModel/GroupSplitTreeView/GroupView/TerminalSplitTreeView/BaseTerminalController/App.swift に §22.x 参照が既に書いてある — 節番号の整合を確認)。",
       "検証は毎回 foreground で: just swift-test / zig build(/opt/homebrew/opt/zig@0.15/bin/zig build; just build-app はガード deny、R-002)/ just test。",
-      "状態バンドルは Write ツールで ../x-ghostty/.mercator/tmp/ に作り(jq でのリダイレクトはガードが deny)、apply-projection 後 rm。reflection.jsonl への追記は Edit ツール。Recommendation の status は proposed/accepted/rejected/resolved/superseded のみ(open は validate エラー)。",
-      "T-015 の後は T-016(SPEC §22 / README。§22.2 の最近傍=SplitTree.nearestLeaf 空間距離、§22.4 の focus 寄せ、§22.5 の zoom 中のみペイン操作、R-005 の単一グループ zoom 緩和も文書化)→ T-017(全ゲート+S-029 全項目確認)→ T-018(人間の実機目視、Human-input Recommendation を立てて停止。R-005 の確認依頼も同梱)。",
-      "注意: 全体ビューでは surfaceTree(focused グループの全ペイン)のうちプライマリー以外の SurfaceView は view 階層外(プロセスは生存)。moveFocus は未 attach の view に対して再スケジュールし続けるため、非 zoom 時の focus 移動は必ずプライマリーへ向けること(実装済みの retarget 3 箇所を崩さない)。"
+      "状態バンドルは Write ツールで ../x-ghostty/.mercator/tmp/ に作り(Bash リダイレクトはガードが deny)、apply-projection 後 rm。reflection.jsonl への追記は Edit ツール。Recommendation status は proposed/accepted/rejected/resolved/superseded のみ。",
+      "T-016 の後は T-017(全ゲート+S-029 全テスト項目の存在確認)→ T-018(人間の実機目視。Human-input Recommendation を立てて停止し、R-005〔単一グループ zoom〕の確認依頼を同梱)。T-018 完了で must 全完了 → must 境界ゲート(§19.3)。"
     ],
     "open_questions": [],
     "pending_cycle": false

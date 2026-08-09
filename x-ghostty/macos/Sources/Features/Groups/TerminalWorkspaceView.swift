@@ -68,6 +68,9 @@ struct TerminalWorkspaceView: View {
                     // primary pane; the zoomed local view keeps the full
                     // layout (SPEC §22.3).
                     primaryOnly: workspace.state.zoomedGroup == nil,
+                    // The primary mark shows only while a multi-pane group
+                    // is zoomed (SPEC §22.6).
+                    primaryMarks: workspace.state.primaryMarkPaneIDs,
                     paneAction: paneAction,
                     labelActions: labelActions,
                     onEqualize: onEqualizeGroups)

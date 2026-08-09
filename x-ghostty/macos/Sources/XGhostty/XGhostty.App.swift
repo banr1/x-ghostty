@@ -495,6 +495,9 @@ extension XGhostty {
             case XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW:
                 toggleNoteOverview(app, target: target)
 
+            case XGHOSTTY_ACTION_SET_PRIMARY:
+                return setPrimary(app, target: target)
+
             case XGHOSTTY_ACTION_SET_GROUP_TITLE:
                 setGroupTitle(app, target: target, v: action.action.set_group_title)
 
@@ -883,6 +886,35 @@ extension XGhostty {
 
             default:
                 assertionFailure()
+            }
+        }
+
+        private static func setPrimary(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s) -> Bool {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("set primary does nothing with an app target")
+                return false
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable while zoomed with a focused pane that is
+                // not already the primary (SPEC §22.4); otherwise the keybind
+                // falls through unconsumed.
+                guard controller.workspace.canSetPrimaryToFocusedPane else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttySetPrimary,
+                    object: surfaceView)
+                return true
+
+            default:
+                assertionFailure()
+                return false
             }
         }
 
