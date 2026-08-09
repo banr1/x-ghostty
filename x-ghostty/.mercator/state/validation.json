@@ -1,9 +1,9 @@
 {
   "schema_version": "2.0.0",
-  "last_validated_at": "2026-08-10T00:46:55+09:00",
+  "last_validated_at": "2026-08-10T01:55:23+09:00",
   "status": "warning",
   "errors": [],
   "warnings": [
-    "11 of 22 ESSENCE.md 成功条件 map to no acceptance-check command evidence on a done must-priority Todo (ノートを持つプロジェクトを保存し復元すると、同じノート本文が復元される; ノートは 10 行を超えて保持されない; ノート編集を保存して閉じると、編集後の本文が保持される…); the must completion is unverified against those stated 成功条件 (§20.2-6, §22). Review the 成功条件 ↔ evidence mapping shown by `just status` before approving the should phase (§13.1-13)."
+    "ESSENCE.md changed since the last Spec projection; re-project Spec once the change is human-attested (the loop gates an unreviewed change as essence_unreviewed_change, §13.1-10). 2 Spec(s) (S-010, S-015) hold essence_refs that no longer match the edited ESSENCE.md; they are reported here in aggregate, not as per-Spec errors, until Spec is re-projected (§20.2-7)."
   ]
 }
