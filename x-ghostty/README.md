@@ -36,7 +36,17 @@ its window management with a single model:
   `Ctrl+Cmd+F` and the Window menu); `Cmd+Opt+N` toggles a read-only
   overview that lays every visible group's note over it at once (press
   `Cmd+Opt+N` again or Esc to leave). See SPEC.md §21.
-- **Splits** work as they do upstream, nested inside each group.
+- **Primary panes.** Each group has exactly one primary pane (by default its
+  first pane). The overall (non-zoomed) view renders only each group's
+  primary, so a many-pane project stays readable at a glance; zooming into a
+  group shows its full split layout, with a subtle mark on the primary when
+  the group has multiple panes. While zoomed, `Cmd+P` makes the focused pane
+  the primary. Pane operations (splitting, pane focus movement, pane zoom,
+  resize/equalize) work only while zoomed. If the primary pane's shell exits,
+  the nearest remaining pane is promoted. The primary flag is persisted with
+  the pane layout and restored across restarts. See SPEC.md §22.
+- **Splits** work as they do upstream, nested inside each group; in the
+  overall view only each group's primary pane is shown (see above).
 
 Everything else — the VT implementation, renderer, font stack, shell
 integration, configuration system, and command palette — is inherited from

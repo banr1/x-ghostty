@@ -9,7 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-015"
+    "T-016",
+    "T-017"
   ],
   "items": [
     {
@@ -609,7 +610,7 @@
     {
       "id": "T-016",
       "title": "Update SPEC.md and README.md to describe the primary pane layer as implemented",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-028"
@@ -618,12 +619,40 @@
         "mode": "mercator"
       },
       "batch_group": "primary-docs",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: new §22 プライマリーペイン仕様 mirroring §21's structure — §22.1 data model (single-valued GroupState.primaryPane, exactly one per non-empty tree, primaryPanes id-list save format riding the pane-layout record, normalizedPrimary restore repair of 0/missing-key/multiple/dangling flags, setPrimaryPane out-of-tree rejection), §22.2 promotion (paneTree didSet → reconciledPrimary; later splits never take the flag; departed primary promotes the nearest surviving leaf via SplitTree.nearestLeaf — Euclidean distance between slot origins measured on the previous tree, ties won by traversal order; shell exit / Cmd+W / process death all arrive as tree replacements), §22.3 overall-view display target (overallViewPaneIDs, overallViewPaneTree, primaryOnly render switch, full-tree fallback), §22.4 focus & set_primary (the 8 snapFocusToPrimaryInOverallView call sites, controller focus wiring, canSetPrimaryToFocusedPane shared between performability and execution, implicit demotion, keyboard focus unchanged), §22.5 pane-op no-ops (paneOperationsEnabled, 6 controller guards + 5 App performability declines + the 16 grayed menu selectors, no dividers/drop targets in the overall view, and the R-005 single-group-zoom change with its rationale), §22.6 primary mark (primaryMarkPaneIDs zoomed-multi-pane-only judgment, PaneMarkBadge threading, split layer's neutral mark concept), §22.7 test inventory (GroupPrimaryPaneTests, 31 cases, generic-model testability note). Also: set_primary added to the §9.1 action list, and Cmd+P -> set_primary added to §10.5 with the no-conflict note (palette is Cmd+Shift+P). §16 file layout needed no change (the layer added no new source file under Features/Groups). README.md About: new Primary panes bullet (default first-pane primary, overall view renders primaries only, zoom shows the full layout with the mark, Cmd+P reassignment, zoom-only pane operations, exit promotion, persistence, SPEC §22 pointer) and the Splits bullet now notes the overall-view rendering. Verified no leftover 'to be written' phrasing anywhere in macos/src, and all pre-existing §22.x doc-comment references in the implementation (GroupState/WorkspaceState/WorkspaceModel/BaseTerminalController/App/GroupSplitTreeView/GroupView/TerminalSplitTreeView/TerminalWorkspaceView/XGhosttyPackage/GroupPrimaryPaneTests) now resolve to the matching real sections — the section numbering was written to align with them."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 after the docs edits (docs-only change; gate shared with T-017, run in cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 after the docs edits (gate shared with T-017, run in cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 467 test cases, 0 failures after the docs edits (gate shared with T-017, run in cycle R-20260810T030952)."
+        }
+      ]
     },
     {
       "id": "T-017",
       "title": "Full verification of the primary pane layer: zig build / just test / just swift-test all exit 0, all S-029 tests present and passing, no regression of group features beyond the sanctioned exceptions",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-029",
@@ -634,7 +663,27 @@
         "mode": "mercator"
       },
       "batch_group": "primary-verify",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete primary-pane layer (T-013..T-016) in the tree. Run as the exact recipe body of the build-app wrapper per R-002 (cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check over all three appended fork action tags (edit_group_note, toggle_note_overview, set_primary) and their keybind parse tests (cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3+6 gate: TEST SUCCEEDED, 467 test cases, 0 failures, including all 31 GroupPrimaryPaneTests. Every S-029 test criterion was matched to a named passing test in this run's log: (1) initial pane primary → initialPaneOfNewGroupIsPrimary (+ wrappingModelAssignsPrimaryToFirstPane); (2) later splits non-primary, exactly one per group → laterSplitPanesAreNotPrimary (+ single-valued flag, setPrimaryPaneMovesFlagAndDemotesFormerPrimary); (3) save/restore to the same pane with 0/multiple normalization → saveRestoreRoundTripKeepsPrimaryOnSamePane, decodeNormalizesZeroPrimariesToFirstLeaf, decodeNormalizesMultiplePrimariesToOne, decodeNormalizesDanglingPrimaryToFirstLeaf, workspaceRoundTripRestoresEveryGroupsPrimary; (4) nearest-leaf promotion on primary close → primaryCloseProotesNearestLeaf, primaryClosePromotionPicksNearestLeafInDeepTree; (5) overall-view display set == primaries of visible groups only → overallViewDisplaySetIsEachVisibleGroupsPrimaryOnly, overallViewPaneTreeContainsExactlyThePrimaryLeaf; (6) pane-op no-ops in the overall view → paneOperationsAreEnabledOnlyWhileTheFocusedGroupIsZoomed, paneOperationsAreDisabledWhenTheZoomedGroupIsNotFocused; (7) zoom-release focus snap → zoomReleaseSnapsFocusToPrimary (+ setFocusedSurfaceInOverallViewSnapsToPrimary, switchFocusedGroupInOverallViewLandsOnPrimary); (8) set_primary while zoomed moves the flag and demotes the former primary → setPrimaryWhileZoomedMovesFlagToFocusedPane (+ setPrimaryOutsideZoomIsNoOp, setPrimaryOnAlreadyPrimaryPaneIsNoOp). No regression: the full group-feature suite (enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) and all 39 GroupNoteTests pass unchanged; the only intended behavior changes are S-010's sanctioned exceptions (unbound cmd+enter fullscreen default, primary-only overall-view rendering, pane-op no-op guards, zoom-release focus snap) plus the R-005 single-group-zoom enablement recorded for human review (cycle R-20260810T030952)."
+        }
+      ]
     },
     {
       "id": "T-018",

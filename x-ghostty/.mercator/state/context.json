@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "cd27656f3fbafc27efba85978605096cf22d3c79c40132bf96013890eb8ec964",
+    "last_signature": "05548e4f2a475ba0c86746fdf36e548296f703c536b67e928422aad5fc3aeb7a",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T03:09:51+09:00",
-    "last_checked_at": "2026-08-10T03:09:51+09:00"
+    "last_progress_at": "2026-08-10T03:25:15+09:00",
+    "last_checked_at": "2026-08-10T03:25:15+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,25 +20,27 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.75,
+    "context_usage_estimate": 0.35,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 26,
+    "changed_files_since_reset": 2,
     "completed_todos_since_reset": 2,
     "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T03:07:30+09:00",
-    "summary": "このサイクルで T-015(set_primary action + プライマリー印)を完了した。全ゲート green: zig build exit 0、just test exit 0(enum 同期検査+parse test)、just swift-test exit 0(467 テスト、新規 GroupPrimaryPaneTests 6 件)。\n実装の要点: (a) set_primary action を edit_group_note と同じ流儀で end-to-end 追加(Binding.zig enum/scope/parse-test、apprt action+Key は C ABI のため末尾追記、Surface.zig dispatch、command.zig はパレット除外リスト、Config.zig default cmd+p〔素の Cmd+P は空き。パレットは Cmd+Shift+P〕、xghostty.h に XGHOSTTY_ACTION_SET_PRIMARY 追記)。(b) Swift: App.setPrimary の performable 判定は workspace.canSetPrimaryToFocusedPane(paneOperationsEnabled=zoom 中のみ+focused ペインがツリー内+既にプライマリーでない。不成立時はキー未消費で fall through)→ ghosttySetPrimary 通知 → controller ghosttyDidSetPrimary → workspace.setPrimaryToFocusedPane()(単一値フラグなので旧プライマリー解除は自動、キーボード focus は不変)。(c) 印: WorkspaceState.primaryMarkPaneIDs(zoom 中のグループのプライマリー、複数ペイン時のみ。全体ビュー/単一ペインは空)を TerminalWorkspaceView → GroupSplitTreeView → GroupView → TerminalSplitTreeView.markedPane と通し、TerminalSplitLeaf が右上に PaneMarkBadge(star.fill 9pt secondary + ultraThinMaterial チップ、hit-test 無効)をオーバーレイ。split 層は中立な「mark this leaf」概念しか知らない(見た目の洗練は should T-008 で拾える)。\n未解決の proposed Recommendation: R-005(単一グループでも zoom 許可の設計解釈)— T-018 の実機確認に同梱して人間に見てもらう予定。",
+    "written_at": "2026-08-10T03:23:00+09:00",
+    "summary": "このサイクルで T-016(SPEC.md §22 / README.md のプライマリーペイン層ドキュメント)と T-017(全ゲート検証)をまとめて完了した(バッチ統合: ドキュメント編集後のゲート実行 1 回を両者の evidence として共有。判断 1 件)。ゲート: zig build exit 0 / just test exit 0 / just swift-test exit 0(TEST SUCCEEDED、467 テスト、GroupPrimaryPaneTests 31/31)。S-029 の全 8 テスト項目を実行ログ上の実名テストに対応付けて確認済み(対応表は T-017 evidence に記録)。SPEC.md は §22.1〜22.7 を新設(実装コメントの既存 §22.x 参照に節番号を合わせた。§9.1 に set_primary、§10.5 に Cmd+P 追記。§16 は新規ファイルなしのため変更なし)。README は About に Primary panes bullet を追加。残る must は human executor の T-018(実機目視、成功条件 7)のみのため、R-006(Human-input Recommendation, stop_until_human_review, proposed)を起票して停止する。R-006 には R-005(単一グループ zoom 許可の設計解釈、proposed のまま)の確認依頼と、T-018 完了後の must 境界の phase 判断(--approve-should / --close-at-must)の予告を同梱した。",
     "next_actions": [
-      "次バッチは T-016(SPEC.md / README.md をプライマリーペイン層の仕様に合わせて更新)。SPEC.md に §22 プライマリーペイン仕様を新設し、既存の §21(ノート)構成に倣うこと: §22.1 データモデル(GroupState.primaryPane、非空ツリーで常に 1 つ、保存形式は primaryPanes id リスト〔ペインレイアウトと同一レコード〕、init/decode の正規化=最初の有効フラグ勝ち・無効なら first leaf、0/複数/迷子の復元修復)。§22.2 昇格(paneTree didSet の reconciledPrimary: 後続分割はフラグを取らない、プライマリー消失時は旧ツリー上の SplitTree.nearestLeaf〔空間距離、タイは走査順先勝ち〕で生存ペインへ昇格。shell exit/Cmd+W/process 死はすべてツリー置換としてモデルに届く)。§22.3 全体ビュー描画(overallViewPaneIDs / overallViewPaneTree、visible グループ→プライマリーのみ、zoom 中は全ペイン)。§22.4 focus とset_primary(snapFocusToPrimaryInOverallView の呼び出し点列挙、zoom 解除時の寄せ、canSetPrimaryToFocusedPane/setPrimaryToFocusedPane、Cmd+P、旧プライマリー解除)。§22.5 ペイン系操作の no-op(paneOperationsEnabled、ガード地点=controller 6 箇所+App performable 5 箇所+validateMenuItem、単一グループ zoom 許可の変更〔R-005〕)。§22.6 プライマリー印(primaryMarkPaneIDs、zoom 中かつ複数ペインのみ、PaneMarkBadge)。§22.7 テスト一覧(GroupPrimaryPaneTests 31 件)。加えて §9.1 action リストと §10.5 default keybinds に set_primary / Cmd+P を追記、§16 ファイルレイアウトに変更があれば反映。README.md: About にプライマリーペインの bullet(全体ビュー=プライマリーのみ、zoom で全ペイン、Cmd+P で付け替え、印、exit 時昇格)を追加。",
-      "T-016 では実装ファイルの doc コメントの『SPEC §22 to be written』的表現を実セクション参照に整えること(GroupState/WorkspaceState/WorkspaceModel/GroupSplitTreeView/GroupView/TerminalSplitTreeView/BaseTerminalController/App.swift に §22.x 参照が既に書いてある — 節番号の整合を確認)。",
+      "人間が T-018 の実機目視確認(R-006 の 5 項目チェックリスト+R-005 の単一グループ zoom 確認)を行い、just resume で結果を記録するまで停止。エージェント側の自律作業はない(should-stop が R-006 で停止するはず)。",
+      "resume で T-018 完了が記録されたら: T-018 を human evidence 付きで done にする(R-006 の解決文の指示に従う)。それで must 全 15 件完了 → must 境界(must_complete_awaiting_phase_approval)。phase 判断は人間の resume 選択(--approve-should なら should の T-007 マウス導線 / T-008 視覚洗練〔プライマリー印含む〕/ T-019 ペイン数バッジが解禁、--close-at-must なら終了)。",
+      "見た目への指摘があれば T-008(視覚洗練)の scope として記録する。R-005 に問題ありとされた場合は Essence 更新を待って再射影する。",
       "検証は毎回 foreground で: just swift-test / zig build(/opt/homebrew/opt/zig@0.15/bin/zig build; just build-app はガード deny、R-002)/ just test。",
-      "状態バンドルは Write ツールで ../x-ghostty/.mercator/tmp/ に作り(Bash リダイレクトはガードが deny)、apply-projection 後 rm。reflection.jsonl への追記は Edit ツール。Recommendation status は proposed/accepted/rejected/resolved/superseded のみ。",
-      "T-016 の後は T-017(全ゲート+S-029 全テスト項目の存在確認)→ T-018(人間の実機目視。Human-input Recommendation を立てて停止し、R-005〔単一グループ zoom〕の確認依頼を同梱)。T-018 完了で must 全完了 → must 境界ゲート(§19.3)。"
+      "状態バンドルは Write ツールで ../x-ghostty/.mercator/tmp/ に作り(Bash リダイレクトはガードが deny)、CONTROL_ROOT から bin/mercator state apply-projection を実行して後始末に rm。reflection.jsonl への追記は Edit ツール。Bash の CWD はコマンド間で持ち越されるので bin/mercator 実行前に CONTROL_ROOT へ戻ること。"
     ],
-    "open_questions": [],
+    "open_questions": [
+      "R-005: 単一グループでも toggle_group_zoom を許可した設計解釈の人間確認(T-018 実機確認に同梱、R-006 参照)。"
+    ],
     "pending_cycle": false
   }
 }

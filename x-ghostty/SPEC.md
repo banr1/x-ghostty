@@ -464,6 +464,8 @@ set_group_title:<name>
 edit_group_note
 toggle_note_overview
 
+set_primary
+
 close_group
 ```
 
@@ -542,11 +544,14 @@ Cmd+Opt+H             -> hide_group
 Cmd+Opt+R             -> rename_group
 Cmd+N                 -> edit_group_note
 Cmd+Opt+N             -> toggle_note_overview
+Cmd+P                 -> set_primary
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
 ノート系 2 action の仕様は §21。`Cmd+N` / `Cmd+Opt+N` は config デフォルトにも
 メニュー xib にも既存割り当てがないことを確認済み。
+`set_primary`(§22.4)は zoom 中に focused ペインをプライマリーへ指定する。素の
+`Cmd+P` に既存割り当てはない(コマンドパレットは `Cmd+Shift+P`)。
 また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
 ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
 `Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる。
@@ -1412,6 +1417,147 @@ static let maxNoteLines = 10
   モード中はノート編集・focus 移動 3 経路とも no-op /
   編集オーバーレイ表示中のトグルは no-op /
   restoreState・removeAllGroups で終了
+```
+
+## 22. プライマリーペイン仕様
+
+グループ(=プロジェクト)ごとに常に 1 つだけ存在する代表ペインの層。全体ビュー
+(非 zoom)は各グループのプライマリーペインだけを描画し、一望に適した情報密度を
+作る。判断ロジック(既定付与・唯一性・昇格・復元時正規化・全体ビューの表示対象)
+はすべてモデル層に置き、`XGhosttyTests` から検証する(§22.7)。
+
+### 22.1 データモデル
+
+```swift
+// GroupState に追加
+private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょうど 1 つ
+```
+
+- プライマリーは**グループに属する単一値フラグ**。非空の `paneTree` を持つ
+  グループには常にちょうど 1 つ存在し、空グループには存在しない。単一値なので
+  「複数プライマリー」は構造的に表現できない。
+- 既定付与:新規グループの初期ペイン(= 最初に作られたペイン)がプライマリー。
+- 永続化はペインレイアウトと同一経路・同一レコード:保存形式は `primaryPanes`
+  (フラグの立ったペイン id のリスト)で、GroupState の Codable レコードに乗る。
+  健全な保存は常に 1 要素。リスト形式なのは、壊れた保存(0 個/複数/迷子 id/
+  キー欠落)を decode が**拒否せず修復**するため。
+- 復元時正規化 `SplitTree.normalizedPrimary(from:)`(init / decode の両経路):
+  保存候補のうち復元後のツリーに現存する最初のものが勝ち、有効候補がなければ
+  first leaf、空ツリーならなし。プライマリー導入前の保存(キーなし)も同じ経路で
+  first leaf に決まる。
+- `setPrimaryPane(_:)` はツリー外のペイン id を拒否する(戻り値 `false`・無変化)。
+  旧プライマリーの解除は単一値フラグの上書きとして暗黙に起きる。
+
+### 22.2 昇格(ツリー置換との同期)
+
+- `paneTree` の `didSet` が置換のたびに
+  `SplitTree.reconciledPrimary(previousTree:previousPrimary:)` でフラグを
+  再解決する。シェルの exit・`Cmd+W`・process 死は、いずれも controller の
+  surface tree 置換としてモデルに届くため、この 1 点で全ケースを扱える。
+- 規則:
+  - 旧プライマリーが新ツリーに現存する限りフラグは動かない。**後続分割で作られた
+    ペインがフラグを奪うことはない。**
+  - 旧プライマリーが消えたら、**旧ツリー上の位置**を基準に `SplitTree.nearestLeaf`
+    (スロット原点間のユークリッド距離。同距離は走査順で先のものが勝ち)で、
+    新ツリーへ生き残っているペインの最近傍 leaf を昇格する。
+  - 昇格候補がない(旧プライマリー不明・生存者なし)場合は first leaf。空ツリーは
+    プライマリーなし(最後のペインの close は §11.10 / §18.5 の既存挙動どおり
+    グループごと閉じる)。
+
+### 22.3 全体ビューの描画対象
+
+- モデル層の判断は `WorkspaceState.overallViewPaneIDs`(`[GroupID: SurfaceID]`):
+  visible な各グループ → そのプライマリー。hidden グループと空グループは
+  含まれない。zoom 中の局所視点はこの判断を使わず、従来どおり全ペインを
+  レイアウトのまま表示する。
+- 描画には `GroupState.overallViewPaneTree`(プライマリーだけを含む単一 leaf
+  ツリー)を使い、`TerminalWorkspaceView` → `GroupSplitTreeView` → `GroupView` の
+  `primaryOnly`(`zoomedGroup == nil`)経由で切り替える。不変条件が壊れて
+  プライマリーを解決できない場合のフォールバックは全ツリー表示(グループを
+  白紙にしない)。
+
+### 22.4 focus と set_primary(Cmd+P)
+
+- 全体ビューでのキーボード入力・focus は常にプライマリーへ向く。
+  `WorkspaceState.snapFocusToPrimaryInOverallView()`(非 zoom 時のみ作用)を、
+  非 zoom 状態に着地しうる全ミューテーションの後段で呼ぶ:
+  `replaceFocusedPaneTree`(プライマリー exit 昇格を含む)/ `setFocusedSurface` /
+  `switchFocusedGroup` / `gotoGroup` / `toggleGroupZoom`(zoom 解除時の寄せ)/
+  `hideFocusedGroup` / `showGroup` / `closeFocusedGroup`。
+- controller 側の focus 配線:`ghosttyDidToggleGroupZoom` は zoom 解除時に
+  プライマリーへ focus を渡し、`ghosttyDidPresentTerminal` と
+  `replaceSurfaceTree` は非 zoom 時の focus 先をプライマリーへ付け替える。
+- `set_primary` action(§9.1、既定 `Cmd+P`)は zoom 中に focused ペインを
+  プライマリーへ指定する。
+  - 判定は `WorkspaceModel.canSetPrimaryToFocusedPane`:focused グループに
+    zoom 中 + focused ペインがツリー内 + まだプライマリーでない。performable
+    チェックと実行が同じ判定を共有するため常に一致し、不成立時はキーを消費せず
+    fall through する。
+  - 実行は `setPrimaryToFocusedPane()`:フラグが focused ペインへ移り、
+    旧プライマリーは暗黙に解除される(§22.1 の単一値フラグ)。キーボード focus は
+    変わらない(既に focused なペインを指定する操作のため)。
+
+### 22.5 ペイン系操作の no-op(zoom 中のみ有効)
+
+- モデル層の判断は `WorkspaceState.paneOperationsEnabled`:
+  `zoomedGroup != nil && zoomedGroup == focusedGroup` のときだけ true。
+  全体ビューでは false(プライマリーしか描画されず、ペイン操作は視認できない
+  ツリーへの操作になる)。別グループへ zoom した過渡状態でも false。
+- ガード地点:
+  - controller:`newSplit` / `performSplitAction`(divider resize・drop)/
+    `ghosttyDidFocusSplit` / `ghosttyDidToggleSplitZoom` /
+    `ghosttyDidResizeSplit` / `ghosttyDidEqualizeSplits`。
+  - App の performability:`newSplit` / `gotoSplit` / `resizeSplit` /
+    `toggleSplitZoom` / `equalizeSplits` は不成立時に decline し、keybind は
+    未消費で fall through する。
+  - `validateMenuItem`:ペイン系操作のメニュー項目(分割 4・pane zoom 1・
+    ペイン間 focus 移動 6・equalize 1・divider 移動 4 の計 16 selector)を
+    グレーアウトする。
+- 全体ビューはペイン間 divider・drop ターゲットを描画しない(§22.3 の単一 leaf
+  ツリーの帰結)。
+- この変更に伴い `canToggleGroupZoom` は「focused グループがあること」だけを
+  要求する(従来は複数グループが前提)。ペイン操作が zoom 中のみになった結果、
+  単一グループでも zoom できなければ分割に到達できないため(設計判断 R-005)。
+  zoom は局所視点への入口である。
+
+### 22.6 プライマリー印
+
+- モデル層の判断は `WorkspaceState.primaryMarkPaneIDs`:zoom 中のグループの
+  プライマリーを、**そのグループが複数ペインを持つときだけ**返す。全体ビュー
+  (プライマリーしか表示されず印はノイズ)と単一ペインのグループ(唯一のペインが
+  自明にプライマリー)では常に空。
+- 描画は `TerminalWorkspaceView` → `GroupSplitTreeView` → `GroupView` →
+  `TerminalSplitTreeView.markedPane` と通し、`TerminalSplitLeaf` がマーク対象
+  leaf の右上に `PaneMarkBadge`(控えめな 9pt の star + ultraThinMaterial
+  チップ、hit-test 無効)をオーバーレイする。split 層は中立な「mark this leaf」
+  概念しか知らず、どのペインに印を付けるかの判断は group 層が持つ。
+
+### 22.7 テスト(GroupPrimaryPaneTests、31 件)
+
+モデル層はジェネリック(`GroupStateOf` / `WorkspaceStateOf` /
+`WorkspaceModelOf`。runtime は `SurfaceView` への typealias)なので、テストは
+値型ペインに特殊化して実 leaf 入りのツリーで同一の判断コードを検証する
+(`SurfaceView` の生成は live app を要するため)。
+
+```text
+- 既定付与・唯一性: 新規グループの初期ペイン / WorkspaceModel(wrapping:) /
+  空ツリーはなし / 後続分割は非プライマリー / setPrimaryPane の移動と
+  旧プライマリー解除・ツリー外 id 拒否
+- 昇格: [A|B]・[A|[B|C]] でのプライマリー close 最近傍昇格 / 非プライマリー
+  close はフラグ不変 / 最終ペイン close でクリア
+- 永続化・復元正規化: Codable round trip で同一ペインに復元 / 0 個・キー
+  なし・複数・迷子 id の decode 正規化 / ワークスペース全体 round trip
+- 全体ビュー: 表示対象 = visible 各グループのプライマリーのみ(hidden 除外)/
+  overallViewPaneTree は単一 leaf / 空グループは空
+- focus と no-op: paneOperationsEnabled は focused グループ zoom 中のみ
+  (別グループ zoom では無効)/ 非 zoom の setFocusedSurface・
+  switchFocusedGroup はプライマリーへスナップ / zoom 解除で寄せ /
+  非 zoom のプライマリー close は昇格先へ focus
+- set_primary: zoom 中の移動と旧プライマリー解除 / 非 zoom no-op /
+  既にプライマリー no-op
+- 印: zoom 中かつ複数ペインのみ(全体ビューでは空)/ 単一ペイン非表示 /
+  再指定に追従 / zoom 解除で消える
+- controller ミラー経路(replaceFocusedPaneTree)でのフラグ維持・昇格
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"
