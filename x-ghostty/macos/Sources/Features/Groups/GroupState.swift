@@ -78,6 +78,18 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
     /// fresh shell, so a restored group is live again (`SPEC.md` §23.4).
     private(set) var terminatedPane: SurfaceID?
 
+    /// The human-set priority of this group, or `nil` for unset — the default
+    /// (`SPEC.md` §24.1). Like the note, it belongs to the group as a whole
+    /// and persists through the same record.
+    var priority: GroupPriority?
+
+    /// The human-set deadline of this group (date only, no time), or `nil`
+    /// for unset — the default (`SPEC.md` §24.1). Validation lives in
+    /// `GroupDeadline`: an invalid date cannot be represented, so an invalid
+    /// input is rejected to unset at the model boundary. Persists through the
+    /// same record as the note.
+    var deadline: GroupDeadline?
+
     var createdAt: Date
     var lastFocusedAt: Date?
 
@@ -88,6 +100,8 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
         focusedSurface: SurfaceID? = nil,
         note: String = "",
         primaryPane: SurfaceID? = nil,
+        priority: GroupPriority? = nil,
+        deadline: GroupDeadline? = nil,
         createdAt: Date,
         lastFocusedAt: Date? = nil
     ) {
@@ -101,6 +115,8 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
         self.primaryPane = paneTree.normalizedPrimary(
             from: [primaryPane?.rawValue].compactMap { $0 }
         ).map(SurfaceID.init(rawValue:))
+        self.priority = priority
+        self.deadline = deadline
         self.createdAt = createdAt
         self.lastFocusedAt = lastFocusedAt
     }
@@ -205,6 +221,8 @@ extension GroupStateOf: Codable {
         case focusedSurface
         case note
         case primaryPanes
+        case priority
+        case deadline
         case createdAt
         case lastFocusedAt
     }
@@ -227,6 +245,12 @@ extension GroupStateOf: Codable {
         self.primaryPane = paneTree.normalizedPrimary(
             from: flagged.map(\.rawValue)
         ).map(SurfaceID.init(rawValue:))
+        // Priority/deadline follow the invalid-to-unset rule (SPEC §24.1) on
+        // the restore path too: a save carrying an unknown priority value or
+        // an impossible date decodes as unset rather than rejecting the whole
+        // group record.
+        self.priority = (try? c.decodeIfPresent(GroupPriority.self, forKey: .priority)) ?? nil
+        self.deadline = (try? c.decodeIfPresent(GroupDeadline.self, forKey: .deadline)) ?? nil
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
         self.lastFocusedAt = try c.decodeIfPresent(Date.self, forKey: .lastFocusedAt)
     }
@@ -243,6 +267,8 @@ extension GroupStateOf: Codable {
         // save always holds exactly one entry; the list form exists so decode
         // can *repair* a corrupt save rather than reject it.
         try c.encode([primaryPane].compactMap { $0 }, forKey: .primaryPanes)
+        try c.encodeIfPresent(priority, forKey: .priority)
+        try c.encodeIfPresent(deadline, forKey: .deadline)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encodeIfPresent(lastFocusedAt, forKey: .lastFocusedAt)
     }
@@ -250,6 +276,131 @@ extension GroupStateOf: Codable {
 
 /// The runtime specialization: pane elements are live surface views.
 typealias GroupState = GroupStateOf<XGhostty.SurfaceView>
+
+// MARK: Priority (SPEC §24.1)
+
+/// The human-set priority of a group: `high` / `medium` / `low`. "Unset" —
+/// the default — is the absence of a value (`GroupState.priority == nil`),
+/// mirroring how the deadline models it, so a fourth case cannot drift from
+/// the optional's semantics.
+enum GroupPriority: String, Codable, CaseIterable, Equatable {
+    case high
+    case medium
+    case low
+
+    /// Position of this priority in the priority sort order (SPEC §24.3):
+    /// high → medium → low, with unset after all of them (`unsetSortRank`).
+    var sortRank: Int {
+        switch self {
+        case .high: return 0
+        case .medium: return 1
+        case .low: return 2
+        }
+    }
+
+    /// The sort rank of an unset priority: last (SPEC §24.3).
+    static var unsetSortRank: Int { 3 }
+}
+
+// MARK: Deadline (SPEC §24.1)
+
+/// A group's deadline: a calendar date with no time component (SPEC §24.1).
+///
+/// Validation is constructive — the failable initializers are the only way to
+/// obtain a value, and they reject anything that is not a real Gregorian
+/// calendar date, so an invalid deadline (2026-02-30, month 13, garbage text)
+/// is unrepresentable and collapses to unset (`nil`) at the model boundary.
+struct GroupDeadline: Codable, Equatable, Hashable, Comparable {
+    let year: Int
+    let month: Int
+    let day: Int
+
+    /// A single date-only value for ordering and equality: later dates are
+    /// strictly greater. Also the deadline sort key (SPEC §24.3).
+    var ordinalValue: Int { year * 10_000 + month * 100 + day }
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.ordinalValue < rhs.ordinalValue
+    }
+
+    /// Build from components, rejecting anything that is not a real date on
+    /// the Gregorian calendar (leap days included; year bounded to four
+    /// digits so the text form stays unambiguous).
+    init?(year: Int, month: Int, day: Int) {
+        guard (1000...9999).contains(year) else { return nil }
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        guard components.isValidDate(in: Self.gregorian) else { return nil }
+        self.year = year
+        self.month = month
+        self.day = day
+    }
+
+    /// Parse user input of the form `YYYY-MM-DD` (or `YYYY/MM/DD`; month and
+    /// day may be one or two digits). Anything else — wrong shape, non-digits,
+    /// or an impossible date — is `nil`: the save-time rejection of invalid
+    /// deadline input (SPEC §24.1).
+    init?(parsing input: String) {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed
+            .replacingOccurrences(of: "/", with: "-")
+            .components(separatedBy: "-")
+        guard parts.count == 3,
+              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }),
+              parts[0].count == 4, parts[1].count <= 2, parts[2].count <= 2,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2])
+        else { return nil }
+        self.init(year: year, month: month, day: day)
+    }
+
+    /// The date-only value of `date` in the current (or given) calendar — the
+    /// runtime "today" the overdue judgment compares against (SPEC §24.2).
+    init(from date: Date, calendar: Calendar = Calendar.current) {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        // Direct member init bypassing validation: real calendar components
+        // are a real date by construction.
+        self.year = components.year ?? 0
+        self.month = components.month ?? 0
+        self.day = components.day ?? 0
+    }
+
+    /// Whether this deadline is past `today` (SPEC §24.2): strictly earlier —
+    /// the deadline's own day is not yet overdue. Date-only comparison; the
+    /// single-stage judgment behind the subtle overdue emphasis.
+    func isOverdue(today: GroupDeadline) -> Bool {
+        self < today
+    }
+
+    /// The canonical `YYYY-MM-DD` text form (also what the editor shows).
+    var displayText: String {
+        String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    private static let gregorian = Calendar(identifier: .gregorian)
+
+    // Codable: persist as the canonical text form so the saved record stays
+    // readable, and re-validate on decode — a hand-edited or corrupt save
+    // holding an impossible date fails decode, which the group record's
+    // lenient decode turns into unset (SPEC §24.1).
+    init(from decoder: Decoder) throws {
+        let text = try decoder.singleValueContainer().decode(String.self)
+        guard let parsed = GroupDeadline(parsing: text) else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "invalid deadline: \(text)"))
+        }
+        self = parsed
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(displayText)
+    }
+}
 
 // MARK: Primary-pane resolution (SPEC §22.1–22.2)
 

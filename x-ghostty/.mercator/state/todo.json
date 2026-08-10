@@ -9,9 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-020",
-    "T-021",
-    "T-022"
+    "T-024"
   ],
   "items": [
     {
@@ -1005,7 +1003,7 @@
     {
       "id": "T-024",
       "title": "Priority/deadline model layer: per-group priority (high/medium/low/unset) and date-only deadline with invalid input rejected to unset, persisted and restored like the note; overdue judgment and the priority/deadline sort orderings (stable ties, unset last, visible-only) in the model layer covered by XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-038",
@@ -1020,7 +1018,42 @@
       },
       "batch_group": "priodl-model",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
+          ],
+          "summary": "Priority/deadline model layer (SPEC section 24 to be written in T-028, continuing the pre-cited-section pattern of sections 22/23). New top-level types in GroupState.swift: GroupPriority (String-raw Codable enum high/medium/low with sortRank 0/1/2 and unsetSortRank 3; unset is the absence of a value - GroupState.priority is Optional, mirroring the deadline) and GroupDeadline (date-only value type; validation is constructive - the failable initializers are the only way to obtain a value: init(year:month:day:) rejects non-real Gregorian dates via DateComponents.isValidDate, init(parsing:) accepts only YYYY-MM-DD / YYYY/MM/DD shapes, so an invalid deadline is unrepresentable; Comparable via ordinalValue y*10000+m*100+d which doubles as the sort key; init(from: Date, calendar:) derives the runtime today; Codable persists the canonical YYYY-MM-DD text and re-validates on decode). GroupState gains priority/deadline vars riding the same Codable record as the note (encodeIfPresent; decode applies the invalid-to-unset rule leniently - an unknown priority string or impossible stored date decodes as unset instead of rejecting the group record; legacy saves without the keys decode as unset). WorkspaceModel: setGroupPriority / setGroupDeadline(to:) (no-op on unknown group or unchanged value) and the save-time boundary setGroupDeadline(parsing:) - empty input clears deliberately (returns true), invalid input is rejected to unset (returns false); read accessors and forwarders for the orderings and overdue set. WorkspaceState (pure judgments): priorityOrderedVisibleGroupIDs() (high->medium->low->unset), deadlineOrderedVisibleGroupIDs() (nearest first, unset last), both over visibleGroupIDs only with construction-enforced stability (enumerated + explicit offset tie-break, since stdlib sort does not document stability) so hidden groups can never be affected and nothing is mutated; overdueGroupIDs(today:) / GroupDeadline.isOverdue(today:) - strictly earlier than today, the deadline's own day not yet overdue, judged over all groups because overdue-ness must survive hiding while the display layers are visibility-scoped. Layout reordering itself is T-027 (the sort actions consume these orderings)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 13 GroupPriorityDeadlineTests named passing in the log, covering every S-053 criterion: priority+deadline save/restore round trip (and corrupt stored priority/deadline decode as unset); invalid deadline input rejected to unset (impossible date clears rather than keeping the previous value; empty input is a deliberate clear; parser accepts only real dates incl. leap-day cases); priority sort high->medium->low->unset with stable ties (two mediums keep relative order); deadline sort nearest-first with unset last and stable same-day ties; orderings cover visible groups only and mutate nothing (hidden group excluded, layout and shelf untouched); overdue judged in the model (strictly past the deadline day; unset never; hidden groups included in the overdue set); plus unset defaults, today-derivation from a Date, and unknown-group no-ops."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) - the complete prior group/note/primary/terminated suite passes unchanged with the priority/deadline layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the new model types) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
     },
     {
       "id": "T-025",

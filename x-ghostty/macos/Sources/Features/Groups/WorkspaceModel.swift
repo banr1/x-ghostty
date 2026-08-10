@@ -808,6 +808,78 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         noteEditingGroup = nil
     }
 
+    // MARK: Priority & deadline (SPEC §24)
+
+    /// Set (or unset, with `nil`) the priority of group `id` (SPEC §24.1).
+    /// No-op when the group is unknown or the value is unchanged.
+    func setGroupPriority(_ id: GroupID, to priority: GroupPriority?) {
+        guard var group = state.groups[id], group.priority != priority else { return }
+        group.priority = priority
+        state.groups[id] = group
+    }
+
+    /// Set (or unset, with `nil`) the deadline of group `id` (SPEC §24.1).
+    /// No-op when the group is unknown or the value is unchanged.
+    func setGroupDeadline(_ id: GroupID, to deadline: GroupDeadline?) {
+        guard var group = state.groups[id], group.deadline != deadline else { return }
+        group.deadline = deadline
+        state.groups[id] = group
+    }
+
+    /// Save-time boundary for deadline text input (SPEC §24.1): parse
+    /// `input` as a date-only deadline and store it; empty input clears the
+    /// deadline deliberately, and *invalid* input (wrong shape or an
+    /// impossible date) is rejected to unset.
+    ///
+    /// - Returns: `false` only for the rejected-invalid case, so an editor
+    ///   can distinguish "cleared" from "rejected"; the stored outcome is
+    ///   unset either way.
+    @discardableResult
+    func setGroupDeadline(_ id: GroupID, parsing input: String) -> Bool {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            setGroupDeadline(id, to: nil)
+            return true
+        }
+        let parsed = GroupDeadline(parsing: trimmed)
+        setGroupDeadline(id, to: parsed)
+        return parsed != nil
+    }
+
+    /// The priority of group `id`, or `nil` for unset / an unknown group.
+    func groupPriority(of id: GroupID) -> GroupPriority? {
+        state.groups[id]?.priority
+    }
+
+    /// The deadline of group `id`, or `nil` for unset / an unknown group.
+    func groupDeadline(of id: GroupID) -> GroupDeadline? {
+        state.groups[id]?.deadline
+    }
+
+    /// The visible groups in priority order (SPEC §24.3). Forwarded from the
+    /// state so the sort actions, render paths, and tests share one judgment.
+    func priorityOrderedVisibleGroupIDs() -> [GroupID] {
+        state.priorityOrderedVisibleGroupIDs()
+    }
+
+    /// The visible groups in deadline order (SPEC §24.3). Forwarded from the
+    /// state so the sort actions, render paths, and tests share one judgment.
+    func deadlineOrderedVisibleGroupIDs() -> [GroupID] {
+        state.deadlineOrderedVisibleGroupIDs()
+    }
+
+    /// Every group whose deadline is past `today` (SPEC §24.2). Forwarded
+    /// from the state so the display layers and tests share one judgment.
+    func overdueGroupIDs(today: GroupDeadline) -> Set<GroupID> {
+        state.overdueGroupIDs(today: today)
+    }
+
+    /// Whether group `id` is overdue as of `today` (SPEC §24.2): unset
+    /// deadlines never are, and the deadline's own day is not yet overdue.
+    func isGroupOverdue(_ id: GroupID, today: GroupDeadline) -> Bool {
+        state.groups[id]?.deadline?.isOverdue(today: today) ?? false
+    }
+
     // MARK: Primary pane (SPEC §22)
 
     /// The overall (non-zoomed) view's display target per group: exactly each

@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "8f9f13329a6ce8f7d3122c072c2ae878228eab49a4245b652fd0de55992603c4",
+    "last_signature": "1af3207a7289f80d09e08c9a31dbc3e6811b8264784f428e292af3b00f9647e9",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T17:02:18+09:00",
-    "last_checked_at": "2026-08-10T17:02:18+09:00"
+    "last_progress_at": "2026-08-10T17:14:13+09:00",
+    "last_checked_at": "2026-08-10T17:14:13+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,22 +20,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 10,
-    "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 1,
+    "changed_files_since_reset": 14,
+    "completed_todos_since_reset": 4,
+    "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T16:58:30+09:00",
-    "summary": "Cycle R-20260810T163528+0900-9ba711 recovered the crashed run R-20260810T160205+0900-7b3f90: commit 9f707d8 already held the complete protect-batch implementation (core no-close on child exit + terminated-state model + always-confirm close + terminated cover view + Enter restart + 16 GroupTerminatedTests) but was unverified and unrecorded. This cycle reviewed the diff, ran all gates green (targeted GroupTerminatedTests, zig build, just test, just swift-test - all exit 0) and marked T-020/T-021/T-022 done. Remaining must: T-024..T-027 (priority/deadline/sort), T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks).",
+    "written_at": "2026-08-10T17:13:48+09:00",
+    "summary": "Cycle R-20260810T170218+0900-27e4ce completed T-024 (priority/deadline model layer) with all gates green (targeted GroupPriorityDeadlineTests 13/13, just swift-test, zig build, just test - all exit 0). GroupPriority/GroupDeadline live in GroupState.swift as top-level types; orderings and overdue judgment are pure WorkspaceState functions; WorkspaceModel has setters (setGroupDeadline(parsing:) is the invalid-to-unset boundary) and forwarders. Remaining must: T-025/T-026 (overlay UI + display), T-027 (sort actions), T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks).",
     "next_actions": [
-      "T-024 priority/deadline model layer: GroupPriority (high/medium/low/unset, default unset) and date-only deadline on GroupState riding the same persistence record as the note; invalid date input rejected to unset at the model boundary; overdue judgment in the model (date-only comparison); sort-order computations (priority order high->medium->low->unset and deadline order nearest-first with unset last, both stable on ties, visible groups only) as pure model functions covered by XGhosttyTests.",
-      "T-025 overlay UI (priority + deadline controls inside the Cmd+N editor, saved through the note path) and T-026 display (label band subtle priority mark + deadline with unset hidden; overview shows them with the note; single-stage overdue emphasis in both).",
-      "T-027 sort actions: Cmd+S (priority) / Cmd+Shift+S (deadline) reorder the real layout of visible groups only, explicit-only, order persists until the next sort, Cmd+1-9 ordinals follow. Both chords were confirmed unbound during projection. Follow the established end-to-end action pattern (see T-015 evidence); C ABI tags appended last; checkXGhosttyHEnum guards the header.",
-      "T-028 docs: write SPEC section 23 (deletion protection - 23.1 always-confirm, 23.2 terminated state/child-exit judgment, 23.3 Enter restart, 23.4 persistence; the shipped code's doc comments already cite these numbers) plus the editor-shortcut note in 21.2 (already partly done in T-023), the priority/deadline/sort sections, and the project readme; then T-029 full gates; then raise the human gates for T-030/T-031/T-032 in one Human-input Recommendation."
+      "T-025 overlay UI: priority + deadline controls inside the Cmd+N note editor (GroupNoteEditor.swift), saved through the note path - extend the editing session save (endNoteEditing) or add parallel model calls on the same commit point; deadline input as text validated via setGroupDeadline(parsing:) (invalid -> unset per S-039; GroupDeadline.displayText for the current value); priority as a segmented/menu control over GroupPriority? (nil = unset). Keep judgment in the model; the view only forwards.",
+      "T-026 display: label band (GroupLabel.swift) subtle priority mark + deadline text, unset hidden; note overview overlay (GroupNoteOverview.swift) shows priority/deadline with the note; single-stage overdue emphasis in both, driven by model.overdueGroupIDs(today:)/isGroupOverdue with today = GroupDeadline(from: Date()) computed at render entry, never in the model state.",
+      "T-027 sort actions: new keybind actions sort_groups_by_priority (Cmd+S) / sort_groups_by_deadline (Cmd+Shift+S) following the T-015 end-to-end pattern (Binding.zig, apprt/action.zig appended-last C ABI tags, Surface.zig dispatch, command.zig, Config.zig defaults, xghostty.h, App performability, controller handler); the model-side reorder consumes priorityOrderedVisibleGroupIDs/deadlineOrderedVisibleGroupIDs and rebuilds canonicalGroupTree in that leaf order (visible only, explicit-only, persists until next sort; ordinals follow automatically since they derive from traversal order). Add XGhosttyTests for the layout reorder + hidden-shelf non-effect at the model level.",
+      "T-028 docs: SPEC section 23 (deletion protection, cited by shipped code) AND section 24 (priority/deadline/sort: 24.1 data model, 24.2 overdue, 24.3 orderings, 24.4 sort actions + keybinds), section 9.1/10.5 action+keybind tables, test inventory sections, project readme; then T-029 full gates; then one Human-input Recommendation raising T-030/T-031/T-032 together."
     ],
     "open_questions": [],
     "pending_cycle": false

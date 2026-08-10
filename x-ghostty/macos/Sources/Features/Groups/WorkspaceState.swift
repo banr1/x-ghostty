@@ -175,6 +175,55 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         return result
     }
 
+    // MARK: Priority / deadline sort orderings & overdue judgment (SPEC §24.2–24.3)
+
+    /// The visible groups in priority order (SPEC §24.3): high → medium →
+    /// low → unset. A pure ordering judgment — nothing is reordered here; the
+    /// sort *actions* (T-027 / SPEC §24.4) apply this order to the real
+    /// layout. Stability is explicit: within equal priorities the current
+    /// relative order (`visibleGroupIDs`) is preserved. Hidden groups are not
+    /// part of the input and therefore can never be affected.
+    func priorityOrderedVisibleGroupIDs() -> [GroupID] {
+        stableOrderedVisibleGroupIDs { id in
+            groups[id]?.priority?.sortRank ?? GroupPriority.unsetSortRank
+        }
+    }
+
+    /// The visible groups in deadline order (SPEC §24.3): nearest date first,
+    /// unset last. Same contract as `priorityOrderedVisibleGroupIDs`: pure,
+    /// stable within the same date, visible groups only.
+    func deadlineOrderedVisibleGroupIDs() -> [GroupID] {
+        stableOrderedVisibleGroupIDs { id in
+            groups[id]?.deadline?.ordinalValue ?? Int.max
+        }
+    }
+
+    /// `visibleGroupIDs` sorted by `key` with explicit stability: ties keep
+    /// their current relative order (the standard-library sort does not
+    /// document stability, and the stable-tie rule is a spec requirement, so
+    /// it is enforced by construction here).
+    private func stableOrderedVisibleGroupIDs(key: (GroupID) -> Int) -> [GroupID] {
+        visibleGroupIDs.enumerated()
+            .sorted { a, b in
+                let ka = key(a.element)
+                let kb = key(b.element)
+                if ka != kb { return ka < kb }
+                return a.offset < b.offset
+            }
+            .map(\.element)
+    }
+
+    /// Every group whose deadline is past `today` (SPEC §24.2): the
+    /// single-stage overdue set behind the subtle emphasis in the label band
+    /// and the note overview. Judged over all groups — the display layers are
+    /// already visibility-scoped, and a hidden group's overdue-ness must
+    /// survive hiding.
+    func overdueGroupIDs(today: GroupDeadline) -> Set<GroupID> {
+        Set(groups.compactMap { id, group in
+            (group.deadline?.isOverdue(today: today) ?? false) ? id : nil
+        })
+    }
+
     // MARK: Overall-view focus & pane operations (SPEC §22.4–22.5)
 
     /// Whether pane-level operations (split, inter-pane focus movement, pane
