@@ -29,16 +29,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T12:48:00+09:00",
-    "summary": "Should phase: T-007 and T-019 done with full green gates. T-008 (visual refinement) is blocked awaiting the human's R-008 decision (concrete direction vs close-as-satisfied); it is the ONLY remaining non-done Todo. The loop stops on R-008 (Human-input, stop_until_human_review) after this cycle.",
-    "next_actions": [
-      "After the human resolves R-008 with concrete visual direction: set T-008 back to pending/in_progress via apply-projection, implement exactly the specified refinements, verify with zig build / just test / just swift-test, and record evidence.",
-      "After the human resolves R-008 by closing T-008: reflect the closure in todo.json per the human's instruction (expect the resume resolution to say how to record it), then the project has no remaining Todos.",
-      "If the human's R-008 answer also contains visual feedback on the note glyph (T-007) or pane-count badge (T-019), fold it into the T-008 work items."
-    ],
-    "open_questions": [
-      "R-008: concrete visual-refinement direction for T-008, or close it as satisfied?"
-    ],
-    "pending_cycle": false
+    "written_at": "2026-08-10T14:05:04+09:00",
+    "summary": "Human resume: R-008 を解除する: 現状の見た目で満足として、should の T-008(ノート編集オーバーレイ・一望モード・プライマリー印の視覚洗練)を close する。具体的な洗練指示は無く、実機確認 2 回(R-004 / R-006)でも見た目への不満は記録されていない。\nT-008 は人間承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録し、以後 T-008 を実装対象としないこと。ESSENCE.md の変更は不要。\n今サイクルで追加された 2 つの UI(T-007 ヘッダー帯のノートグリフ、T-019 全体ビューのペイン数バッジ)についても現時点で注文は無い。これで全 Todo が完了となる。",
+    "next_actions": [],
+    "open_questions": [],
+    "pending_cycle": true
   }
 }
