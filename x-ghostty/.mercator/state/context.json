@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "3c80416cca70e0f112fcf20e4d36f6a893b934c35291e70e40320f715549c281",
+    "last_signature": "9bfd5486c61dd4c72d6e1caf9f4fe900ded85e1dca99892be1be2222b331a7e2",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T17:42:31+09:00",
-    "last_checked_at": "2026-08-10T17:42:31+09:00"
+    "last_progress_at": "2026-08-10T17:55:11+09:00",
+    "last_checked_at": "2026-08-10T17:55:11+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,20 +20,20 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 13,
-    "completed_todos_since_reset": 1,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 15,
+    "completed_todos_since_reset": 3,
+    "important_decisions_since_reset": 3,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T17:42:07+09:00",
-    "summary": "Cycle R-20260810T172454+0900-8a432c completed T-027 (sort actions): sort_groups_by_priority (Cmd+S) / sort_groups_by_deadline (Cmd+Shift+S) plumbed Zig->header->Swift on the set_primary pattern; model reorder via SplitTree.reorderingLeaves + WorkspaceState.applyVisibleGroupOrder consuming the stable T-024 orderings (visible-only, explicit-only, order persists, ordinals follow); guarded by canSortVisibleGroups (>= 2 visible, not during the viewing-only note overview). All gates green (targeted 22/22, just swift-test, zig build, just test - exit 0). Remaining must: T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks).",
+    "written_at": "2026-08-10T17:54:50+09:00",
+    "summary": "Cycle R-20260810T174232+0900-d54836 completed T-028 (SPEC sections 23/24 + 9.1/10.5/21.2/16 updates + README bullets; all code citations resolve) and T-029 (full gates: zig build / just test / just swift-test all exit 0, all 16 S-050 and all 21 S-053 tests named passing). Every mercator-executable must Todo (T-001..T-029) is done with evidence. Remaining must: the three human on-device verifications T-030 (deletion protection, success criterion 9), T-031 (editor shortcuts, criterion 10), T-032 (priority/deadline/sort, criterion 12), raised together as R-009 (Human-input Recommendation, requires_human_approval, stop gate). The loop should now stop until the human resumes with the R-009 resolution.",
     "next_actions": [
-      "T-028 docs: SPEC section 23 (deletion protection - 23.1 always-confirm close, 23.2 terminated state/child-exit judgment, 23.3 Enter restart, 23.4 persistence; shipped code cites these) AND section 24 (24.1 priority/deadline data model + editor controls, 24.2 overdue judgment + display emphasis, 24.3 sort orderings, 24.4 sort actions/keybinds incl. canSortVisibleGroups guard and reorderingLeaves shape preservation), update section 9.1 action list + 10.5 default keybinds (cmd+p/cmd+s/cmd+shift+s), section 21.2 (editor metaRow), test inventory sections (GroupTerminatedTests 16+, GroupPriorityDeadlineTests 22), section 16 file layout if needed (GroupTerminatedPaneView.swift), and the project readme (notes bullet: priority/deadline/sort; deletion protection).",
-      "T-029 full gates: zig build / just test / just swift-test with every S-050/S-053 test named in evidence, then ONE Human-input Recommendation raising T-030/T-031/T-032 together (deletion-protection visual check, editor-shortcut check, priority/deadline/sort visual check)."
+      "After the human resolves R-009: if the checks passed, mark T-030/T-031/T-032 done with type:human evidence referencing the resume resolution (same pattern as T-006/T-018); the must set is then complete and the loop stops at the must boundary (must_complete_awaiting_phase_approval) unless the human already decided the phase in the same resume.",
+      "If the human reports defects or visual complaints, reopen the named Todo (back to pending with the complaint recorded), fix, re-run the gates, and re-raise the on-device check for the affected item only."
     ],
     "open_questions": [],
     "pending_cycle": false

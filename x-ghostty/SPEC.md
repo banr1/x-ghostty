@@ -469,6 +469,9 @@ toggle_note_overview
 
 set_primary
 
+sort_groups_by_priority
+sort_groups_by_deadline
+
 close_group
 ```
 
@@ -548,6 +551,8 @@ Cmd+Opt+R             -> rename_group
 Cmd+N                 -> edit_group_note
 Cmd+Opt+N             -> toggle_note_overview
 Cmd+P                 -> set_primary
+Cmd+S                 -> sort_groups_by_priority
+Cmd+Shift+S           -> sort_groups_by_deadline
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
@@ -555,6 +560,8 @@ Cmd+P                 -> set_primary
 メニュー xib にも既存割り当てがないことを確認済み。
 `set_primary`(§22.4)は zoom 中に focused ペインをプライマリーへ指定する。素の
 `Cmd+P` に既存割り当てはない(コマンドパレットは `Cmd+Shift+P`)。
+ソート 2 action の仕様は §24.4。素の `Cmd+S` / `Cmd+Shift+S` にも既存割り当てが
+ないことを確認済み(上流はどちらの chord も未使用)。
 また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
 ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
 `Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる。
@@ -1133,15 +1140,18 @@ macos/Sources/Features/Groups/
   WorkspaceState.swift
   WorkspaceModel.swift
   GroupNameGenerator.swift
-  GroupActions.swift
   GroupSplitTreeView.swift
   GroupView.swift
-  GroupLabel.swift
+  GroupLabel.swift            (GroupPriorityDeadlineMeta を含む、§24.2)
   HiddenGroupShelf.swift
-  CloseGroupConfirmation.swift
+  TerminalWorkspaceView.swift
   GroupNoteEditor.swift
   GroupNoteOverview.swift
+  GroupTerminatedPaneView.swift  (§23.3)
 ```
+
+(close 確認ダイアログは専用ファイルではなく `BaseTerminalController` の既存
+確認経路を流用する。§23.1)
 
 既存 split と密接に関わるため、最終的には `Features/Splits` 配下に統合してもよい。
 ただし初期実装では `Features/Groups` として分離した方が差分を追いやすい。
@@ -1392,6 +1402,9 @@ static let maxNoteLines = 10
 - **貼り付けで 10 行を超えた場合も保存時に先頭 10 行へ切り詰める**(手入力と
   同じ §21.1 の正規化経路。CRLF / CR の行末は正規化で `\n` に統一されるため、
   ペースト由来の行末でもキャップは回避されない)。
+- **優先度・締切コントロール**: `TextEditor` 下の metaRow で優先度と締切を
+  設定・変更できる(§24.1)。保存は Cmd+Enter の単一 commit にノートと一括、
+  Esc は 3 ドラフト(ノート・優先度・締切)とも破棄する。
 - 閉じると(保存・破棄どちらでも)first responder は端末 surface に戻る。
 - オーバーレイは編集中のみ描画され、端末領域を恒久的に占有しない。
 - 編集対象グループが消えた場合(undo 復元・全グループ削除)はセッションを
@@ -1599,6 +1612,209 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   対象外)/ 総ペイン数を表示(3 ペインで 3)/ zoom 中は空・解除で復帰 /
   1 ペインに減ると消える
 - controller ミラー経路(replaceFocusedPaneTree)でのフラグ維持・昇格
+```
+
+## 23. 削除保護仕様
+
+グループは「情報を預ける場所」(ノート・優先度・締切)であるため、グループと
+その情報が失われる経路を、確認ダイアログを経た明示的な close 操作だけに限定する
+層。判断ロジックはモデル層に置き、`XGhosttyTests` から検証する(§23.5)。
+
+### 23.1 常時確認(close_group / 最終ペインの Cmd+W)
+
+- 判断はモデルの `WorkspaceModel.closeGroupRequiresConfirmation(anyLiveProcess:)`
+  で、**無条件に true** を返す。確認済み close ダイアログがグループとその情報を
+  失う唯一の正規経路だからである(§23.4)。
+- controller の `closeFocusedGroup` は従来の surfaceTree `needsConfirmQuit`
+  スキャンではなくこの判断を使うため、実行中プロセスの有無によらず既存の
+  Cancel / Close Group ダイアログ(同一形式を流用)が出る。
+- 最終ペインの `Cmd+W`:`ghosttyDidCloseSurface` の最終ペイン昇格から
+  `groups.count > 1` ガードを外し、単一グループの最終ペイン close も確認付き
+  `close_group` へ昇格する(確定後の経路は §18.5 どおり window close へ委譲)。
+- この常時確認が健全なのは §23.2 の帰結:core は child exit でペインを閉じなく
+  なったため、controller に届く close_surface 通知はすべて明示的なユーザー操作
+  であり、シェル死をきっかけに確認ダイアログが出ることはない。
+
+### 23.2 終了済み状態(最終ペインの shell exit)
+
+- Zig core 側:`Surface.childExited` は surface を**閉じない**(メッセージは
+  "Process exited." に簡素化し、`wait_after_command` の早期 return を削除 —
+  exit が何を意味するかは app 層が決める)。`keyCallback` は exited ペインへの
+  エンコード済みキー入力を(close せず)握りつぶす。これにより core 発の close
+  はすべて明示操作になる。
+- App 層:`show_child_exited` は新しい `ghosttyChildExited` 通知を**無条件に**
+  post する(window なし・hidden・即時 exit のペインも含む)。
+  `abnormalCommandExitRuntime` 由来の異常終了 Bool を添える。メッセージバー
+  表示自体は上流の可視性ガードを維持する。
+- モデル判断 `WorkspaceModel.childExitOutcome(for:abnormalExit:)`(純粋・
+  値型検証可能):
+  - グループの**最終ペイン** → `.terminated`。正常終了・異常終了・process 死は
+    いずれも同じ経路で届き、同じ判定になる。
+  - 兄弟のいるペイン → `.closePane`(正常)/ `.keepPaneAwaitingKey`(異常。
+    上流の「キーで閉じる」契約を維持)。
+- `GroupState.terminatedPane`(`private(set)`):不変条件は「そのペインが
+  ツリーの唯一 leaf のときのみ非 nil」。`paneTree` observer が分割・除去の
+  たびにクリアする。`markPaneTerminated` は唯一 leaf のみ受理。
+  `removeExitedPane` はモデル側の兄弟ペイン close(hidden グループも対象)で、
+  最終ペインは拒否する — その場合は `.terminated` であって除去ではない。
+- terminated なプライマリーはフラグを保持する:プライマリー close の最終ペイン
+  経路は本節の終了済み意味論に従う(§22.2 の昇格は兄弟がいる場合の話)。
+
+### 23.3 終了済み表示と Enter 再開
+
+- `GroupTerminatedPaneView`:死んだ端末の最終フレームを薄暗く残したまま
+  (最後の出力にシェルの終わり方が出ていることが多い)、端末様式のパネル
+  (poweroff グリフ・"Shell exited"・"Press Return to start a new shell"・
+  等幅タイポ・端末自身の背景色と split divider ストローク)を重ねる。
+  hit-test 無効なので、終了済みグループのクリックは従来どおりグループ focus に
+  落ち、続く Enter が再開経路へ届く。
+- キー配線:`SurfaceView.keyDown` は exited ペインでは死んだ pty へ書き込む
+  代わりに `ghosttyExitedSurfaceKeyDown`(`isReturn` フラグ付き)を post する。
+  素の keyDown だけが対象で、コマンド chord(`Cmd+W` 等)は exited ペインでも
+  従来どおり効く。
+- controller:terminated なグループでの Enter は `restartTerminatedPane` —
+  新しい `SurfaceView`(新シェル)を生成し、モデルの
+  `WorkspaceModel.restartTerminatedPane` で**同じペインスロット**へ差し替える
+  (新ペインはプライマリーかつ focused surface になり、ノートは保持)。
+  surfaceTree を再同期し、focused グループならキーボード focus も移す。
+- terminated でない exited ペイン(兄弟あり)は上流の any-key-closes 契約を
+  維持する。判定はキー入力時に**再実行**するため、その間に兄弟が閉じ終わって
+  最終ペインになっていた場合は close ではなく terminated 化する。
+
+### 23.4 永続化と喪失経路
+
+- 終了済み状態は **runtime-only**(保存しない)。復元は全ペインを新しい
+  シェルで再生成するため、terminated だったグループも生きて戻る。ノート・
+  優先度・締切は GroupState レコードに乗って保持される(§21.1、§24.1)。
+- グループとその情報が失われる経路は、確認ダイアログを経た明示的な close
+  操作**のみ**。アプリ終了・再起動では従来どおり全グループが復元される。
+
+### 23.5 テスト(GroupTerminatedTests、16 件)
+
+```text
+- 常時確認: 実行中プロセスの有無によらず確認要求
+- exit 判定: 最終ペインはあらゆる exit 種別で .terminated / 兄弟の正常 exit は
+  .closePane / 兄弟の異常 exit は .keepPaneAwaitingKey / 未知ペインは判定なし /
+  兄弟 close 後の再判定は .terminated へ昇格
+- terminated 状態: グループとノート・ペインを保持 / 複数ペイン中の mark は
+  拒否 / terminated プライマリーはフラグ保持 / 分割で状態クリア
+- removeExitedPane: そのペインだけ閉じる(ノート保持・hidden グループ対応)/
+  最終ペインは拒否
+- 永続化: terminated グループの round trip でノート保持(状態自体は
+  runtime-only、復元は生きて戻る)
+- 再開: 同一スロットへ新ペイン(プライマリー化・focused 化・ノート保持・
+  状態クリア)/ 非 terminated では拒否
+```
+
+## 24. 優先度・締切仕様
+
+プロジェクト(=グループ)ごとの優先度と締切を保持・表示し、明示的なソート
+アクションで実レイアウトを並び替える層。保持・復元・ソート順・締切超過判定は
+すべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。
+
+### 24.1 データモデルとエディタ統合
+
+```swift
+// GroupState に追加(いずれも未設定 = nil)
+var priority: GroupPriority?     // high / medium / low
+var deadline: GroupDeadline?     // 日付のみ、時刻なし
+```
+
+- `GroupPriority`:String-raw の Codable enum(high/medium/low)。
+  `sortRank` 0/1/2 と `unsetSortRank` 3 がソートキー。未設定は**値の不在**
+  (Optional)で表現する。
+- `GroupDeadline`:日付のみの値型。**検証は構成的** — failable initializer
+  だけが値を作れるため、不正な締切は型として表現不能:
+  - `init(year:month:day:)` は `DateComponents.isValidDate` で実在しない
+    グレゴリオ日付を拒否(閏日は受理)。
+  - `init(parsing:)` は `YYYY-MM-DD` / `YYYY/MM/DD` 形のみ受理。
+  - `Comparable` は `ordinalValue`(y×10000 + m×100 + d。ソートキー兼用)。
+  - `init(from: Date, calendar:)` が実行時の「今日」を導出(時刻は落ちる)。
+  - Codable は正準 `YYYY-MM-DD` テキストを保存し、decode で再検証する。
+- 永続化はノートと同一の GroupState レコード(`encodeIfPresent`)。decode は
+  **不正→未設定**を寛容に適用:未知の priority 文字列や実在しない保存日付は
+  グループレコードごと拒否せず unset として読む。キーのないレガシー保存も
+  unset。
+- 書込み口:`setGroupPriority` / `setGroupDeadline(to:)`(未知グループ・
+  無変化は no-op)。保存時境界 `setGroupDeadline(parsing:)`:空入力は意図的な
+  クリア(true を返す)、不正入力は**未設定へ**拒否(false。前の値には
+  戻さない)。
+- エディタ統合(§21.2 の metaRow):segmented な優先度 picker
+  (none/high/med/low)と等幅 `YYYY-MM-DD` テキストフィールド(Return は
+  Cmd+Enter と同じ commit)。不正入力の "→ unset" ヒントは
+  `GroupDeadline(parsing:)` を再利用するため、ヒントと保存時判断は乖離
+  しえない。全保存経路は単一 commit ポイント
+  `endNoteEditing(saving:priority:deadlineInput:)` に集約され、ノート・
+  優先度・締切が一括保存される。note-only の `endNoteEditing(saving:)` は
+  優先度・締切に触れない。Esc(`cancelNoteEditing`)は 3 ドラフトとも破棄
+  する — ドラフトは view 状態で、モデルは commit まで不変。
+
+### 24.2 締切超過の判定と表示
+
+- 判定はモデル:`GroupDeadline.isOverdue(today:)` — today より**厳密に前**の
+  日だけ超過(締切当日はまだ超過でない)。`WorkspaceState.overdueGroupIDs(today:)`
+  は**全グループ**を対象にする(超過は hiding をまたいで生存すべき情報で、
+  表示層が既に visibility でスコープしているため)。
+- 表示は共有ビュー `GroupPriorityDeadlineMeta`(GroupLabel.swift。両表示面が
+  同じビューを使うため乖離しない):優先度は等幅の bang 密度
+  (high `!!!` / medium `!!` / low `!` — 色もアイコンも使わない控えめな印)、
+  締切は `YYYY-MM-DD` テキスト、**未設定の項目は何も描かない**。超過は
+  ちょうど 1 段階の控えめな強調(赤みのある tint + 不透明度引き上げ)。
+  「間近」等の段階分けはしない。
+- 配置:ラベル帯の trailing(ノートグリフの手前。inline rename 中は非表示 —
+  帯は一度に 1 つの対話モードだけを持つ。unfocused グループでは 0.6 opacity)
+  と、一望モードの各パネルヘッダー(グループ名の横)。today は描画時に
+  `GroupDeadline(from: Date())` で導出し、表示層はモデルの答えだけを描く。
+
+### 24.3 ソート順序付け(純関数)
+
+- `priorityOrderedVisibleGroupIDs()`:high → medium → low → 未設定。
+- `deadlineOrderedVisibleGroupIDs()`:近い日付順、未設定は末尾。
+- 共通契約:入力は `visibleGroupIDs` のみ(hidden は入力に入らないため構造的に
+  影響不能)、純関数で副作用なし、**安定性は構成で保証**(stdlib の sort は
+  安定性を文書化しないため、enumerated + offset の明示タイブレーク)。
+  同順位・同日は現在の相対順を維持する。
+
+### 24.4 ソートアクション(sort_groups_by_priority / sort_groups_by_deadline)
+
+- `sort_groups_by_priority`(既定 `Cmd+S`)/ `sort_groups_by_deadline`
+  (既定 `Cmd+Shift+S`)。§10.5 のとおり両 chord とも既存割り当てなし。
+- 判定は `WorkspaceModel.canSortVisibleGroups`:visible グループ 2 つ以上 +
+  一望モード中でない(一望モードは閲覧専用、§21.3)。`set_primary` と同型で、
+  performable チェックと実行が同じ判定を共有し、不成立時はキー未消費で
+  fall through する。
+- 実行:`SplitTree.reorderingLeaves(to:)` が**同一構造の上で leaf の載せ替え
+  だけ**を行い(形状・分割方向・分割比は不変。現 leaf の順列でなければ nil)、
+  `WorkspaceState.applyVisibleGroupOrder` が §24.3 の順序を canonical tree へ
+  適用する。レイアウトはリフローせず、グループがスロットを入れ替える —
+  `move_group` の `swappingLeaves` と同じ意味論の n 項版。
+- 帰結(いずれも構成から従う):
+  - 序数(Cmd+1〜9)は走査順由来なので**自動追従**する。
+  - focus は id ベースなので不変(focused グループが新しいスロットに移る)。
+  - hidden グループは canonical leaf を持たないため影響を受けない。
+  - **明示実行時のみソート**:優先度・締切の setter はツリーに触れないため、
+    値の変更で自動再ソートは起きない。
+  - ソート後の並びは次のソートまで持続する(leaf 割り当てを書き換える経路が
+    他にない)。
+  - zoom 中も実行可(canonical tree は表示非依存。zoom 解除時に新しい並びが
+    見える)。
+
+### 24.5 テスト(GroupPriorityDeadlineTests、21 件)
+
+```text
+- 既定: 新規グループは優先度・締切とも未設定
+- 永続化: 優先度+締切の round trip 復元 / 壊れた保存(未知 priority 文字列・
+  実在しない日付)は unset として decode
+- 入力境界: 不正日付は未設定へ拒否(前の値も残らない)/ 空入力は意図的
+  クリア / parser は実在日付のみ受理(閏日含む)/ today 導出は時刻を捨てる
+- 超過: 締切日より厳密に後のみ / 未設定は非超過 / hidden も判定対象
+- 順序付け: 優先度順(安定タイ)/ 締切順(未設定末尾・同日安定)/
+  visible のみ・無副作用
+- ソートアクション: 実レイアウトの並び替え(優先度・締切とも、序数追従)/
+  hidden・focus 不変 / 明示実行のみで次のソートまで持続 / 単一グループと
+  一望モード中は decline(退出後は可)
+- エディタ commit: 3 値一括保存 / 不正締切は unset へ / note-only 経路は
+  優先度・締切不変 / セッションなし no-op / 未知グループ setter no-op
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

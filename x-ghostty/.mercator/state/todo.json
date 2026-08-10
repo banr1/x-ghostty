@@ -9,7 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-027"
+    "T-028",
+    "T-029"
   ],
   "items": [
     {
@@ -1205,7 +1206,7 @@
           "type": "command",
           "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
           "exit_code": 0,
-          "summary": "Targeted run: TEST SUCCEEDED, all 22 GroupPriorityDeadlineTests passed, including the 5 new sort-action cases named in the log covering every S-053 layout criterion: prioritySortActionReordersTheRealLayout (high->medium->low->unset applied to the real layout with the stable medium tie preserved through the reorder, ordinals following), deadlineSortActionReordersTheRealLayout (nearest first, unset last, stable same-day tie), sortActionLeavesHiddenGroupsAndFocusUntouched (hidden shelf gains no leaf, focus id-keyed and unchanged), sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort (priority/deadline changes never reorder; sorted layout persists until the next explicit sort), sortDeclinesForSingleGroupAndDuringNoteOverview (performability declines for one group and during the viewing-only overview, works again after it closes)."
+          "summary": "Targeted run: TEST SUCCEEDED, all 21 GroupPriorityDeadlineTests passed, including the 5 new sort-action cases named in the log covering every S-053 layout criterion: prioritySortActionReordersTheRealLayout (high->medium->low->unset applied to the real layout with the stable medium tie preserved through the reorder, ordinals following), deadlineSortActionReordersTheRealLayout (nearest first, unset last, stable same-day tie), sortActionLeavesHiddenGroupsAndFocusUntouched (hidden shelf gains no leaf, focus id-keyed and unchanged), sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort (priority/deadline changes never reorder; sorted layout persists until the next explicit sort), sortDeclinesForSingleGroupAndDuringNoteOverview (performability declines for one group and during the viewing-only overview, works again after it closes)."
         },
         {
           "type": "command",
@@ -1218,7 +1219,7 @@
     {
       "id": "T-028",
       "title": "Update SPEC.md and README.md to describe the deletion-protection, editor-shortcut, priority/deadline, and sort layers as implemented",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-049"
@@ -1228,12 +1229,39 @@
       },
       "batch_group": "batch3-docs",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: new section 23 削除保護仕様 (23.1 always-confirm close incl. the last-pane Cmd+W escalation and why it is sound - the core no longer closes on child exit; 23.2 terminated state - Zig childExited/keyCallback changes, unconditional ghosttyChildExited with the abnormal Bool, childExitOutcome judgment table, GroupState.terminatedPane sole-leaf invariant, removeExitedPane, terminated primary keeps its flag; 23.3 GroupTerminatedPaneView rendering, exited-pane key routing via ghosttyExitedSurfaceKeyDown, restartTerminatedPane, key-time re-judgment; 23.4 runtime-only state, restore-comes-back-live, explicit-confirmed-close as the only loss path; 23.5 the 16 GroupTerminatedTests) AND new section 24 優先度・締切仕様 (24.1 GroupPriority/GroupDeadline constructive-validation data model, lenient invalid-to-unset decode, the setGroupDeadline(parsing:) boundary, the editor metaRow and the single endNoteEditing(saving:priority:deadlineInput:) commit point; 24.2 strict overdue judgment over all groups and the shared GroupPriorityDeadlineMeta display; 24.3 pure stable orderings; 24.4 sort actions - canSortVisibleGroups guard, reorderingLeaves shape preservation, and the derived consequences: ordinals follow, focus unchanged, hidden untouched, explicit-only, persistence, zoom-allowed; 24.5 the 21 GroupPriorityDeadlineTests). Section 9.1 action list gains sort_groups_by_priority/sort_groups_by_deadline; 10.5 gains the Cmd+S/Cmd+Shift+S rows and the no-conflict note; 21.2 gains the metaRow bullet pointing at 24.1; 16 file layout corrected to the actual Features/Groups contents (adds TerminalWorkspaceView.swift and GroupTerminatedPaneView.swift, drops the never-created GroupActions.swift/CloseGroupConfirmation.swift with a note that close confirmation reuses BaseTerminalController's existing path). All pre-existing section-23/24 doc-comment citations in the implementation now resolve to matching real sections - the numbering was written to align with them, verified by grep. README.md About: new 'Priorities & deadlines' bullet (editor-set values, band/overview display, single-stage overdue emphasis, Cmd+S/Cmd+Shift+S explicit-only sorts with ordinal follow-up, SPEC section 24 pointer) and new 'Deletion protection' bullet (always-confirm close, terminated state with note/priority/deadline kept, Return restart, confirmed close as the only loss path, SPEC section 23 pointer). Building section already lists the three verification commands."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 after the docs edits (docs-only cycle; gates shared with T-029)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 after the docs edits (gate shared with T-029)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 0 failures after the docs edits (gate shared with T-029)."
+        }
+      ]
     },
     {
       "id": "T-029",
       "title": "Full verification: zig build / just test / just swift-test all exit 0 with every S-050/S-053 test present and passing, and no regression of group features beyond the sanctioned exceptions",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-050",
@@ -1246,7 +1274,26 @@
       },
       "batch_group": "batch3-verify",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete batch-3 implementation (T-020..T-028) in the tree. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check over all five appended fork action tags (edit_group_note, toggle_note_overview, set_primary, sort_groups_by_priority, sort_groups_by_deadline) and their keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criteria 4/6/8/11 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete group/note/primary suite passes unchanged, and every S-050 and S-053 test is present and named passing in this run's log. S-050 (all 16 GroupTerminatedTests): closeGroupRequiresConfirmationRegardlessOfRunningProcesses, lastPaneExitIsJudgedTerminatedForEveryExitKind, siblingPaneNormalExitIsJudgedClosePane, siblingPaneAbnormalExitAwaitsKeyClose, unknownPaneExitHasNoOutcome, exitOutcomeIsRejudgedAfterSiblingsClosed, markPaneTerminatedKeepsGroupWithNoteAndPane, markPaneTerminatedRejectsPaneAmongSeveral, terminatedPrimaryLastPaneKeepsItsPrimaryFlag, splittingWhileTerminatedClearsTheTerminatedState, removeExitedPaneClosesOnlyThatPane, removeExitedPaneRejectsAGroupsLastPane, removeExitedPaneWorksForHiddenGroups, terminatedGroupRoundTripKeepsNote, restartTerminatedPaneStartsFreshPaneInSameSlot, restartIsRejectedWhenNotTerminated. S-053 (all 21 GroupPriorityDeadlineTests): newGroupDefaultsToUnsetPriorityAndDeadline, priorityAndDeadlineRoundTripThroughSaveRestore, corruptStoredPriorityAndDeadlineDecodeAsUnset, invalidDeadlineInputIsRejectedToUnset, emptyDeadlineInputClearsDeliberately, deadlineParserAcceptsOnlyRealDates, todayDerivationMatchesCalendarComponents, overdueIsStrictlyPastTheDeadlineDay, prioritySortOrdersHighMediumLowUnsetWithStableTies, deadlineSortOrdersNearestFirstUnsetLastWithStableTies, sortOrderingsCoverVisibleGroupsOnlyAndMutateNothing, prioritySortActionReordersTheRealLayout, deadlineSortActionReordersTheRealLayout, sortActionLeavesHiddenGroupsAndFocusUntouched, sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort, sortDeclinesForSingleGroupAndDuringNoteOverview, endNoteEditingSavesNotePriorityAndDeadlineTogether, endNoteEditingRejectsInvalidDeadlineInputToUnset, noteOnlyEndNoteEditingKeepsPriorityAndDeadline, fullEndNoteEditingWithoutSessionIsNoOp, settersOnUnknownGroupAreNoOps. No regression beyond S-010's sanctioned exceptions (always-confirm close, terminated-state last-pane exit, editor chord routing, cmd+s/cmd+shift+s assignment)."
+        }
+      ]
     },
     {
       "id": "T-030",

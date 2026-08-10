@@ -49,6 +49,21 @@ its window management with a single model:
   resize/equalize) work only while zoomed. If the primary pane's shell exits,
   the nearest remaining pane is promoted. The primary flag is persisted with
   the pane layout and restored across restarts. See SPEC.md §22.
+- **Priorities & deadlines.** Each group can carry a priority
+  (high/medium/low, unset by default) and a date-only deadline, set in the
+  same `Cmd+N` overlay as the note (invalid dates are rejected to unset) and
+  persisted with it. The group's header band and the note overview show a
+  subtle priority mark (`!!!`/`!!`/`!`) and the deadline; a past-due deadline
+  gets a single-stage subtle emphasis. `Cmd+S` reorders the visible groups by
+  priority and `Cmd+Shift+S` by deadline — sorting happens only when invoked
+  (never automatically), the layout keeps its shape, hidden groups are
+  untouched, and the `Cmd+1-9` ordinals follow the new order. See SPEC.md §24.
+- **Deletion protection.** Closing a group always asks for confirmation,
+  whether or not anything is running in it. When a group's last pane's shell
+  exits, the group stays as a terminated pane — its note, priority, and
+  deadline kept — and pressing Return starts a new shell in the same pane.
+  The only way a group and its information are lost is an explicitly
+  confirmed close. See SPEC.md §23.
 - **Splits** work as they do upstream, nested inside each group; in the
   overall view only each group's primary pane is shown (see above).
 
