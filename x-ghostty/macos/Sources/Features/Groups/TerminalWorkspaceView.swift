@@ -101,7 +101,9 @@ struct TerminalWorkspaceView: View {
                 GroupNoteEditor(
                     groupName: group.name,
                     note: group.note,
-                    onEnd: { workspace.endNoteEditing(saving: $0) },
+                    priority: group.priority,
+                    deadline: group.deadline,
+                    onEnd: { workspace.endNoteEditing(saving: $0, priority: $1, deadlineInput: $2) },
                     onCancel: { workspace.cancelNoteEditing() })
             }
 

@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "1af3207a7289f80d09e08c9a31dbc3e6811b8264784f428e292af3b00f9647e9",
+    "last_signature": "2bd382dc453262169581a379309bfdd6e084b19ac9bcf270e1b8efd1514d30a1",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T17:14:13+09:00",
-    "last_checked_at": "2026-08-10T17:14:13+09:00"
+    "last_progress_at": "2026-08-10T17:24:53+09:00",
+    "last_checked_at": "2026-08-10T17:24:53+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,22 +20,20 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.65,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 14,
-    "completed_todos_since_reset": 4,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 20,
+    "completed_todos_since_reset": 6,
+    "important_decisions_since_reset": 3,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T17:13:48+09:00",
-    "summary": "Cycle R-20260810T170218+0900-27e4ce completed T-024 (priority/deadline model layer) with all gates green (targeted GroupPriorityDeadlineTests 13/13, just swift-test, zig build, just test - all exit 0). GroupPriority/GroupDeadline live in GroupState.swift as top-level types; orderings and overdue judgment are pure WorkspaceState functions; WorkspaceModel has setters (setGroupDeadline(parsing:) is the invalid-to-unset boundary) and forwarders. Remaining must: T-025/T-026 (overlay UI + display), T-027 (sort actions), T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks).",
+    "written_at": "2026-08-10T17:24:40+09:00",
+    "summary": "Cycle R-20260810T171414+0900-404d87 completed T-025 (editor priority/deadline controls; full commit point endNoteEditing(saving:priority:deadlineInput:), invalid deadline -> unset at the model boundary, Escape discards all drafts) and T-026 (shared GroupPriorityDeadlineMeta view: !!!/!!/! priority mark + YYYY-MM-DD deadline + single-stage overdue emphasis, in the label band and the note-overview header). All gates green (targeted 17/17, just swift-test, zig build, just test - exit 0). Remaining must: T-027 (sort actions), T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks). Counters near reset thresholds (6 completed todos > 5): expect a context reset before the next cycle.",
     "next_actions": [
-      "T-025 overlay UI: priority + deadline controls inside the Cmd+N note editor (GroupNoteEditor.swift), saved through the note path - extend the editing session save (endNoteEditing) or add parallel model calls on the same commit point; deadline input as text validated via setGroupDeadline(parsing:) (invalid -> unset per S-039; GroupDeadline.displayText for the current value); priority as a segmented/menu control over GroupPriority? (nil = unset). Keep judgment in the model; the view only forwards.",
-      "T-026 display: label band (GroupLabel.swift) subtle priority mark + deadline text, unset hidden; note overview overlay (GroupNoteOverview.swift) shows priority/deadline with the note; single-stage overdue emphasis in both, driven by model.overdueGroupIDs(today:)/isGroupOverdue with today = GroupDeadline(from: Date()) computed at render entry, never in the model state.",
-      "T-027 sort actions: new keybind actions sort_groups_by_priority (Cmd+S) / sort_groups_by_deadline (Cmd+Shift+S) following the T-015 end-to-end pattern (Binding.zig, apprt/action.zig appended-last C ABI tags, Surface.zig dispatch, command.zig, Config.zig defaults, xghostty.h, App performability, controller handler); the model-side reorder consumes priorityOrderedVisibleGroupIDs/deadlineOrderedVisibleGroupIDs and rebuilds canonicalGroupTree in that leaf order (visible only, explicit-only, persists until next sort; ordinals follow automatically since they derive from traversal order). Add XGhosttyTests for the layout reorder + hidden-shelf non-effect at the model level.",
-      "T-028 docs: SPEC section 23 (deletion protection, cited by shipped code) AND section 24 (priority/deadline/sort: 24.1 data model, 24.2 overdue, 24.3 orderings, 24.4 sort actions + keybinds), section 9.1/10.5 action+keybind tables, test inventory sections, project readme; then T-029 full gates; then one Human-input Recommendation raising T-030/T-031/T-032 together."
+      "T-027 sort actions: new keybind actions sort_groups_by_priority (Cmd+S) / sort_groups_by_deadline (Cmd+Shift+S) following the T-015 end-to-end pattern: src/input/Binding.zig (action + parse test + .surface scope list), src/apprt/action.zig (Key enum appended LAST for C ABI), src/Surface.zig dispatch, src/input/command.zig palette-exclusion, src/config/Config.zig defaults (both chords confirmed unbound; note upstream binds neither cmd+s nor cmd+shift+s), include/xghostty.h appended tags (checkXGhosttyHEnum guards), Swift App performability + notification, controller handler. Model side: a reorder method consuming priorityOrderedVisibleGroupIDs()/deadlineOrderedVisibleGroupIDs() that rebuilds canonicalGroupTree with the same leaves in the new order (visible only, explicit-only, no auto re-sort on value changes; order persists until the next sort; Cmd+1-9 ordinals follow automatically because they derive from traversal order). XGhosttyTests: layout reorder in both orders, hidden shelf untouched, stable ties preserved through the real reorder, explicit-only (changing priority/deadline does not reorder).",
+      "T-028 docs: SPEC section 23 (deletion protection - 23.1 always-confirm close, 23.2 terminated state/child-exit judgment, 23.3 Enter restart, 23.4 persistence; shipped code cites these) AND section 24 (24.1 priority/deadline data model + editor controls, 24.2 overdue judgment + display emphasis, 24.3 sort orderings, 24.4 sort actions/keybinds), update section 9.1 action list + 10.5 default keybinds (cmd+p/cmd+s/cmd+shift+s etc.), section 21.2 (editor metaRow), test inventory sections, section 16 file layout if needed, and the project readme (notes bullet: priority/deadline/sort). Then T-029 full gates (zig build / just test / just swift-test with every S-050/S-053 test named), then ONE Human-input Recommendation raising T-030/T-031/T-032 together (deletion-protection visual check, editor-shortcut check, priority/deadline/sort visual check)."
     ],
     "open_questions": [],
     "pending_cycle": false

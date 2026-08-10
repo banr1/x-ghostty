@@ -71,6 +71,9 @@ struct GroupView: View {
                 ordinal: ordinal,
                 isFocused: isFocused,
                 isRenaming: isRenaming,
+                priority: group.priority,
+                deadline: group.deadline,
+                isOverdue: isOverdue,
                 onFocus: { labelActions.focus(group.id) },
                 onBeginRename: { labelActions.beginRename(group.id) },
                 onCommitRename: { labelActions.commitRename(group.id, $0) },
@@ -100,6 +103,13 @@ struct GroupView: View {
                 GroupNoteOverviewOverlay(group: group)
             }
         }
+    }
+
+    /// Whether this group's deadline is past today (SPEC §24.2). "Today" is
+    /// derived at render time; the comparison rule itself lives on
+    /// `GroupDeadline`, so the view only asks the model's judgment.
+    private var isOverdue: Bool {
+        group.deadline?.isOverdue(today: GroupDeadline(from: Date())) ?? false
     }
 }
 

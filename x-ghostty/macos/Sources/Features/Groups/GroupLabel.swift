@@ -42,6 +42,19 @@ struct GroupLabel: View {
     let isFocused: Bool
     let isRenaming: Bool
 
+    /// The group's priority, shown as a subtle trailing mark; `nil` (unset)
+    /// shows nothing (SPEC §24).
+    let priority: GroupPriority?
+
+    /// The group's deadline, shown as trailing `YYYY-MM-DD` text; `nil`
+    /// (unset) shows nothing (SPEC §24).
+    let deadline: GroupDeadline?
+
+    /// Whether the deadline is past today — drives the single-stage subtle
+    /// overdue emphasis (SPEC §24.2). Judged by the model; the band only
+    /// renders it.
+    let isOverdue: Bool
+
     let onFocus: () -> Void
     let onBeginRename: () -> Void
     let onCommitRename: (String) -> Void
@@ -63,10 +76,15 @@ struct GroupLabel: View {
                 // stays opaque, and the note button manages its own dimming.
                 .opacity(isRenaming ? 1.0 : (isFocused ? 1.0 : 0.4))
 
-            // The note affordance is hidden while renaming so the band holds
-            // exactly one interactive mode at a time.
+            // The meta and note affordance are hidden while renaming so the
+            // band holds exactly one interactive mode at a time.
             if !isRenaming {
                 Spacer(minLength: 0)
+                GroupPriorityDeadlineMeta(
+                    priority: priority, deadline: deadline, isOverdue: isOverdue)
+                    // Recede with the band on unfocused groups, but less than
+                    // the name text: the meta is workspace-level information.
+                    .opacity(isFocused ? 1.0 : 0.6)
                 noteButton
             }
         }
@@ -161,5 +179,50 @@ struct GroupLabel: View {
                 draft = name
                 fieldFocused = true
             }
+    }
+}
+
+/// The subtle priority mark and deadline readout shared by the label band and
+/// the note-overview panel header (SPEC §24): unset values show nothing, and
+/// an overdue deadline gets the single-stage subtle emphasis — a reddish tint,
+/// no extra stages, no animation. Judgment stays in the model (`GroupPriority`
+/// / `GroupDeadline` / the overdue predicate); this view only renders values
+/// it is handed.
+struct GroupPriorityDeadlineMeta: View {
+    let priority: GroupPriority?
+    let deadline: GroupDeadline?
+    let isOverdue: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let priority {
+                Text(priority.markText)
+                    .opacity(0.6)
+                    .accessibilityLabel(Text("Priority \(priority.rawValue)"))
+            }
+            if let deadline {
+                Text(deadline.displayText)
+                    .foregroundStyle(
+                        isOverdue ? AnyShapeStyle(Color.red) : AnyShapeStyle(.primary))
+                    .opacity(isOverdue ? 0.9 : 0.5)
+                    .accessibilityLabel(Text(
+                        "Deadline \(deadline.displayText)\(isOverdue ? ", overdue" : "")"))
+            }
+        }
+        .font(.system(size: 10, design: .monospaced))
+        .lineLimit(1)
+        .allowsHitTesting(false)
+    }
+}
+
+private extension GroupPriority {
+    /// The band's compact terminal-style mark: bang density mirrors urgency,
+    /// so the mark stays subtle (no color, no icon) yet ordered at a glance.
+    var markText: String {
+        switch self {
+        case .high: return "!!!"
+        case .medium: return "!!"
+        case .low: return "!"
+        }
     }
 }

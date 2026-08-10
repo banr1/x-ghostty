@@ -9,7 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-024"
+    "T-025",
+    "T-026"
   ],
   "items": [
     {
@@ -1058,7 +1059,7 @@
     {
       "id": "T-025",
       "title": "Overlay UI: set and change priority and deadline inside the Cmd+N note edit overlay, saved and restored through the note path",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-040"
@@ -1068,12 +1069,47 @@
       },
       "batch_group": "priodl-ui",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
+          ],
+          "summary": "Priority/deadline controls inside the Cmd+N note editor (SPEC section 24, to be written in T-028). Model: new full commit point WorkspaceModel.endNoteEditing(saving:priority:deadlineInput:) - the note, the priority, and the deadline text input save together on the editing session's single commit; deadlineInput goes through the existing setGroupDeadline(parsing:) boundary (empty clears deliberately, invalid input rejected to unset), and the note-only endNoteEditing(saving:) remains for callers that must not touch priority/deadline. Escape keeps its existing semantics: cancelNoteEditing drops all three drafts at once because the drafts are view state and the model is untouched until commit. View: GroupNoteEditor gains priority/deadline seed props and drafts (seeded onAppear from the group record; GroupDeadline.displayText renders the current deadline), a metaRow under the TextEditor with a small segmented priority picker (none/high/med/low over GroupPriority?, nil = unset) and a plain monospaced YYYY-MM-DD text field (onSubmit commits like Cmd+Enter), plus a subtle '-> unset' hint previewing the model's rejection judgment by reusing GroupDeadline(parsing:) so hint and save can never disagree; every save path (Cmd+Enter hidden chord, backdrop click, deadline-field Return) funnels through one commit() helper. TerminalWorkspaceView passes the seeds and wires onEnd to the full-commit model call. Judgment stays in the model; the view only forwards drafts."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 17 GroupPriorityDeadlineTests passed, including the 4 new editor-commit cases named in the log: endNoteEditingSavesNotePriorityAndDeadlineTogether (all three values saved and session closed), endNoteEditingRejectsInvalidDeadlineInputToUnset (impossible date at the commit point clears the previous deadline to unset), noteOnlyEndNoteEditingKeepsPriorityAndDeadline (the legacy note-only commit path leaves both untouched), fullEndNoteEditingWithoutSessionIsNoOp."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the editor changes in the tree; the pre-existing note-editing-session suite passes unchanged against the extended editor."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
     },
     {
       "id": "T-026",
       "title": "Priority/deadline display: label band shows a subtle priority mark and the deadline (unset hidden); overview mode shows priority/deadline with the note; overdue projects are subtly emphasized in both (single stage)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-041",
@@ -1085,7 +1121,35 @@
       },
       "batch_group": "priodl-ui",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupLabel.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/GroupNoteOverview.swift"
+          ],
+          "summary": "Priority/deadline display (SPEC section 24, to be written in T-028). New shared view GroupPriorityDeadlineMeta in GroupLabel.swift, used by both display surfaces so they cannot drift: a compact monospaced priority mark whose bang density mirrors urgency (high '!!!', medium '!!', low '!' - subtle: no color, no icon), the deadline as YYYY-MM-DD text, unset values render nothing, and an overdue deadline gets exactly one emphasis stage (reddish tint + raised opacity; no 'approaching' tiers per the Essence). Label band: GroupLabel gains priority/deadline/isOverdue props rendered at the trailing edge before the note glyph, hidden during inline rename (the band keeps one interactive mode at a time), receding to 0.6 opacity on unfocused groups - less than the name text, since the meta is workspace-level information. Note overview: GroupNoteOverviewOverlay's header shows the same meta beside the group name, so the overview presents priority/deadline with the note. Overdue judgment stays in the model (GroupDeadline.isOverdue(today:)): GroupView and the overview panel derive today at render time via GroupDeadline(from: Date()) and only render the model's answer."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the display changes in the tree. The overdue and unset-hidden judgments the surfaces render are the model functions already covered by GroupPriorityDeadlineTests (overdueIsStrictlyPastTheDeadlineDay incl. unset-never; displayText via the round-trip and parser cases)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (macOS app with the label-band meta and overview header changes) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
     },
     {
       "id": "T-027",

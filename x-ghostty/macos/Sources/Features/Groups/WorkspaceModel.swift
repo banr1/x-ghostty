@@ -801,6 +801,23 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         setGroupNote(id, to: text)
     }
 
+    /// Close the note editor, saving the full draft set — note, priority, and
+    /// the deadline text input — to the group being edited (SPEC §24.1). The
+    /// overlay's single commit point (Cmd+Enter / backdrop click), so the
+    /// three values save and persist together through the note path;
+    /// `deadlineInput` goes through the `setGroupDeadline(parsing:)` boundary,
+    /// where empty clears and invalid input is rejected to unset. Escape goes
+    /// through `cancelNoteEditing`, which drops all three drafts at once.
+    func endNoteEditing(
+        saving text: String, priority: GroupPriority?, deadlineInput: String
+    ) {
+        defer { noteEditingGroup = nil }
+        guard let id = noteEditingGroup else { return }
+        setGroupNote(id, to: text)
+        setGroupPriority(id, to: priority)
+        setGroupDeadline(id, parsing: deadlineInput)
+    }
+
     /// Close the note editor, discarding the draft so the group keeps the
     /// text it had when the editor opened. This is the Escape path; no
     /// confirmation is asked before the draft is dropped (SPEC.md §21.2).

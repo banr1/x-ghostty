@@ -59,13 +59,19 @@ struct GroupNoteOverviewOverlay: View {
         .shadow(radius: 8)
     }
 
-    /// Header band: the group name, styled like `GroupNoteEditor`'s header so
-    /// the two note surfaces read as one family.
+    /// Header band: the group name plus the priority/deadline meta
+    /// (SPEC §24 — the overview shows them with the note; unset values show
+    /// nothing, an overdue deadline is subtly emphasized). Styled like
+    /// `GroupNoteEditor`'s header so the two note surfaces read as one family.
     private var header: some View {
         HStack {
             Text(group.name)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
+            GroupPriorityDeadlineMeta(
+                priority: group.priority,
+                deadline: group.deadline,
+                isOverdue: group.deadline?.isOverdue(today: GroupDeadline(from: Date())) ?? false)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

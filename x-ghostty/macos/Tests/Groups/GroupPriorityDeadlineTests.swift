@@ -238,6 +238,62 @@ struct GroupPriorityDeadlineTests {
         #expect(model.groupPriority(of: hiddenHigh.id) == .high)
     }
 
+    // MARK: Editor commit point (SPEC §24.1)
+
+    @Test func endNoteEditingSavesNotePriorityAndDeadlineTogether() throws {
+        let group = Self.makeGroup(name: "alpha")
+        let model = try Self.makeModel(visible: [group])
+        model.beginNoteEditing(group.id)
+
+        model.endNoteEditing(
+            saving: "ship it", priority: .high, deadlineInput: "2026-09-01")
+
+        #expect(model.noteEditingGroup == nil)
+        #expect(model.state.groups[group.id]?.note == "ship it")
+        #expect(model.groupPriority(of: group.id) == .high)
+        #expect(model.groupDeadline(of: group.id) == Self.deadline(2026, 9, 1))
+    }
+
+    @Test func endNoteEditingRejectsInvalidDeadlineInputToUnset() throws {
+        let group = Self.makeGroup(name: "alpha")
+        let model = try Self.makeModel(visible: [group])
+        model.setGroupDeadline(group.id, to: Self.deadline(2026, 8, 15))
+        model.beginNoteEditing(group.id)
+
+        // The commit goes through the same parsing boundary as the direct
+        // setter: an impossible date is rejected — to unset, not to the
+        // previous value.
+        model.endNoteEditing(saving: "", priority: nil, deadlineInput: "2026-02-30")
+
+        #expect(model.noteEditingGroup == nil)
+        #expect(model.groupDeadline(of: group.id) == nil)
+    }
+
+    @Test func noteOnlyEndNoteEditingKeepsPriorityAndDeadline() throws {
+        let group = Self.makeGroup(name: "alpha")
+        let model = try Self.makeModel(visible: [group])
+        model.setGroupPriority(group.id, to: .medium)
+        model.setGroupDeadline(group.id, to: Self.deadline(2026, 8, 15))
+        model.beginNoteEditing(group.id)
+
+        model.endNoteEditing(saving: "note only")
+
+        #expect(model.state.groups[group.id]?.note == "note only")
+        #expect(model.groupPriority(of: group.id) == .medium)
+        #expect(model.groupDeadline(of: group.id) == Self.deadline(2026, 8, 15))
+    }
+
+    @Test func fullEndNoteEditingWithoutSessionIsNoOp() throws {
+        let group = Self.makeGroup(name: "alpha")
+        let model = try Self.makeModel(visible: [group])
+
+        model.endNoteEditing(saving: "stray", priority: .high, deadlineInput: "2026-09-01")
+
+        #expect(model.state.groups[group.id]?.note == "")
+        #expect(model.groupPriority(of: group.id) == nil)
+        #expect(model.groupDeadline(of: group.id) == nil)
+    }
+
     @Test func settersOnUnknownGroupAreNoOps() throws {
         let group = Self.makeGroup(name: "alpha")
         let model = try Self.makeModel(visible: [group])
