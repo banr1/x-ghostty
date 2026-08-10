@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-019"
+    "T-008"
   ],
   "items": [
     {
@@ -331,7 +331,7 @@
     {
       "id": "T-008",
       "title": "Optional visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)",
-      "status": "blocked",
+      "status": "done",
       "priority": "should",
       "spec": [
         "S-015"
@@ -341,7 +341,15 @@
       },
       "batch_group": "notes-optional",
       "risk_level": "normal",
-      "blocked_reason": "Awaiting human direction (R-007, escalated as gate R-008): both on-device checks (R-004, R-006) recorded no visual complaints and the Essence reserves final UI appearance for the human, so no concrete refinement target exists. Runs only if the human supplies specific direction; closes if the human declares the current appearance satisfactory."
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-10T14:05:04+09:00",
+          "reference": "R-008 resolution / reflection.jsonl human_resume entry at 2026-08-10T14:05:04+09:00",
+          "summary": "The human resolved R-008 by declaring the current appearance satisfactory and closing T-008 without concrete refinement direction: no specific refinement instruction exists, both on-device checks (R-004 note layer, R-006 primary-pane layer) recorded no visual complaints, and the two UIs added in the should phase (T-007 header-band note glyph, T-019 overall-view pane-count badge) also received no change requests at this time. Recorded per the human instruction in the R-008 resolution during the 2026-08-10T14:05:04+09:00 resume (gate release): mark T-008 done with this confirmation as evidence and treat T-008 as no longer an implementation target. No ESSENCE.md change required."
+        }
+      ]
     },
     {
       "id": "T-009",

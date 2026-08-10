@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "9599808b0aa390a5e02e0733b81ec772966e6571ef626bfd3e2fc61925feb129",
+    "last_signature": "05aacac012a2fce268f4bd1f919aafda8c66f8adcde1e0e9daeddb45ee41a46e",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T12:49:01+09:00",
-    "last_checked_at": "2026-08-10T12:49:01+09:00"
+    "last_progress_at": "2026-08-10T14:12:08+09:00",
+    "last_checked_at": "2026-08-10T14:12:08+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.35,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 16,
-    "completed_todos_since_reset": 5,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 0,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 0,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T14:05:04+09:00",
-    "summary": "Human resume: R-008 を解除する: 現状の見た目で満足として、should の T-008(ノート編集オーバーレイ・一望モード・プライマリー印の視覚洗練)を close する。具体的な洗練指示は無く、実機確認 2 回(R-004 / R-006)でも見た目への不満は記録されていない。\nT-008 は人間承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録し、以後 T-008 を実装対象としないこと。ESSENCE.md の変更は不要。\n今サイクルで追加された 2 つの UI(T-007 ヘッダー帯のノートグリフ、T-019 全体ビューのペイン数バッジ)についても現時点で注文は無い。これで全 Todo が完了となる。",
-    "next_actions": [],
+    "written_at": "2026-08-10T14:11:07+09:00",
+    "summary": "Cycle R-20260810T140512+0900-96cd7d executed the human's R-008 resolution: T-008 (visual refinement) recorded done via apply-projection with human-approval evidence (type: human, referencing the 2026-08-10T14:05:04+09:00 resume). All 19 Todos are now done (must 16/16, should 3/3), no open Recommendations or Blockers, validation has no errors (one informational warning about 成功条件↔command-evidence mapping, already reviewed by the human across R-004/R-006 on-device checks and the should-phase approval). should-complete reports must_phase_complete=true with unresolved_should_total=0; full completion should latch once this cycle clears resume_pending_cycle. No implementation files were touched this cycle.",
+    "next_actions": [
+      "Nothing remains: every Spec-derived Todo is done with evidence. New work starts only from a human Essence update (update-essence), e.g. promoting the deferred candidates listed under 非対応事項 (priority/deadline fields, live per-project terminal status, Linux/GTK)."
+    ],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }
