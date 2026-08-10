@@ -40,7 +40,9 @@ its window management with a single model:
   `Cmd+Opt+N` again or Esc to leave). See SPEC.md §21.
 - **Primary panes.** Each group has exactly one primary pane (by default its
   first pane). The overall (non-zoomed) view renders only each group's
-  primary, so a many-pane project stays readable at a glance; zooming into a
+  primary, so a many-pane project stays readable at a glance — a subtle
+  pane-count badge in the group's top-right corner signals when more panes
+  exist behind the primary; zooming into a
   group shows its full split layout, with a subtle mark on the primary when
   the group has multiple panes. While zoomed, `Cmd+P` makes the focused pane
   the primary. Pane operations (splitting, pane focus movement, pane zoom,

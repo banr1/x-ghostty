@@ -76,6 +76,9 @@ struct TerminalWorkspaceView: View {
                     // The primary mark shows only while a multi-pane group
                     // is zoomed (SPEC §22.6).
                     primaryMarks: workspace.state.primaryMarkPaneIDs,
+                    // The pane-count badge shows only in the overall view,
+                    // on groups holding non-primary panes (SPEC §22.7).
+                    paneCountBadges: workspace.state.overallViewPaneCountBadges,
                     paneAction: paneAction,
                     labelActions: labelActions,
                     onEqualize: onEqualizeGroups)

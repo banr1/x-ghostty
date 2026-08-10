@@ -304,6 +304,66 @@ struct GroupPrimaryPaneTests {
         #expect(model.primaryPaneID(of: groupA.id) == SurfaceID(rawValue: a2.id))
     }
 
+    // MARK: Overall-view pane-count badge (SPEC §22.7)
+
+    @Test func paneCountBadgeShowsOnlyForMultiPaneVisibleGroups() throws {
+        // Group A: [a1 | a2] (badge "2"). Group B: single pane (no badge —
+        // nothing hidden behind the primary). Group C: hidden (never shown).
+        let a1 = TestPane(); let a2 = TestPane()
+        var groupA = Self.makeGroup(.init(view: a1), name: "a")
+        groupA.paneTree = try groupA.paneTree.inserting(view: a2, at: a1, direction: .right)
+
+        let b1 = TestPane()
+        let groupB = Self.makeGroup(.init(view: b1), name: "b")
+        let c1 = TestPane(); let c2 = TestPane()
+        var groupC = Self.makeGroup(.init(view: c1), name: "c")
+        groupC.paneTree = try groupC.paneTree.inserting(view: c2, at: c1, direction: .right)
+
+        let tree = try SplitTree<GroupRef>(view: GroupRef(id: groupA.id))
+            .inserting(view: GroupRef(id: groupB.id), at: GroupRef(id: groupA.id), direction: .right)
+        let model = TestWorkspaceModel(TestWorkspaceState(
+            canonicalGroupTree: tree,
+            groups: [groupA.id: groupA, groupB.id: groupB, groupC.id: groupC],
+            hiddenGroupIDs: [groupC.id],
+            focusedGroup: groupA.id
+        ))
+
+        #expect(model.overallViewPaneCountBadges == [groupA.id: 2])
+    }
+
+    @Test func paneCountBadgeCountsEveryPane() throws {
+        let (model, groupID, a, _) = try Self.makeTwoPaneModel()
+
+        // Grow to three panes: the badge shows the total pane count.
+        let c = TestPane()
+        let grown = try model.focusedPaneTree.inserting(view: c, at: a, direction: .down)
+        model.replaceFocusedPaneTree(grown)
+
+        #expect(model.overallViewPaneCountBadges == [groupID: 3])
+    }
+
+    @Test func paneCountBadgeIsHiddenWhileZoomed() throws {
+        let (model, groupID, _, _) = try Self.makeTwoPaneModel()
+        #expect(model.overallViewPaneCountBadges == [groupID: 2])
+
+        // The zoomed local view shows the real layout — no badge.
+        model.toggleGroupZoom()
+        #expect(model.overallViewPaneCountBadges.isEmpty)
+
+        // Released: the badge returns with the overall view.
+        model.toggleGroupZoom()
+        #expect(model.overallViewPaneCountBadges == [groupID: 2])
+    }
+
+    @Test func paneCountBadgeDisappearsWhenGroupDropsToOnePane() throws {
+        let (model, _, _, b) = try Self.makeTwoPaneModel()
+
+        // The non-primary pane closes: nothing is hidden behind the primary
+        // anymore, so the badge goes away.
+        model.replaceFocusedPaneTree(.init(view: b))
+        #expect(model.overallViewPaneCountBadges.isEmpty)
+    }
+
     // MARK: Overall-view behavior (SPEC §22.3–22.5)
 
     /// A focused model around one group holding the row [a | b] with `a` the

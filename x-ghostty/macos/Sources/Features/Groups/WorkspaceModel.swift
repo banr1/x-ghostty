@@ -765,6 +765,14 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.primaryMarkPaneIDs
     }
 
+    /// The pane-count badge per group — the total pane count, only in the
+    /// overall (non-zoomed) view and only for groups holding non-primary
+    /// panes (SPEC §22.7). Forwarded from the state so the render path and
+    /// tests share one judgment.
+    var overallViewPaneCountBadges: [GroupID: Int] {
+        state.overallViewPaneCountBadges
+    }
+
     // MARK: Note overview
 
     /// The display set of the note overview: every *visible* group, in

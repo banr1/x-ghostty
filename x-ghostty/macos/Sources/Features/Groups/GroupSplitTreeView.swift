@@ -45,6 +45,11 @@ struct GroupSplitTreeView: View {
     /// while a multi-pane group is zoomed.
     let primaryMarks: [GroupID: SurfaceID]
 
+    /// Each group's pane-count badge, keyed by group
+    /// (`WorkspaceState.overallViewPaneCountBadges`, SPEC §22.7): non-empty
+    /// only in the overall view, for groups holding non-primary panes.
+    let paneCountBadges: [GroupID: Int]
+
     let paneAction: (TerminalSplitOperation) -> Void
 
     /// Label focus / rename callbacks.
@@ -67,6 +72,7 @@ struct GroupSplitTreeView: View {
                 noteOverview: noteOverview,
                 primaryOnly: primaryOnly,
                 primaryMarks: primaryMarks,
+                paneCountBadges: paneCountBadges,
                 paneAction: paneAction,
                 labelActions: labelActions,
                 onEqualize: onEqualize,
@@ -92,6 +98,7 @@ private struct GroupSplitSubtreeView: View {
     let noteOverview: Bool
     let primaryOnly: Bool
     let primaryMarks: [GroupID: SurfaceID]
+    let paneCountBadges: [GroupID: Int]
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: GroupLabelActions
     let onEqualize: () -> Void
@@ -110,6 +117,7 @@ private struct GroupSplitSubtreeView: View {
                     isRenaming: ref.id == renamingGroup,
                     primaryOnly: primaryOnly,
                     primaryMarkPane: primaryMarks[ref.id],
+                    paneCountBadge: paneCountBadges[ref.id],
                     paneAction: paneAction,
                     labelActions: labelActions,
                     showsNoteOverlay: noteOverview)
@@ -140,6 +148,7 @@ private struct GroupSplitSubtreeView: View {
                         noteOverview: noteOverview,
                         primaryOnly: primaryOnly,
                         primaryMarks: primaryMarks,
+                        paneCountBadges: paneCountBadges,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,
@@ -155,6 +164,7 @@ private struct GroupSplitSubtreeView: View {
                         noteOverview: noteOverview,
                         primaryOnly: primaryOnly,
                         primaryMarks: primaryMarks,
+                        paneCountBadges: paneCountBadges,
                         paneAction: paneAction,
                         labelActions: labelActions,
                         onEqualize: onEqualize,

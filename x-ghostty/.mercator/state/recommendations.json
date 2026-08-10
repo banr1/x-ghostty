@@ -169,14 +169,30 @@
     {
       "id": "R-007",
       "type": "Non-blocking Recommendation",
-      "status": "proposed",
+      "status": "superseded",
       "source": [
         "T-008"
       ],
       "created_at": "2026-08-10T12:36:19+09:00",
       "title": "T-008(視覚洗練)には具体的な人間の指示が無い — 実行内容の判断材料を推奨",
       "description": "should の T-008 は『ノート編集オーバーレイ・一望モード・プライマリー印の見た目の洗練(配色・余白・アニメーション)』ですが、人間の実機目視確認 2 回(R-004: ノート層、R-006: プライマリーペイン層)のいずれでも『見た目への不満なし・T-008 へ回す指摘なし』と記録されており、洗練すべき具体的対象が現存しません。Essence の『必ず人間に委ねる判断』に『UI の最終的な見た目』が含まれるため、指示なしの恣意的な見た目変更は行わない方針です。次回の resume(任意のタイミングで可)で次のいずれかをご判断ください: (a) 具体的な改善指摘(例: 配色・余白・アニメーションのどこをどうしたいか)を与えて T-008 を実行させる、(b) 現状の見た目で満足として T-008 を close する。それまで T-008 は pending のまま残し、エージェントは他の runnable Todo(T-019 ペイン数バッジ)を先に進めます。",
-      "raised_by": "mercator"
+      "raised_by": "mercator",
+      "resolution": "Superseded by R-008: with T-019 done, T-008 is the only remaining Todo, so the same question (concrete direction for T-008, or close it) is now the blocking Human-input gate R-008."
+    },
+    {
+      "id": "R-008",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "source": [
+        "T-008"
+      ],
+      "raised_by": "mercator",
+      "created_at": "2026-08-10T12:46:23+09:00",
+      "reason": "should フェーズの自律実行可能な Todo がすべて完了し(T-007 マウス導線・T-019 ペイン数バッジ)、残る T-008(視覚洗練)だけが具体的な人間の指示なしには実行できないため。",
+      "title": "T-008(視覚洗練)の扱いをご判断ください(最後の should)",
+      "description": "T-007(ヘッダー帯のノートグリフ)と T-019(全体ビューのペイン数バッジ)が完了し、自動ゲートは全て green です(zig build / just test / just swift-test = exit 0)。残る should は T-008(ノート編集オーバーレイ・一望モード・プライマリー印の見た目の洗練)のみですが、実機確認 2 回(R-004/R-006)のいずれでも見た目への不満は記録されておらず、洗練すべき具体的対象がありません。Essence の『必ず人間に委ねる判断』に『UI の最終的な見た目』が含まれるため、指示なしの恣意的な変更は行いません。次の人間チェックポイントでどちらかをご指示ください: (a) 具体的な改善指摘(どの UI のどの要素をどうしたいか)を与える → T-008 として実装します。(b) 現状の見た目で満足として T-008 を close する → プロジェクトは全 Todo 完了となります。なお、今回追加した 2 つの UI(ヘッダー帯右端のノートグリフ、全体ビュー右上のペイン数バッジ)の見た目は任意のタイミングでご確認ください。不満があれば (a) の指摘に含めていただければ T-008 で拾います。"
     }
   ]
 }

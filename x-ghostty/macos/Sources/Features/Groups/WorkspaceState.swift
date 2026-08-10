@@ -156,6 +156,25 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         return [zoomedGroup: primary]
     }
 
+    // MARK: Overall-view pane-count badge (SPEC §22.7)
+
+    /// The pane-count badge each group shows in the overall (non-zoomed)
+    /// view, keyed by group: the group's total pane count, present only for
+    /// visible groups that hold non-primary panes (a split tree, so two or
+    /// more panes). The overall view renders nothing but the primary, so this
+    /// is the subtle cue that more panes exist behind it. Empty while zoomed
+    /// (the local view shows the real layout) and absent for single-pane
+    /// groups (there is nothing hidden to point at).
+    var overallViewPaneCountBadges: [GroupID: Int] {
+        guard zoomedGroup == nil else { return [:] }
+        var result: [GroupID: Int] = [:]
+        for id in visibleGroupIDs {
+            guard let group = groups[id], group.paneTree.isSplit else { continue }
+            result[id] = group.paneTree.count
+        }
+        return result
+    }
+
     // MARK: Overall-view focus & pane operations (SPEC §22.4–22.5)
 
     /// Whether pane-level operations (split, inter-pane focus movement, pane

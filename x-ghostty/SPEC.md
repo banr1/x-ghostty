@@ -1541,7 +1541,23 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   チップ、hit-test 無効)をオーバーレイする。split 層は中立な「mark this leaf」
   概念しか知らず、どのペインに印を付けるかの判断は group 層が持つ。
 
-### 22.7 テスト(GroupPrimaryPaneTests、31 件)
+### 22.7 ペイン数バッジ(全体ビュー)
+
+- モデル層の判断は `WorkspaceState.overallViewPaneCountBadges`:**全体ビュー
+  (非 zoom)のときだけ**、visible なグループのうち**非プライマリーペインを
+  持つもの(ペイン 2 つ以上)**に、そのグループの総ペイン数を返す。zoom 中
+  (局所視点は実レイアウトを表示)と単一ペインのグループ(隠れているものが
+  ない)では常に空。hidden なグループは visible 集合に入らないので対象外。
+- 意図: 全体ビューはプライマリーしか描画しないため、「その背後にさらに
+  ペインがある」ことが分かる控えめな手掛かりを出す(任意対応事項)。
+- 描画は `TerminalWorkspaceView` → `GroupSplitTreeView` → `GroupView` と通し、
+  ペイン領域(プライマリー leaf)の右上に `GroupPaneCountBadge`
+  (rectangle.split.2x1 グリフ + 等幅数字、プライマリー印 `PaneMarkBadge` と
+  同じ ultraThinMaterial チップ様式、hit-test 無効)をオーバーレイする。
+  印(§22.6)は zoom 中のみ・バッジは非 zoom のみなので、同じ右上スロットを
+  排他的に共有する。
+
+### 22.8 テスト(GroupPrimaryPaneTests、35 件)
 
 モデル層はジェネリック(`GroupStateOf` / `WorkspaceStateOf` /
 `WorkspaceModelOf`。runtime は `SurfaceView` への typealias)なので、テストは
@@ -1566,6 +1582,9 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   既にプライマリー no-op
 - 印: zoom 中かつ複数ペインのみ(全体ビューでは空)/ 単一ペイン非表示 /
   再指定に追従 / zoom 解除で消える
+- ペイン数バッジ: 複数ペインの visible グループのみ(単一ペイン・hidden は
+  対象外)/ 総ペイン数を表示(3 ペインで 3)/ zoom 中は空・解除で復帰 /
+  1 ペインに減ると消える
 - controller ミラー経路(replaceFocusedPaneTree)でのフラグ維持・昇格
 ```
 

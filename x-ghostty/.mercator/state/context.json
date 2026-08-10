@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "e7d68889dc4dcc5258028148fdb0d5f3a40ecd16566de5837680055e01d54bb9",
+    "last_signature": "9599808b0aa390a5e02e0733b81ec772966e6571ef626bfd3e2fc61925feb129",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T12:37:45+09:00",
-    "last_checked_at": "2026-08-10T12:37:45+09:00"
+    "last_progress_at": "2026-08-10T12:49:01+09:00",
+    "last_checked_at": "2026-08-10T12:49:01+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,24 +20,24 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.6,
+    "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 8,
-    "completed_todos_since_reset": 4,
-    "important_decisions_since_reset": 1,
+    "changed_files_since_reset": 16,
+    "completed_todos_since_reset": 5,
+    "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T12:38:00+09:00",
-    "summary": "Should phase in progress. T-007 (note mouse affordance) done with full green gates this cycle. Remaining runnable shoulds: T-019 (pane-count badge). T-008 (visual refinement) intentionally left pending: R-007 (proposed, non-blocking) asks the human for concrete direction or closure, since both on-device checks recorded no visual complaints and final UI appearance is a human-reserved judgment.",
+    "written_at": "2026-08-10T12:48:00+09:00",
+    "summary": "Should phase: T-007 and T-019 done with full green gates. T-008 (visual refinement) is blocked awaiting the human's R-008 decision (concrete direction vs close-as-satisfied); it is the ONLY remaining non-done Todo. The loop stops on R-008 (Human-input, stop_until_human_review) after this cycle.",
     "next_actions": [
-      "Next cycle: implement T-019 — subtle overall-view indicator (e.g. pane-count badge) that a group has non-primary panes; model-layer judgment (which groups show a badge, count) in WorkspaceState/GroupState with XGhosttyTests, badge rendering in GroupView/GroupLabel following the primary-mark styling; then zig build / just test / just swift-test.",
-      "Do not implement T-008 without human direction (see R-007); if the human resolves R-007 with concrete direction, execute it as specified.",
-      "When T-019 is done and only T-008 remains blocked on R-007, raise a Human-input Recommendation naming T-008 and the R-007 decision instead of idling."
+      "After the human resolves R-008 with concrete visual direction: set T-008 back to pending/in_progress via apply-projection, implement exactly the specified refinements, verify with zig build / just test / just swift-test, and record evidence.",
+      "After the human resolves R-008 by closing T-008: reflect the closure in todo.json per the human's instruction (expect the resume resolution to say how to record it), then the project has no remaining Todos.",
+      "If the human's R-008 answer also contains visual feedback on the note glyph (T-007) or pane-count badge (T-019), fold it into the T-008 work items."
     ],
     "open_questions": [
-      "R-007: does the human want concrete visual refinements (T-008) or close it as satisfied?"
+      "R-008: concrete visual-refinement direction for T-008, or close it as satisfied?"
     ],
     "pending_cycle": false
   }

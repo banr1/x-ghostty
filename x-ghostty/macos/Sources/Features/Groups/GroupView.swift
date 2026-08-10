@@ -46,6 +46,11 @@ struct GroupView: View {
     /// panes, so the overall view and single-pane groups never show it.
     let primaryMarkPane: SurfaceID?
 
+    /// This group's pane-count badge, or `nil` for no badge (SPEC §22.7):
+    /// set only in the overall view when the group holds non-primary panes,
+    /// so the zoomed local view and single-pane groups never show it.
+    let paneCountBadge: Int?
+
     /// Pane-level operations within this group's terminal split tree. Only the
     /// focused group's tree is mirrored to the controller's `surfaceTree`, so
     /// this routes there.
@@ -76,11 +81,41 @@ struct GroupView: View {
                 tree: primaryOnly ? group.overallViewPaneTree : group.paneTree,
                 markedPane: primaryMarkPane?.rawValue,
                 action: paneAction)
+                .overlay(alignment: .topTrailing) {
+                    if let paneCountBadge {
+                        GroupPaneCountBadge(count: paneCountBadge)
+                    }
+                }
         }
         .overlay {
             if showsNoteOverlay {
                 GroupNoteOverviewOverlay(group: group)
             }
         }
+    }
+}
+
+/// The subtle top-right badge shown on a group in the overall view when it
+/// holds non-primary panes (SPEC §22.7): the group's total pane count on the
+/// same thin-material chip styling as the primary mark (`PaneMarkBadge`), so
+/// the two read as one family of terminal chrome. In the overall view only
+/// the primary pane is rendered, so this is the cue that more panes exist
+/// behind it.
+private struct GroupPaneCountBadge: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "rectangle.split.2x1")
+                .font(.system(size: 8, weight: .semibold))
+            Text("\(count)")
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+        }
+        .foregroundStyle(.secondary)
+        .padding(4)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
+        .padding(6)
+        .allowsHitTesting(false)
+        .accessibilityLabel("\(count) panes")
     }
 }

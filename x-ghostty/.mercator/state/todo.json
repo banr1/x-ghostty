@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-007"
+    "T-019"
   ],
   "items": [
     {
@@ -331,7 +331,7 @@
     {
       "id": "T-008",
       "title": "Optional visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)",
-      "status": "pending",
+      "status": "blocked",
       "priority": "should",
       "spec": [
         "S-015"
@@ -340,7 +340,8 @@
         "mode": "mercator"
       },
       "batch_group": "notes-optional",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "blocked_reason": "Awaiting human direction (R-007, escalated as gate R-008): both on-device checks (R-004, R-006) recorded no visual complaints and the Essence reserves final UI appearance for the human, so no concrete refinement target exists. Runs only if the human supplies specific direction; closes if the human declares the current appearance satisfactory."
     },
     {
       "id": "T-009",
@@ -748,7 +749,7 @@
     {
       "id": "T-019",
       "title": "Optional pane-count badge: subtle overall-view indicator that a group has non-primary panes",
-      "status": "pending",
+      "status": "done",
       "priority": "should",
       "spec": [
         "S-031"
@@ -757,7 +758,41 @@
         "mode": "mercator"
       },
       "batch_group": "primary-optional",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "Pane-count badge (SPEC section 22.7, new; test inventory moved to 22.8). Model judgment in WorkspaceState.overallViewPaneCountBadges: only in the overall (non-zoomed) view, only for visible groups whose paneTree.isSplit (>= 2 panes), value = total pane count; empty while zoomed, absent for single-pane and hidden groups. Forwarded on WorkspaceModel for render/tests symmetry. Rendering threaded TerminalWorkspaceView -> GroupSplitTreeView (new paneCountBadges param, both recursive subtree calls) -> GroupView (paneCountBadge: Int?), which overlays GroupPaneCountBadge (rectangle.split.2x1 glyph + monospaced count, same ultraThinMaterial chip styling as the primary mark PaneMarkBadge, hit-testing disabled) at the pane area's top-right. The primary mark owns that slot only while zoomed, the badge only while not, so they never collide. SPEC and the project readme updated accordingly (badge section, 35-case test inventory, readme Primary panes bullet)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED (exit 0), including all 4 new GroupPrimaryPaneTests badge cases named passing in the log: paneCountBadgeShowsOnlyForMultiPaneVisibleGroups (single-pane and hidden groups excluded), paneCountBadgeCountsEveryPane (3 panes -> 3), paneCountBadgeIsHiddenWhileZoomed (empty while zoomed, returns on release), paneCountBadgeDisappearsWhenGroupDropsToOnePane."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the badge render path) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
     }
   ]
 }
