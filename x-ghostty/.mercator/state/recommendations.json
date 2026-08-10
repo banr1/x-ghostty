@@ -133,7 +133,7 @@
     {
       "id": "R-LG-20260810T122334+0900-2af1",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "raised_by": "mercator-loop",
       "gate": "must_complete_awaiting_phase_approval",
       "target": "todo.json",
@@ -161,7 +161,10 @@
       },
       "requires_human_approval": true,
       "agent_action": "stop_until_human_review",
-      "created_at": "2026-08-10T12:23:34+09:00"
+      "created_at": "2026-08-10T12:23:34+09:00",
+      "resolved_at": "2026-08-10T12:24:23+09:00",
+      "resolved_by": "human",
+      "resolution": "must完了したのでshouldへ移行"
     }
   ]
 }
