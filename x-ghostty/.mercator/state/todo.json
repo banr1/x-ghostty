@@ -9,8 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-016",
-    "T-017"
+    "T-018"
   ],
   "items": [
     {
@@ -688,7 +687,7 @@
     {
       "id": "T-018",
       "title": "Human on-device visual verification of the primary pane layer (one-time, after all implementation): overall view shows only primaries, zoom shows all panes with the mark visible on multi-pane groups, Cmd+P reassigns while zoomed and the overall view shows that pane after unzoom, primary shell exit promotes the nearest pane and swaps the overall-view display, mark appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-030"
@@ -697,7 +696,16 @@
         "mode": "human"
       },
       "batch_group": "primary-verify",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-10T12:08:26+09:00",
+          "reference": "R-006 resolution / reflection.jsonl human_resume entry at 2026-08-10T12:08:26+09:00",
+          "summary": "The human performed the one-time on-device visual verification of the primary pane layer against success criterion 7 and confirmed all five items behave as expected: (1) the overall view shows only each group's primary pane; (2) zooming a group shows all panes in layout, with the mark visible at the primary's top-right when the group has multiple panes; (3) pressing Cmd+P on a focused pane while zoomed makes it primary (mark moves) and the overall view shows that pane after unzoom; (4) exiting the primary's shell promotes the nearest remaining pane and the overall-view display swaps accordingly; (5) the mark's appearance fits the terminal. No visual complaints were recorded and nothing was routed to T-008 (visual refinement). Recorded by the human in the R-006 resolution during the 2026-08-10T12:08:26+09:00 resume (gate release), which instructed marking T-018 done with this confirmation as evidence."
+        }
+      ]
     },
     {
       "id": "T-019",

@@ -101,13 +101,16 @@
     {
       "id": "R-005",
       "type": "Non-blocking Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "source": [
         "T-014"
       ],
       "created_at": "2026-08-10T02:48:34+09:00",
       "title": "設計解釈: 単一グループでも toggle_group_zoom を有効化(ペイン系操作が zoom 中のみになったことへの帰結)",
-      "description": "必須対応事項 21 により全体ビュー(非 zoom)ではペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・resize/equalize)を no-op 化しました。従来 toggle_group_zoom は「visible グループが 2 つ以上、または zoom 解除時のみ」performable で、単一グループの zoom は無意味な自己 zoom として拒否していました。この従来挙動のままだと、グループが 1 つだけのワークスペースでは zoom に入る手段がなく、ペイン分割へ永遠に到達できません(dead end)。プライマリーペイン層では非 zoom = プライマリーのみ描画・zoom = 全ペイン表示となり、単一グループでも zoom は意味を持つため、canToggleGroupZoom を「focused グループが存在すれば true」に変更しました。これは必須対応事項 14 の退行禁止に対する軽微な意図的変更(列挙済みの明示例外には含まれていない)ですが、必須対応事項 19/21 の成立に必要な帰結と判断しました。T-018 の実機確認時に単一グループでの zoom トグルの使用感も併せてご確認ください。問題があれば ESSENCE の update で方針を指示してください。"
+      "description": "必須対応事項 21 により全体ビュー(非 zoom)ではペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・resize/equalize)を no-op 化しました。従来 toggle_group_zoom は「visible グループが 2 つ以上、または zoom 解除時のみ」performable で、単一グループの zoom は無意味な自己 zoom として拒否していました。この従来挙動のままだと、グループが 1 つだけのワークスペースでは zoom に入る手段がなく、ペイン分割へ永遠に到達できません(dead end)。プライマリーペイン層では非 zoom = プライマリーのみ描画・zoom = 全ペイン表示となり、単一グループでも zoom は意味を持つため、canToggleGroupZoom を「focused グループが存在すれば true」に変更しました。これは必須対応事項 14 の退行禁止に対する軽微な意図的変更(列挙済みの明示例外には含まれていない)ですが、必須対応事項 19/21 の成立に必要な帰結と判断しました。T-018 の実機確認時に単一グループでの zoom トグルの使用感も併せてご確認ください。問題があれば ESSENCE の update で方針を指示してください。",
+      "resolved_at": "2026-08-10T12:08:26+09:00",
+      "resolved_by": "human",
+      "resolution": "実機確認済み・設計解釈を承認。人間が T-018 の目視確認(R-006 解決)と同時に、単一グループのワークスペースでの toggle_group_zoom(Cmd+Opt+Enter)の使用感を実機で確認し、問題なしと判断した(2026-08-10T12:08:26+09:00 の resume 記録)。ペイン系操作を zoom 中のみ有効とする必須対応事項 21 の下では、単一グループでも zoom に入れなければペイン分割へ到達できないため、canToggleGroupZoom を「focused グループが存在すれば true」とした設計解釈は必須対応事項 19/21 成立に必要な帰結として維持する。ESSENCE の変更は不要。"
     },
     {
       "id": "R-006",
@@ -126,6 +129,39 @@
       "resolved_at": "2026-08-10T12:08:26+09:00",
       "resolved_by": "human",
       "resolution": "T-018 のプライマリーペイン層の実機目視確認を実施し、成功条件 7 の全 5 項目(全体ビューで各グループにプライマリーペインだけが表示される/zoom で全ペインがレイアウトのまま表示され複数ペイン時はプライマリー右上に印が見える/zoom 中 Cmd+P で focused ペインがプライマリーになり unzoom 後の全体ビューにそのペインが表示される/プライマリーのシェル exit で最近傍が昇格し全体ビューの表示が入れ替わる/印の見た目がターミナルに馴染む)がすべて期待どおり動作することを確認した。よって R-006 を解除し、T-018 を人間確認の証跡付きで done とすること。\nあわせて R-005(全体ビューのペイン系操作 no-op 化に伴い、単一グループでも toggle_group_zoom を許可した設計解釈)も実機で確認し、単一グループでの zoom トグルの使用感に問題なしと判断した。R-005 は非ブロッキングなので、次サイクルでこの結論を resolution として記録し close すること。見た目(印・全体ビューの情報密度)への不満はなく、T-008(視覚洗練)へ回す指摘もない。\nこれで must は全 16 件完了となり must 境界に達する。should(T-007 マウス導線 / T-008 視覚洗練 / T-019 ペイン数バッジ)へ進むか must で閉じるかの phase 判断は今回行わず、次サイクルの must 境界ゲートで改めて判断する。"
+    },
+    {
+      "id": "R-LG-20260810T122334+0900-2af1",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "raised_by": "mercator-loop",
+      "gate": "must_complete_awaiting_phase_approval",
+      "target": "todo.json",
+      "reason": "All must-priority Todos are done (a reviewable checkpoint, not the terminus, §19.3). Advancing to the should phase is a human budget / priority decision: `just resume` approves it (sets phase = extended_approved and makes should Todos runnable); not re-running the loop ends the project here. Editing ESSENCE.md is needed only to change the requirements themselves.",
+      "details": {
+        "must_done": 16,
+        "must_total": 16,
+        "pending_shoulds": [
+          {
+            "id": "T-007",
+            "status": "pending",
+            "title": "Optional mouse affordance: open the focused project's note from the header band (or equivalent) by mouse"
+          },
+          {
+            "id": "T-008",
+            "status": "pending",
+            "title": "Optional visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)"
+          },
+          {
+            "id": "T-019",
+            "status": "pending",
+            "title": "Optional pane-count badge: subtle overall-view indicator that a group has non-primary panes"
+          }
+        ]
+      },
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "created_at": "2026-08-10T12:23:34+09:00"
     }
   ]
 }
