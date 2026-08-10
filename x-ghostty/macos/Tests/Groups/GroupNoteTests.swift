@@ -205,6 +205,26 @@ struct GroupNoteTests {
         #expect(model.noteEditingGroup == nil)
     }
 
+    /// A paste that pushes the draft past the cap behaves like manual input
+    /// (SPEC §21.2): the save truncates to the first `maxNoteLines` lines.
+    /// Pasteboard payloads may carry CRLF/CR endings, which the normalization
+    /// unifies before capping, so a CRLF paste cannot evade the line cap.
+    @Test func endNoteEditingTruncatesOversizedPasteToFirstTenLines() throws {
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.0)
+
+        let pasted = (1...14).map { "pasted \($0)" }.joined(separator: "\r\n")
+        model.endNoteEditing(saving: pasted)
+
+        let stored = try #require(model.state.groups[ids.0]?.note)
+        let expected = (1...GroupState.maxNoteLines)
+            .map { "pasted \($0)" }
+            .joined(separator: "\n")
+        #expect(stored == expected)
+        #expect(model.noteEditingGroup == nil)
+    }
+
     @Test func endNoteEditingWithoutSessionIsNoOp() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
         let model = WorkspaceModel(state)

@@ -12,6 +12,15 @@ import SwiftUI
 /// lines. Cmd+Enter (or a backdrop click) saves the draft and closes;
 /// Escape discards the draft and closes without confirmation, keeping the
 /// text the note had when the editor opened.
+///
+/// Standard text-editing chords (Cmd+A/C/X/V) act on the editor while the
+/// overlay is shown (`SPEC.md` §21.2): the Edit menu's key equivalents are
+/// synced to terminal actions (`copy_to_clipboard` etc.), which do not reach
+/// the text view, so hidden shortcut receivers in the overlay forward the
+/// chords to the first responder (the editor's text view) as the standard
+/// `selectAll:`/`copy:`/`cut:`/`paste:` selectors. The window's key-equivalent
+/// pass runs before the menu bar's, so this wins only while the overlay
+/// exists; terminal copy/paste behavior outside the editor is unchanged.
 struct GroupNoteEditor: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
@@ -53,8 +62,31 @@ struct GroupNoteEditor: View {
                 .keyboardShortcut(.return, modifiers: [.command])
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
+
+            // Standard text-editing chords. Without these, the Edit menu's
+            // synced key equivalents (terminal copy/paste actions) would match
+            // first and the chords would never reach the text view; these
+            // receivers forward them to the first responder — the focused
+            // editor — as the standard editing selectors.
+            editingChordReceiver(#selector(NSText.selectAll(_:)), key: "a")
+            editingChordReceiver(#selector(NSText.copy(_:)), key: "c")
+            editingChordReceiver(#selector(NSText.cut(_:)), key: "x")
+            editingChordReceiver(#selector(NSText.paste(_:)), key: "v")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// A hidden Cmd+`key` receiver that sends `selector` down the responder
+    /// chain (first responder is the editor's text view while the overlay is
+    /// up). Same hidden-button pattern as the Cmd+Enter save chord above.
+    private func editingChordReceiver(
+        _ selector: Selector, key: KeyEquivalent
+    ) -> some View {
+        Button { NSApp.sendAction(selector, to: nil, from: nil) } label: { Color.clear }
+            .buttonStyle(PlainButtonStyle())
+            .keyboardShortcut(key, modifiers: [.command])
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
     }
 
     private var panel: some View {

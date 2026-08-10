@@ -1380,6 +1380,18 @@ static let maxNoteLines = 10
   `keyboardShortcut` ボタンで受ける。この chord を空けるため、本 fork は
   上流の `cmd+enter=toggle_fullscreen` デフォルトを解除している(§10.5)。
 - **Esc は破棄して閉じる**:開く前の本文が保持され、破棄に確認は挟まない。
+- **標準テキスト編集ショートカットが効く**:オーバーレイ表示中、Cmd+A(全
+  選択)/ Cmd+C(コピー)/ Cmd+X(切り取り)/ Cmd+V(貼り付け)はエディタに
+  対して標準どおり動作する。Edit メニューのキー equivalents は端末 action
+  (`copy_to_clipboard` 等)に同期されておりテキストビューへ届かないため、
+  オーバーレイ内の隠し `keyboardShortcut` 受け口(Cmd+Enter と同パターン)が
+  chord を first responder(エディタのテキストビュー)へ標準セレクタ
+  (`selectAll:`/`copy:`/`cut:`/`paste:`)として転送する。ウィンドウ階層の
+  key-equivalent 判定はメニューバーより先に走るので、この転送はオーバーレイ
+  表示中だけ有効で、端末側のコピー/ペースト挙動は変わらない。
+- **貼り付けで 10 行を超えた場合も保存時に先頭 10 行へ切り詰める**(手入力と
+  同じ §21.1 の正規化経路。CRLF / CR の行末は正規化で `\n` に統一されるため、
+  ペースト由来の行末でもキャップは回避されない)。
 - 閉じると(保存・破棄どちらでも)first responder は端末 surface に戻る。
 - オーバーレイは編集中のみ描画され、端末領域を恒久的に占有しない。
 - 編集対象グループが消えた場合(undo 復元・全グループ削除)はセッションを
@@ -1420,6 +1432,7 @@ static let maxNoteLines = 10
 - 編集セッション: begin は focused を対象 / begin(id) は非 focused でも
   開き focus を変えない(ヘッダー帯マウス導線) / end(Cmd+Enter)は保存して
   閉じる / cancel(Esc)は破棄して閉じ開く前の本文を保持 /
+  超過ペースト(CRLF 行末含む)は保存時に先頭 10 行へ切り詰め /
   グループ消滅でクリア
 - 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /
   focusedGroup 不変 / 再トグル・endNoteOverview で退出 /

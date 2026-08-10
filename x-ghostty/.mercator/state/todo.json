@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-008"
+    "T-023"
   ],
   "items": [
     {
@@ -801,6 +801,259 @@
           "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
         }
       ]
+    },
+    {
+      "id": "T-020",
+      "title": "Unconditional group-close confirmation: close_group and last-pane Cmd+W always show the Cancel / Close Group dialog regardless of running processes, with XGhosttyTests covering the always-confirm requirement",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-032",
+        "S-050",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "protect-confirm",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-021",
+      "title": "Terminated-state model layer: last-pane shell exit (normal/abnormal/process death) keeps the group with its note as a terminated pane instead of closing; a single pane's exit in a multi-pane group still closes only that pane; terminated groups persist and restore with their notes; the primary-close last-pane path follows the terminated-state semantics; judgment logic in the model layer covered by XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-033",
+        "S-035",
+        "S-024",
+        "S-048",
+        "S-050"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "protect-model",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-022",
+      "title": "Terminated pane UI and restart: a terminated pane renders a terminal-fitting terminated view, and pressing Enter starts a new shell in the same pane to resume work",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-034"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "protect-ui",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-023",
+      "title": "Note editor standard text-editing shortcuts: Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the editor while the note edit overlay is shown; pastes that push the note over 10 lines truncate to the first 10 on save (existing cap unchanged)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-036",
+        "S-037",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "editor-shortcuts",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift",
+            "SPEC.md"
+          ],
+          "summary": "Standard text-editing chords in the note editor (SPEC §21.2). Cause: the Edit menu's key equivalents are synced from config to terminal actions (copy_to_clipboard / paste_from_clipboard / select_all, AppDelegate.syncMenuShortcuts), so Cmd+A/C/X/V matched menu items that never reach the overlay's text view. Fix: four hidden keyboardShortcut receivers inside the GroupNoteEditor ZStack (the proven Cmd+Enter hidden-button pattern) forward Cmd+A/C/X/V to the first responder — the focused editor text view — as the standard selectAll:/copy:/cut:/paste: selectors via NSApp.sendAction(to: nil). The window hierarchy's key-equivalent pass runs before the menu bar's, so the forwarding wins only while the overlay exists; terminal copy/paste outside the editor is unchanged (S-010 sanctioned exception). Paste truncation (S-037) needed no code change: the existing save path normalizes CRLF/CR to LF and caps at maxNoteLines (GroupState.normalizedNote), now locked in by the new test endNoteEditingTruncatesOversizedPasteToFirstTenLines (14 CRLF-separated pasted lines -> exactly the first 10 lines stored). SPEC.md §21.2 documents the chord routing and the paste cap; §21.4 test inventory extended."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupNoteTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 41 GroupNoteTests passed, and the new test case GroupNoteTests/endNoteEditingTruncatesOversizedPasteToFirstTenLines passed (named in the log)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the editing-chord receivers and the new paste-truncation test in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the editor change) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-024",
+      "title": "Priority/deadline model layer: per-group priority (high/medium/low/unset) and date-only deadline with invalid input rejected to unset, persisted and restored like the note; overdue judgment and the priority/deadline sort orderings (stable ties, unset last, visible-only) in the model layer covered by XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-038",
+        "S-039",
+        "S-043",
+        "S-047",
+        "S-048",
+        "S-053"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "priodl-model",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-025",
+      "title": "Overlay UI: set and change priority and deadline inside the Cmd+N note edit overlay, saved and restored through the note path",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-040"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "priodl-ui",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-026",
+      "title": "Priority/deadline display: label band shows a subtle priority mark and the deadline (unset hidden); overview mode shows priority/deadline with the note; overdue projects are subtly emphasized in both (single stage)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-041",
+        "S-042",
+        "S-043"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "priodl-ui",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-027",
+      "title": "Sort actions: Cmd+S (priority order) and Cmd+Shift+S (deadline order) reorder the real layout of visible groups only, explicit-only with no automatic re-sort, order persisting until the next sort, ordinal jumps (Cmd+1-9) following the new order; covered by XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-044",
+        "S-045",
+        "S-046",
+        "S-047",
+        "S-048",
+        "S-053",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "sort-actions",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-028",
+      "title": "Update SPEC.md and README.md to describe the deletion-protection, editor-shortcut, priority/deadline, and sort layers as implemented",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-049"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "batch3-docs",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-029",
+      "title": "Full verification: zig build / just test / just swift-test all exit 0 with every S-050/S-053 test present and passing, and no regression of group features beyond the sanctioned exceptions",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-050",
+        "S-053",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "batch3-verify",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-030",
+      "title": "Human on-device visual verification of the deletion-protection layer (one-time, after its implementation): close confirmation appears for an idle-shell-only group and Cancel loses nothing; last-pane shell exit leaves the group as a terminated display; Enter in the terminated pane starts a new shell; the terminated appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-051"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch3-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-031",
+      "title": "Human on-device verification of note-editor shortcuts (one-time): Cmd+A / Cmd+C / Cmd+X / Cmd+V behave as standard against the editor, and a paste beyond 10 lines is truncated to the first 10 lines on save",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-052"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch3-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-032",
+      "title": "Human on-device visual verification of the priority/deadline layer (one-time, after its implementation): overlay sets priority/deadline and the label band shows them; overview shows them with the note; overdue is subtly emphasized; Cmd+S / Cmd+Shift+S reorder with Cmd+1-9 following; the appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-054"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch3-human",
+      "risk_level": "normal",
+      "evidence": []
     }
   ]
 }

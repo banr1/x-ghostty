@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "05aacac012a2fce268f4bd1f919aafda8c66f8adcde1e0e9daeddb45ee41a46e",
+    "last_signature": "25c97d52adb8df7287c31e1b0a08fdd95780ce884e30dd532317bfa8f4c43be8",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T14:12:08+09:00",
-    "last_checked_at": "2026-08-10T14:12:08+09:00"
+    "last_progress_at": "2026-08-10T16:02:04+09:00",
+    "last_checked_at": "2026-08-10T16:02:04+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.35,
+    "context_usage_estimate": 0.75,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 0,
-    "completed_todos_since_reset": 1,
-    "important_decisions_since_reset": 0,
-    "major_spec_rewrite_since_reset": false,
+    "changed_files_since_reset": 3,
+    "completed_todos_since_reset": 2,
+    "important_decisions_since_reset": 1,
+    "major_spec_rewrite_since_reset": true,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T14:11:07+09:00",
-    "summary": "Cycle R-20260810T140512+0900-96cd7d executed the human's R-008 resolution: T-008 (visual refinement) recorded done via apply-projection with human-approval evidence (type: human, referencing the 2026-08-10T14:05:04+09:00 resume). All 19 Todos are now done (must 16/16, should 3/3), no open Recommendations or Blockers, validation has no errors (one informational warning about 成功条件↔command-evidence mapping, already reviewed by the human across R-004/R-006 on-device checks and the should-phase approval). should-complete reports must_phase_complete=true with unresolved_should_total=0; full completion should latch once this cycle clears resume_pending_cycle. No implementation files were touched this cycle.",
+    "written_at": "2026-08-10T16:00:54+09:00",
+    "summary": "Cycle R-20260810T152707+0900-378ac3 re-projected the updated Essence (sha 057b5122...) into Spec (54 items; new S-032..S-054, S-010/S-024 re-anchored) and Todo (13 new: T-020..T-029 mercator must, T-030..T-032 human must), then completed T-023 with all gates green (targeted GroupNoteTests, just swift-test, zig build, just test all exit 0): the note editor now receives Cmd+A/C/X/V via hidden keyboardShortcut receivers forwarding standard editing selectors to the first responder, and the new paste-truncation test locks the existing CRLF-normalizing 10-line save cap. Remaining must Todos: T-020..T-022 (deletion protection), T-024..T-027 (priority/deadline/sort), T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks). Phase is extended_approved; all shoulds are already done.",
     "next_actions": [
-      "Nothing remains: every Spec-derived Todo is done with evidence. New work starts only from a human Essence update (update-essence), e.g. promoting the deferred candidates listed under 非対応事項 (priority/deadline fields, live per-project terminal status, Linux/GTK)."
+      "Implement the protect batch as one design: T-021 first (Zig src/Surface.zig:1204-1282 childExited must stop closing the surface — wait_after_command is the precedent — and surface a terminated-pane state to the Swift model; last-pane exit keeps the group + note, multi-pane exit still closes just that pane, terminated groups persist/restore), then T-020 becomes trivial: closeFocusedGroup always confirms (model-layer judgment seam for testability) and the ghosttyDidCloseSurface escalation (BaseTerminalController.swift:900-918) drops its groups.count>1 gate so single-group last-pane Cmd+W also confirms. T-022 adds the terminated view + Enter restart.",
+      "Then T-024 (priority/deadline model: values, date-only validation to unset, persistence like the note, overdue judgment, stable sort orderings visible-only), T-025/T-026 (overlay UI + label band / overview display + overdue emphasis), T-027 (Cmd+S / Cmd+Shift+S sort actions reordering the real layout with ordinal follow; both chords confirmed unbound), T-028 (SPEC/readme), T-029 (full gates), then raise the human gates for T-030/T-031/T-032.",
+      "Keybind additions follow the established end-to-end action pattern (see T-015 evidence); C ABI tags are appended last and checkXGhosttyHEnum guards the header."
     ],
     "open_questions": [],
     "pending_cycle": false
