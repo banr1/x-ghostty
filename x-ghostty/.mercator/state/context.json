@@ -29,18 +29,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T03:23:00+09:00",
-    "summary": "このサイクルで T-016(SPEC.md §22 / README.md のプライマリーペイン層ドキュメント)と T-017(全ゲート検証)をまとめて完了した(バッチ統合: ドキュメント編集後のゲート実行 1 回を両者の evidence として共有。判断 1 件)。ゲート: zig build exit 0 / just test exit 0 / just swift-test exit 0(TEST SUCCEEDED、467 テスト、GroupPrimaryPaneTests 31/31)。S-029 の全 8 テスト項目を実行ログ上の実名テストに対応付けて確認済み(対応表は T-017 evidence に記録)。SPEC.md は §22.1〜22.7 を新設(実装コメントの既存 §22.x 参照に節番号を合わせた。§9.1 に set_primary、§10.5 に Cmd+P 追記。§16 は新規ファイルなしのため変更なし)。README は About に Primary panes bullet を追加。残る must は human executor の T-018(実機目視、成功条件 7)のみのため、R-006(Human-input Recommendation, stop_until_human_review, proposed)を起票して停止する。R-006 には R-005(単一グループ zoom 許可の設計解釈、proposed のまま)の確認依頼と、T-018 完了後の must 境界の phase 判断(--approve-should / --close-at-must)の予告を同梱した。",
-    "next_actions": [
-      "人間が T-018 の実機目視確認(R-006 の 5 項目チェックリスト+R-005 の単一グループ zoom 確認)を行い、just resume で結果を記録するまで停止。エージェント側の自律作業はない(should-stop が R-006 で停止するはず)。",
-      "resume で T-018 完了が記録されたら: T-018 を human evidence 付きで done にする(R-006 の解決文の指示に従う)。それで must 全 15 件完了 → must 境界(must_complete_awaiting_phase_approval)。phase 判断は人間の resume 選択(--approve-should なら should の T-007 マウス導線 / T-008 視覚洗練〔プライマリー印含む〕/ T-019 ペイン数バッジが解禁、--close-at-must なら終了)。",
-      "見た目への指摘があれば T-008(視覚洗練)の scope として記録する。R-005 に問題ありとされた場合は Essence 更新を待って再射影する。",
-      "検証は毎回 foreground で: just swift-test / zig build(/opt/homebrew/opt/zig@0.15/bin/zig build; just build-app はガード deny、R-002)/ just test。",
-      "状態バンドルは Write ツールで ../x-ghostty/.mercator/tmp/ に作り(Bash リダイレクトはガードが deny)、CONTROL_ROOT から bin/mercator state apply-projection を実行して後始末に rm。reflection.jsonl への追記は Edit ツール。Bash の CWD はコマンド間で持ち越されるので bin/mercator 実行前に CONTROL_ROOT へ戻ること。"
-    ],
-    "open_questions": [
-      "R-005: 単一グループでも toggle_group_zoom を許可した設計解釈の人間確認(T-018 実機確認に同梱、R-006 参照)。"
-    ],
-    "pending_cycle": false
+    "written_at": "2026-08-10T12:08:26+09:00",
+    "summary": "Human resume: T-018 のプライマリーペイン層の実機目視確認を実施し、成功条件 7 の全 5 項目(全体ビューで各グループにプライマリーペインだけが表示される/zoom で全ペインがレイアウトのまま表示され複数ペイン時はプライマリー右上に印が見える/zoom 中 Cmd+P で focused ペインがプライマリーになり unzoom 後の全体ビューにそのペインが表示される/プライマリーのシェル exit で最近傍が昇格し全体ビューの表示が入れ替わる/印の見た目がターミナルに馴染む)がすべて期待どおり動作することを確認した。よって R-006 を解除し、T-018 を人間確認の証跡付きで done とすること。\nあわせて R-005(全体ビューのペイン系操作 no-op 化に伴い、単一グループでも toggle_group_zoom を許可した設計解釈)も実機で確認し、単一グループでの zoom トグルの使用感に問題なしと判断した。R-005 は非ブロッキングなので、次サイクルでこの結論を resolution として記録し close すること。見た目(印・全体ビューの情報密度)への不満はなく、T-008(視覚洗練)へ回す指摘もない。\nこれで must は全 16 件完了となり must 境界に達する。should(T-007 マウス導線 / T-008 視覚洗練 / T-019 ペイン数バッジ)へ進むか must で閉じるかの phase 判断は今回行わず、次サイクルの must 境界ゲートで改めて判断する。",
+    "next_actions": [],
+    "open_questions": [],
+    "pending_cycle": true
   }
 }
