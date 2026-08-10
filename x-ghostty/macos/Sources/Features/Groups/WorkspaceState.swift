@@ -213,6 +213,25 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
             .map(\.element)
     }
 
+    /// Apply `order` to the visible groups' real layout (SPEC §24.4): the
+    /// canonical tree keeps its exact shape and every split ratio, and its
+    /// leaves are reassigned so traversal order equals `order`. Ordinals
+    /// (Cmd+1–9) derive from traversal order, so they follow the new layout
+    /// automatically. Hidden groups have no canonical leaf and are untouched.
+    /// The sort actions are the only callers — reordering happens exclusively
+    /// through an explicit action, never as a side effect of a priority or
+    /// deadline change — and the applied order persists until the next sort
+    /// because nothing else rewrites the leaf assignment.
+    ///
+    /// - Returns: whether the layout was reordered (`order` must be a
+    ///   permutation of the current visible groups).
+    mutating func applyVisibleGroupOrder(_ order: [GroupID]) -> Bool {
+        guard let reordered = canonicalGroupTree.reorderingLeaves(
+            to: order.map { GroupRef(id: $0) }) else { return false }
+        canonicalGroupTree = reordered
+        return true
+    }
+
     /// Every group whose deadline is past `today` (SPEC §24.2): the
     /// single-stage overdue set behind the subtle emphasis in the label band
     /// and the note overview. Judged over all groups — the display layers are

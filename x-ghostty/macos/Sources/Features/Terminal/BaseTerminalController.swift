@@ -314,6 +314,16 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidSortGroupsByPriority(_:)),
+            name: XGhostty.Notification.ghosttySortGroupsByPriority,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidSortGroupsByDeadline(_:)),
+            name: XGhostty.Notification.ghosttySortGroupsByDeadline,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidSetGroupTitle(_:)),
             name: XGhostty.Notification.ghosttySetGroupTitle,
             object: nil)
@@ -1132,6 +1142,28 @@ class BaseTerminalController: NSWindowController,
         // (SPEC §22.4). Keyboard focus is untouched — the pane is focused
         // already — and the mark overlay re-renders via the state change.
         workspace.setPrimaryToFocusedPane()
+    }
+
+    @objc private func ghosttyDidSortGroupsByPriority(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // The model applies the priority ordering to the real layout
+        // (SPEC §24.4); focus is id-keyed and untouched, and the ordinals
+        // follow the new traversal order automatically.
+        workspace.sortVisibleGroupsByPriority()
+    }
+
+    @objc private func ghosttyDidSortGroupsByDeadline(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused group's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // Same as the priority sort, consuming the deadline ordering.
+        workspace.sortVisibleGroupsByDeadline()
     }
 
     @objc private func ghosttyDidSetGroupTitle(_ notification: Notification) {

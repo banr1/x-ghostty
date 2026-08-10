@@ -5992,6 +5992,19 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = 'p' }, .mods = .{ .super = true } },
                 .{ .set_primary = {} },
             );
+            // Neither plain Cmd+S nor Cmd+Shift+S has another default
+            // binding (upstream binds neither), so the group sort actions
+            // take them.
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true } },
+                .{ .sort_groups_by_priority = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true, .shift = true } },
+                .{ .sort_groups_by_deadline = {} },
+            );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },

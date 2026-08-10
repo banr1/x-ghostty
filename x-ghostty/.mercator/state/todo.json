@@ -9,8 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-025",
-    "T-026"
+    "T-027"
   ],
   "items": [
     {
@@ -1154,7 +1153,7 @@
     {
       "id": "T-027",
       "title": "Sort actions: Cmd+S (priority order) and Cmd+Shift+S (deadline order) reorder the real layout of visible groups only, explicit-only with no automatic re-sort, order persisting until the next sort, ordinal jumps (Cmd+1-9) following the new order; covered by XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-044",
@@ -1170,7 +1169,51 @@
       },
       "batch_group": "sort-actions",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Splits/SplitTree.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
+          ],
+          "summary": "Sort actions following the set_primary end-to-end pattern (SPEC section 24.4, to be written in T-028). Zig core: sort_groups_by_priority / sort_groups_by_deadline keybind actions with doc comments and parse tests (Binding.zig incl. the .surface scope list), apprt union fields + Key enum entries appended last for C ABI (action.zig), Surface.zig dispatch, command.zig palette-exclusion, default keybinds cmd+s / cmd+shift+s in Config.zig (grep confirms no other unicode 's' super binding exists; upstream binds neither chord), and both XGHOSTTY_ACTION_SORT_GROUPS_BY_* tags appended to xghostty.h (checkXGhosttyHEnum keeps the header in sync). Swift: one shared App.sortGroups performability path (declines via workspace.canSortVisibleGroups unless >= 2 visible groups outside the viewing-only note overview, so the keybind falls through unconsumed) posting ghosttySortGroupsByPriority / ghosttySortGroupsByDeadline; BaseTerminalController handlers call the model. Model: SplitTree.reorderingLeaves(to:) rebuilds the identical structure (same shape, directions, ratios) handing out a permutation of the current leaves in traversal order; WorkspaceState.applyVisibleGroupOrder applies an ordering to the canonical tree (hidden groups have no leaf and are untouched; ordinals derive from traversal order so Cmd+1-9 follows automatically; nothing else rewrites the leaf assignment so the order persists until the next sort); WorkspaceModel.sortVisibleGroupsByPriority/Deadline consume the existing stable T-024 orderings, guarded by canSortVisibleGroups which is also the keybind performability answer. Explicit-only holds by construction: priority/deadline setters never touch the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with both new actions, regenerated C header consumption, macOS app with the sort dispatch) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over both appended XGHOSTTY_ACTION_SORT_GROUPS_BY_* tags and the two new keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 22 GroupPriorityDeadlineTests passed, including the 5 new sort-action cases named in the log covering every S-053 layout criterion: prioritySortActionReordersTheRealLayout (high->medium->low->unset applied to the real layout with the stable medium tie preserved through the reorder, ordinals following), deadlineSortActionReordersTheRealLayout (nearest first, unset last, stable same-day tie), sortActionLeavesHiddenGroupsAndFocusUntouched (hidden shelf gains no leaf, focus id-keyed and unchanged), sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort (priority/deadline changes never reorder; sorted layout persists until the next explicit sort), sortDeclinesForSingleGroupAndDuringNoteOverview (performability declines for one group and during the viewing-only overview, works again after it closes)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete prior group/note/primary/terminated/priority-deadline suite passes unchanged with the sort actions in the tree. The only intended behavior change is the new cmd+s / cmd+shift+s default assignment, S-010's sanctioned exception."
+        }
+      ]
     },
     {
       "id": "T-028",

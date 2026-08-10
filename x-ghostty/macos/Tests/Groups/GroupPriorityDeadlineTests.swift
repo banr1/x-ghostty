@@ -238,6 +238,119 @@ struct GroupPriorityDeadlineTests {
         #expect(model.groupPriority(of: hiddenHigh.id) == .high)
     }
 
+    // MARK: Sort actions (SPEC §24.4)
+
+    @Test func prioritySortActionReordersTheRealLayout() throws {
+        let unset = Self.makeGroup(name: "unset")
+        let low = Self.makeGroup(name: "low")
+        let medium1 = Self.makeGroup(name: "medium-1")
+        let high = Self.makeGroup(name: "high")
+        let medium2 = Self.makeGroup(name: "medium-2")
+        let model = try Self.makeModel(visible: [unset, low, medium1, high, medium2])
+
+        model.setGroupPriority(low.id, to: .low)
+        model.setGroupPriority(medium1.id, to: .medium)
+        model.setGroupPriority(high.id, to: .high)
+        model.setGroupPriority(medium2.id, to: .medium)
+
+        // The action applies the priority ordering to the real layout —
+        // including the stable tie (medium1 stays before medium2 through the
+        // actual reorder), and the ordinals (Cmd+1–9) follow the new
+        // traversal order.
+        #expect(model.sortVisibleGroupsByPriority())
+        #expect(model.state.visibleGroupIDs
+                == [high.id, medium1.id, medium2.id, low.id, unset.id])
+        #expect(model.state.ordinal(of: high.id) == 1)
+        #expect(model.state.visibleGroupID(ordinal: 5) == unset.id)
+    }
+
+    @Test func deadlineSortActionReordersTheRealLayout() throws {
+        let unset = Self.makeGroup(name: "unset")
+        let december = Self.makeGroup(name: "december")
+        let september1 = Self.makeGroup(name: "september-1")
+        let september2 = Self.makeGroup(name: "september-2")
+        let august = Self.makeGroup(name: "august")
+        let model = try Self.makeModel(
+            visible: [unset, december, september1, september2, august])
+
+        model.setGroupDeadline(december.id, to: Self.deadline(2026, 12, 1))
+        model.setGroupDeadline(september1.id, to: Self.deadline(2026, 9, 1))
+        model.setGroupDeadline(september2.id, to: Self.deadline(2026, 9, 1))
+        model.setGroupDeadline(august.id, to: Self.deadline(2026, 8, 20))
+
+        // Nearest first, unset last, the same-day tie stable through the
+        // actual reorder.
+        #expect(model.sortVisibleGroupsByDeadline())
+        #expect(model.state.visibleGroupIDs
+                == [august.id, september1.id, september2.id, december.id, unset.id])
+        #expect(model.state.ordinal(of: august.id) == 1)
+    }
+
+    @Test func sortActionLeavesHiddenGroupsAndFocusUntouched() throws {
+        let low = Self.makeGroup(name: "low")
+        let high = Self.makeGroup(name: "high")
+        let hiddenHigh = Self.makeGroup(name: "hidden-high")
+        let model = try Self.makeModel(visible: [low, high], hidden: [hiddenHigh])
+
+        model.setGroupPriority(low.id, to: .low)
+        model.setGroupPriority(high.id, to: .high)
+        model.setGroupPriority(hiddenHigh.id, to: .high)
+
+        // The sort permutes only the visible groups' slots: the hidden group
+        // gains no canonical leaf, and focus is id-keyed so it stays on the
+        // same group in its new slot.
+        let focusedBefore = model.state.focusedGroup
+        #expect(model.sortVisibleGroupsByPriority())
+        #expect(model.state.visibleGroupIDs == [high.id, low.id])
+        #expect(model.state.hiddenGroupIDs == [hiddenHigh.id])
+        #expect(model.state.focusedGroup == focusedBefore)
+    }
+
+    @Test func sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort() throws {
+        let alpha = Self.makeGroup(name: "alpha")
+        let beta = Self.makeGroup(name: "beta")
+        let gamma = Self.makeGroup(name: "gamma")
+        let model = try Self.makeModel(visible: [alpha, beta, gamma])
+
+        model.setGroupPriority(beta.id, to: .high)
+        #expect(model.sortVisibleGroupsByPriority())
+        #expect(model.state.visibleGroupIDs == [beta.id, alpha.id, gamma.id])
+
+        // Changing a priority or a deadline never reorders by itself: the
+        // sorted layout persists until the next explicit sort action.
+        model.setGroupPriority(gamma.id, to: .high)
+        model.setGroupDeadline(alpha.id, to: Self.deadline(2026, 8, 20))
+        #expect(model.state.visibleGroupIDs == [beta.id, alpha.id, gamma.id])
+
+        #expect(model.sortVisibleGroupsByPriority())
+        #expect(model.state.visibleGroupIDs == [beta.id, gamma.id, alpha.id])
+    }
+
+    @Test func sortDeclinesForSingleGroupAndDuringNoteOverview() throws {
+        let only = Self.makeGroup(name: "only")
+        let single = try Self.makeModel(visible: [only])
+        // Nothing to reorder: the keybind's performability check declines.
+        #expect(!single.canSortVisibleGroups)
+        #expect(!single.sortVisibleGroupsByPriority())
+
+        let alpha = Self.makeGroup(name: "alpha")
+        let beta = Self.makeGroup(name: "beta")
+        let model = try Self.makeModel(visible: [alpha, beta])
+        model.setGroupPriority(beta.id, to: .high)
+        #expect(model.toggleNoteOverview())
+
+        // The note overview is viewing-only: the sort declines and the
+        // layout stays put until the overview is closed.
+        #expect(!model.canSortVisibleGroups)
+        #expect(!model.sortVisibleGroupsByDeadline())
+        #expect(model.state.visibleGroupIDs == [alpha.id, beta.id])
+
+        model.endNoteOverview()
+        #expect(model.canSortVisibleGroups)
+        #expect(model.sortVisibleGroupsByPriority())
+        #expect(model.state.visibleGroupIDs == [beta.id, alpha.id])
+    }
+
     // MARK: Editor commit point (SPEC §24.1)
 
     @Test func endNoteEditingSavesNotePriorityAndDeadlineTogether() throws {

@@ -356,6 +356,16 @@ pub const Action = union(Key) {
     /// C ABI compatibility; see the note above.
     set_primary,
 
+    /// Reorder the visible groups' layout by priority (high → medium → low →
+    /// unset, stable ties). It is up to the apprt to apply it. Appended last
+    /// to preserve C ABI compatibility; see the note above.
+    sort_groups_by_priority,
+
+    /// Reorder the visible groups' layout by deadline (nearest first, unset
+    /// last, stable ties). It is up to the apprt to apply it. Appended last
+    /// to preserve C ABI compatibility; see the note above.
+    sort_groups_by_deadline,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -428,6 +438,8 @@ pub const Action = union(Key) {
         edit_group_note,
         toggle_note_overview,
         set_primary,
+        sort_groups_by_priority,
+        sort_groups_by_deadline,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

@@ -449,6 +449,14 @@ extension XGhostty.Notification {
     /// focus; the focused pane becomes its group's primary pane (zoom-only, `SPEC.md` §22.4).
     static let ghosttySetPrimary = Notification.Name("com.mitchellh.xghostty.setPrimary")
 
+    /// Posted when `sort_groups_by_priority` is requested. The sending object is the surface
+    /// that had focus; the visible groups' layout reorders by priority (`SPEC.md` §24.4).
+    static let ghosttySortGroupsByPriority = Notification.Name("com.mitchellh.xghostty.sortGroupsByPriority")
+
+    /// Posted when `sort_groups_by_deadline` is requested. The sending object is the surface
+    /// that had focus; the visible groups' layout reorders by deadline (`SPEC.md` §24.4).
+    static let ghosttySortGroupsByDeadline = Notification.Name("com.mitchellh.xghostty.sortGroupsByDeadline")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 

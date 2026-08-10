@@ -498,6 +498,12 @@ extension XGhostty {
             case XGHOSTTY_ACTION_SET_PRIMARY:
                 return setPrimary(app, target: target)
 
+            case XGHOSTTY_ACTION_SORT_GROUPS_BY_PRIORITY:
+                return sortGroups(app, target: target, notification: Notification.ghosttySortGroupsByPriority)
+
+            case XGHOSTTY_ACTION_SORT_GROUPS_BY_DEADLINE:
+                return sortGroups(app, target: target, notification: Notification.ghosttySortGroupsByDeadline)
+
             case XGHOSTTY_ACTION_SET_GROUP_TITLE:
                 setGroupTitle(app, target: target, v: action.action.set_group_title)
 
@@ -909,6 +915,37 @@ extension XGhostty {
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttySetPrimary,
+                    object: surfaceView)
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
+        private static func sortGroups(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s,
+            notification: Foundation.Notification.Name) -> Bool {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("sort groups does nothing with an app target")
+                return false
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable with something to reorder (two or more
+                // visible groups) outside the viewing-only note overview
+                // (SPEC §24.4); otherwise the keybind falls through
+                // unconsumed.
+                guard controller.workspace.canSortVisibleGroups else { return false }
+
+                NotificationCenter.default.post(
+                    name: notification,
                     object: surfaceView)
                 return true
 

@@ -672,6 +672,20 @@ pub const Action = union(enum) {
     /// always exactly one primary per group).
     set_primary,
 
+    /// Reorder the visible groups' layout by priority: high → medium → low →
+    /// unset, groups with equal priority keeping their current relative
+    /// order. Hidden groups are unaffected. Sorting happens only when this
+    /// action runs — changing a priority never reorders by itself — and the
+    /// resulting order persists until the next sort.
+    sort_groups_by_priority,
+
+    /// Reorder the visible groups' layout by deadline: nearest date first,
+    /// unset last, groups with the same date keeping their current relative
+    /// order. Hidden groups are unaffected. Sorting happens only when this
+    /// action runs — changing a deadline never reorders by itself — and the
+    /// resulting order persists until the next sort.
+    sort_groups_by_deadline,
+
     /// Close the current group, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_group,
@@ -1341,6 +1355,8 @@ pub const Action = union(enum) {
             .edit_group_note,
             .toggle_note_overview,
             .set_primary,
+            .sort_groups_by_priority,
+            .sort_groups_by_deadline,
             .close_group,
             .inspector,
             => .surface,
@@ -3474,6 +3490,14 @@ test "parse: group split actions" {
     {
         const binding = try parseSingle("a=set_primary");
         try testing.expect(binding.action == .set_primary);
+    }
+    {
+        const binding = try parseSingle("a=sort_groups_by_priority");
+        try testing.expect(binding.action == .sort_groups_by_priority);
+    }
+    {
+        const binding = try parseSingle("a=sort_groups_by_deadline");
+        try testing.expect(binding.action == .sort_groups_by_deadline);
     }
     {
         const binding = try parseSingle("a=close_group");

@@ -959,6 +959,43 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.primaryMarkPaneIDs
     }
 
+    // MARK: Sort actions (SPEC §24.4)
+
+    /// Whether a sort action (`sort_groups_by_priority` /
+    /// `sort_groups_by_deadline`) can reorder anything: at least two visible
+    /// groups, and not while the note overview is active (the overview is a
+    /// viewing-only mode). Callers use this both to perform the action and to
+    /// answer the keybind's performability check, so the two always agree.
+    var canSortVisibleGroups: Bool {
+        !noteOverviewActive && state.visibleGroupIDs.count >= 2
+    }
+
+    /// Reorder the visible groups' layout by priority (`sort_groups_by_priority`,
+    /// SPEC §24.4): high → medium → low → unset, equal priorities keeping
+    /// their current relative order. The ordering judgment and the stable-tie
+    /// rule live in `priorityOrderedVisibleGroupIDs`; this applies it to the
+    /// real layout. Hidden groups are unaffected, and the order persists
+    /// until the next sort — priority changes never reorder by themselves.
+    ///
+    /// - Returns: whether the layout was reordered.
+    @discardableResult
+    func sortVisibleGroupsByPriority() -> Bool {
+        guard canSortVisibleGroups else { return false }
+        return state.applyVisibleGroupOrder(state.priorityOrderedVisibleGroupIDs())
+    }
+
+    /// Reorder the visible groups' layout by deadline (`sort_groups_by_deadline`,
+    /// SPEC §24.4): nearest date first, unset last, same-date groups keeping
+    /// their current relative order. Same contract as
+    /// `sortVisibleGroupsByPriority`, consuming `deadlineOrderedVisibleGroupIDs`.
+    ///
+    /// - Returns: whether the layout was reordered.
+    @discardableResult
+    func sortVisibleGroupsByDeadline() -> Bool {
+        guard canSortVisibleGroups else { return false }
+        return state.applyVisibleGroupOrder(state.deadlineOrderedVisibleGroupIDs())
+    }
+
     /// The pane-count badge per group — the total pane count, only in the
     /// overall (non-zoomed) view and only for groups holding non-primary
     /// panes (SPEC §22.7). Forwarded from the state so the render path and

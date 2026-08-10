@@ -1259,6 +1259,54 @@ extension SplitTree {
         return .init(root: swapped, zoomed: zoomed)
     }
 
+    /// Returns a copy of the tree whose leaves, in traversal order, hold
+    /// `newOrder`'s elements.
+    ///
+    /// Only the leaf payloads are reassigned: the tree's shape and every
+    /// split's direction/ratio are untouched, so a reorder never reflows the
+    /// layout — the elements simply change slots. The zoomed node is left
+    /// as-is — it identifies a node by value, so a zoomed leaf keeps
+    /// following its element to the element's new position.
+    ///
+    /// The group layer uses this for the sort actions (reorder the visible
+    /// groups by priority/deadline); it is element-agnostic so other callers
+    /// can reuse it.
+    ///
+    /// - Returns: the reordered tree, or nil when `newOrder` is not a
+    ///   permutation of the current leaves.
+    func reorderingLeaves(to newOrder: [Element]) -> Self? {
+        guard let root else { return newOrder.isEmpty ? self : nil }
+
+        // `newOrder` must mention every current leaf exactly once.
+        let currentIDs = Set(map(\.id))
+        let newIDs = Set(newOrder.map(\.id))
+        guard newOrder.count == count, newIDs.count == newOrder.count,
+              newIDs == currentIDs else { return nil }
+
+        // Rebuild the identical structure, handing out `newOrder`'s elements
+        // in traversal order (left subtree first, matching `makeIterator`).
+        var remaining = newOrder.makeIterator()
+        func rebuild(_ node: Node) -> Node {
+            switch node {
+            case .leaf:
+                // Counts are equal, so the iterator cannot run dry.
+                guard let next = remaining.next() else { return node }
+                return .leaf(view: next)
+
+            case .split(let split):
+                let left = rebuild(split.left)
+                let right = rebuild(split.right)
+                return .split(.init(
+                    direction: split.direction,
+                    ratio: split.ratio,
+                    left: left,
+                    right: right))
+            }
+        }
+
+        return .init(root: rebuild(root), zoomed: zoomed)
+    }
+
     /// Returns a copy of the tree with `element` appended by splitting the
     /// trailing leaf — the last leaf in traversal order — in half horizontally:
     /// the trailing leaf keeps the left half of its own space and `element`

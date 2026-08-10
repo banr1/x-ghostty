@@ -637,6 +637,8 @@ fn actionCommands(action: Action.Key) []const Command {
         .edit_group_note,
         .toggle_note_overview,
         .set_primary,
+        .sort_groups_by_priority,
+        .sort_groups_by_deadline,
         .close_group,
         => comptime &.{},
 

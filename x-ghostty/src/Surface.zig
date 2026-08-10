@@ -5375,6 +5375,18 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .sort_groups_by_priority => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .sort_groups_by_priority,
+            {},
+        ),
+
+        .sort_groups_by_deadline => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .sort_groups_by_deadline,
+            {},
+        ),
+
         .close_group => return try self.rt_app.performAction(
             .{ .surface = self },
             .close_group,
