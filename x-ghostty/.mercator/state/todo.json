@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-018"
+    "T-007"
   ],
   "items": [
     {
@@ -279,7 +279,7 @@
     {
       "id": "T-007",
       "title": "Optional mouse affordance: open the focused project's note from the header band (or equivalent) by mouse",
-      "status": "pending",
+      "status": "done",
       "priority": "should",
       "spec": [
         "S-014"
@@ -288,7 +288,45 @@
         "mode": "mercator"
       },
       "batch_group": "notes-optional",
-      "risk_level": "normal"
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupLabel.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "Header-band mouse affordance for notes (SPEC §21.2 / §7.1): GroupLabel gains a trailing note glyph (square.and.pencil, 10pt) that recedes below the header text (opacity 0.5 focused / 0.3 unfocused) and brightens on hover (0.9), with contentShape hit area, accessibility button trait/label, and a help tooltip; it is hidden while the band is in inline-rename mode so the band holds one interactive mode at a time. Clicking it calls GroupLabelActions.openNote(group.id), wired in TerminalWorkspaceView to WorkspaceModel.beginNoteEditing(id) — the existing model entry point whose guards (unknown group, note-overview viewing-only mode) already apply, so a non-focused group's note opens directly WITHOUT moving group focus (judgment stays in the model; the view only forwards). New XGhosttyTests case beginNoteEditingNonFocusedGroupOpensItWithoutMovingFocus covers the mouse path's model semantics. SPEC.md updated: §7.1 interaction table adds the note-glyph click, §21.2 documents the mouse affordance (non-focused direct edit, no focus change, hidden during rename, blocked during overview), §21.4 test inventory extended. README.md Notes bullet mentions the header-band glyph."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: full suite TEST SUCCEEDED (exit 0) with the note-affordance changes and the new test in the tree."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupNoteTests test",
+          "exit_code": 0,
+          "summary": "Targeted confirmation run: TEST SUCCEEDED, and the new test case GroupNoteTests/beginNoteEditingNonFocusedGroupOpensItWithoutMovingFocus passed (named in the log)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the new header affordance) exited 0. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
     },
     {
       "id": "T-008",

@@ -16,6 +16,9 @@ import SwiftUI
 /// Interaction (§7.1):
 /// - single click  → focus that group
 /// - double click  → begin inline rename
+/// - note glyph click (trailing edge) → open that group's note editor
+///   (`SPEC.md` §21.2 — the mouse counterpart of Cmd+N; the group focus is
+///   left unchanged)
 ///
 /// Inline rename is also entered by the `rename_group` action; both paths set
 /// `WorkspaceModel.renamingGroup`, which drives `isRenaming` here, so they share
@@ -44,18 +47,32 @@ struct GroupLabel: View {
     let onCommitRename: (String) -> Void
     let onCancelRename: () -> Void
 
+    /// Open this group's note editor (the trailing note-glyph click).
+    let onOpenNote: () -> Void
+
     @State private var draft: String = ""
+    @State private var noteButtonHovered = false
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
-        content
+        HStack(spacing: 6) {
+            content
+                // Focused groups are emphasized; unfocused groups stay visible
+                // but recede (`SPEC.md` §7.1). The editor is always full
+                // opacity. This dims only the text — the band background below
+                // stays opaque, and the note button manages its own dimming.
+                .opacity(isRenaming ? 1.0 : (isFocused ? 1.0 : 0.4))
+
+            // The note affordance is hidden while renaming so the band holds
+            // exactly one interactive mode at a time.
+            if !isRenaming {
+                Spacer(minLength: 0)
+                noteButton
+            }
+        }
             .font(headerFont)
             .lineLimit(1)
             .foregroundStyle(.primary)
-            // Focused groups are emphasized; unfocused groups stay visible but
-            // recede (`SPEC.md` §7.1). The editor is always full opacity. This
-            // dims only the text — the band background below stays opaque.
-            .opacity(isRenaming ? 1.0 : (isFocused ? 1.0 : 0.4))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -90,6 +107,23 @@ struct GroupLabel: View {
         } else {
             label
         }
+    }
+
+    /// The trailing note affordance: a small pencil glyph that opens this
+    /// group's note editor (`SPEC.md` §21.2). It recedes further than the
+    /// header text so the band stays name-first, and brightens on hover to
+    /// read as clickable. Its own opacity is independent of the focus dimming
+    /// above so the affordance stays discoverable on unfocused groups.
+    private var noteButton: some View {
+        Image(systemName: "square.and.pencil")
+            .font(.system(size: 10))
+            .opacity(noteButtonHovered ? 0.9 : (isFocused ? 0.5 : 0.3))
+            .contentShape(Rectangle())
+            .onHover { noteButtonHovered = $0 }
+            .onTapGesture(perform: onOpenNote)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(Text("Edit note for group \(name)"))
+            .help("Edit note")
     }
 
     private var label: some View {

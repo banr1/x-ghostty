@@ -49,7 +49,12 @@ struct TerminalWorkspaceView: View {
             focus: onFocusGroup,
             beginRename: { workspace.beginRenaming($0) },
             commitRename: { workspace.renameGroup($0, to: $1) },
-            cancelRename: { workspace.cancelRenaming() })
+            cancelRename: { workspace.cancelRenaming() },
+            // The header-band mouse affordance (SPEC §21.2): opens that
+            // group's note editor directly, leaving the group focus unchanged.
+            // `beginNoteEditing` already guards the unknown-group and
+            // overview-active cases.
+            openNote: { workspace.beginNoteEditing($0) })
     }
 
     var body: some View {

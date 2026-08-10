@@ -292,6 +292,9 @@ single click label:
 double click label:
   inline rename
 
+click note glyph (帯の右端):
+  その group のノート編集オーバーレイを開く(§21.2、focus は変えない)
+
 rename_group action:
   focused group の名前を prompt で変更
 ```
@@ -1365,6 +1368,11 @@ static let maxNoteLines = 10
 
 - focused グループのノート編集オーバーレイを開く。セッション状態は
   `WorkspaceModel.noteEditingGroup`(transient、永続化しない)。
+- マウス導線: 各グループのヘッダー帯右端のノートグリフ(hover で強調)を
+  クリックすると、**そのグループ**のノート編集オーバーレイが開く。focused
+  でないグループも直接編集でき、グループ focus は変更しない。rename 編集中の
+  帯ではグリフを出さない。一望モード中は捕捉層がマウスを遮断し、モデル側の
+  `beginNoteEditing` ガードも no-op にする(§21.3)。
 - 複数行 `TextEditor` は 10 行ぶんの高さを確保し、**編集中は常に全文が
   見える**。
 - **Cmd+Enter は保存して閉じる**(背景クリックも同じ保存経路)。実装上、
@@ -1409,7 +1417,8 @@ static let maxNoteLines = 10
 - 正規化: 10 行上限(init / setNote / decode)、改行統一、レガシー decode
 - setGroupNote: 保存・上限・未知グループ no-op・クリア
 - Codable round trip でノート本文復元
-- 編集セッション: begin は focused を対象 / end(Cmd+Enter)は保存して
+- 編集セッション: begin は focused を対象 / begin(id) は非 focused でも
+  開き focus を変えない(ヘッダー帯マウス導線) / end(Cmd+Enter)は保存して
   閉じる / cancel(Esc)は破棄して閉じ開く前の本文を保持 /
   グループ消滅でクリア
 - 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /

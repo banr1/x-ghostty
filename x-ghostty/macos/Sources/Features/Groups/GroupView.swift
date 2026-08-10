@@ -11,6 +11,10 @@ struct GroupLabelActions {
     var beginRename: (GroupID) -> Void
     var commitRename: (GroupID, String) -> Void
     var cancelRename: () -> Void
+    /// Open the note editor for that group (the header-band mouse affordance,
+    /// `SPEC.md` §21.2). Model-only: routes to `beginNoteEditing`, which keeps
+    /// the group focus unchanged.
+    var openNote: (GroupID) -> Void
 }
 
 /// Renders a single group: a name-header band stacked above its pane split tree
@@ -65,7 +69,8 @@ struct GroupView: View {
                 onFocus: { labelActions.focus(group.id) },
                 onBeginRename: { labelActions.beginRename(group.id) },
                 onCommitRename: { labelActions.commitRename(group.id, $0) },
-                onCancelRename: labelActions.cancelRename)
+                onCancelRename: labelActions.cancelRename,
+                onOpenNote: { labelActions.openNote(group.id) })
 
             TerminalSplitTreeView(
                 tree: primaryOnly ? group.overallViewPaneTree : group.paneTree,

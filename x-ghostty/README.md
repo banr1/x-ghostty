@@ -33,7 +33,9 @@ its window management with a single model:
   note editor overlay for the focused group (`Cmd+Enter` saves and closes,
   Esc discards and closes; to keep `Cmd+Enter` free for this, the upstream
   `cmd+enter` fullscreen default is unbound — fullscreen remains on
-  `Ctrl+Cmd+F` and the Window menu); `Cmd+Opt+N` toggles a read-only
+  `Ctrl+Cmd+F` and the Window menu); clicking the note glyph at the right
+  edge of a group's header band opens that group's note editor directly,
+  without moving focus; `Cmd+Opt+N` toggles a read-only
   overview that lays every visible group's note over it at once (press
   `Cmd+Opt+N` again or Esc to leave). See SPEC.md §21.
 - **Primary panes.** Each group has exactly one primary pane (by default its

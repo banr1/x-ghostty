@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "fb455998458a374683bfd74467790db1890a0c6b65208df6e7e548e7e855f420",
+    "last_signature": "e7d68889dc4dcc5258028148fdb0d5f3a40ecd16566de5837680055e01d54bb9",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T12:23:34+09:00",
-    "last_checked_at": "2026-08-10T12:23:34+09:00"
+    "last_progress_at": "2026-08-10T12:37:45+09:00",
+    "last_checked_at": "2026-08-10T12:37:45+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,25 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.6,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 2,
-    "completed_todos_since_reset": 3,
+    "changed_files_since_reset": 8,
+    "completed_todos_since_reset": 4,
     "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T12:24:23+09:00",
-    "summary": "Human resume: must完了したのでshouldへ移行",
-    "next_actions": [],
-    "open_questions": [],
-    "pending_cycle": true
+    "written_at": "2026-08-10T12:38:00+09:00",
+    "summary": "Should phase in progress. T-007 (note mouse affordance) done with full green gates this cycle. Remaining runnable shoulds: T-019 (pane-count badge). T-008 (visual refinement) intentionally left pending: R-007 (proposed, non-blocking) asks the human for concrete direction or closure, since both on-device checks recorded no visual complaints and final UI appearance is a human-reserved judgment.",
+    "next_actions": [
+      "Next cycle: implement T-019 — subtle overall-view indicator (e.g. pane-count badge) that a group has non-primary panes; model-layer judgment (which groups show a badge, count) in WorkspaceState/GroupState with XGhosttyTests, badge rendering in GroupView/GroupLabel following the primary-mark styling; then zig build / just test / just swift-test.",
+      "Do not implement T-008 without human direction (see R-007); if the human resolves R-007 with concrete direction, execute it as specified.",
+      "When T-019 is done and only T-008 remains blocked on R-007, raise a Human-input Recommendation naming T-008 and the R-007 decision instead of idling."
+    ],
+    "open_questions": [
+      "R-007: does the human want concrete visual refinements (T-008) or close it as satisfied?"
+    ],
+    "pending_cycle": false
   }
 }

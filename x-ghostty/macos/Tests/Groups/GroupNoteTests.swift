@@ -170,6 +170,18 @@ struct GroupNoteTests {
         #expect(model.noteEditingGroup == nil)
     }
 
+    @Test func beginNoteEditingNonFocusedGroupOpensItWithoutMovingFocus() throws {
+        // The header-band mouse affordance (SPEC §21.2) opens any visible
+        // group's note editor directly — the group focus must stay put.
+        let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
+        let model = WorkspaceModel(state)
+
+        model.beginNoteEditing(ids.1)
+
+        #expect(model.noteEditingGroup == ids.1)
+        #expect(model.state.focusedGroup == ids.0)
+    }
+
     @Test func endNoteEditingSavesDraftAndCloses() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoGroupState()
         let model = WorkspaceModel(state)
