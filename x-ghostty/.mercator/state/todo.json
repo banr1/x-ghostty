@@ -9,7 +9,9 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-023"
+    "T-020",
+    "T-021",
+    "T-022"
   ],
   "items": [
     {
@@ -805,7 +807,7 @@
     {
       "id": "T-020",
       "title": "Unconditional group-close confirmation: close_group and last-pane Cmd+W always show the Cancel / Close Group dialog regardless of running processes, with XGhosttyTests covering the always-confirm requirement",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-032",
@@ -817,12 +819,40 @@
       },
       "batch_group": "protect-confirm",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupTerminatedTests.swift"
+          ],
+          "summary": "Always-confirm group close (SPEC section 23.1 to be written in T-028; authored in run R-20260810T160205+0900-7b3f90 / commit 9f707d8, reviewed and verified this cycle). The judgment lives on the model so tests can pin it: WorkspaceModel.closeGroupRequiresConfirmation(anyLiveProcess:) returns true unconditionally - the confirmed close-group dialog is the single sanctioned path that loses a group and its information. BaseTerminalController.closeFocusedGroup now consults that judgment instead of the surfaceTree needsConfirmQuit scan, so the existing Cancel / Close Group dialog appears regardless of running processes; ghosttyDidCloseSurface's last-pane escalation drops its groups.count>1 gate, so a single-group last-pane Cmd+W also escalates to the confirmed close_group (whose confirmed path still delegates to window close per section 18.5). Made sound by T-021: the core no longer closes surfaces on child exit, so every close_surface notification reaching the escalation is an explicit user operation - the always-confirm can never fire on a shell death."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupTerminatedTests test",
+          "exit_code": 0,
+          "summary": "Targeted run this cycle: TEST SUCCEEDED, including closeGroupRequiresConfirmationRegardlessOfRunningProcesses (confirmation required both with and without a live process - the S-050 always-confirm criterion), named passing in the log."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate this cycle: full XGhosttyTests suite TEST SUCCEEDED (exit 0) - the pre-existing close/undo suite passes unchanged against the new confirmation predicate."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate this cycle: full app build exited 0. Direct zig build per R-002."
+        }
+      ]
     },
     {
       "id": "T-021",
       "title": "Terminated-state model layer: last-pane shell exit (normal/abnormal/process death) keeps the group with its note as a terminated pane instead of closing; a single pane's exit in a multi-pane group still closes only that pane; terminated groups persist and restore with their notes; the primary-close last-pane path follows the terminated-state semantics; judgment logic in the model layer covered by XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-033",
@@ -836,12 +866,50 @@
       },
       "batch_group": "protect-model",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/Surface.zig",
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Tests/Groups/GroupTerminatedTests.swift"
+          ],
+          "summary": "Terminated-state model layer (SPEC section 23.2/23.4 to be written in T-028; authored in run R-20260810T160205+0900-7b3f90, committed as 9f707d8 when that session died with claude_exit_1 before verifying; reviewed and verified this cycle). Zig core: Surface.childExited no longer closes the surface (message trimmed to 'Process exited.'; the wait_after_command early-return removed - the app layer owns what an exit means), and keyCallback swallows encoded key input on an exited pane instead of closing, so every remaining core-initiated close is an explicit operation. App layer: show_child_exited posts the new ghosttyChildExited notification unconditionally (even window-less/hidden or instantly-exited panes) with an abnormal-exit Bool derived from abnormalCommandExitRuntime; the message-bar display keeps the upstream visibility guards. Model judgment (pure, value-type-testable): WorkspaceModel.childExitOutcome(for:abnormalExit:) - a group's last pane -> .terminated on every exit kind (normal/abnormal/process death arrive identically), a sibling pane -> .closePane (normal) / .keepPaneAwaitingKey (abnormal, upstream contract kept); GroupState.terminatedPane (private(set), invariant: non-nil only while that pane is the tree's sole leaf, cleared by the paneTree observer on splits/removals), markPaneTerminated (sole-leaf-only), removeExitedPane (model-side sibling close incl. hidden groups; rejects a last pane - that case is .terminated, never a removal), and a terminated primary keeps its flag (the primary-close last-pane path follows the terminated semantics, S-024). Persistence: the terminated state is runtime-only - a restore recreates every pane with a fresh shell so the group comes back live, while the note rides the existing GroupState record; loss paths unchanged (explicit confirmed close only, S-048). Controller: ghosttyDidExitChild routes the outcome (mark terminated / close the exited pane via the focused-tree path or model-side removal / keep awaiting key)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupTerminatedTests test",
+          "exit_code": 0,
+          "summary": "Targeted run this cycle: TEST SUCCEEDED, all 16 GroupTerminatedTests named passing in the log, covering every S-050 model criterion: last-pane exit judged .terminated for every exit kind; markPaneTerminated keeps the group with its note and pane (and rejects a pane among several); sibling normal exit judged .closePane and removeExitedPane closes only that pane (note kept, hidden-group path included; a group's last pane rejected); terminated-group Codable round trip keeps the note (the state itself is runtime-only, so the group restores live); a terminated primary last pane keeps its flag; the outcome is re-judged after siblings close (promotes to .terminated); splitting while terminated clears the state; restart transition covered (fresh pane in the same slot / rejected when not terminated)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate this cycle: full XGhosttyTests suite TEST SUCCEEDED (exit 0) - the complete prior group/note/primary suite passes unchanged with the terminated-state layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate this cycle: full app build (Zig core with the childExited/keyCallback changes + C header + macOS app) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate this cycle: Zig test suite exited 0 with the Surface.zig changes in the tree (no action/keybind surface changed; the header enum-sync check is unaffected)."
+        }
+      ]
     },
     {
       "id": "T-022",
       "title": "Terminated pane UI and restart: a terminated pane renders a terminal-fitting terminated view, and pressing Enter starts a new shell in the same pane to resume work",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-034"
@@ -851,7 +919,37 @@
       },
       "batch_group": "protect-ui",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupTerminatedPaneView.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/XGhostty/Surface View/SurfaceView_AppKit.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift"
+          ],
+          "summary": "Terminated pane UI and Enter restart (SPEC section 23.3 to be written in T-028; authored in run R-20260810T160205+0900-7b3f90 / commit 9f707d8, reviewed and verified this cycle). UI: new GroupTerminatedPaneView rendered by GroupView over the pane area while the group is terminated - the dead terminal's last frame stays visible but dimmed (the final output often says how the shell ended), with a terminal-styled panel (poweroff glyph, 'Shell exited', 'Press Return to start a new shell' hint, monospaced type, the terminal's own background color and split-divider stroke - the note-surface styling family); hit-testing disabled so clicking a terminated group still focuses it, which routes the subsequent Enter to the restart path. Key routing: SurfaceView.keyDown posts ghosttyExitedSurfaceKeyDown (with an isReturn flag) for exited panes instead of writing to the dead pty - only plain keyDowns land there, so command chords (Cmd+W etc.) keep working on an exited pane. Controller: on Enter for a terminated group, restartTerminatedPane builds a fresh SurfaceView (fresh shell), swaps it into the same pane slot via the model (WorkspaceModel.restartTerminatedPane: the new pane becomes primary and the focused surface, note kept), re-syncs surfaceTree and moves keyboard focus when the group is focused; a non-terminated exited pane keeps the upstream any-key-closes contract, re-judged at key time so a pane whose siblings have since closed terminates instead of closing."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupTerminatedTests test",
+          "exit_code": 0,
+          "summary": "Targeted run this cycle: TEST SUCCEEDED - the restart transition's model semantics pass: restartTerminatedPaneStartsFreshPaneInSameSlot (fresh pane in the same sole slot, becomes primary and focused surface, note kept, terminated state cleared) and restartIsRejectedWhenNotTerminated, plus exitOutcomeIsRejudgedAfterSiblingsClosed for the key-time re-judgment."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate this cycle: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the terminated cover view and the exited-pane key routing in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate this cycle: full app build (macOS app with the terminated cover view and key path) exited 0. Direct zig build per R-002."
+        }
+      ]
     },
     {
       "id": "T-023",
