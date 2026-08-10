@@ -20,6 +20,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     // `WorkspaceModel.WorkspaceError` / `.CloseGroupOutcome` spelling working.
     typealias WorkspaceError = WorkspaceModelError
     typealias CloseGroupOutcome = WorkspaceCloseGroupOutcome
+    typealias ChildExitOutcome = WorkspaceChildExitOutcome
 
     @Published private(set) var state: WorkspaceStateOf<Pane>
 
@@ -626,6 +627,110 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             .id
     }
 
+    // MARK: Deletion protection (SPEC §23)
+
+    /// Whether closing a group must confirm first (`SPEC.md` §23.1): always.
+    /// The confirmed close_group dialog is the single sanctioned path that
+    /// loses a group and its information (note, name, layout slot), so the
+    /// confirmation appears regardless of whether any process is running —
+    /// the parameter exists so the judgment (not the caller) owns that rule.
+    func closeGroupRequiresConfirmation(anyLiveProcess: Bool) -> Bool {
+        true
+    }
+
+    /// The group whose pane tree holds `paneID`, visible or hidden, or `nil`
+    /// for an unknown pane.
+    func groupID(containing paneID: SurfaceID) -> GroupID? {
+        state.groups.first { $0.value.paneTree.find(id: paneID.rawValue) != nil }?.key
+    }
+
+    /// Whether group `id` is in the terminated state (`SPEC.md` §23.2): its
+    /// last pane's shell has exited and the pane is kept instead of closing.
+    func isGroupTerminated(_ id: GroupID) -> Bool {
+        state.groups[id]?.isTerminated ?? false
+    }
+
+    /// The model-layer judgment of what a child-process exit (normal exit,
+    /// abnormal exit, or process death alike) means for pane `paneID`
+    /// (`SPEC.md` §23.2):
+    ///
+    /// - The group's last pane → `.terminated`: the group must not close; the
+    ///   pane is kept in the terminated state with the note preserved.
+    /// - One pane among several, normal exit → `.closePane`: the pane closes
+    ///   as it always did.
+    /// - One pane among several, abnormal exit → `.keepPaneAwaitingKey`: the
+    ///   upstream contract is kept — the pane stays with its error message
+    ///   until a key press closes it.
+    ///
+    /// Pure judgment: the caller applies the outcome via
+    /// `markPaneTerminated` / `removeExitedPane` (or the controller's
+    /// focused-tree close path).
+    ///
+    /// - Returns: `nil` when no group holds `paneID`.
+    func childExitOutcome(for paneID: SurfaceID, abnormalExit: Bool) -> WorkspaceChildExitOutcome? {
+        guard let groupID = groupID(containing: paneID),
+              let group = state.groups[groupID] else { return nil }
+        if !group.paneTree.isSplit { return .terminated(groupID) }
+        return abnormalExit ? .keepPaneAwaitingKey(groupID) : .closePane(groupID)
+    }
+
+    /// Enter the terminated state for `paneID`'s group (`SPEC.md` §23.2).
+    /// Rejected unless `paneID` is its group's sole pane (the state is
+    /// defined only for a last pane).
+    @discardableResult
+    func markPaneTerminated(_ paneID: SurfaceID) -> Bool {
+        guard let groupID = groupID(containing: paneID),
+              var group = state.groups[groupID] else { return false }
+        guard group.markPaneTerminated(paneID) else { return false }
+        state.groups[groupID] = group
+        return true
+    }
+
+    /// Remove the exited pane `paneID` from its group's tree — the model-side
+    /// close for panes outside the focused group's mirrored `surfaceTree`
+    /// (hidden or non-focused groups). Rejected when the pane is its group's
+    /// last one: that case is `.terminated`, never a removal (`SPEC.md`
+    /// §23.2). A dangling stored focus falls back to the first remaining
+    /// leaf; the primary flag reconciles via the tree observer.
+    @discardableResult
+    func removeExitedPane(_ paneID: SurfaceID) -> Bool {
+        guard let groupID = groupID(containing: paneID),
+              var group = state.groups[groupID],
+              group.paneTree.isSplit,
+              let node = group.paneTree.find(id: paneID.rawValue) else { return false }
+
+        group.paneTree = group.paneTree.removing(node)
+        if let stored = group.focusedSurface,
+           group.paneTree.find(id: stored.rawValue) == nil {
+            group.focusedSurface = group.paneTree.firstLeaf.map { SurfaceID(rawValue: $0.id) }
+        }
+        state.groups[groupID] = group
+        state.snapFocusToPrimaryInOverallView()
+        return true
+    }
+
+    /// Leave the terminated state of group `groupID` by starting `newPane`
+    /// (which carries a fresh shell) in the same pane slot (`SPEC.md` §23.3):
+    /// the Enter-restart path. The new pane becomes the group's primary and
+    /// its focused surface.
+    ///
+    /// - Returns: `false` when the group is unknown or not terminated (the
+    ///   caller should then discard `newPane`).
+    @discardableResult
+    func restartTerminatedPane(
+        in groupID: GroupID,
+        with newPane: Pane,
+        now: Date = Date()
+    ) -> Bool {
+        guard var group = state.groups[groupID],
+              group.restartTerminatedPane(with: newPane) else { return false }
+
+        group.focusedSurface = SurfaceID(rawValue: newPane.id)
+        group.lastFocusedAt = now
+        state.groups[groupID] = group
+        return true
+    }
+
     // MARK: Rename (Phase 3)
 
     /// Enter inline-rename mode for `id`. No-op if the group is unknown.
@@ -872,6 +977,24 @@ enum WorkspaceModelError: Error {
     /// there is no number left to give a new one. Rejected silently (no
     /// toast, no beep): the caller simply does nothing.
     case visibleGroupLimitReached
+}
+
+/// The model-layer judgment of what a child-process exit means for its pane
+/// (`SPEC.md` §23.2): deletion protection keeps the group when the exited
+/// pane is its last one; otherwise the pane closes as it always did.
+enum WorkspaceChildExitOutcome: Equatable {
+    /// The exited pane is its group's only pane: the group stays — with its
+    /// note — holding the pane in the terminated state (Enter restarts,
+    /// `SPEC.md` §23.3).
+    case terminated(GroupID)
+
+    /// One pane among several exited normally: it closes as before.
+    case closePane(GroupID)
+
+    /// One pane among several exited abnormally: the upstream contract is
+    /// kept — the pane stays with its error message until a key press
+    /// closes it.
+    case keepPaneAwaitingKey(GroupID)
 }
 
 /// The result of closing the focused group (`SPEC.md` §11.9).

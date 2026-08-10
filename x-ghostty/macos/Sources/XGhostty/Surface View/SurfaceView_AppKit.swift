@@ -1070,6 +1070,22 @@ extension XGhostty {
         }
 
         override func keyDown(with event: NSEvent) {
+            // Once the child process has exited the pane no longer talks to a
+            // live pty, so its key input belongs to the group layer: Enter
+            // restarts a terminated pane's shell, any key closes an exited
+            // sibling pane. Only plain keyDowns land here — command chords go
+            // through the key-equivalent path first, so keybinds such as
+            // Cmd+W keep working on an exited pane.
+            if processExited {
+                let isReturn = event.specialKey == .carriageReturn
+                    || event.specialKey == .enter
+                NotificationCenter.default.post(
+                    name: XGhostty.Notification.ghosttyExitedSurfaceKeyDown,
+                    object: self,
+                    userInfo: [XGhostty.Notification.ExitedSurfaceKeyIsReturnKey: isReturn])
+                return
+            }
+
             guard let surface = self.surface else {
                 self.interpretKeyEvents([event])
                 return

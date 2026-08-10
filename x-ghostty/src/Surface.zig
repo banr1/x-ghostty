@@ -1261,7 +1261,7 @@ fn childExited(self: *Surface, info: apprt.surface.Message.ChildExited) void {
         const t: *terminal.Terminal = self.renderer_state.terminal;
         t.carriageReturn();
         t.linefeed() catch break :terminal;
-        t.printString("Process exited. Press any key to close the terminal.") catch
+        t.printString("Process exited.") catch
             break :terminal;
         t.modes.set(.cursor_visible, false);
 
@@ -1272,13 +1272,12 @@ fn childExited(self: *Surface, info: apprt.surface.Message.ChildExited) void {
         t.screens.active.kitty_keyboard.set(.set, .disabled);
     }
 
-    // Waiting after command we stop here. The terminal is updated, our
-    // state is updated, and now its up to the user to decide what to do.
-    if (self.config.wait_after_command) return;
-
-    // If we aren't waiting after the command, then we exit immediately
-    // with no confirmation.
-    self.close();
+    // XGhostty: the surface never closes itself on a child exit. The app
+    // layer was notified above (show_child_exited) and owns what the exit
+    // means for the pane: an exited sibling pane is closed from the app
+    // side, while a group's last pane stays as a terminated pane whose
+    // shell can be restarted (deletion protection). This makes every
+    // remaining core-initiated close an explicit user operation.
 }
 
 /// Called when the child process exited abnormally.
@@ -2778,12 +2777,14 @@ pub fn keyCallback(
         event,
         if (insp_ev) |*ev| ev else null,
     )) |write_req| {
-        // If our process is exited and we press a key that results in
-        // an encoded value, we close the surface. We want to eventually
-        // move this behavior to the apprt probably.
+        // XGhostty: once the child has exited there is no live pty to
+        // write to, and the app layer owns key handling for exited panes
+        // (close an exited sibling pane on any key, restart a terminated
+        // pane's shell on Enter — deletion protection), so the input is
+        // swallowed here instead of closing the surface.
         if (self.child_exited) {
-            self.close();
-            return .closed;
+            write_req.deinit();
+            return .ignored;
         }
 
         errdefer write_req.deinit();

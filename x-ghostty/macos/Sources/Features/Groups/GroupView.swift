@@ -81,6 +81,14 @@ struct GroupView: View {
                 tree: primaryOnly ? group.overallViewPaneTree : group.paneTree,
                 markedPane: primaryMarkPane?.rawValue,
                 action: paneAction)
+                .overlay {
+                    // Terminated-state cover (SPEC §23.3): the group's last
+                    // pane's shell has exited; the pane area reads as
+                    // "finished, resumable" until Enter starts a new shell.
+                    if group.isTerminated {
+                        GroupTerminatedPaneView()
+                    }
+                }
                 .overlay(alignment: .topTrailing) {
                     if let paneCountBadge {
                         GroupPaneCountBadge(count: paneCountBadge)

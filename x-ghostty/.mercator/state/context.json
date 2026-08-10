@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "25c97d52adb8df7287c31e1b0a08fdd95780ce884e30dd532317bfa8f4c43be8",
+    "last_signature": "61b4e1705f30c295eb4e8e66194dc3eea03a661eaf6725355c7ddf6aa9c8aabb",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T16:02:04+09:00",
-    "last_checked_at": "2026-08-10T16:02:04+09:00"
+    "last_progress_at": "2026-08-10T16:35:27+09:00",
+    "last_checked_at": "2026-08-10T16:35:27+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,16 +20,16 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.75,
+    "context_usage_estimate": 0.0,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 3,
-    "completed_todos_since_reset": 2,
-    "important_decisions_since_reset": 1,
-    "major_spec_rewrite_since_reset": true,
+    "changed_files_since_reset": 0,
+    "completed_todos_since_reset": 0,
+    "important_decisions_since_reset": 0,
+    "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T16:00:54+09:00",
+    "written_at": "2026-08-10T16:02:05+09:00",
     "summary": "Cycle R-20260810T152707+0900-378ac3 re-projected the updated Essence (sha 057b5122...) into Spec (54 items; new S-032..S-054, S-010/S-024 re-anchored) and Todo (13 new: T-020..T-029 mercator must, T-030..T-032 human must), then completed T-023 with all gates green (targeted GroupNoteTests, just swift-test, zig build, just test all exit 0): the note editor now receives Cmd+A/C/X/V via hidden keyboardShortcut receivers forwarding standard editing selectors to the first responder, and the new paste-truncation test locks the existing CRLF-normalizing 10-line save cap. Remaining must Todos: T-020..T-022 (deletion protection), T-024..T-027 (priority/deadline/sort), T-028 (docs), T-029 (full gates), T-030..T-032 (human on-device checks). Phase is extended_approved; all shoulds are already done.",
     "next_actions": [
       "Implement the protect batch as one design: T-021 first (Zig src/Surface.zig:1204-1282 childExited must stop closing the surface — wait_after_command is the precedent — and surface a terminated-pane state to the Swift model; last-pane exit keeps the group + note, multi-pane exit still closes just that pane, terminated groups persist/restore), then T-020 becomes trivial: closeFocusedGroup always confirms (model-layer judgment seam for testability) and the ghosttyDidCloseSurface escalation (BaseTerminalController.swift:900-918) drops its groups.count>1 gate so single-group last-pane Cmd+W also confirms. T-022 adds the terminated view + Enter restart.",

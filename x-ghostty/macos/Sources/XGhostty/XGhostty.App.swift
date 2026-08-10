@@ -1827,10 +1827,24 @@ extension XGhostty {
             case XGHOSTTY_TARGET_SURFACE:
                 guard let surface = target.target.surface else { return false }
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                // We handle this when the window is visible and timetime_ms is greater than 0,
-                // which will rule out exit codes on launch
-                guard surfaceView.window != nil, v.timetime_ms > 0 else { return false }
                 guard let config = (NSApplication.shared.delegate as? AppDelegate)?.ghostty.config else { return false }
+
+                // The group layer owns what a child exit means for the pane
+                // (close an exited sibling pane, keep a group's last pane as a
+                // terminated pane), so it is notified unconditionally — even
+                // for a window-less (hidden-group) or instantly-exited pane.
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyChildExited,
+                    object: surfaceView,
+                    userInfo: [
+                        Notification.ChildExitedAbnormalKey:
+                            config.abnormalCommandExitRuntime >= .milliseconds(v.timetime_ms),
+                    ])
+
+                // The message bar keeps the upstream guards: only shown when
+                // the window is visible and timetime_ms is greater than 0,
+                // which rules out exit codes on launch.
+                guard surfaceView.window != nil, v.timetime_ms > 0 else { return false }
                 surfaceView.setChildExitedMessage(.init(v, threshold: config.abnormalCommandExitRuntime))
                 return true
             default:

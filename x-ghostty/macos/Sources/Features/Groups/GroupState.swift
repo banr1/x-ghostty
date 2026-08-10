@@ -36,6 +36,15 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
                 previousTree: oldValue,
                 previousPrimary: primaryPane?.rawValue
             ).map(SurfaceID.init(rawValue:))
+            // The terminated state is valid only while the terminated pane is
+            // the tree's sole leaf (SPEC §23.2): if the pane leaves the tree,
+            // or the tree grows past one pane (e.g. a split while terminated),
+            // the group is no longer "terminated" — the dead pane, if still
+            // present, is just an exited sibling pane.
+            if let terminated = terminatedPane,
+               paneTree.isSplit || paneTree.find(id: terminated.rawValue) == nil {
+                terminatedPane = nil
+            }
         }
     }
 
@@ -58,6 +67,16 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
     /// `setPrimaryPane` rejects panes outside the tree — so an invalid state
     /// (zero or several primaries) is unrepresentable in memory.
     private(set) var primaryPane: SurfaceID?
+
+    /// The pane held in the terminated state, or `nil` (`SPEC.md` §23.2): the
+    /// group's last pane whose shell has exited. The group stays — with its
+    /// note — instead of closing, and Enter starts a new shell in the pane.
+    ///
+    /// Invariant: non-`nil` only while that pane is the tree's sole leaf,
+    /// maintained by `markPaneTerminated` and the `paneTree` observer.
+    /// Runtime-only: never persisted — a restore recreates every pane with a
+    /// fresh shell, so a restored group is live again (`SPEC.md` §23.4).
+    private(set) var terminatedPane: SurfaceID?
 
     var createdAt: Date
     var lastFocusedAt: Date?
@@ -134,6 +153,44 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
     mutating func setPrimaryPane(_ paneID: SurfaceID) -> Bool {
         guard paneTree.find(id: paneID.rawValue) != nil else { return false }
         primaryPane = paneID
+        return true
+    }
+
+    // MARK: Terminated state (SPEC §23.2–23.3)
+
+    /// Whether this group is in the terminated state: its last pane's shell
+    /// has exited and the pane is kept instead of closing the group.
+    var isTerminated: Bool {
+        terminatedPane != nil
+    }
+
+    /// Enter the terminated state for `paneID` (`SPEC.md` §23.2): the group's
+    /// last pane whose shell exited is kept — with the group and its note —
+    /// instead of closing.
+    ///
+    /// - Returns: `false` (and changes nothing) unless `paneID` is the tree's
+    ///   sole leaf: the terminated state is defined only for a last pane; an
+    ///   exited pane among several simply closes.
+    @discardableResult
+    mutating func markPaneTerminated(_ paneID: SurfaceID) -> Bool {
+        guard !paneTree.isSplit,
+              paneTree.find(id: paneID.rawValue) != nil else { return false }
+        terminatedPane = paneID
+        return true
+    }
+
+    /// Leave the terminated state by replacing the dead pane with `newPane`,
+    /// which carries a fresh shell (`SPEC.md` §23.3): the group resumes work
+    /// in the same pane slot, keeping its note, name, and layout position.
+    ///
+    /// - Returns: `false` (and changes nothing) when the group is not
+    ///   terminated.
+    @discardableResult
+    mutating func restartTerminatedPane(with newPane: Pane) -> Bool {
+        guard isTerminated else { return false }
+        // The tree observer clears `terminatedPane` (the dead pane leaves the
+        // tree) and re-resolves the primary onto the sole new leaf.
+        paneTree = SplitTree<Pane>(view: newPane)
         return true
     }
 }

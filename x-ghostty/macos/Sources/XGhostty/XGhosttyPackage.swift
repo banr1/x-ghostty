@@ -452,6 +452,24 @@ extension XGhostty.Notification {
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 
+    /// Posted when a surface's child process has exited (any way: normal exit,
+    /// abnormal exit, process death). The sending object is the surface. The
+    /// core never closes a surface on child exit; the group layer judges what
+    /// the exit means for the pane — close an exited sibling pane, or keep a
+    /// group's last pane as a terminated pane (deletion protection).
+    static let ghosttyChildExited = Notification.Name("com.mitchellh.xghostty.childExited")
+    /// Bool: whether the exit was judged abnormal (runtime below the
+    /// `abnormal-command-exit-runtime` threshold).
+    static let ChildExitedAbnormalKey = ghosttyChildExited.rawValue + ".abnormal"
+
+    /// Posted when a key is pressed on a surface whose child process has
+    /// exited. The sending object is the surface. The pane no longer talks to
+    /// a live pty, so the group layer owns the key: Enter restarts a
+    /// terminated pane's shell; any key closes an exited sibling pane.
+    static let ghosttyExitedSurfaceKeyDown = Notification.Name("com.mitchellh.xghostty.exitedSurfaceKeyDown")
+    /// Bool: whether the pressed key was Return / keypad Enter.
+    static let ExitedSurfaceKeyIsReturnKey = ghosttyExitedSurfaceKeyDown.rawValue + ".isReturn"
+
     /// Focus previous/next split. Has a SplitFocusDirection in the userinfo.
     static let ghosttyFocusSplit = Notification.Name("com.mitchellh.xghostty.focusSplit")
     static let SplitDirectionKey = ghosttyFocusSplit.rawValue

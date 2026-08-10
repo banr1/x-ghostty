@@ -274,6 +274,16 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidExitChild(_:)),
+            name: XGhostty.Notification.ghosttyChildExited,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyDidPressKeyOnExitedSurface(_:)),
+            name: XGhostty.Notification.ghosttyExitedSurfaceKeyDown,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidNewSplit(_:)),
             name: XGhostty.Notification.ghosttyNewSplit,
             object: nil)
@@ -901,13 +911,13 @@ class BaseTerminalController: NSWindowController,
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard let node = surfaceTree.root?.node(view: target) else { return }
 
-        // §11.10: closing the last pane of a group is really closing the group.
-        // When this close would empty the focused group's pane tree *and* there
-        // are sibling groups, escalate to `close_group` (which switches focus to
-        // a sibling). With only one group we fall through to the existing
-        // close_surface path, which already handles last-pane → window close
-        // (§18.5).
-        if workspace.state.groups.count > 1, surfaceTree.removing(node).isEmpty {
+        // §11.10 / §23.1: closing the last pane of a group is really closing
+        // the group, so it escalates to `close_group` — which always confirms
+        // (deletion protection) — even when this is the only group (there the
+        // confirmed close delegates to the window close, §18.5). The core
+        // never closes a surface on child exit anymore (§23.2), so every
+        // close arriving here is an explicit operation.
+        if surfaceTree.removing(node).isEmpty {
             closeFocusedGroup()
             return
         }
@@ -915,6 +925,96 @@ class BaseTerminalController: NSWindowController,
         closeSurface(
             node,
             withConfirmation: (notification.userInfo?["process_alive"] as? Bool) ?? false)
+    }
+
+    /// A surface's child process exited (`SPEC.md` §23.2). The core keeps the
+    /// surface open unconditionally; the model judges what the exit means:
+    /// a group's last pane enters the terminated state (the group and its
+    /// note stay), an exited sibling pane closes as before, and an
+    /// abnormally-exited sibling stays with its error message until a key
+    /// press closes it (`ghosttyDidPressKeyOnExitedSurface`).
+    @objc private func ghosttyDidExitChild(_ notification: Notification) {
+        guard let target = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(target) else { return }
+        let abnormal = notification.userInfo?[
+            XGhostty.Notification.ChildExitedAbnormalKey
+        ] as? Bool ?? false
+
+        switch workspace.childExitOutcome(
+            for: SurfaceID(rawValue: target.id),
+            abnormalExit: abnormal
+        ) {
+        case .terminated:
+            workspace.markPaneTerminated(SurfaceID(rawValue: target.id))
+
+        case .closePane:
+            closeExitedPane(target)
+
+        case .keepPaneAwaitingKey, nil:
+            break
+        }
+    }
+
+    /// A key was pressed on a surface whose child process has exited
+    /// (`SPEC.md` §23.2–23.3). A terminated pane (its group's protected last
+    /// pane) reacts only to Enter, which starts a new shell in the same pane;
+    /// any other exited pane keeps the upstream contract — the first key
+    /// press closes it. The outcome is re-judged at key time: sibling panes
+    /// may have closed since the exit, making this the last pane, which then
+    /// enters the terminated state instead of closing.
+    @objc private func ghosttyDidPressKeyOnExitedSurface(_ notification: Notification) {
+        guard let target = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(target) else { return }
+        let isReturn = notification.userInfo?[
+            XGhostty.Notification.ExitedSurfaceKeyIsReturnKey
+        ] as? Bool ?? false
+        let paneID = SurfaceID(rawValue: target.id)
+
+        if let groupID = workspace.groupID(containing: paneID),
+           workspace.isGroupTerminated(groupID) {
+            if isReturn { restartTerminatedPane(in: groupID) }
+            return
+        }
+
+        switch workspace.childExitOutcome(for: paneID, abnormalExit: true) {
+        case .terminated:
+            workspace.markPaneTerminated(paneID)
+
+        case .closePane, .keepPaneAwaitingKey:
+            closeExitedPane(target)
+
+        case nil:
+            break
+        }
+    }
+
+    /// Close the exited pane `view` — a pane among several, so never a
+    /// group-close. The focused group's panes are `surfaceTree`, so they go
+    /// through the existing close path (focus move, undo); a pane in any
+    /// other (e.g. hidden) group is removed model-side.
+    private func closeExitedPane(_ view: XGhostty.SurfaceView) {
+        if let node = surfaceTree.root?.node(view: view) {
+            closeSurface(node, withConfirmation: false)
+        } else {
+            workspace.removeExitedPane(SurfaceID(rawValue: view.id))
+        }
+    }
+
+    /// Start a new shell in a terminated group's pane slot (`SPEC.md` §23.3):
+    /// the Enter-restart path. Builds a fresh surface (a fresh shell), swaps
+    /// it into the group via the model, and — when the group is focused —
+    /// re-syncs `surfaceTree` and moves keyboard focus into the new pane.
+    func restartTerminatedPane(in groupID: GroupID) {
+        guard workspace.isGroupTerminated(groupID) else { return }
+        guard let xghostty_app = ghostty.app else { return }
+
+        let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: nil)
+        guard workspace.restartTerminatedPane(in: groupID, with: newView) else { return }
+
+        if groupID == workspace.state.focusedGroup {
+            surfaceTree = workspace.focusedPaneTree
+            moveKeyboardFocus(toGroupSurface: SurfaceID(rawValue: newView.id))
+        }
     }
 
     @objc private func ghosttyDidNewSplit(_ notification: Notification) {
@@ -1577,10 +1677,11 @@ class BaseTerminalController: NSWindowController,
     }
 
     /// Close the focused group in response to `close_group` or a last-pane
-    /// `Cmd+W` (`SPEC.md` §11.9, §11.10). This is destructive — it terminates
-    /// the group's processes — so it confirms first whenever any pane still has a
-    /// live process (mirroring close_surface / window-close UX; the dialog text
-    /// only makes sense when there is something to terminate).
+    /// `Cmd+W` (`SPEC.md` §11.9, §11.10, §23.1). This is destructive — it is
+    /// the single sanctioned path that loses a group and its information
+    /// (note, name, layout slot) — so it always confirms first, regardless of
+    /// whether any process is running (deletion protection; the judgment
+    /// lives on the model so tests can pin it).
     ///
     /// The `.switched` close registers a group-aware undo ("Close Group"); the
     /// pre-close snapshot retains the closed group's `SurfaceView`s, so its
@@ -1591,7 +1692,8 @@ class BaseTerminalController: NSWindowController,
         guard let group = workspace.focusedGroupState else { return }
 
         // The focused group's panes are exactly `surfaceTree`.
-        guard surfaceTree.contains(where: { $0.needsConfirmQuit }) else {
+        let anyLiveProcess = surfaceTree.contains(where: { $0.needsConfirmQuit })
+        guard workspace.closeGroupRequiresConfirmation(anyLiveProcess: anyLiveProcess) else {
             performCloseFocusedGroup()
             return
         }
