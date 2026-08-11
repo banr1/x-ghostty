@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "9bfd5486c61dd4c72d6e1caf9f4fe900ded85e1dca99892be1be2222b331a7e2",
+    "last_signature": "bdab018b86877b1879c03ab2f9226fd9e9055d249ec66d0b360857bf650a9a9b",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-10T17:55:11+09:00",
-    "last_checked_at": "2026-08-10T17:55:11+09:00"
+    "last_progress_at": "2026-08-11T15:44:08+09:00",
+    "last_checked_at": "2026-08-11T15:44:08+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,24 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.6,
     "failed_attempts_since_reset": 0,
     "changed_files_since_reset": 15,
     "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 3,
-    "major_spec_rewrite_since_reset": false,
+    "important_decisions_since_reset": 4,
+    "major_spec_rewrite_since_reset": true,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-11T15:30:21+09:00",
-    "summary": "Human resume: 2026-08-10 の ESSENCE.md 更新(hide の選択式化・登録レイアウト適用・「グループ」→「プロジェクト」の全面改名を必須対応事項 46〜59 / 成功条件 13〜17 として追加し、文書全体の語彙も置換)は人間自身の編集であり、レビュー済みとして記録する。次サイクルはまず現行 ESSENCE(04844c78…)から Spec/Todo を再射影すること — 現 spec.json は旧 Essence(057b5122…)由来で、追加分がまったく射影されていない。\nR-009 は「実機確認は後回し」という決定で解除する: T-030 / T-031 / T-032 は done にせず pending のまま据え置き、実機目視確認は改名・hide 選択画面・レイアウト適用の実装が揃った時点で、成功条件 9 / 10 / 12 / 14 / 16 / 17 をまとめて一度に依頼すること(改名でユーザー可視文言が全面的に変わり、新 UI も加わるため、いま確認しても再確認が必要になる)。",
-    "next_actions": [],
+    "written_at": "2026-08-11T15:45:00+09:00",
+    "summary": "Cycle R-20260811T153030: re-projected Spec/Todo from the human-attested ESSENCE 04844c78 (hide-selection screen, 11 registered layouts, full group-to-project rename). spec.json now stamps 04844c78 with 73 items: 20 stale essence_refs updated to the new project vocabulary (S-002, S-010 incl. the 3 new sanctioned exceptions, S-018/019/020/024/026/029/030/031/032/033/035/041/044/045/047/050/051/053) and 19 new Specs S-055..S-073. todo.json has 11 new Todos T-033..T-043; validation status ok, no warnings. No implementation was touched this cycle (major spec rewrite -> reset expected). Execution order decided: T-033 rename FIRST (active_batch, its own batch - renaming before new features means hide-selection/layout code is written directly in project vocabulary), then T-034/T-035 (hide-selection model+UI), T-036/T-037 (layout model+UI), T-038 (docs), T-039 (full verify incl. rename completion checks). Human on-device checks are deferred per R-009: when T-033..T-039 are green, raise ONE combined Human-input Recommendation asking for T-030/T-031/T-032 (deferred from batch 3) plus T-040/T-041/T-042 in a single sitting. T-043 (AGENTS.md vocabulary, should, HIGH-RISK target AGENTS.md) runs alone in its own batch under the relaxed unsandboxed profile with hook-recorded hashes. Rename scope notes for T-033: fork action names hide_group/close_group/toggle_group_zoom/rename_group/goto_group/edit_group_note/toggle_note_overview/set_primary is already neutral/sort_groups_by_*; XGHOSTTY_ACTION_* C tags may be renamed but keep enum order (checkXGhosttyHEnum guards); macos/Sources/Features/Groups/ and macos/Tests/Groups/ move to Projects/; upstream core vocabulary (e.g. Zig-internal non-fork identifiers) untouched; keybind back-compat explicitly not guaranteed (S-067).",
+    "next_actions": [
+      "Execute T-033 (group-to-project rename) as its own batch; verify with zig build / just test / just swift-test plus rename completion checks (Projects/ exists, no Groups/, no fork user-visible 'Group')",
+      "Then T-034/T-035 hide-selection (model first), T-036/T-037 registered layouts (model first), T-038 docs, T-039 full verification",
+      "After all gates green: one combined Human-input Recommendation for on-device checks T-030/031/032 + T-040/041/042",
+      "T-043 (AGENTS.md vocabulary, high-risk) in its own batch, hashes into high_risk_changes.jsonl and Todo evidence"
+    ],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }

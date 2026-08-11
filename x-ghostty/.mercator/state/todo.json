@@ -9,8 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-028",
-    "T-029"
+    "T-033"
   ],
   "items": [
     {
@@ -1338,6 +1337,196 @@
       },
       "batch_group": "batch3-human",
       "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-033",
+      "title": "Full group-to-project rename (pure rename, no behavior change): fork-specific keybind action names (hide_group, close_group, toggle_group_zoom, rename_group, goto_group, edit_group_note, sort_groups_by_* etc. to their project forms) across the Zig core / C header / Swift dispatch, Swift identifiers (GroupState to ProjectState etc.), directory and file names (macos/Sources/Features/Groups/ to Projects/, macos/Tests/Groups/ to Projects/), user-visible wording (menus, dialogs, hidden shelf), and SPEC.md / README.md terminology; upstream terminal-core vocabulary untouched; AGENTS.md is excluded (high-risk path, T-043); all three gates green afterwards",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-066",
+        "S-067",
+        "S-073",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "rename",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-034",
+      "title": "Hide-selection model layer: selection session over visible projects (multi-toggle, batch hide on confirm, cancel hides nothing, confirm rejected while all visible projects are selected so at least one stays visible), judgment logic in the model layer with XGhosttyTests covering the S-069 criteria; hidden-shelf return path unchanged",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-056",
+        "S-057",
+        "S-065",
+        "S-069"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "hide-select",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-035",
+      "title": "Hide-selection UI: repurpose Cmd+Opt+H (the renamed hide_project action) to open the selection screen listing visible projects, multi-toggle selection, Enter batch-hides into the hidden shelf, Esc closes hiding nothing; overlay only while invoked, terminal returns to full view on exit",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-056",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "hide-select",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-036",
+      "title": "Registered-layout model layer: the 11 built-in layouts (equal-split 4-9, X+1 for X=4-8), slot computation per the sqrt-n row rule, assignment of visible projects in ordinal order (top row first, left to right, +1 slot last), count matching (shortfall = new projects at the ordinal tail; excess = exact-count hide-pick with confirm gating), no persistent applied-layout state, unselected hidden projects unaffected, ordinals following the result; XGhosttyTests covering the S-071 criteria",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-058",
+        "S-059",
+        "S-061",
+        "S-062",
+        "S-063",
+        "S-064",
+        "S-065",
+        "S-071"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "layout",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-037",
+      "title": "Layout-application UI: new Cmd+L action opening the layout-selection overlay (arrow-key list, Enter applies, Esc closes changing nothing), the excess-case hide-pick screen (exact-count confirm gating, Esc cancels the whole application), shortfall creating new projects with fresh shells; overlay only while invoked, terminal returns to full view on exit",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-060",
+        "S-062",
+        "S-063",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "layout",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-038",
+      "title": "Update SPEC.md and README.md to describe the hide-selection and layout-application layers as implemented, in the post-rename vocabulary",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-068"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "batch4-docs",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-039",
+      "title": "Full verification: zig build / just test / just swift-test all exit 0 with every S-069 / S-071 test present and passing, the rename completion checks (Projects/ exists, no Groups/, project-family action names and identifiers, no 'Group' in fork user-visible strings) verified by command, and no regression beyond the sanctioned exceptions",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-069",
+        "S-071",
+        "S-073",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "batch4-verify",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-040",
+      "title": "Human on-device visual verification of the hide-selection screen (one-time): Cmd+Opt+H opens it, multi-select + Enter hides the selected projects in one batch into the hidden shelf, Esc closes hiding nothing, the screen's appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-070"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch4-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-041",
+      "title": "Human on-device visual verification of layout application (one-time): Cmd+L list + arrows + Enter applies and Esc changes nothing; equal count applies directly, more creates new projects at the tail, fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-072"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch4-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-042",
+      "title": "Human on-device verification of the rename (one-time): no user-visible wording (menus, dialogs, shelf etc.) shows 'Group'",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-073"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch4-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-043",
+      "title": "Update AGENTS.md (whose CLAUDE.md symlink follows) to the post-rename project vocabulary so the implementation docs do not drift; content-only terminology edit",
+      "status": "pending",
+      "priority": "should",
+      "spec": [
+        "S-068"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "agents-doc",
+      "risk_level": "high",
+      "risk_reason": "Documentation file on an agent-runtime configuration path (Agent Runtime High-Risk Zone); any edit requires high-risk tracking with before/after hashes",
+      "target": "AGENTS.md",
       "evidence": []
     }
   ]
