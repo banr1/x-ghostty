@@ -1295,7 +1295,7 @@
     {
       "id": "T-030",
       "title": "Human on-device visual verification of the deletion-protection layer (one-time, after its implementation): close confirmation appears for an idle-shell-only group and Cancel loses nothing; last-pane shell exit leaves the group as a terminated display; Enter in the terminated pane starts a new shell; the terminated appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-051"
@@ -1305,7 +1305,15 @@
       },
       "batch_group": "batch3-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:14:17+09:00",
+          "reference": "R-011 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:14:17+09:00",
+          "summary": "The human performed the one-time on-device visual verification of success criterion 9 (deletion protection) and confirmed all four items behave as expected: closing an idle-shell-only project always shows the confirmation dialog and Cancel loses nothing; the last pane shell exit leaves the project as a terminated display instead of closing it; pressing Enter in the terminated pane starts a new shell and work resumes; and the terminated appearance fits the terminal. Recorded per the human instruction in the R-011 resolution during the 2026-08-11T23:14:17+09:00 resume (gate release)."
+        }
+      ]
     },
     {
       "id": "T-031",
@@ -1325,7 +1333,7 @@
     {
       "id": "T-032",
       "title": "Human on-device visual verification of the priority/deadline layer (one-time, after its implementation): overlay sets priority/deadline and the label band shows them; overview shows them with the note; overdue is subtly emphasized; Cmd+S / Cmd+Shift+S reorder with Cmd+1-9 following; the appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-054"
@@ -1335,7 +1343,15 @@
       },
       "batch_group": "batch3-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:14:17+09:00",
+          "reference": "R-011 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:14:17+09:00",
+          "summary": "The human performed the one-time on-device visual verification of success criterion 12 (priority/deadline/sort) and confirmed all five items behave as expected: the Cmd+N overlay sets priority and deadline and the label band shows them after save; overview mode shows priority and deadline together with the note; overdue projects are subtly emphasized; Cmd+S reorders by priority and Cmd+Shift+S by deadline with Cmd+1-9 following the new order; and the appearance (marks, deadline, emphasis) fits the terminal. Recorded per the human instruction in the R-011 resolution during the 2026-08-11T23:14:17+09:00 resume (gate release)."
+        }
+      ]
     },
     {
       "id": "T-033",
@@ -1739,7 +1755,7 @@
     {
       "id": "T-042",
       "title": "Human on-device verification of the rename (one-time): no user-visible wording (menus, dialogs, shelf etc.) shows 'Group'",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-073"
@@ -1749,7 +1765,15 @@
       },
       "batch_group": "batch4-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:14:17+09:00",
+          "reference": "R-011 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:14:17+09:00",
+          "summary": "The human performed the one-time on-device verification of success criterion 17 rename item and confirmed no user-visible wording (menus, dialogs, hidden shelf etc.) shows Group. The command-side rename completion checks (Projects/ directory, action names, identifiers, fork user-visible strings) were already verified in T-039; this closes the remaining visual item. Recorded per the human instruction in the R-011 resolution during the 2026-08-11T23:14:17+09:00 resume (gate release)."
+        }
+      ]
     },
     {
       "id": "T-043",
@@ -1767,6 +1791,95 @@
       "risk_reason": "Documentation file on an agent-runtime configuration path (Agent Runtime High-Risk Zone); any edit requires high-risk tracking with before/after hashes",
       "target": "AGENTS.md",
       "evidence": []
+    },
+    {
+      "id": "T-044",
+      "title": "Fix the note editor dead Cmd+X / Cmd+V editing chords (sent back from the R-011 on-device verification): make cut and paste reach the focused editor reliably while Cmd+A / Cmd+C keep working, so the over-10-line paste truncation becomes verifiable on device",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-036",
+        "S-037"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "sendback-fix",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectOverlayKeys.swift",
+            "macos/Sources/Features/Projects/ProjectNoteEditor.swift",
+            "SPEC.md"
+          ],
+          "summary": "Replaced the note editor editing-chord mechanism, which the R-011 on-device verification found partial (hidden keyboardShortcut buttons + NSApp.sendAction(to: nil) delivered selectAll:/copy: but never cut:/paste:). New shared OverlayKeyDownMonitor (ProjectOverlayKeys.swift): a local NSEvent keyDown monitor scoped to the overlay lifetime via onAppear/onDisappear intercepts plain-Cmd A/C/X/V before any key-equivalent or menu dispatch and performs the standard editing selector directly on the focused NSTextView (the editor, or the deadline field editor), falling back to the responder chain otherwise; matched events are swallowed. This is robust to both failure hypotheses (button never firing, or action dispatch not reaching the text view) since it relies on neither. The four hidden chord buttons were removed; the proven Cmd+Enter save button and Esc onExitCommand paths are untouched. The over-10-line paste truncation logic itself is unchanged model code (already test-covered); Cmd+V delivery was the only missing link. SPEC.md 21.2 updated to describe the monitor mechanism and why it replaced the receiver approach. Overlay sessions are mutually exclusive on the model, so at most one monitor is installed at a time. Keyboard chord behavior itself is GUI-only and remains human-verified (re-verification requested in R-012)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the new monitor file, picked up by the file-system-synchronized Xcode groups) exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED — 540 test cases passed, 0 failures, full suite unchanged and green with the view-layer chord rework in the tree."
+        }
+      ]
+    },
+    {
+      "id": "T-045",
+      "title": "Fix the dead up/down arrow-key cursor movement in the hide-selection screen and the layout list (shared key-sink mechanism, sent back from the R-011 on-device verification), keeping click / Space toggle / Enter confirm / Esc cancel behavior unchanged",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-060"
+      ],
+      "executor": {
+        "mode": "mercator"
+      },
+      "batch_group": "sendback-fix",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectOverlayKeys.swift",
+            "macos/Sources/Features/Projects/ProjectHideSelector.swift",
+            "macos/Sources/Features/Projects/ProjectLayoutSelector.swift",
+            "SPEC.md"
+          ],
+          "summary": "Fixed the dead up/down arrow keys in both selection screens (hide-selection and layout list, sent back by R-011): the sink TextField onMoveCommand never fired because the focused field editor consumes arrow presses during key-binding interpretation. Both screens now take plain (unmodified) up/down through the shared overlayArrowKeys local keyDown monitor (ProjectOverlayKeys.swift), which sees the event before any dispatch, moves the cursor (-1/+1 with the existing wrap-around moveCursor), and swallows the event so the field editor never sees it. The verified-working paths are untouched: Esc via onExitCommand, Enter via onSubmit, Space via the typed-text sink, row click, backdrop-click cancel. The layout hide-pick screen shares ProjectHideSelector, so all three surfaces are covered by the one mechanism change. SPEC.md 25 / 26.2 updated. Cursor-movement key handling is GUI-only and remains human-verified (re-verification requested in R-012)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with both selector reworks in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED — 540 test cases passed, 0 failures; the model-layer selection/layout judgment tests (ProjectHideSelectionTests, ProjectLayoutTests) are unaffected by the view-layer key rework and stay green."
+        }
+      ]
     }
   ]
 }

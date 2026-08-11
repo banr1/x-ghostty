@@ -13,8 +13,11 @@ import SwiftUI
 ///
 /// Keyboard mechanics follow `ProjectHideSelector` / `CommandPaletteView`:
 /// an invisible focused text field holds first responder so the terminal
-/// sees no keystrokes, delivering Escape via `onExitCommand`, Enter via
-/// `onSubmit`, and the arrows via `onMoveCommand`; typed text is discarded.
+/// sees no keystrokes, delivering Escape via `onExitCommand` and Enter via
+/// `onSubmit`; typed text is discarded. The arrows come through the shared
+/// local keyDown monitor (`overlayArrowKeys`) instead of `onMoveCommand`,
+/// which the focused sink field's editor starved on device (see
+/// `ProjectHideSelector`).
 struct ProjectLayoutSelector: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
@@ -62,13 +65,7 @@ struct ProjectLayoutSelector: View {
             .focused($catcherFocused)
             .onExitCommand { onCancel() }
             .onSubmit { chooseCursorRow() }
-            .onMoveCommand { direction in
-                switch direction {
-                case .up: moveCursor(-1)
-                case .down: moveCursor(1)
-                default: break
-                }
-            }
+            .overlayArrowKeys { moveCursor($0) }
             .onChange(of: keyboardSink) { typed in
                 // Typed text lands here instead of the terminal; the
                 // selector has no text input, so it is discarded.

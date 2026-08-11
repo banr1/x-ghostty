@@ -1164,6 +1164,7 @@ macos/Sources/Features/Projects/
   ProjectHideSelector.swift        (hide 選択画面とレイアウト hide-pick が共用、§25/§26.3)
   ProjectLayout.swift              (登録レイアウト 11 種とスロット計算、§26.1)
   ProjectLayoutSelector.swift      (レイアウト選択オーバーレイ、§26.2)
+  ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2/§25)
 ```
 
 (close 確認ダイアログは専用ファイルではなく `BaseTerminalController` の既存
@@ -1410,11 +1411,16 @@ static let maxNoteLines = 10
   選択)/ Cmd+C(コピー)/ Cmd+X(切り取り)/ Cmd+V(貼り付け)はエディタに
   対して標準どおり動作する。Edit メニューのキー equivalents は端末 action
   (`copy_to_clipboard` 等)に同期されておりテキストビューへ届かないため、
-  オーバーレイ内の隠し `keyboardShortcut` 受け口(Cmd+Enter と同パターン)が
-  chord を first responder(エディタのテキストビュー)へ標準セレクタ
-  (`selectAll:`/`copy:`/`cut:`/`paste:`)として転送する。ウィンドウ階層の
-  key-equivalent 判定はメニューバーより先に走るので、この転送はオーバーレイ
-  表示中だけ有効で、端末側のコピー/ペースト挙動は変わらない。
+  オーバーレイの表示期間だけ張られるローカル keyDown モニタ
+  (`OverlayKeyDownMonitor`、`ProjectOverlayKeys.swift`)が chord を
+  key-equivalent / メニュー判定より前に捕まえ、標準セレクタ
+  (`selectAll:`/`copy:`/`cut:`/`paste:`)を focused なテキストビュー
+  (エディタ本体、または締切フィールドの field editor)へ直接 perform する。
+  当初の隠し `keyboardShortcut` 受け口 + `NSApp.sendAction(to: nil)` 方式は
+  実機で `selectAll:`/`copy:` のみ届き `cut:`/`paste:` が不達だったため、
+  key-equivalent 経路にも action dispatch にも依存しない方式に置き換えた。
+  モニタはオーバーレイと同寿命なので、端末側のコピー/ペースト挙動は
+  変わらない。
 - **貼り付けで 10 行を超えた場合も保存時に先頭 10 行へ切り詰める**(手入力と
   同じ §21.1 の正規化経路。CRLF / CR の行末は正規化で `\n` に統一されるため、
   ペースト由来の行末でもキャップは回避されない)。
@@ -1882,8 +1888,12 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
 - キーボードは CommandPaletteView と同じ機構(不可視の focused TextField が
   キーボードを所有):Esc(`onExitCommand`)= キャンセル、Enter(`onSubmit`)=
   確定(モデルが `canConfirmHideSelection` を再判定するため、拒否された確定は
-  画面が残る)、矢印(`onMoveCommand`)= カーソル移動、Space = カーソル行
-  トグル。行クリックでトグル、**背景クリックはキャンセル**(hide するのは
+  画面が残る)、Space = カーソル行トグル。矢印(↑/↓)のカーソル移動だけは
+  `onMoveCommand` でなくローカル keyDown モニタ(`overlayArrowKeys`、
+  `ProjectOverlayKeys.swift`)で受ける — 編集可能な sink TextField が
+  フォーカスを持つ間は field editor が矢印を消費して `onMoveCommand` が
+  発火しない(実機で不達を確認)ため、dispatch 前にイベントを取って消費する。
+  行クリックでトグル、**背景クリックはキャンセル**(hide するのは
   Enter だけ)。
 - controller の確定経路は、バッチ全体に対して **1 つ**のプロジェクト対応
   「Hide Projects」undo を登録する。
@@ -1944,7 +1954,8 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
   **効果プレビュー** — モデルの数合わせ判断をそのまま行ごとに表示:
   「fits」/「+N new」/「pick N to hide」)。矢印でカーソル移動、Enter または
   行クリックで選択、Esc または背景クリックで何も変えずに閉じる。キーボード
-  機構は ProjectHideSelector と同じ sink-TextField 方式。
+  機構は ProjectHideSelector と同じ sink-TextField 方式(矢印も同じく共有の
+  ローカル keyDown モニタ `overlayArrowKeys` で受ける、§25)。
 - オーバーレイは呼び出し中のみ描画され、抜ければ端末が全面に戻る。selector →
   hide-pick の遷移では focus 手戻りをスキップし、キーボードは pick 画面に
   着地する。
