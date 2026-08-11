@@ -29,13 +29,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-10T17:54:50+09:00",
-    "summary": "Cycle R-20260810T174232+0900-d54836 completed T-028 (SPEC sections 23/24 + 9.1/10.5/21.2/16 updates + README bullets; all code citations resolve) and T-029 (full gates: zig build / just test / just swift-test all exit 0, all 16 S-050 and all 21 S-053 tests named passing). Every mercator-executable must Todo (T-001..T-029) is done with evidence. Remaining must: the three human on-device verifications T-030 (deletion protection, success criterion 9), T-031 (editor shortcuts, criterion 10), T-032 (priority/deadline/sort, criterion 12), raised together as R-009 (Human-input Recommendation, requires_human_approval, stop gate). The loop should now stop until the human resumes with the R-009 resolution.",
-    "next_actions": [
-      "After the human resolves R-009: if the checks passed, mark T-030/T-031/T-032 done with type:human evidence referencing the resume resolution (same pattern as T-006/T-018); the must set is then complete and the loop stops at the must boundary (must_complete_awaiting_phase_approval) unless the human already decided the phase in the same resume.",
-      "If the human reports defects or visual complaints, reopen the named Todo (back to pending with the complaint recorded), fix, re-run the gates, and re-raise the on-device check for the affected item only."
-    ],
+    "written_at": "2026-08-11T15:30:21+09:00",
+    "summary": "Human resume: 2026-08-10 の ESSENCE.md 更新(hide の選択式化・登録レイアウト適用・「グループ」→「プロジェクト」の全面改名を必須対応事項 46〜59 / 成功条件 13〜17 として追加し、文書全体の語彙も置換)は人間自身の編集であり、レビュー済みとして記録する。次サイクルはまず現行 ESSENCE(04844c78…)から Spec/Todo を再射影すること — 現 spec.json は旧 Essence(057b5122…)由来で、追加分がまったく射影されていない。\nR-009 は「実機確認は後回し」という決定で解除する: T-030 / T-031 / T-032 は done にせず pending のまま据え置き、実機目視確認は改名・hide 選択画面・レイアウト適用の実装が揃った時点で、成功条件 9 / 10 / 12 / 14 / 16 / 17 をまとめて一度に依頼すること(改名でユーザー可視文言が全面的に変わり、新 UI も加わるため、いま確認しても再確認が必要になる)。",
+    "next_actions": [],
     "open_questions": [],
-    "pending_cycle": false
+    "pending_cycle": true
   }
 }
