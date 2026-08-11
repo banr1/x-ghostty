@@ -366,6 +366,11 @@ pub const Action = union(Key) {
     /// to preserve C ABI compatibility; see the note above.
     sort_projects_by_deadline,
 
+    /// Open the layout-selection overlay listing the built-in registered
+    /// layouts. It is up to the apprt to show it. Appended last to preserve
+    /// C ABI compatibility; see the note above.
+    choose_project_layout,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -440,6 +445,7 @@ pub const Action = union(Key) {
         set_primary,
         sort_projects_by_priority,
         sort_projects_by_deadline,
+        choose_project_layout,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

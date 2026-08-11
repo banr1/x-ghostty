@@ -1307,6 +1307,43 @@ extension SplitTree {
         return .init(root: rebuild(root), zoomed: zoomed)
     }
 
+    /// Builds a tree laying out `rows` as a grid: the rows stack vertically
+    /// at equal heights, and each row's elements sit side by side at equal
+    /// widths. Traversal order is row-major (top row first, left to right
+    /// within a row). Rows may hold different element counts; empty rows are
+    /// skipped, and an empty `rows` yields an empty tree.
+    ///
+    /// The project layer uses this for the registered layouts (arrange the
+    /// visible projects into a fixed grid); it is element-agnostic so other
+    /// callers can reuse it.
+    init(gridRows rows: [[Element]]) {
+        let rowNodes = rows.filter { !$0.isEmpty }.map { row in
+            Self.equalChain(row.map { Node.leaf(view: $0) }, direction: .horizontal)
+        }
+        guard !rowNodes.isEmpty else {
+            self.init()
+            return
+        }
+        self.init(root: Self.equalChain(rowNodes, direction: .vertical), zoomed: nil)
+    }
+
+    /// Chains `nodes` into nested splits along `direction` with equal
+    /// effective sizes: the first node takes 1/n of the total, the second
+    /// 1/(n-1) of the remainder, and so on — every node ends up at 1/n.
+    private static func equalChain(_ nodes: [Node], direction: Direction) -> Node {
+        var result = nodes[nodes.count - 1]
+        var count = 1
+        for node in nodes.dropLast().reversed() {
+            count += 1
+            result = .split(.init(
+                direction: direction,
+                ratio: 1.0 / Double(count),
+                left: node,
+                right: result))
+        }
+        return result
+    }
+
     /// Returns a copy of the tree with `element` appended by splitting the
     /// trailing leaf — the last leaf in traversal order — in half horizontally:
     /// the trailing leaf keeps the left half of its own space and `element`

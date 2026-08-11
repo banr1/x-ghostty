@@ -9,8 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-036",
-    "T-037"
+    "T-038",
+    "T-039"
   ],
   "items": [
     {
@@ -1507,7 +1507,7 @@
     {
       "id": "T-036",
       "title": "Registered-layout model layer: the 11 built-in layouts (equal-split 4-9, X+1 for X=4-8), slot computation per the sqrt-n row rule, assignment of visible projects in ordinal order (top row first, left to right, +1 slot last), count matching (shortfall = new projects at the ordinal tail; excess = exact-count hide-pick with confirm gating), no persistent applied-layout state, unselected hidden projects unaffected, ordinals following the result; XGhosttyTests covering the S-071 criteria",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-058",
@@ -1524,12 +1524,47 @@
       },
       "batch_group": "layout",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectLayout.swift",
+            "macos/Sources/Features/Splits/SplitTree.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Tests/Projects/ProjectLayoutTests.swift"
+          ],
+          "summary": "Registered-layout model layer (SPEC section 26, to be written in T-038). New ProjectLayout value type: the closed set of 11 layouts as data (ProjectLayout.registered: equal-split projectCount 4-9, X+1 projectCount 5-9), the equal-split row rule as a pure function (equalSplitRowCounts: rows = integer nearest sqrt(n), leftovers dealt one each to the top rows - pins 4=2+2, 5=3+2, 6=3+3, 7=3+2+2, 8=3+3+2, 9=3+3+3), rowCounts (X+1 = the X part's rows + a final [1] row), slotFrames (unit-square rects in assignment order - row-major, so the +1 bottom slot is naturally last; all rows equal height including the +1 row, in-row widths equal), and a selector label. SplitTree gains the element-agnostic init(gridRows:) building the grid as nested equal-ratio splits (rows vertical, cells horizontal; equalChain gives the first node ratio 1/n, then 1/(n-1) of the remainder, so every slot is equal), traversal order row-major. WorkspaceModelOf gains the layout sessions and judgment: layoutSelectionActive + canBeginLayoutSelection (>= 1 visible, no other overlay; also the keybind performability answer), beginLayoutSelection (releases zoom), cancelLayoutSelection, chooseLayout (the count-matching judgment: equal count applies immediately in one state write; shortfall returns .needsNewProjects(n) for the controller; excess opens layoutHidePick), applyLayout(appending:) (validates exact shortfall count and id-collision-free, registers the new projects at the ordinal tail, applies), the hide-pick session (layoutHidePick struct WorkspaceLayoutHidePick, toggleLayoutHidePick visible-only, layoutHidePickRequiredCount re-derived live, canConfirmLayoutHidePick == exact excess count, confirmLayoutHidePick hides exactly the selection - never closes - and applies to the remainder in ordinal order with the hide-selection focus rule, cancelLayoutHidePick cancels the whole application), and applyLayoutTree (rebuilds the canonical tree as the grid; one-shot per SPEC 26.4 - no applied-layout state, hidden projects untouched, ordinals follow from traversal order, zoom cleared). The overlay guards were unified into one overlaySessionActive predicate covering note overview / hide selection / both layout sessions."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/ProjectLayoutTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 14 new ProjectLayoutTests named passing in the log, covering every S-071 criterion: registeredLayoutsMatchTheDefinition + equalSplitRowRuleMatchesTheEssenceTable + slotFramesFollowTheGridRule (all 11 layouts' slot computation: the Essence row table, equal row heights / in-row widths, X+1 full-width bottom slot, row-major assignment order, concrete pins for the 7-project split) and gridTreeConstructionMatchesHandBuiltShape (the built tree equals a hand-built equal-ratio node tree); equalCountApplyAssignsOrdinalOrderAndOrdinalsFollow (equal count: visible projects to slots in ordinal order, tree == expected grid, ordinals follow); shortfallCreatesNewProjectsAtTheOrdinalTail (+ applyLayoutRejectsAWrongShortfallCount); excessOpensHidePickGatedOnExactCount (confirm rejected at 0/1/3 of 2 with the screen staying up, exactly the selected two hidden - never closed - and the remaining four assigned in ordinal order with ordinals following); hidePickFocusMovesToNearestSurvivorWhenFocusedProjectPicked; unselectedHiddenProjectsAreUnaffected; escCancelsTheWholeApplication (selector cancel and hide-pick cancel both change nothing); beginReleasesZoomAndDeclinesWhileOtherOverlaysUp; layoutSessionsOwnTheInteractionWhileUp; restoreStateAndTeardownEndTheSessions; applicationIsOneShotAndTheArrangementPersistsLikeAnyOther (a later sort reorders freely; a Codable round trip keeps the applied canonical tree)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete prior suite incl. the hide-selection tests passes unchanged against the unified overlay guards, with the layout layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with the layout model layer. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (gate shared with T-037's action addition, run after both were in the tree)."
+        }
+      ]
     },
     {
       "id": "T-037",
       "title": "Layout-application UI: new Cmd+L action opening the layout-selection overlay (arrow-key list, Enter applies, Esc closes changing nothing), the excess-case hide-pick screen (exact-count confirm gating, Esc cancels the whole application), shortfall creating new projects with fresh shells; overlay only while invoked, terminal returns to full view on exit",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-060",
@@ -1542,7 +1577,45 @@
       },
       "batch_group": "layout",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Terminal/TerminalView.swift",
+            "macos/Sources/Features/Projects/ProjectLayoutSelector.swift",
+            "macos/Sources/Features/Projects/ProjectHideSelector.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift"
+          ],
+          "summary": "New choose_project_layout action following the set_primary end-to-end pattern (SPEC section 26.2): keybind action with doc comment and parse test (Binding.zig incl. the .surface scope list), apprt action + Key enum entry appended last for C ABI (action.zig), Surface.zig dispatch, command.zig palette-exclusion, default keybind cmd+l in Config.zig (grep confirms no 'l' super binding and no menu key equivalent), and XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT appended to xghostty.h (checkXGhosttyHEnum keeps the header in sync). Swift: App.chooseProjectLayout performability declines unless workspace.canBeginLayoutSelection (keybind falls through unconsumed otherwise), posts ghosttyChooseProjectLayout; BaseTerminalController.ghosttyDidChooseProjectLayout opens the model session. New ProjectLayoutSelector overlay (rendered only while the selector is up; terminal returns to full view on exit with keyboard focus handed back): lists the 11 layouts (label, project count, and an effect preview of the model's count-matching judgment - '+N new' / 'pick N to hide' / 'fits'), arrows move the cursor, Enter (or a row click) chooses, Esc (or a backdrop click) cancels; same sink-TextField keyboard mechanics as ProjectHideSelector. Controller.chooseLayout applies the model's outcome: equal count registers one 'Apply Layout' undo; shortfall builds the missing projects exactly like newProjectSplit builds one (fresh SurfaceView = fresh shell, ProjectNameGenerator name, first pane primary) and completes via workspace.applyLayout; excess waits for the hide-pick. The excess screen reuses ProjectHideSelector, parametrized this cycle with title/hint/footer (title 'apply <layout>', footer 'select exactly N to hide (k/N)' or the confirm summary); Controller.confirmLayoutHidePick swaps surfaceTree, moves keyboard focus, and registers one 'Apply Layout' undo for the whole application. TerminalViewDelegate gains chooseLayout(_:)/confirmLayoutHidePick, threaded TerminalView -> TerminalWorkspaceView; focus-handback onChange handlers skip the intermediate selector-to-hide-pick transition so the keyboard lands on the pick screen, not the terminal."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with the new action, regenerated C header consumption, macOS app with both overlays and the controller wiring) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the appended XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT tag and the new choose_project_layout keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) with the UI layer in the tree - the prior suite passes unchanged, and the layout sessions' model semantics the UI forwards to are covered by the 14 ProjectLayoutTests (T-036 evidence). The only intended behavior change is the new cmd+l default assignment, S-010's sanctioned exception."
+        }
+      ]
     },
     {
       "id": "T-038",

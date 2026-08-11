@@ -457,6 +457,10 @@ extension XGhostty.Notification {
     /// that had focus; the visible projects' layout reorders by deadline (`SPEC.md` §24.4).
     static let ghosttySortProjectsByDeadline = Notification.Name("com.mitchellh.xghostty.sortProjectsByDeadline")
 
+    /// Posted when `choose_project_layout` is requested. The sending object is the surface
+    /// that had focus; the layout-selection overlay opens (`SPEC.md` §26.2).
+    static let ghosttyChooseProjectLayout = Notification.Name("com.mitchellh.xghostty.chooseProjectLayout")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 

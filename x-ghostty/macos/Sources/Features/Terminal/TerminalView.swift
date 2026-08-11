@@ -34,6 +34,16 @@ protocol TerminalViewDelegate: AnyObject {
     /// the selected projects. Hiding can move focus to another project, which
     /// swaps `surfaceTree`, so the controller handles it like `showProject`.
     func confirmHideSelection()
+
+    /// Choose a registered layout in the open selector (Enter, `SPEC.md`
+    /// §26.2). A shortfall creates new projects with fresh shells, so the
+    /// controller handles it.
+    func chooseLayout(_ layout: ProjectLayout)
+
+    /// Confirm the layout hide-pick (Enter, `SPEC.md` §26.3). Hiding can move
+    /// focus and swap `surfaceTree`, so the controller handles it like
+    /// `confirmHideSelection`.
+    func confirmLayoutHidePick()
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -106,7 +116,9 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         onFocusProject: { delegate?.focusProject($0) },
                         onShowProject: { delegate?.showProject($0) },
                         onEqualizeProjects: { delegate?.equalizeProjects() },
-                        onConfirmHideSelection: { delegate?.confirmHideSelection() })
+                        onConfirmHideSelection: { delegate?.confirmHideSelection() },
+                        onChooseLayout: { delegate?.chooseLayout($0) },
+                        onConfirmLayoutHidePick: { delegate?.confirmLayoutHidePick() })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

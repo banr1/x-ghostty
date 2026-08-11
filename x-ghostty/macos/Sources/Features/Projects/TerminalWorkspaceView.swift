@@ -42,12 +42,44 @@ struct TerminalWorkspaceView: View {
     /// model-only and wired below.
     let onConfirmHideSelection: () -> Void
 
+    /// Choose a registered layout in the open selector (Enter, `SPEC.md`
+    /// §26.2). A shortfall needs new projects with fresh shells, so the
+    /// controller handles it; cancel is model-only and wired below.
+    let onChooseLayout: (ProjectLayout) -> Void
+
+    /// Confirm the layout hide-pick (Enter, `SPEC.md` §26.3). Hiding can move
+    /// focus and swap `surfaceTree`, so the controller handles it like
+    /// `onConfirmHideSelection`.
+    let onConfirmLayoutHidePick: () -> Void
+
     /// Hidden projects in a stable display order for the shelf. Sorted by creation
     /// time (then id) so the pill order does not jump as visibility changes.
     private var hiddenProjects: [ProjectState] {
         workspace.state.hiddenProjectIDs
             .compactMap { workspace.state.projects[$0] }
             .sorted { ($0.createdAt, $0.id.rawValue.uuidString) < ($1.createdAt, $1.id.rawValue.uuidString) }
+    }
+
+    /// The hide-selection footer: the pending count, or why Enter is blocked
+    /// (the model rejects hiding every visible project, `SPEC.md` §25).
+    private func hideSelectionFooter(selection: Set<ProjectID>) -> String {
+        if !workspace.canConfirmHideSelection {
+            return "at least one project must stay visible"
+        }
+        if selection.isEmpty {
+            return "nothing selected — ↩ closes"
+        }
+        return "↩ hides \(selection.count) project\(selection.count == 1 ? "" : "s")"
+    }
+
+    /// The layout hide-pick footer: progress toward exactly the excess count
+    /// the confirm requires (`SPEC.md` §26.3).
+    private func layoutHidePickFooter(pick: WorkspaceLayoutHidePick) -> String {
+        let required = workspace.layoutHidePickRequiredCount ?? 0
+        if workspace.canConfirmLayoutHidePick {
+            return "↩ hides \(pick.selection.count) and applies \(pick.layout.label)"
+        }
+        return "select exactly \(required) to hide (\(pick.selection.count)/\(required))"
     }
 
     private var labelActions: ProjectLabelActions {
@@ -129,6 +161,9 @@ struct TerminalWorkspaceView: View {
             // in ordinal order.
             if let selection = workspace.hideSelection {
                 ProjectHideSelector(
+                    title: "hide projects",
+                    hint: "space toggle · ↩ hide · esc cancel",
+                    footer: hideSelectionFooter(selection: selection),
                     projects: workspace.hideSelectionProjectIDs.compactMap {
                         workspace.state.projects[$0]
                     },
@@ -138,6 +173,35 @@ struct TerminalWorkspaceView: View {
                     onToggle: { workspace.toggleHideSelection($0) },
                     onConfirm: onConfirmHideSelection,
                     onCancel: { workspace.cancelHideSelection() })
+            }
+
+            // Layout selector (`SPEC.md` §26.2): presented while the
+            // selector session is up.
+            if workspace.layoutSelectionActive {
+                ProjectLayoutSelector(
+                    layouts: ProjectLayout.registered,
+                    visibleCount: workspace.state.visibleProjectCount,
+                    onChoose: onChooseLayout,
+                    onCancel: { workspace.cancelLayoutSelection() })
+            }
+
+            // Layout excess hide-pick (`SPEC.md` §26.3): the same multi-pick
+            // screen as the hide selection, gated on exactly the excess
+            // count; Escape cancels the whole layout application.
+            if let pick = workspace.layoutHidePick {
+                ProjectHideSelector(
+                    title: "apply \(pick.layout.label)",
+                    hint: "space toggle · ↩ apply · esc cancel",
+                    footer: layoutHidePickFooter(pick: pick),
+                    projects: workspace.layoutHidePickProjectIDs.compactMap {
+                        workspace.state.projects[$0]
+                    },
+                    ordinals: workspace.state.projectOrdinals,
+                    selection: pick.selection,
+                    canConfirm: workspace.canConfirmLayoutHidePick,
+                    onToggle: { workspace.toggleLayoutHidePick($0) },
+                    onConfirm: onConfirmLayoutHidePick,
+                    onCancel: { workspace.cancelLayoutHidePick() })
             }
         }
         .onChange(of: workspace.noteEditingProject) { newValue in
@@ -166,6 +230,29 @@ struct TerminalWorkspaceView: View {
             // Closing the hide-selection screen hands keyboard focus back to
             // the terminal, exactly like the overlays above.
             if !active {
+                DispatchQueue.main.async {
+                    if let surface = lastFocusedSurface?.value {
+                        surface.window?.makeFirstResponder(surface)
+                    }
+                }
+            }
+        }
+        .onChange(of: workspace.layoutSelectionActive) { active in
+            // Closing the layout selector hands keyboard focus back to the
+            // terminal — unless choosing just opened the hide-pick screen,
+            // which wants the keyboard next.
+            if !active && workspace.layoutHidePick == nil {
+                DispatchQueue.main.async {
+                    if let surface = lastFocusedSurface?.value {
+                        surface.window?.makeFirstResponder(surface)
+                    }
+                }
+            }
+        }
+        .onChange(of: workspace.layoutHidePick == nil) { closed in
+            // Closing the layout hide-pick hands keyboard focus back to the
+            // terminal, exactly like the overlays above.
+            if closed && !workspace.layoutSelectionActive {
                 DispatchQueue.main.async {
                     if let surface = lastFocusedSurface?.value {
                         surface.window?.makeFirstResponder(surface)

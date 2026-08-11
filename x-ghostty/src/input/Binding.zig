@@ -689,6 +689,14 @@ pub const Action = union(enum) {
     /// resulting order persists until the next sort.
     sort_projects_by_deadline,
 
+    /// Open the layout-selection overlay listing the built-in registered
+    /// layouts (equal-split for 4–9 projects and X+1 for X = 4–8). Arrow
+    /// keys choose, Enter applies the layout to the visible projects in
+    /// their current order, Escape closes changing nothing. Applying with
+    /// more slots than visible projects creates new projects at the tail;
+    /// with fewer, a screen picks exactly the excess to hide first.
+    choose_project_layout,
+
     /// Close the current project, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_project,
@@ -1360,6 +1368,7 @@ pub const Action = union(enum) {
             .set_primary,
             .sort_projects_by_priority,
             .sort_projects_by_deadline,
+            .choose_project_layout,
             .close_project,
             .inspector,
             => .surface,
@@ -3501,6 +3510,10 @@ test "parse: project split actions" {
     {
         const binding = try parseSingle("a=sort_projects_by_deadline");
         try testing.expect(binding.action == .sort_projects_by_deadline);
+    }
+    {
+        const binding = try parseSingle("a=choose_project_layout");
+        try testing.expect(binding.action == .choose_project_layout);
     }
     {
         const binding = try parseSingle("a=close_project");

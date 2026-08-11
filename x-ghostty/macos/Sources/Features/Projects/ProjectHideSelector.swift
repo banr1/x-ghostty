@@ -1,15 +1,17 @@
 import SwiftUI
 
-/// The hide-selection screen, opened by the `hide_project` action
-/// (Cmd+Opt+H) over the whole workspace (`SPEC.md` §25).
+/// A project multi-pick screen over the whole workspace: the hide-selection
+/// screen (`hide_project`, Cmd+Opt+H, `SPEC.md` §25) and the layout
+/// application's excess hide-pick (`SPEC.md` §26.3) share it — both pick
+/// visible projects to hide, differing only in wording and in the model's
+/// confirm judgment, which the caller passes in.
 ///
 /// Lists every visible project in ordinal order for multi-toggle selection:
-/// ↑/↓ move the cursor, Space (or a row click) toggles the row, Enter hides
-/// the selected projects in one batch, Escape (or a backdrop click) closes
-/// hiding nothing. All selection judgment lives on the model
-/// (`WorkspaceModel.hideSelection` and friends); this view only renders it
-/// and forwards events. Rendered only while the session is up, so no
-/// permanent terminal area is occupied.
+/// ↑/↓ move the cursor, Space (or a row click) toggles the row, Enter
+/// confirms, Escape (or a backdrop click) cancels without hiding anything.
+/// All selection judgment lives on the model; this view only renders it and
+/// forwards events. Rendered only while a session is up, so no permanent
+/// terminal area is occupied.
 ///
 /// Keyboard mechanics follow `CommandPaletteView`: an invisible focused text
 /// field holds first responder so the terminal sees no keystrokes, delivering
@@ -18,6 +20,17 @@ import SwiftUI
 /// consumed as the toggle key; everything else typed is discarded.
 struct ProjectHideSelector: View {
     @EnvironmentObject private var ghostty: XGhostty.App
+
+    /// The header title (e.g. "hide projects").
+    let title: String
+
+    /// The header key hint (e.g. "space toggle · ↩ hide · esc cancel").
+    let hint: String
+
+    /// The footer status line — the pending count, or why Enter is blocked.
+    /// Computed by the caller from the model's judgment so the two screens
+    /// can word it differently.
+    let footer: String
 
     /// The listed projects, in ordinal (canonical traversal) order.
     let projects: [ProjectState]
@@ -28,8 +41,9 @@ struct ProjectHideSelector: View {
     /// The projects currently toggled for hiding.
     let selection: Set<ProjectID>
 
-    /// Whether Enter would confirm (the model rejects a select-all: at least
-    /// one project must stay visible).
+    /// Whether Enter would confirm (the model's judgment: the hide-selection
+    /// rejects a select-all, the layout hide-pick requires exactly the
+    /// excess count).
     let canConfirm: Bool
 
     /// Toggle one project in the selection.
@@ -132,7 +146,7 @@ struct ProjectHideSelector: View {
                 }
             }
 
-            footer
+            footerView
         }
         .frame(width: 420)
         .background(ghostty.config.backgroundColor)
@@ -180,10 +194,10 @@ struct ProjectHideSelector: View {
     /// reads as one.
     private var header: some View {
         HStack {
-            Text("hide projects")
+            Text(title)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("space toggle · ↩ hide · esc cancel")
+            Text(hint)
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }
@@ -197,20 +211,11 @@ struct ProjectHideSelector: View {
         }
     }
 
-    /// Footer: the pending count, or why Enter is blocked (the model rejects
-    /// hiding every visible project).
-    private var footer: some View {
+    /// Footer: the caller-provided status line, dimmed when Enter is blocked.
+    private var footerView: some View {
         HStack {
-            if !canConfirm {
-                Text("at least one project must stay visible")
-                    .opacity(0.6)
-            } else if selection.isEmpty {
-                Text("nothing selected — ↩ closes")
-                    .opacity(0.4)
-            } else {
-                Text("↩ hides \(selection.count) project\(selection.count == 1 ? "" : "s")")
-                    .opacity(0.6)
-            }
+            Text(footer)
+                .opacity(canConfirm ? 0.6 : 0.5)
             Spacer()
         }
         .font(.system(size: 10, design: .monospaced))

@@ -50,6 +50,27 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// until it confirms or cancels.
     @Published private(set) var hideSelection: Set<ProjectID>?
 
+    /// Whether the layout-selection overlay (`choose_project_layout`, Cmd+L,
+    /// `SPEC.md` §26) is up. Transient UI state like `hideSelection`; never
+    /// persisted.
+    @Published private(set) var layoutSelectionActive = false
+
+    /// The in-progress excess hide-pick of a layout application (`SPEC.md`
+    /// §26.3): the chosen layout holds fewer projects than are visible, and
+    /// the user is picking exactly the excess to hide. `nil` while no pick
+    /// screen is up. Transient UI state like `hideSelection`; never persisted.
+    @Published private(set) var layoutHidePick: WorkspaceLayoutHidePick?
+
+    /// Whether any workspace-modal overlay session (note overview,
+    /// hide-selection, layout selection, layout hide-pick) currently owns the
+    /// interaction: while one is up, focus moves, note editing, and sorting
+    /// are no-ops, and no other overlay may open. The note *editor* is not in
+    /// this set — it locks less (see the individual guards).
+    private var overlaySessionActive: Bool {
+        noteOverviewActive || hideSelectionActive
+            || layoutSelectionActive || layoutHidePick != nil
+    }
+
     /// An empty workspace with no projects. Used as the controller's initial
     /// value before `init(wrapping:)` wraps the real pane tree.
     init() {
@@ -239,9 +260,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         to id: ProjectID,
         savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> SurfaceID? {
-        // The note overview is viewing-only, and the hide-selection screen
-        // owns the interaction: no focus moves while either is up.
-        guard !noteOverviewActive, !hideSelectionActive else { return nil }
+        // No focus moves while an overlay session (note overview,
+        // hide-selection, layout screens) owns the interaction.
+        guard !overlaySessionActive else { return nil }
         guard id != state.focusedProject else { return nil }
         guard state.projects[id] != nil else { return nil }
 
@@ -267,9 +288,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///   is no neighbor in that direction, or the resolved target is the focused
     ///   project itself (e.g. `next`/`previous` wrapping with a single project).
     func gotoProjectTarget(_ direction: SplitTree<ProjectRef>.FocusDirection) -> ProjectID? {
-        // The note overview is viewing-only, and the hide-selection screen
-        // owns the interaction: no focus moves while either is up.
-        guard !noteOverviewActive, !hideSelectionActive else { return nil }
+        // No focus moves while an overlay session (note overview,
+        // hide-selection, layout screens) owns the interaction.
+        guard !overlaySessionActive else { return nil }
         guard state.zoomedProject == nil else { return nil }
         guard let focusedID = state.focusedProject else { return nil }
         guard let visibleTree = state.effectiveVisibleProjectTree,
@@ -296,9 +317,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///   and to answer the keybind's performability check, so the two always
     ///   agree on what counts as a no-op.
     func gotoProjectIndexTarget(_ index: Int) -> ProjectID? {
-        // The note overview is viewing-only, and the hide-selection screen
-        // owns the interaction: no focus moves while either is up.
-        guard !noteOverviewActive, !hideSelectionActive else { return nil }
+        // No focus moves while an overlay session (note overview,
+        // hide-selection, layout screens) owns the interaction.
+        guard !overlaySessionActive else { return nil }
         guard let target = state.visibleProjectID(ordinal: index) else { return nil }
 
         if let zoomedProject = state.zoomedProject {
@@ -583,12 +604,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// Whether `hide_project` can open the selection screen (`SPEC.md` §25):
     /// at least two visible projects (with one, nothing could ever be hidden —
     /// at least one project always stays visible), and neither the note
-    /// editor nor the note overview is up (each overlay owns the keyboard
-    /// alone). Callers use this both to open the screen and to answer the
-    /// keybind's performability check, so the two always agree.
+    /// editor nor another overlay session is up (each overlay owns the
+    /// keyboard alone). Callers use this both to open the screen and to
+    /// answer the keybind's performability check, so the two always agree.
     var canBeginHideSelection: Bool {
         noteEditingProject == nil
-            && !noteOverviewActive
+            && !overlaySessionActive
             && state.visibleProjectCount >= 2
     }
 
@@ -701,6 +722,225 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// `SPEC.md` §25).
     func cancelHideSelection() {
         hideSelection = nil
+    }
+
+    // MARK: Layout application (SPEC §26)
+
+    /// Whether `choose_project_layout` can open the layout selector
+    /// (`SPEC.md` §26): at least one visible project to arrange around, and
+    /// neither the note editor nor another overlay session up (each overlay
+    /// owns the keyboard alone). Callers use this both to open the selector
+    /// and to answer the keybind's performability check, so the two always
+    /// agree.
+    var canBeginLayoutSelection: Bool {
+        noteEditingProject == nil
+            && !overlaySessionActive
+            && state.visibleProjectCount >= 1
+    }
+
+    /// Open the layout-selection overlay (`SPEC.md` §26.2). Any project zoom
+    /// is released first so the selector sits over the overall view it
+    /// arranges (the Essence leaves the zoomed-invocation behavior to the
+    /// implementation). No-op while `canBeginLayoutSelection` is false.
+    func beginLayoutSelection() {
+        guard canBeginLayoutSelection else { return }
+        state.zoomedProject = nil
+        layoutSelectionActive = true
+    }
+
+    /// Close the layout selector changing nothing (the Escape path,
+    /// `SPEC.md` §26.2).
+    func cancelLayoutSelection() {
+        layoutSelectionActive = false
+    }
+
+    /// Choose `layout` in the open selector (`SPEC.md` §26.2–26.3). The
+    /// count-matching judgment lives here:
+    ///
+    /// - Equal count: the layout is applied immediately (the visible projects
+    ///   take the slots in their current ordinal order) and the selector
+    ///   closes — `.applied`.
+    /// - More slots than visible projects: the selector closes and
+    ///   `.needsNewProjects(n)` asks the caller to create the shortfall
+    ///   (fresh shells are the controller's job) and complete via
+    ///   `applyLayout(_:appending:savingOutgoingPaneTree:)`.
+    /// - Fewer slots: the selector closes and the excess hide-pick opens
+    ///   (`layoutHidePick`) — `.hidePickOpened`; the application completes on
+    ///   `confirmLayoutHidePick` or dies on `cancelLayoutHidePick`.
+    ///
+    /// - Returns: `nil` while the selector is not up.
+    @discardableResult
+    func chooseLayout(
+        _ layout: ProjectLayout,
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> WorkspaceLayoutChoiceOutcome? {
+        guard layoutSelectionActive else { return nil }
+        layoutSelectionActive = false
+
+        let visibleCount = state.visibleProjectCount
+        if layout.projectCount == visibleCount {
+            var next = state
+            next.saveOutgoingPaneTree(outgoing)
+            applyLayoutTree(layout, ordered: next.visibleProjectIDs, on: &next)
+            state = next
+            return .applied
+        }
+        if layout.projectCount > visibleCount {
+            return .needsNewProjects(layout.projectCount - visibleCount)
+        }
+        layoutHidePick = WorkspaceLayoutHidePick(layout: layout, selection: [])
+        return .hidePickOpened(required: visibleCount - layout.projectCount)
+    }
+
+    /// Complete a shortfall layout application (`SPEC.md` §26.3): register
+    /// `newProjects` (created by the caller with fresh shells, exactly the
+    /// shortfall count) at the ordinal tail, then apply `layout` — the
+    /// existing visible projects keep their ordinal order in the leading
+    /// slots and the new projects fill the trailing ones. Focus stays on the
+    /// current focused project.
+    ///
+    /// - Returns: `false` when the count does not match the current shortfall
+    ///   or a project id collides (the caller should then discard the new
+    ///   panes; nothing is mutated).
+    @discardableResult
+    func applyLayout(
+        _ layout: ProjectLayout,
+        appending newProjects: [ProjectStateOf<Pane>],
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> Bool {
+        let shortfall = layout.projectCount - state.visibleProjectCount
+        guard shortfall > 0, newProjects.count == shortfall else { return false }
+        guard newProjects.allSatisfy({ state.projects[$0.id] == nil }) else { return false }
+
+        var next = state
+        next.saveOutgoingPaneTree(outgoing)
+        for project in newProjects {
+            next.projects[project.id] = project
+        }
+        let ordered = next.visibleProjectIDs + newProjects.map(\.id)
+        applyLayoutTree(layout, ordered: ordered, on: &next)
+        state = next
+        return true
+    }
+
+    /// The projects the layout hide-pick screen lists: every visible project
+    /// in canonical (ordinal) order. Empty while no pick is up.
+    var layoutHidePickProjectIDs: [ProjectID] {
+        guard layoutHidePick != nil else { return [] }
+        return state.visibleProjectIDs
+    }
+
+    /// How many projects the open layout hide-pick must select — the excess
+    /// (visible count − layout count), re-derived from live state so a
+    /// mid-session change re-judges. `nil` while no pick is up.
+    var layoutHidePickRequiredCount: Int? {
+        guard let pick = layoutHidePick else { return nil }
+        return state.visibleProjectCount - pick.layout.projectCount
+    }
+
+    /// Toggle project `id` in the layout hide-pick. No-op while no pick is
+    /// up, and for anything but a visible project.
+    func toggleLayoutHidePick(_ id: ProjectID) {
+        guard var pick = layoutHidePick else { return }
+        guard state.visibleProjectIDs.contains(id) else { return }
+        if pick.selection.contains(id) {
+            pick.selection.remove(id)
+        } else {
+            pick.selection.insert(id)
+        }
+        layoutHidePick = pick
+    }
+
+    /// Whether the layout hide-pick can confirm (`SPEC.md` §26.3): exactly
+    /// the excess count must be selected — no more, no fewer.
+    var canConfirmLayoutHidePick: Bool {
+        guard let pick = layoutHidePick,
+              let required = layoutHidePickRequiredCount, required > 0 else { return false }
+        return pick.selection.count == required
+            && pick.selection.allSatisfy { state.canonicalProjectTree.find(id: $0) != nil }
+    }
+
+    /// Confirm the layout hide-pick (`SPEC.md` §26.3): the selected projects
+    /// are hidden (never closed — they keep their panes, processes, and
+    /// information behind the shelf) and the chosen layout is applied to the
+    /// remaining visible projects in their ordinal order, all in one state
+    /// write. Rejected (the screen stays up) while the selection count does
+    /// not equal the excess.
+    ///
+    /// When the focused project is among the hidden, focus moves to the
+    /// nearest surviving project, measured on the pre-removal tree exactly
+    /// like the hide-selection confirm.
+    ///
+    /// - Returns: the project to focus next and its stored focused surface so
+    ///   the caller can swap `surfaceTree` and move keyboard focus, or `nil`
+    ///   when the confirm was rejected.
+    @discardableResult
+    func confirmLayoutHidePick(
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> (target: ProjectID, focus: SurfaceID?)? {
+        guard let pick = layoutHidePick, canConfirmLayoutHidePick else { return nil }
+        layoutHidePick = nil
+        let selection = pick.selection
+
+        // Resolve the next focus on the pre-removal tree, like the
+        // hide-selection confirm.
+        let target: ProjectID?
+        if let focusedID = state.focusedProject {
+            target = selection.contains(focusedID)
+                ? state.canonicalProjectTree.nearestLeaf(
+                    to: ProjectRef(id: focusedID),
+                    matching: { !selection.contains($0.id) })?.id
+                : focusedID
+        } else {
+            target = nil
+        }
+
+        var next = state
+        next.saveOutgoingPaneTree(outgoing)
+        for id in selection {
+            next.canonicalProjectTree = next.canonicalProjectTree
+                .removing(.leaf(view: ProjectRef(id: id)))
+            next.hiddenProjectIDs.insert(id)
+        }
+        if let target { next.focusedProject = target }
+        applyLayoutTree(pick.layout, ordered: next.visibleProjectIDs, on: &next)
+        state = next
+
+        guard let target else { return nil }
+        return (target, state.projects[target]?.focusedSurface)
+    }
+
+    /// Cancel the layout hide-pick — and with it the whole layout
+    /// application (the Escape path, `SPEC.md` §26.3): nothing is hidden and
+    /// nothing is rearranged.
+    func cancelLayoutHidePick() {
+        layoutHidePick = nil
+    }
+
+    /// Rebuild the canonical tree as `layout`'s grid over `ordered` (the
+    /// assignment order: current ordinals first, top row first, left to
+    /// right, the +1 slot last — `SPEC.md` §26.1). The application is a
+    /// one-shot arrangement change (§26.4): only the canonical tree is
+    /// rewritten — no applied-layout state exists, hidden projects keep
+    /// their `projects` entries and shelf spots untouched, and ordinals
+    /// follow because they derive from traversal order. A zoom (possible
+    /// mid-session via the menu bar) is cleared: applying arranges the
+    /// overall view.
+    private func applyLayoutTree(
+        _ layout: ProjectLayout,
+        ordered ids: [ProjectID],
+        on next: inout WorkspaceStateOf<Pane>
+    ) {
+        assert(ids.count == layout.projectCount)
+        var rows: [[ProjectRef]] = []
+        var index = 0
+        for count in layout.rowCounts {
+            rows.append(ids[index..<(index + count)].map { ProjectRef(id: $0) })
+            index += count
+        }
+        next.canonicalProjectTree = SplitTree(gridRows: rows)
+        next.zoomedProject = nil
+        next.snapFocusToPrimaryInOverallView()
     }
 
     // MARK: Close (SPEC §11.9)
@@ -918,10 +1158,10 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// Open the note editor for `id`. No-op if the project is unknown, or
-    /// while the read-only note overview or the hide-selection screen is up
-    /// (each overlay owns the keyboard alone).
+    /// while an overlay session (note overview, hide-selection, layout
+    /// screens) is up — each overlay owns the keyboard alone.
     func beginNoteEditing(_ id: ProjectID) {
-        guard !noteOverviewActive, !hideSelectionActive else { return }
+        guard !overlaySessionActive else { return }
         guard state.projects[id] != nil else { return }
         noteEditingProject = id
     }
@@ -1103,13 +1343,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Whether a sort action (`sort_projects_by_priority` /
     /// `sort_projects_by_deadline`) can reorder anything: at least two visible
-    /// projects, and not while the note overview or the hide-selection screen
-    /// is up (the overview is viewing-only; the selection screen must not
-    /// have its listed order reshuffled under it). Callers use this both to
-    /// perform the action and to answer the keybind's performability check,
-    /// so the two always agree.
+    /// projects, and not while an overlay session (note overview,
+    /// hide-selection, layout screens) is up — the overview is viewing-only,
+    /// and a selection screen must not have its listed order reshuffled under
+    /// it. Callers use this both to perform the action and to answer the
+    /// keybind's performability check, so the two always agree.
     var canSortVisibleProjects: Bool {
-        !noteOverviewActive && !hideSelectionActive && state.visibleProjectIDs.count >= 2
+        !overlaySessionActive && state.visibleProjectIDs.count >= 2
     }
 
     /// Reorder the visible projects' layout by priority (`sort_projects_by_priority`,
@@ -1170,9 +1410,10 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     @discardableResult
     func toggleNoteOverview() -> Bool {
         // The note editor owns the keyboard and its draft must not be
-        // silently dropped; the hide-selection screen owns the interaction
-        // until it confirms or cancels.
-        guard noteEditingProject == nil, hideSelection == nil else { return noteOverviewActive }
+        // silently dropped; the hide-selection and layout screens own the
+        // interaction until they confirm or cancel.
+        guard noteEditingProject == nil, hideSelection == nil,
+              !layoutSelectionActive, layoutHidePick == nil else { return noteOverviewActive }
 
         if noteOverviewActive {
             noteOverviewActive = false
@@ -1215,10 +1456,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // The overview is a transient viewing session over the *current*
         // layout; a wholesale state swap (undo/redo) ends it rather than
         // letting a restored zoom contradict the mode's zoom-released
-        // invariant. The hide-selection session ends for the same reason:
-        // its candidate list belongs to the replaced layout.
+        // invariant. The hide-selection and layout sessions end for the same
+        // reason: their candidate lists belong to the replaced layout.
         noteOverviewActive = false
         hideSelection = nil
+        layoutSelectionActive = false
+        layoutHidePick = nil
     }
 
     // MARK: Teardown
@@ -1236,6 +1479,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         noteEditingProject = nil
         noteOverviewActive = false
         hideSelection = nil
+        layoutSelectionActive = false
+        layoutHidePick = nil
     }
 }
 
@@ -1269,6 +1514,31 @@ enum WorkspaceChildExitOutcome: Equatable {
     /// kept — the pane stays with its error message until a key press
     /// closes it.
     case keepPaneAwaitingKey(ProjectID)
+}
+
+/// The in-progress excess hide-pick of a layout application (`SPEC.md`
+/// §26.3): the chosen layout and the projects currently toggled for hiding.
+/// Lives outside the generic class like the outcome enums, since it holds no
+/// pane data.
+struct WorkspaceLayoutHidePick: Equatable {
+    let layout: ProjectLayout
+    var selection: Set<ProjectID>
+}
+
+/// The count-matching judgment of choosing a registered layout (`SPEC.md`
+/// §26.3).
+enum WorkspaceLayoutChoiceOutcome: Equatable {
+    /// Slot count == visible count: the layout was applied immediately.
+    case applied
+
+    /// The layout holds more slots than visible projects: the caller must
+    /// create this many new projects (with fresh shells) and complete via
+    /// `applyLayout(_:appending:savingOutgoingPaneTree:)`.
+    case needsNewProjects(Int)
+
+    /// The layout holds fewer slots than visible projects: the excess
+    /// hide-pick screen opened; the application completes on its confirm.
+    case hidePickOpened(required: Int)
 }
 
 /// The result of closing the focused project (`SPEC.md` §11.9).

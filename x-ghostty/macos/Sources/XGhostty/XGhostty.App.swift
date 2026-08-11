@@ -504,6 +504,9 @@ extension XGhostty {
             case XGHOSTTY_ACTION_SORT_PROJECTS_BY_DEADLINE:
                 return sortProjects(app, target: target, notification: Notification.ghosttySortProjectsByDeadline)
 
+            case XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT:
+                return chooseProjectLayout(app, target: target)
+
             case XGHOSTTY_ACTION_SET_PROJECT_TITLE:
                 setProjectTitle(app, target: target, v: action.action.set_project_title)
 
@@ -946,6 +949,36 @@ extension XGhostty {
 
                 NotificationCenter.default.post(
                     name: notification,
+                    object: surfaceView)
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
+        private static func chooseProjectLayout(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s) -> Bool {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("choose project layout does nothing with an app target")
+                return false
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // Only performable when the layout selector can open: at
+                // least one visible project and no other overlay owning the
+                // keyboard (`SPEC.md` §26.2); otherwise the keybind falls
+                // through unconsumed.
+                guard controller.workspace.canBeginLayoutSelection else { return false }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyChooseProjectLayout,
                     object: surfaceView)
                 return true
 

@@ -6005,6 +6005,14 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true, .shift = true } },
                 .{ .sort_projects_by_deadline = {} },
             );
+            // Plain Cmd+L has no other default binding (grep confirms no
+            // 'l' super binding and no menu key equivalent), so the layout
+            // selector takes it.
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'l' }, .mods = .{ .super = true } },
+                .{ .choose_project_layout = {} },
+            );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
