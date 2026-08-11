@@ -29,14 +29,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-11T23:32:00+09:00",
-    "summary": "Cycle R-20260811T231436: recorded R-011 outcomes (T-030/T-032/T-042 done with human evidence; R-010 closed — legacy decode keys stay) and fixed both sent-back defects as T-044/T-045 (done, gates green: zig build / just test / just swift-test = exit 0, 540 tests). New shared ProjectOverlayKeys.swift local keyDown monitor: note editor Cmd+A/C/X/V performed directly on the focused NSTextView; both selection screens take plain up/down arrows pre-dispatch. SPEC.md 21.2/25/26.2 + file layout updated. R-012 (stop gate) now awaits human on-device re-verification of T-031 (editor chords + over-10-line paste truncation) and T-040+T-041 (arrow keys in both screens, one pass). After the human resume: if OK, mark T-031/T-040/T-041 done with human evidence — that completes all must and reaches the must boundary; if defects remain, fix again from the reported symptoms. The only other pending Todo is T-043 (should, high-risk: AGENTS.md vocabulary update; directly runnable under the unsandboxed profile in its own high-risk batch with hash evidence).",
-    "next_actions": [
-      "On resume with R-012 approved: mark T-031/T-040/T-041 done with human evidence via apply-projection",
-      "Then the must boundary gate (must_complete_awaiting_phase_approval) or, if phase stays extended_approved, run T-043 as its own high-risk batch (AGENTS.md terminology edit, hash-linked evidence)",
-      "If R-012 reports remaining defects, iterate on ProjectOverlayKeys.swift mechanism from the reported symptoms"
-    ],
+    "written_at": "2026-08-11T23:42:25+09:00",
+    "summary": "Human resume: R-012 の実機再確認を実施し、差し戻し 2 件の修正がいずれも直っていることを確認した: ノート編集オーバーレイで Cmd+A / Cmd+C / Cmd+X / Cmd+V が標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められること(成功条件 10)、および hide 選択画面・レイアウト一覧・レイアウトの hide-pick 画面のいずれでも ↑↓ の矢印キーによるカーソル移動が効くこと(成功条件 14 / 16)。\nよって R-012 を解除し、T-031 / T-040 / T-041 を human 承認の証跡付き(type: human、本 resume の日時と本ノートを reference)で done として記録すること。これで must は全件完了となる。ESSENCE.md の変更は不要。\nphase は既に extended_approved なので、次サイクルは残る唯一の should である T-043(AGENTS.md の語彙更新)を high-risk 単独バッチとして before/after ハッシュ証跡付きで実行し、完了させること。",
+    "next_actions": [],
     "open_questions": [],
-    "pending_cycle": false
+    "pending_cycle": true
   }
 }

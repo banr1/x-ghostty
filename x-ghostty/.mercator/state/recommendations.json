@@ -258,7 +258,7 @@
     {
       "id": "R-012",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "requires_human_approval": true,
       "agent_action": "stop_until_human_review",
       "source": [
@@ -272,7 +272,10 @@
       "created_at": "2026-08-11T23:31:02+09:00",
       "reason": "R-011 で差し戻された 2 件の不具合(ノートエディタの Cmd+X/Cmd+V 不達、選択画面 2 種の矢印キー不達)を修正し、ゲートは全て green(zig build / just test / just swift-test = exit 0、540 テスト)。残る must は実機再確認の T-031 / T-040 / T-041(いずれも executor: human)のみのため。",
       "title": "差し戻し 2 件の修正が完了しました — 実機再確認をお願いします(T-031 / T-040 / T-041)",
-      "description": "R-011 の差し戻し 2 件を修正しました。いずれもオーバーレイ表示中だけ張られるローカル keyDown モニタ(新規 ProjectOverlayKeys.swift、SPEC §21.2/§25)への機構置き換えで、イベントを key-equivalent / メニュー / field editor のどの消費経路よりも先に捕まえます。\n\n(1) ノートエディタ(T-044): Cmd+A/C/X/V をモニタで捕捉し、標準セレクタ(selectAll:/copy:/cut:/paste:)を focused なテキストビューへ直接 perform します。旧方式(非表示ボタン + NSApp.sendAction)はボタン不発・dispatch 不達のどちらが原因でも直るよう、両経路への依存を外しました。動作確認済みの Cmd+Enter 保存 / Esc 破棄はそのままです。\n\n(2) 選択画面 2 種(T-045): ↑/↓ を共有モニタで捕捉して cursor を動かします(sink TextField の field editor が矢印を消費して onMoveCommand が発火しない問題)。動作確認済みの Esc / Enter / Space / クリック選択は変更していません。レイアウトの hide-pick 画面も同一コンポーネントなので同時に直っています。\n\n実機での再確認をお願いします:\n\nT-031(成功条件 10): Cmd+N のノート編集オーバーレイで Cmd+A / Cmd+C / Cmd+X / Cmd+V がエディタに対して標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められる。\n\nT-040(成功条件 14)+ T-041(成功条件 16)まとめて一度: Cmd+Opt+H の hide 選択画面と Cmd+L のレイアウト一覧(および少ない場合の hide-pick 画面)で ↑↓ の矢印キーによるカーソル移動が効く(その他の操作は前回確認済みのため、矢印キー中心の確認で足ります)。\n\n確認後、resume の resolution でご指示ください: 問題なければ T-031 / T-040 / T-041 を human 承認の証跡付きで done として記録します(これで must が全て完了し、must 境界の判断に進みます。残る should は T-043〔AGENTS.md の語彙更新、high-risk〕のみです)。不具合が残っていれば具体的な症状をいただければ再修正します。"
+      "description": "R-011 の差し戻し 2 件を修正しました。いずれもオーバーレイ表示中だけ張られるローカル keyDown モニタ(新規 ProjectOverlayKeys.swift、SPEC §21.2/§25)への機構置き換えで、イベントを key-equivalent / メニュー / field editor のどの消費経路よりも先に捕まえます。\n\n(1) ノートエディタ(T-044): Cmd+A/C/X/V をモニタで捕捉し、標準セレクタ(selectAll:/copy:/cut:/paste:)を focused なテキストビューへ直接 perform します。旧方式(非表示ボタン + NSApp.sendAction)はボタン不発・dispatch 不達のどちらが原因でも直るよう、両経路への依存を外しました。動作確認済みの Cmd+Enter 保存 / Esc 破棄はそのままです。\n\n(2) 選択画面 2 種(T-045): ↑/↓ を共有モニタで捕捉して cursor を動かします(sink TextField の field editor が矢印を消費して onMoveCommand が発火しない問題)。動作確認済みの Esc / Enter / Space / クリック選択は変更していません。レイアウトの hide-pick 画面も同一コンポーネントなので同時に直っています。\n\n実機での再確認をお願いします:\n\nT-031(成功条件 10): Cmd+N のノート編集オーバーレイで Cmd+A / Cmd+C / Cmd+X / Cmd+V がエディタに対して標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められる。\n\nT-040(成功条件 14)+ T-041(成功条件 16)まとめて一度: Cmd+Opt+H の hide 選択画面と Cmd+L のレイアウト一覧(および少ない場合の hide-pick 画面)で ↑↓ の矢印キーによるカーソル移動が効く(その他の操作は前回確認済みのため、矢印キー中心の確認で足ります)。\n\n確認後、resume の resolution でご指示ください: 問題なければ T-031 / T-040 / T-041 を human 承認の証跡付きで done として記録します(これで must が全て完了し、must 境界の判断に進みます。残る should は T-043〔AGENTS.md の語彙更新、high-risk〕のみです)。不具合が残っていれば具体的な症状をいただければ再修正します。",
+      "resolved_at": "2026-08-11T23:42:25+09:00",
+      "resolved_by": "human",
+      "resolution": "R-012 の実機再確認を実施し、差し戻し 2 件の修正がいずれも直っていることを確認した: ノート編集オーバーレイで Cmd+A / Cmd+C / Cmd+X / Cmd+V が標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められること(成功条件 10)、および hide 選択画面・レイアウト一覧・レイアウトの hide-pick 画面のいずれでも ↑↓ の矢印キーによるカーソル移動が効くこと(成功条件 14 / 16)。\nよって R-012 を解除し、T-031 / T-040 / T-041 を human 承認の証跡付き(type: human、本 resume の日時と本ノートを reference)で done として記録すること。これで must は全件完了となる。ESSENCE.md の変更は不要。\nphase は既に extended_approved なので、次サイクルは残る唯一の should である T-043(AGENTS.md の語彙更新)を high-risk 単独バッチとして before/after ハッシュ証跡付きで実行し、完了させること。"
     }
   ]
 }
