@@ -1318,7 +1318,7 @@
     {
       "id": "T-031",
       "title": "Human on-device verification of note-editor shortcuts (one-time): Cmd+A / Cmd+C / Cmd+X / Cmd+V behave as standard against the editor, and a paste beyond 10 lines is truncated to the first 10 lines on save",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-052"
@@ -1328,7 +1328,15 @@
       },
       "batch_group": "batch3-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:42:25+09:00",
+          "reference": "R-012 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:42:25+09:00",
+          "summary": "The human performed the on-device re-verification of success criterion 10 after the T-044 fix and confirmed both items: Cmd+A / Cmd+C / Cmd+X / Cmd+V all behave as standard against the note edit overlay's editor, and a paste beyond 10 lines is truncated to the first 10 lines on save. Recorded per the human instruction in the R-012 resolution during the 2026-08-11T23:42:25+09:00 resume (gate release)."
+        }
+      ]
     },
     {
       "id": "T-032",
@@ -1725,7 +1733,7 @@
     {
       "id": "T-040",
       "title": "Human on-device visual verification of the hide-selection screen (one-time): Cmd+Opt+H opens it, multi-select + Enter hides the selected projects in one batch into the hidden shelf, Esc closes hiding nothing, the screen's appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-070"
@@ -1735,12 +1743,20 @@
       },
       "batch_group": "batch4-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:42:25+09:00",
+          "reference": "R-012 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:42:25+09:00",
+          "summary": "The human performed the on-device re-verification of success criterion 14 after the T-045 fix and confirmed the remaining item: up/down arrow-key cursor movement works in the Cmd+Opt+H hide-selection screen. The other items (multi-select + Enter batch hide into the hidden shelf, Esc hides nothing, appearance fits the terminal) were already confirmed in the R-011 pass. Recorded per the human instruction in the R-012 resolution during the 2026-08-11T23:42:25+09:00 resume (gate release)."
+        }
+      ]
     },
     {
       "id": "T-041",
       "title": "Human on-device visual verification of layout application (one-time): Cmd+L list + arrows + Enter applies and Esc changes nothing; equal count applies directly, more creates new projects at the tail, fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-072"
@@ -1750,7 +1766,15 @@
       },
       "batch_group": "batch4-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:42:25+09:00",
+          "reference": "R-012 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:42:25+09:00",
+          "summary": "The human performed the on-device re-verification of success criterion 16 after the T-045 fix and confirmed the remaining item: up/down arrow-key cursor movement works in the Cmd+L layout list and in the layout hide-pick screen. The other items (Enter applies / Esc changes nothing, equal-count direct application, more-count new projects at the tail, fewer-count hide-pick confirm, appearance fits the terminal) were already confirmed in the R-011 pass. Recorded per the human instruction in the R-012 resolution during the 2026-08-11T23:42:25+09:00 resume (gate release)."
+        }
+      ]
     },
     {
       "id": "T-042",
@@ -1778,7 +1802,7 @@
     {
       "id": "T-043",
       "title": "Update AGENTS.md (whose CLAUDE.md symlink follows) to the post-rename project vocabulary so the implementation docs do not drift; content-only terminology edit",
-      "status": "pending",
+      "status": "done",
       "priority": "should",
       "spec": [
         "S-068"
@@ -1790,7 +1814,27 @@
       "risk_level": "high",
       "risk_reason": "Documentation file on an agent-runtime configuration path (Agent Runtime High-Risk Zone); any edit requires high-risk tracking with before/after hashes",
       "target": "AGENTS.md",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "AGENTS.md"
+          ],
+          "summary": "Content-only terminology edit of AGENTS.md (its CLAUDE.md symlink follows automatically): the Directory Structure bullet 'Groups feature (the fork's core feature, see SPEC.md): macos/Sources/Features/Groups/' now reads 'Projects feature ... macos/Sources/Features/Projects/' — the only pre-rename vocabulary in the file (git diff --stat: 1 file changed, 2 insertions, 2 deletions). High-risk hash linkage per the mechanically recorded hook entry in high_risk_changes.jsonl (recorded_at 2026-08-11T23:45:37+09:00, tool Edit): before_sha256 3f61810dc6a590f29be5d683b6ae837edea1bdc502304e85bc56a5755359c643, after_sha256 bd12136d5dea8a385b546d8912db788f2342cbd03a5c83d370fbfb34f3f09220 (after-hash re-verified with shasum -a 256). Executed as its own high-risk batch under the ESSENCE profile: unsandboxed relaxed profile, authorized by the R-012 resolution instruction (2026-08-11T23:42:25+09:00 resume)."
+        },
+        {
+          "type": "command",
+          "command": "sh -c '! grep -q -i group AGENTS.md'",
+          "exit_code": 0,
+          "summary": "No occurrence of the pre-rename 'group' vocabulary remains in AGENTS.md (negated grep -q exits 0 only when there are no matches), confirming the post-rename project vocabulary is complete."
+        },
+        {
+          "type": "command",
+          "command": "shasum -a 256 AGENTS.md",
+          "exit_code": 0,
+          "summary": "After-edit SHA-256 matches the post_tool_audit hook's after_sha256 (bd12136d5dea8a385b546d8912db788f2342cbd03a5c83d370fbfb34f3f09220), tying the observed file to the mechanical high-risk record."
+        }
+      ]
     },
     {
       "id": "T-044",
