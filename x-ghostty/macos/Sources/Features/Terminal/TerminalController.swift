@@ -7,7 +7,7 @@ import XGhosttyKit
 /// The controller for the app's one and only terminal window.
 ///
 /// XGhostty is a single-window app: exactly one `TerminalController` exists for the
-/// process lifetime, created at launch (or by state restoration). Groups and splits
+/// process lifetime, created at launch (or by state restoration). Projects and splits
 /// provide all layout within that window, and closing it quits the app.
 class TerminalController: BaseTerminalController {
     override var windowNibName: NSNib.Name? {
@@ -184,7 +184,7 @@ class TerminalController: BaseTerminalController {
     /// Create the app's single terminal window and show it.
     ///
     /// This is only ever called once per process: at launch when state restoration
-    /// didn't already produce a window. Everything else (groups, splits) happens
+    /// didn't already produce a window. Everything else (projects, splits) happens
     /// inside the window this returns.
     @discardableResult
     static func create(
@@ -410,7 +410,7 @@ class TerminalController: BaseTerminalController {
 
     override func windowShouldClose(_ sender: NSWindow) -> Bool {
         // We always close explicitly (after confirmation) rather than letting
-        // AppKit do it, so that we can tear down every group's surfaces first.
+        // AppKit do it, so that we can tear down every project's surfaces first.
         closeWindow(nil)
         return false
     }
@@ -485,12 +485,12 @@ class TerminalController: BaseTerminalController {
         defaultSize.apply(to: window)
     }
 
-    /// Close the window, asking for confirmation if any group still has a running
+    /// Close the window, asking for confirmation if any project still has a running
     /// process. Closing the window quits the app.
     @IBAction override func closeWindow(_ sender: Any?) {
         guard window != nil else { return }
 
-        // Every group dies with the window, not just the focused one. This is
+        // Every project dies with the window, not just the focused one. This is
         // checked before the re-entrancy guard so that a close that no longer
         // needs confirmation (e.g. the last process exited while a confirmation
         // sheet was up) still closes the window.
@@ -514,7 +514,7 @@ class TerminalController: BaseTerminalController {
     }
 
     /// Close the window immediately and without confirmation, releasing every
-    /// group's surfaces first so no shell outlives the window.
+    /// project's surfaces first so no shell outlives the window.
     func closeWindowImmediately() {
         guard let window else { return }
         guard !isClosing else { return }
@@ -522,8 +522,8 @@ class TerminalController: BaseTerminalController {
 
         cancelPendingInitialPresentation()
 
-        // Release every group's surfaces. It must clear all groups, not just
-        // `surfaceTree`: the unfocused and hidden groups' surfaces are owned by
+        // Release every project's surfaces. It must clear all projects, not just
+        // `surfaceTree`: the unfocused and hidden projects' surfaces are owned by
         // the workspace, and leaving them retained would keep their shells
         // running after the window is gone.
         removeAllSurfaces()

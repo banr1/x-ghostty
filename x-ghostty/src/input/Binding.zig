@@ -580,7 +580,7 @@ pub const Action = union(enum) {
     /// Zoom in or out of the current split.
     ///
     /// When a split is zoomed into, it will take up the entire space in
-    /// the current group, hiding other splits.
+    /// the current project, hiding other splits.
     toggle_split_zoom,
 
     /// Toggle read-only mode for the current surface.
@@ -601,94 +601,94 @@ pub const Action = union(enum) {
     /// Equalize the size of all splits in the current window.
     equalize_splits,
 
-    // Group-layer actions. A "group" is the upper layer of the two-level
-    // split model: the window holds a tree of groups, and each group holds
+    // Project-layer actions. A "project" is the upper layer of the two-level
+    // split model: the window holds a tree of projects, and each project holds
     // its own tree of terminal panes. These mirror the split actions above
-    // but operate on the group tree rather than the focused group's panes.
-    // The group state lives in the apprt (macOS for now), so these are
+    // but operate on the project tree rather than the focused project's panes.
+    // The project state lives in the apprt (macOS for now), so these are
     // dispatched through the apprt action layer like `new_split`.
 
-    /// Create a new group split in the specified direction, creating a new
-    /// group with a single initial pane beside the current group.
+    /// Create a new project split in the specified direction, creating a new
+    /// project with a single initial pane beside the current project.
     ///
     /// Valid arguments are the same as `new_split` (`right`, `down`, `left`,
     /// `up`, `auto`).
-    new_group_split: SplitDirection,
+    new_project_split: SplitDirection,
 
-    /// Focus on a group either in the specified direction (`right`, `down`,
-    /// `left`, `up`), or in the adjacent group in the order of creation
+    /// Focus on a project either in the specified direction (`right`, `down`,
+    /// `left`, `up`), or in the adjacent project in the order of creation
     /// (`previous` and `next`), or by a 1-based index (`1` through `9`)
-    /// that focuses the Nth visible group in tree traversal order. Mirrors
+    /// that focuses the Nth visible project in tree traversal order. Mirrors
     /// `goto_split` one layer up.
-    goto_group: GroupFocusTarget,
+    goto_project: ProjectFocusTarget,
 
-    /// Swap the current group with an adjacent group. Directional arguments
+    /// Swap the current project with an adjacent project. Directional arguments
     /// (`right`, `down`, `left`, `up`) swap with the spatially adjacent
-    /// group, preserving the layout structure and split ratios — only the
+    /// project, preserving the layout structure and split ratios — only the
     /// contents exchange places. `previous` and `next` swap with the
-    /// adjacent group in left-to-right traversal order. Mirrors `goto_group`
+    /// adjacent project in left-to-right traversal order. Mirrors `goto_project`
     /// one layer up.
-    move_group: SplitFocusDirection,
+    move_project: SplitFocusDirection,
 
-    /// Resize the current group in the specified direction and amount in
+    /// Resize the current project in the specified direction and amount in
     /// pixels. The two arguments should be joined with a comma (`,`), like
-    /// `resize_group:up,10`. Mirrors `resize_split`.
-    resize_group: SplitResizeParameter,
+    /// `resize_project:up,10`. Mirrors `resize_split`.
+    resize_project: SplitResizeParameter,
 
-    /// Equalize the size of all visible groups in the current window.
-    equalize_groups,
+    /// Equalize the size of all visible projects in the current window.
+    equalize_projects,
 
-    /// Toggle whether the current group is zoomed. A zoomed group takes up
-    /// the entire window, hiding the other groups. Independent from
-    /// `toggle_split_zoom`, which zooms a pane within a group.
-    toggle_group_zoom,
+    /// Toggle whether the current project is zoomed. A zoomed project takes up
+    /// the entire window, hiding the other projects. Independent from
+    /// `toggle_split_zoom`, which zooms a pane within a project.
+    toggle_project_zoom,
 
-    /// Hide the current group. The group's panes and their processes keep
-    /// running; the group can be restored with `show_group`.
-    hide_group,
+    /// Hide the current project. The project's panes and their processes keep
+    /// running; the project can be restored with `show_project`.
+    hide_project,
 
-    /// Show a previously hidden group, identified by its id or name.
-    show_group: []const u8,
+    /// Show a previously hidden project, identified by its id or name.
+    show_project: []const u8,
 
-    /// Change the name of the current group via a pop-up prompt.
-    rename_group,
+    /// Change the name of the current project via a pop-up prompt.
+    rename_project,
 
-    /// Set the name of the current group to the given value.
-    set_group_title: []const u8,
+    /// Set the name of the current project to the given value.
+    set_project_title: []const u8,
 
-    /// Open the note editor overlay for the current group. The note is a
-    /// short free-form text (at most 10 lines) attached to the group and
+    /// Open the note editor overlay for the current project. The note is a
+    /// short free-form text (at most 10 lines) attached to the project and
     /// persisted with it.
-    edit_group_note,
+    edit_project_note,
 
-    /// Toggle the note overview mode: every visible group shows its note
-    /// in a read-only overlay at once. Entering while a group is zoomed
-    /// releases the zoom first. Hidden groups are not shown.
+    /// Toggle the note overview mode: every visible project shows its note
+    /// in a read-only overlay at once. Entering while a project is zoomed
+    /// releases the zoom first. Hidden projects are not shown.
     toggle_note_overview,
 
-    /// Make the focused pane the primary pane of its group: the one pane
-    /// the overall (non-zoomed) view renders for the group. Only effective
-    /// while zoomed into the group; the former primary is demoted (there is
-    /// always exactly one primary per group).
+    /// Make the focused pane the primary pane of its project: the one pane
+    /// the overall (non-zoomed) view renders for the project. Only effective
+    /// while zoomed into the project; the former primary is demoted (there is
+    /// always exactly one primary per project).
     set_primary,
 
-    /// Reorder the visible groups' layout by priority: high → medium → low →
-    /// unset, groups with equal priority keeping their current relative
-    /// order. Hidden groups are unaffected. Sorting happens only when this
+    /// Reorder the visible projects' layout by priority: high → medium → low →
+    /// unset, projects with equal priority keeping their current relative
+    /// order. Hidden projects are unaffected. Sorting happens only when this
     /// action runs — changing a priority never reorders by itself — and the
     /// resulting order persists until the next sort.
-    sort_groups_by_priority,
+    sort_projects_by_priority,
 
-    /// Reorder the visible groups' layout by deadline: nearest date first,
-    /// unset last, groups with the same date keeping their current relative
-    /// order. Hidden groups are unaffected. Sorting happens only when this
+    /// Reorder the visible projects' layout by deadline: nearest date first,
+    /// unset last, projects with the same date keeping their current relative
+    /// order. Hidden projects are unaffected. Sorting happens only when this
     /// action runs — changing a deadline never reorders by itself — and the
     /// resulting order persists until the next sort.
-    sort_groups_by_deadline,
+    sort_projects_by_deadline,
 
-    /// Close the current group, terminating the processes of all of its
+    /// Close the current project, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
-    close_group,
+    close_project,
 
     /// Reset the window to the default size. The "default size" is the
     /// size the window is created with. This has no effect if the window
@@ -778,7 +778,7 @@ pub const Action = union(enum) {
     /// of actions support undo/redo is currently limited to:
     ///
     ///   - New split, close split
-    ///   - New group, close group
+    ///   - New project, close project
     ///
     /// All actions are only undoable/redoable for a limited time.
     /// For example, restoring a closed split can only be done for
@@ -969,17 +969,17 @@ pub const Action = union(enum) {
         }
     };
 
-    /// The target of a `goto_group` action: either a focus direction
+    /// The target of a `goto_project` action: either a focus direction
     /// (mirroring `SplitFocusDirection`, including its `top`/`bottom`
-    /// aliases) or a 1-based index (1 through 9) of the group to focus in
+    /// aliases) or a 1-based index (1 through 9) of the project to focus in
     /// tree traversal order.
-    pub const GroupFocusTarget = union(enum) {
+    pub const ProjectFocusTarget = union(enum) {
         direction: SplitFocusDirection,
         index: u8,
 
-        pub fn parse(input: []const u8) !GroupFocusTarget {
+        pub fn parse(input: []const u8) !ProjectFocusTarget {
             // If the input parses as an integer we only accept 1-9,
-            // matching the Cmd+1..9 group-index keybinds.
+            // matching the Cmd+1..9 project-index keybinds.
             if (std.fmt.parseInt(u8, input, 10)) |index| {
                 if (index < 1 or index > 9) return Error.InvalidFormat;
                 return .{ .index = index };
@@ -989,15 +989,15 @@ pub const Action = union(enum) {
         }
 
         pub fn clone(
-            self: GroupFocusTarget,
+            self: ProjectFocusTarget,
             alloc: Allocator,
-        ) Allocator.Error!GroupFocusTarget {
+        ) Allocator.Error!ProjectFocusTarget {
             _ = alloc;
             return self;
         }
 
         pub fn format(
-            self: GroupFocusTarget,
+            self: ProjectFocusTarget,
             writer: *std.Io.Writer,
         ) std.Io.Writer.Error!void {
             switch (self) {
@@ -1010,22 +1010,22 @@ pub const Action = union(enum) {
             const testing = std.testing;
 
             try testing.expectEqual(
-                GroupFocusTarget{ .index = 5 },
-                try GroupFocusTarget.parse("5"),
+                ProjectFocusTarget{ .index = 5 },
+                try ProjectFocusTarget.parse("5"),
             );
             try testing.expectEqual(
-                GroupFocusTarget{ .direction = .right },
-                try GroupFocusTarget.parse("right"),
+                ProjectFocusTarget{ .direction = .right },
+                try ProjectFocusTarget.parse("right"),
             );
             try testing.expectEqual(
-                GroupFocusTarget{ .direction = .up },
-                try GroupFocusTarget.parse("top"),
+                ProjectFocusTarget{ .direction = .up },
+                try ProjectFocusTarget.parse("top"),
             );
 
-            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse("0"));
-            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse("10"));
-            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse(""));
-            try testing.expectError(Error.InvalidFormat, GroupFocusTarget.parse("banana"));
+            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse("0"));
+            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse("10"));
+            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse(""));
+            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse("banana"));
         }
     };
 
@@ -1342,22 +1342,22 @@ pub const Action = union(enum) {
             .toggle_readonly,
             .resize_split,
             .equalize_splits,
-            .new_group_split,
-            .goto_group,
-            .move_group,
-            .resize_group,
-            .equalize_groups,
-            .toggle_group_zoom,
-            .hide_group,
-            .show_group,
-            .rename_group,
-            .set_group_title,
-            .edit_group_note,
+            .new_project_split,
+            .goto_project,
+            .move_project,
+            .resize_project,
+            .equalize_projects,
+            .toggle_project_zoom,
+            .hide_project,
+            .show_project,
+            .rename_project,
+            .set_project_title,
+            .edit_project_note,
             .toggle_note_overview,
             .set_primary,
-            .sort_groups_by_priority,
-            .sort_groups_by_deadline,
-            .close_group,
+            .sort_projects_by_priority,
+            .sort_projects_by_deadline,
+            .close_project,
             .inspector,
             => .surface,
         };
@@ -3287,9 +3287,9 @@ test "parse: action with string" {
         try testing.expectEqualStrings("surface", binding.action.set_surface_title);
     }
     {
-        const binding = try parseSingle("a=set_group_title:tab");
-        try testing.expect(binding.action == .set_group_title);
-        try testing.expectEqualStrings("tab", binding.action.set_group_title);
+        const binding = try parseSingle("a=set_project_title:tab");
+        try testing.expect(binding.action == .set_project_title);
+        try testing.expectEqualStrings("tab", binding.action.set_project_title);
     }
 }
 
@@ -3368,120 +3368,120 @@ test "parse: action with a tuple" {
     try testing.expectError(Error.InvalidFormat, parseSingle("a=resize_split:up,four"));
 }
 
-test "parse: group split actions" {
+test "parse: project split actions" {
     const testing = std.testing;
 
-    // new_group_split: enum parameter, mirrors new_split
+    // new_project_split: enum parameter, mirrors new_split
     {
-        const binding = try parseSingle("a=new_group_split:right");
-        try testing.expect(binding.action == .new_group_split);
-        try testing.expectEqual(Action.SplitDirection.right, binding.action.new_group_split);
+        const binding = try parseSingle("a=new_project_split:right");
+        try testing.expect(binding.action == .new_project_split);
+        try testing.expectEqual(Action.SplitDirection.right, binding.action.new_project_split);
     }
 
-    // new_group_split: omitted parameter defaults to auto
+    // new_project_split: omitted parameter defaults to auto
     {
-        const binding = try parseSingle("a=new_group_split");
-        try testing.expect(binding.action == .new_group_split);
-        try testing.expectEqual(Action.SplitDirection.auto, binding.action.new_group_split);
+        const binding = try parseSingle("a=new_project_split");
+        try testing.expect(binding.action == .new_project_split);
+        try testing.expectEqual(Action.SplitDirection.auto, binding.action.new_project_split);
     }
 
-    // goto_group: focus-direction enum, mirrors goto_split
+    // goto_project: focus-direction enum, mirrors goto_split
     {
-        const binding = try parseSingle("a=goto_group:next");
-        try testing.expect(binding.action == .goto_group);
+        const binding = try parseSingle("a=goto_project:next");
+        try testing.expect(binding.action == .goto_project);
         try testing.expectEqual(
-            Action.GroupFocusTarget{ .direction = .next },
-            binding.action.goto_group,
+            Action.ProjectFocusTarget{ .direction = .next },
+            binding.action.goto_project,
         );
     }
 
-    // goto_group: 1-based group index
+    // goto_project: 1-based project index
     {
-        const binding = try parseSingle("a=goto_group:5");
-        try testing.expect(binding.action == .goto_group);
+        const binding = try parseSingle("a=goto_project:5");
+        try testing.expect(binding.action == .goto_project);
         try testing.expectEqual(
-            Action.GroupFocusTarget{ .index = 5 },
-            binding.action.goto_group,
+            Action.ProjectFocusTarget{ .index = 5 },
+            binding.action.goto_project,
         );
     }
 
-    // goto_group: direction argument still parses after the index change
+    // goto_project: direction argument still parses after the index change
     {
-        const binding = try parseSingle("a=goto_group:right");
-        try testing.expect(binding.action == .goto_group);
+        const binding = try parseSingle("a=goto_project:right");
+        try testing.expect(binding.action == .goto_project);
         try testing.expectEqual(
-            Action.GroupFocusTarget{ .direction = .right },
-            binding.action.goto_group,
+            Action.ProjectFocusTarget{ .direction = .right },
+            binding.action.goto_project,
         );
     }
 
-    // goto_group: invalid index and inputs
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:0"));
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:10"));
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:"));
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_group:banana"));
+    // goto_project: invalid index and inputs
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:0"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:10"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:banana"));
 
-    // goto_group: format round-trips back to the input syntax
+    // goto_project: format round-trips back to the input syntax
     {
         const testing_alloc = testing.allocator;
         var buf: std.Io.Writer.Allocating = .init(testing_alloc);
         defer buf.deinit();
 
-        const binding = try parseSingle("a=goto_group:right");
+        const binding = try parseSingle("a=goto_project:right");
         try binding.action.format(&buf.writer);
-        try testing.expectEqualStrings("goto_group:right", buf.written());
+        try testing.expectEqualStrings("goto_project:right", buf.written());
     }
     {
         const testing_alloc = testing.allocator;
         var buf: std.Io.Writer.Allocating = .init(testing_alloc);
         defer buf.deinit();
 
-        const binding = try parseSingle("a=goto_group:5");
+        const binding = try parseSingle("a=goto_project:5");
         try binding.action.format(&buf.writer);
-        try testing.expectEqualStrings("goto_group:5", buf.written());
+        try testing.expectEqualStrings("goto_project:5", buf.written());
     }
 
-    // move_group: focus-direction enum, mirrors goto_group
+    // move_project: focus-direction enum, mirrors goto_project
     {
-        const binding = try parseSingle("a=move_group:next");
-        try testing.expect(binding.action == .move_group);
-        try testing.expectEqual(Action.SplitFocusDirection.next, binding.action.move_group);
+        const binding = try parseSingle("a=move_project:next");
+        try testing.expect(binding.action == .move_project);
+        try testing.expectEqual(Action.SplitFocusDirection.next, binding.action.move_project);
     }
     {
-        const binding = try parseSingle("a=move_group:left");
-        try testing.expect(binding.action == .move_group);
-        try testing.expectEqual(Action.SplitFocusDirection.left, binding.action.move_group);
+        const binding = try parseSingle("a=move_project:left");
+        try testing.expect(binding.action == .move_project);
+        try testing.expectEqual(Action.SplitFocusDirection.left, binding.action.move_project);
     }
 
-    // resize_group: tuple, mirrors resize_split
+    // resize_project: tuple, mirrors resize_split
     {
-        const binding = try parseSingle("a=resize_group:up,10");
-        try testing.expect(binding.action == .resize_group);
-        try testing.expectEqual(Action.SplitResizeDirection.up, binding.action.resize_group[0]);
-        try testing.expectEqual(@as(u16, 10), binding.action.resize_group[1]);
+        const binding = try parseSingle("a=resize_project:up,10");
+        try testing.expect(binding.action == .resize_project);
+        try testing.expectEqual(Action.SplitResizeDirection.up, binding.action.resize_project[0]);
+        try testing.expectEqual(@as(u16, 10), binding.action.resize_project[1]);
     }
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=resize_group:up"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=resize_project:up"));
 
-    // void group actions
+    // void project actions
     {
-        const binding = try parseSingle("a=equalize_groups");
-        try testing.expect(binding.action == .equalize_groups);
+        const binding = try parseSingle("a=equalize_projects");
+        try testing.expect(binding.action == .equalize_projects);
     }
     {
-        const binding = try parseSingle("a=toggle_group_zoom");
-        try testing.expect(binding.action == .toggle_group_zoom);
+        const binding = try parseSingle("a=toggle_project_zoom");
+        try testing.expect(binding.action == .toggle_project_zoom);
     }
     {
-        const binding = try parseSingle("a=hide_group");
-        try testing.expect(binding.action == .hide_group);
+        const binding = try parseSingle("a=hide_project");
+        try testing.expect(binding.action == .hide_project);
     }
     {
-        const binding = try parseSingle("a=rename_group");
-        try testing.expect(binding.action == .rename_group);
+        const binding = try parseSingle("a=rename_project");
+        try testing.expect(binding.action == .rename_project);
     }
     {
-        const binding = try parseSingle("a=edit_group_note");
-        try testing.expect(binding.action == .edit_group_note);
+        const binding = try parseSingle("a=edit_project_note");
+        try testing.expect(binding.action == .edit_project_note);
     }
     {
         const binding = try parseSingle("a=toggle_note_overview");
@@ -3492,28 +3492,28 @@ test "parse: group split actions" {
         try testing.expect(binding.action == .set_primary);
     }
     {
-        const binding = try parseSingle("a=sort_groups_by_priority");
-        try testing.expect(binding.action == .sort_groups_by_priority);
+        const binding = try parseSingle("a=sort_projects_by_priority");
+        try testing.expect(binding.action == .sort_projects_by_priority);
     }
     {
-        const binding = try parseSingle("a=sort_groups_by_deadline");
-        try testing.expect(binding.action == .sort_groups_by_deadline);
+        const binding = try parseSingle("a=sort_projects_by_deadline");
+        try testing.expect(binding.action == .sort_projects_by_deadline);
     }
     {
-        const binding = try parseSingle("a=close_group");
-        try testing.expect(binding.action == .close_group);
+        const binding = try parseSingle("a=close_project");
+        try testing.expect(binding.action == .close_project);
     }
 
-    // string group actions
+    // string project actions
     {
-        const binding = try parseSingle("a=show_group:calm-river");
-        try testing.expect(binding.action == .show_group);
-        try testing.expectEqualStrings("calm-river", binding.action.show_group);
+        const binding = try parseSingle("a=show_project:calm-river");
+        try testing.expect(binding.action == .show_project);
+        try testing.expectEqualStrings("calm-river", binding.action.show_project);
     }
     {
-        const binding = try parseSingle("a=set_group_title:my-group");
-        try testing.expect(binding.action == .set_group_title);
-        try testing.expectEqualStrings("my-group", binding.action.set_group_title);
+        const binding = try parseSingle("a=set_project_title:my-project");
+        try testing.expect(binding.action == .set_project_title);
+        try testing.expectEqualStrings("my-project", binding.action.set_project_title);
     }
 }
 
@@ -3522,9 +3522,9 @@ test "parse: chain" {
 
     // Valid
     {
-        var p = try Parser.init("chain=close_group");
+        var p = try Parser.init("chain=close_project");
         try testing.expectEqual(Parser.Elem{
-            .chain = .close_group,
+            .chain = .close_project,
         }, try p.next());
         try testing.expect(try p.next() == null);
     }
@@ -3787,7 +3787,7 @@ test "set: multiple leaves under leader updates chain_parent" {
         try testing.expectEqualStrings("b", buf.written());
     }
 
-    try s.parseAndPut(alloc, "a>c=close_group");
+    try s.parseAndPut(alloc, "a>c=close_project");
 
     // After second binding, chain_parent should be updated to 'c'
     try testing.expect(s.chain_parent != null);
@@ -3797,7 +3797,7 @@ test "set: multiple leaves under leader updates chain_parent" {
         try s.chain_parent.?.key_ptr.format(&buf.writer);
         try testing.expectEqualStrings("c", buf.written());
     }
-    try testing.expect(s.chain_parent.?.value_ptr.*.leaf.action == .close_group);
+    try testing.expect(s.chain_parent.?.value_ptr.*.leaf.action == .close_project);
 }
 
 test "set: sequence unbind clears chain_parent" {
@@ -3824,7 +3824,7 @@ test "set: sequence unbind with remaining leaves clears chain_parent" {
     defer s.deinit(alloc);
 
     try s.parseAndPut(alloc, "a>b=quit");
-    try s.parseAndPut(alloc, "a>c=close_group");
+    try s.parseAndPut(alloc, "a>c=close_project");
     try s.parseAndPut(alloc, "a>b=unbind");
 
     // After unbind, chain_parent should be cleared even though 'c' remains
@@ -3902,7 +3902,7 @@ test "set: clone with leaf_chained" {
 
     // Create a chained binding using parseAndPut with chain=
     try s.parseAndPut(alloc, "a=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
 
     // Verify we have a leaf_chained
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
@@ -3918,7 +3918,7 @@ test "set: clone with leaf_chained" {
     try testing.expect(cloned_entry.value_ptr.* == .leaf_chained);
     try testing.expectEqual(@as(usize, 2), cloned_entry.value_ptr.leaf_chained.actions.items.len);
     try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[0] == .quit);
-    try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[1] == .close_group);
+    try testing.expect(cloned_entry.value_ptr.leaf_chained.actions.items[1] == .close_project);
 }
 
 test "set: clone with leaf_chained containing allocated data" {
@@ -3983,7 +3983,7 @@ test "set: parseAndPut sequence with two actions" {
     defer s.deinit(alloc);
 
     try s.parseAndPut(alloc, "a>b=quit");
-    try s.parseAndPut(alloc, "a>c=close_group");
+    try s.parseAndPut(alloc, "a>c=close_project");
     var current: *Set = &s;
     {
         const t: Trigger = .{ .key = .{ .unicode = 'a' } };
@@ -4002,7 +4002,7 @@ test "set: parseAndPut sequence with two actions" {
         const t: Trigger = .{ .key = .{ .unicode = 'c' } };
         const e = current.get(t).?.value_ptr.*;
         try testing.expect(e == .leaf);
-        try testing.expect(e.leaf.action == .close_group);
+        try testing.expect(e.leaf.action == .close_project);
         try testing.expectEqual(Flags{}, e.leaf.flags);
     }
 }
@@ -4014,7 +4014,7 @@ test "set: parseAndPut overwrite sequence" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a>b=close_group");
+    try s.parseAndPut(alloc, "a>b=close_project");
     try s.parseAndPut(alloc, "a>b=quit");
     var current: *Set = &s;
     {
@@ -4039,7 +4039,7 @@ test "set: parseAndPut overwrite leader" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try s.parseAndPut(alloc, "a=close_group");
+    try s.parseAndPut(alloc, "a=close_project");
     try s.parseAndPut(alloc, "a>b=quit");
     var current: *Set = &s;
     {
@@ -4200,7 +4200,7 @@ test "set: overriding a mapping updates reverse" {
     }
 
     // should be most recent
-    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .close_group = {} });
+    try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .close_project = {} });
     {
         const trigger = s.getTrigger(.{ .quit = {} });
         try testing.expect(trigger == null);
@@ -4240,7 +4240,7 @@ test "set: parseAndPut chain" {
     defer s.deinit(alloc);
 
     try s.parseAndPut(alloc, "a=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
 
     // Creates forward mapping as leaf_chained
     {
@@ -4249,7 +4249,7 @@ test "set: parseAndPut chain" {
         const chained = entry.leaf_chained;
         try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
         try testing.expect(chained.actions.items[0] == .quit);
-        try testing.expect(chained.actions.items[1] == .close_group);
+        try testing.expect(chained.actions.items[1] == .close_project);
     }
 
     // Does not create reverse mapping, because reverse mappings are only for
@@ -4267,7 +4267,7 @@ test "set: parseAndPut chain without parent is error" {
     defer s.deinit(alloc);
 
     // Chain without a prior binding should fail
-    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=close_group"));
+    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=close_project"));
 }
 
 test "set: parseAndPut chain multiple times" {
@@ -4278,7 +4278,7 @@ test "set: parseAndPut chain multiple times" {
     defer s.deinit(alloc);
 
     try s.parseAndPut(alloc, "a=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
     try s.parseAndPut(alloc, "chain=close_surface");
 
     // Should have 3 actions chained
@@ -4288,7 +4288,7 @@ test "set: parseAndPut chain multiple times" {
         const chained = entry.leaf_chained;
         try testing.expectEqual(@as(usize, 3), chained.actions.items.len);
         try testing.expect(chained.actions.items[0] == .quit);
-        try testing.expect(chained.actions.items[1] == .close_group);
+        try testing.expect(chained.actions.items[1] == .close_project);
         try testing.expect(chained.actions.items[2] == .close_surface);
     }
 }
@@ -4301,7 +4301,7 @@ test "set: parseAndPut chain preserves flags" {
     defer s.deinit(alloc);
 
     try s.parseAndPut(alloc, "unconsumed:a=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
 
     // Should preserve unconsumed flag
     {
@@ -4324,7 +4324,7 @@ test "set: parseAndPut chain after unbind is error" {
     try s.parseAndPut(alloc, "a=unbind");
 
     // Chain after unbind should fail because chain_parent is cleared
-    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=close_group"));
+    try testing.expectError(error.InvalidFormat, s.parseAndPut(alloc, "chain=close_project"));
 }
 
 test "set: parseAndPut chain on sequence" {
@@ -4335,7 +4335,7 @@ test "set: parseAndPut chain on sequence" {
     defer s.deinit(alloc);
 
     try s.parseAndPut(alloc, "a>b=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
 
     // Navigate to the inner set
     const a_entry = s.get(.{ .key = .{ .unicode = 'a' } }).?.value_ptr.*;
@@ -4348,7 +4348,7 @@ test "set: parseAndPut chain on sequence" {
     const chained = b_entry.leaf_chained;
     try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
     try testing.expect(chained.actions.items[0] == .quit);
-    try testing.expect(chained.actions.items[1] == .close_group);
+    try testing.expect(chained.actions.items[1] == .close_project);
 }
 
 test "set: parseAndPut chain with unbind is error" {
@@ -4709,12 +4709,12 @@ test "action: format set title" {
     const testing = std.testing;
     const alloc = testing.allocator;
 
-    const a: Action = .{ .set_group_title = "foo bar" };
+    const a: Action = .{ .set_project_title = "foo bar" };
 
     var buf: std.Io.Writer.Allocating = .init(alloc);
     defer buf.deinit();
     try a.format(&buf.writer);
-    try testing.expectEqualStrings("set_group_title:foo bar", buf.written());
+    try testing.expectEqualStrings("set_project_title:foo bar", buf.written());
 }
 
 test "set: appendChain with no parent returns error" {
@@ -4724,7 +4724,7 @@ test "set: appendChain with no parent returns error" {
     var s: Set = .{};
     defer s.deinit(alloc);
 
-    try testing.expectError(error.NoChainParent, s.appendChain(alloc, .{ .close_group = {} }));
+    try testing.expectError(error.NoChainParent, s.appendChain(alloc, .{ .close_project = {} }));
 }
 
 test "set: appendChain after put converts to leaf_chained" {
@@ -4737,7 +4737,7 @@ test "set: appendChain after put converts to leaf_chained" {
     try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
 
     // First appendChain converts leaf to leaf_chained and appends the new action
-    try s.appendChain(alloc, .{ .close_group = {} });
+    try s.appendChain(alloc, .{ .close_project = {} });
 
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
     try testing.expect(entry.value_ptr.* == .leaf_chained);
@@ -4745,7 +4745,7 @@ test "set: appendChain after put converts to leaf_chained" {
     const chained = entry.value_ptr.*.leaf_chained;
     try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
     try testing.expect(chained.actions.items[0] == .quit);
-    try testing.expect(chained.actions.items[1] == .close_group);
+    try testing.expect(chained.actions.items[1] == .close_project);
 }
 
 test "set: appendChain after putFlags preserves flags" {
@@ -4761,7 +4761,7 @@ test "set: appendChain after putFlags preserves flags" {
         .{ .quit = {} },
         .{ .consumed = false },
     );
-    try s.appendChain(alloc, .{ .close_group = {} });
+    try s.appendChain(alloc, .{ .close_project = {} });
 
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
     try testing.expect(entry.value_ptr.* == .leaf_chained);
@@ -4770,7 +4770,7 @@ test "set: appendChain after putFlags preserves flags" {
     try testing.expect(!chained.flags.consumed);
     try testing.expectEqual(@as(usize, 2), chained.actions.items.len);
     try testing.expect(chained.actions.items[0] == .quit);
-    try testing.expect(chained.actions.items[1] == .close_group);
+    try testing.expect(chained.actions.items[1] == .close_project);
 }
 
 test "set: appendChain multiple times" {
@@ -4781,7 +4781,7 @@ test "set: appendChain multiple times" {
     defer s.deinit(alloc);
 
     try s.put(alloc, .{ .key = .{ .unicode = 'a' } }, .{ .quit = {} });
-    try s.appendChain(alloc, .{ .close_group = {} });
+    try s.appendChain(alloc, .{ .close_project = {} });
     try s.appendChain(alloc, .{ .close_surface = {} });
 
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
@@ -4790,7 +4790,7 @@ test "set: appendChain multiple times" {
     const chained = entry.value_ptr.*.leaf_chained;
     try testing.expectEqual(@as(usize, 3), chained.actions.items.len);
     try testing.expect(chained.actions.items[0] == .quit);
-    try testing.expect(chained.actions.items[1] == .close_group);
+    try testing.expect(chained.actions.items[1] == .close_project);
     try testing.expect(chained.actions.items[2] == .close_surface);
 }
 
@@ -4807,7 +4807,7 @@ test "set: appendChain removes reverse mapping" {
     try testing.expect(s.getTrigger(.{ .quit = {} }) != null);
 
     // Chaining should remove the reverse mapping
-    try s.appendChain(alloc, .{ .close_group = {} });
+    try s.appendChain(alloc, .{ .close_project = {} });
 
     // Reverse mapping should be gone since chained actions are not in reverse map
     try testing.expect(s.getTrigger(.{ .quit = {} }) == null);
@@ -4836,7 +4836,7 @@ test "set: appendChain with performable does not affect reverse mapping" {
     try testing.expect(s.getTrigger(.{ .close_surface = {} }) == null);
 
     // Chaining the performable binding should not crash or affect anything
-    try s.appendChain(alloc, .{ .close_group = {} });
+    try s.appendChain(alloc, .{ .close_project = {} });
 
     // The non-performable quit binding should still be in reverse map
     try testing.expect(s.getTrigger(.{ .quit = {} }) != null);
@@ -4860,7 +4860,7 @@ test "set: appendChain restores next valid reverse mapping" {
     }
 
     // Chain an action to 'b', which should restore 'a' in the reverse map
-    try s.appendChain(alloc, .{ .close_group = {} });
+    try s.appendChain(alloc, .{ .close_project = {} });
 
     // Now reverse mapping should point to 'a'
     {
@@ -4879,7 +4879,7 @@ test "set: formatEntries leaf_chained" {
 
     // Create a chained binding
     try s.parseAndPut(alloc, "a=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
 
     // Verify it's a leaf_chained
     const entry = s.get(.{ .key = .{ .unicode = 'a' } }).?;
@@ -4898,7 +4898,7 @@ test "set: formatEntries leaf_chained" {
 
     const expected =
         \\keybind = a=quit
-        \\keybind = chain=close_group
+        \\keybind = chain=close_project
         \\
     ;
     try testing.expectEqualStrings(expected, output.written());
@@ -4914,7 +4914,7 @@ test "set: formatEntries leaf_chained multiple chains" {
 
     // Create a chained binding with 3 actions
     try s.parseAndPut(alloc, "ctrl+a=quit");
-    try s.parseAndPut(alloc, "chain=close_group");
+    try s.parseAndPut(alloc, "chain=close_project");
     try s.parseAndPut(alloc, "chain=close_surface");
 
     // Verify it's a leaf_chained with 3 actions
@@ -4934,7 +4934,7 @@ test "set: formatEntries leaf_chained multiple chains" {
 
     const expected =
         \\keybind = ctrl+a=quit
-        \\keybind = chain=close_group
+        \\keybind = chain=close_project
         \\keybind = chain=close_surface
         \\
     ;

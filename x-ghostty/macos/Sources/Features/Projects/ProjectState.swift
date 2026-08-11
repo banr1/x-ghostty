@@ -1,6 +1,6 @@
 import Foundation
 
-/// State for a single group: a named container around a pane split tree.
+/// State for a single project: a named container around a pane split tree.
 ///
 /// See `SPEC.md` §5.3. Per the Phase 0 design decision, the runtime pane tree
 /// keeps the existing `SplitTree<XGhostty.SurfaceView>` element type rather
@@ -8,22 +8,22 @@ import Foundation
 /// rendering, action, restore and drag-and-drop pipelines work unchanged.
 /// `SurfaceID` values are derived from `SurfaceView.id`.
 ///
-/// The struct itself is generic over the pane element (`GroupStateOf<Pane>`,
-/// with `GroupState` as the runtime specialization) so the model-layer
+/// The struct itself is generic over the pane element (`ProjectStateOf<Pane>`,
+/// with `ProjectState` as the runtime specialization) so the model-layer
 /// judgment logic — the note rules and the primary-pane rules (SPEC §22) —
 /// can be exercised from `XGhosttyTests` with value-type panes: constructing a
 /// real `SurfaceView` requires a live XGhostty app, which unit tests do not
 /// have.
-struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable where Pane.ID == UUID {
+struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable where Pane.ID == UUID {
     /// The maximum number of lines a note may hold. Text beyond this is
     /// dropped at every entry point — `init`, `setNote`, and decode — so an
     /// over-long note is never retained anywhere.
     static var maxNoteLines: Int { 10 }
 
-    let id: GroupID
+    let id: ProjectID
     var name: String
 
-    /// The pane layout for this group. Element type intentionally kept as
+    /// The pane layout for this project. Element type intentionally kept as
     /// `XGhostty.SurfaceView` at runtime (see the type doc above).
     ///
     /// Every replacement re-reconciles the primary flag (SPEC §22.2): panes
@@ -39,7 +39,7 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
             // The terminated state is valid only while the terminated pane is
             // the tree's sole leaf (SPEC §23.2): if the pane leaves the tree,
             // or the tree grows past one pane (e.g. a split while terminated),
-            // the group is no longer "terminated" — the dead pane, if still
+            // the project is no longer "terminated" — the dead pane, if still
             // present, is just an exited sibling pane.
             if let terminated = terminatedPane,
                paneTree.isSplit || paneTree.find(id: terminated.rawValue) == nil {
@@ -48,17 +48,17 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
         }
     }
 
-    /// The surface that last held focus within this group, identified by
+    /// The surface that last held focus within this project, identified by
     /// `SurfaceView.id`.
     var focusedSurface: SurfaceID?
 
-    /// The human-written note attached to this group (`SPEC.md` §21.1).
-    /// Belongs to the group as a whole, never to individual panes. Always
+    /// The human-written note attached to this project (`SPEC.md` §21.1).
+    /// Belongs to the project as a whole, never to individual panes. Always
     /// normalized: at most `maxNoteLines` lines, `\n` separators. Empty means
     /// "no note".
     private(set) var note: String
 
-    /// The pane whose primary flag is set (`SPEC.md` §22.1): the group's
+    /// The pane whose primary flag is set (`SPEC.md` §22.1): the project's
     /// representative pane, the only one the overall (non-zoomed) view draws.
     ///
     /// Invariant: exactly one pane holds the flag whenever `paneTree` is
@@ -69,39 +69,39 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
     private(set) var primaryPane: SurfaceID?
 
     /// The pane held in the terminated state, or `nil` (`SPEC.md` §23.2): the
-    /// group's last pane whose shell has exited. The group stays — with its
+    /// project's last pane whose shell has exited. The project stays — with its
     /// note — instead of closing, and Enter starts a new shell in the pane.
     ///
     /// Invariant: non-`nil` only while that pane is the tree's sole leaf,
     /// maintained by `markPaneTerminated` and the `paneTree` observer.
     /// Runtime-only: never persisted — a restore recreates every pane with a
-    /// fresh shell, so a restored group is live again (`SPEC.md` §23.4).
+    /// fresh shell, so a restored project is live again (`SPEC.md` §23.4).
     private(set) var terminatedPane: SurfaceID?
 
-    /// The human-set priority of this group, or `nil` for unset — the default
-    /// (`SPEC.md` §24.1). Like the note, it belongs to the group as a whole
+    /// The human-set priority of this project, or `nil` for unset — the default
+    /// (`SPEC.md` §24.1). Like the note, it belongs to the project as a whole
     /// and persists through the same record.
-    var priority: GroupPriority?
+    var priority: ProjectPriority?
 
-    /// The human-set deadline of this group (date only, no time), or `nil`
+    /// The human-set deadline of this project (date only, no time), or `nil`
     /// for unset — the default (`SPEC.md` §24.1). Validation lives in
-    /// `GroupDeadline`: an invalid date cannot be represented, so an invalid
+    /// `ProjectDeadline`: an invalid date cannot be represented, so an invalid
     /// input is rejected to unset at the model boundary. Persists through the
     /// same record as the note.
-    var deadline: GroupDeadline?
+    var deadline: ProjectDeadline?
 
     var createdAt: Date
     var lastFocusedAt: Date?
 
     init(
-        id: GroupID,
+        id: ProjectID,
         name: String,
         paneTree: SplitTree<Pane>,
         focusedSurface: SurfaceID? = nil,
         note: String = "",
         primaryPane: SurfaceID? = nil,
-        priority: GroupPriority? = nil,
-        deadline: GroupDeadline? = nil,
+        priority: ProjectPriority? = nil,
+        deadline: ProjectDeadline? = nil,
         createdAt: Date,
         lastFocusedAt: Date? = nil
     ) {
@@ -110,7 +110,7 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
         self.paneTree = paneTree
         self.focusedSurface = focusedSurface
         self.note = Self.normalizedNote(note)
-        // The first pane of a new group is the default primary (SPEC §22.1):
+        // The first pane of a new project is the default primary (SPEC §22.1):
         // with no explicit candidate this resolves to the tree's first leaf.
         self.primaryPane = paneTree.normalizedPrimary(
             from: [primaryPane?.rawValue].compactMap { $0 }
@@ -141,17 +141,17 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
 
     // MARK: Primary pane (SPEC §22)
 
-    /// Whether `paneID`'s primary flag is set. Exactly one pane per group
+    /// Whether `paneID`'s primary flag is set. Exactly one pane per project
     /// answers `true` while the tree is non-empty (SPEC §22.1).
     func isPrimary(_ paneID: SurfaceID) -> Bool {
         primaryPane == paneID
     }
 
-    /// The pane tree the overall (non-zoomed) view renders for this group: a
+    /// The pane tree the overall (non-zoomed) view renders for this project: a
     /// single-leaf tree holding only the primary pane (SPEC §22.3). The
-    /// zoomed local view renders `paneTree` unchanged. An empty group renders
+    /// zoomed local view renders `paneTree` unchanged. An empty project renders
     /// nothing; a missing primary (unreachable while the invariant holds)
-    /// falls back to the full tree rather than blanking the group.
+    /// falls back to the full tree rather than blanking the project.
     var overallViewPaneTree: SplitTree<Pane> {
         guard let primary = primaryPane else { return paneTree }
         guard let node = paneTree.find(id: primary.rawValue),
@@ -164,7 +164,7 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
     /// uniqueness cannot break.
     ///
     /// - Returns: `false` (and changes nothing) when `paneID` is not a leaf of
-    ///   `paneTree`, so a stale id can never point the flag outside the group.
+    ///   `paneTree`, so a stale id can never point the flag outside the project.
     @discardableResult
     mutating func setPrimaryPane(_ paneID: SurfaceID) -> Bool {
         guard paneTree.find(id: paneID.rawValue) != nil else { return false }
@@ -174,14 +174,14 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
 
     // MARK: Terminated state (SPEC §23.2–23.3)
 
-    /// Whether this group is in the terminated state: its last pane's shell
-    /// has exited and the pane is kept instead of closing the group.
+    /// Whether this project is in the terminated state: its last pane's shell
+    /// has exited and the pane is kept instead of closing the project.
     var isTerminated: Bool {
         terminatedPane != nil
     }
 
-    /// Enter the terminated state for `paneID` (`SPEC.md` §23.2): the group's
-    /// last pane whose shell exited is kept — with the group and its note —
+    /// Enter the terminated state for `paneID` (`SPEC.md` §23.2): the project's
+    /// last pane whose shell exited is kept — with the project and its note —
     /// instead of closing.
     ///
     /// - Returns: `false` (and changes nothing) unless `paneID` is the tree's
@@ -196,10 +196,10 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
     }
 
     /// Leave the terminated state by replacing the dead pane with `newPane`,
-    /// which carries a fresh shell (`SPEC.md` §23.3): the group resumes work
+    /// which carries a fresh shell (`SPEC.md` §23.3): the project resumes work
     /// in the same pane slot, keeping its note, name, and layout position.
     ///
-    /// - Returns: `false` (and changes nothing) when the group is not
+    /// - Returns: `false` (and changes nothing) when the project is not
     ///   terminated.
     @discardableResult
     mutating func restartTerminatedPane(with newPane: Pane) -> Bool {
@@ -213,7 +213,7 @@ struct GroupStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wher
 
 // MARK: Codable
 
-extension GroupStateOf: Codable {
+extension ProjectStateOf: Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case name
@@ -236,7 +236,7 @@ extension GroupStateOf: Codable {
     /// decoded tree (SPEC §22.1).
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try c.decode(GroupID.self, forKey: .id)
+        self.id = try c.decode(ProjectID.self, forKey: .id)
         self.name = try c.decode(String.self, forKey: .name)
         self.paneTree = try c.decode(SplitTree<Pane>.self, forKey: .paneTree)
         self.focusedSurface = try c.decodeIfPresent(SurfaceID.self, forKey: .focusedSurface)
@@ -248,9 +248,9 @@ extension GroupStateOf: Codable {
         // Priority/deadline follow the invalid-to-unset rule (SPEC §24.1) on
         // the restore path too: a save carrying an unknown priority value or
         // an impossible date decodes as unset rather than rejecting the whole
-        // group record.
-        self.priority = (try? c.decodeIfPresent(GroupPriority.self, forKey: .priority)) ?? nil
-        self.deadline = (try? c.decodeIfPresent(GroupDeadline.self, forKey: .deadline)) ?? nil
+        // project record.
+        self.priority = (try? c.decodeIfPresent(ProjectPriority.self, forKey: .priority)) ?? nil
+        self.deadline = (try? c.decodeIfPresent(ProjectDeadline.self, forKey: .deadline)) ?? nil
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
         self.lastFocusedAt = try c.decodeIfPresent(Date.self, forKey: .lastFocusedAt)
     }
@@ -275,15 +275,15 @@ extension GroupStateOf: Codable {
 }
 
 /// The runtime specialization: pane elements are live surface views.
-typealias GroupState = GroupStateOf<XGhostty.SurfaceView>
+typealias ProjectState = ProjectStateOf<XGhostty.SurfaceView>
 
 // MARK: Priority (SPEC §24.1)
 
-/// The human-set priority of a group: `high` / `medium` / `low`. "Unset" —
-/// the default — is the absence of a value (`GroupState.priority == nil`),
+/// The human-set priority of a project: `high` / `medium` / `low`. "Unset" —
+/// the default — is the absence of a value (`ProjectState.priority == nil`),
 /// mirroring how the deadline models it, so a fourth case cannot drift from
 /// the optional's semantics.
-enum GroupPriority: String, Codable, CaseIterable, Equatable {
+enum ProjectPriority: String, Codable, CaseIterable, Equatable {
     case high
     case medium
     case low
@@ -304,13 +304,13 @@ enum GroupPriority: String, Codable, CaseIterable, Equatable {
 
 // MARK: Deadline (SPEC §24.1)
 
-/// A group's deadline: a calendar date with no time component (SPEC §24.1).
+/// A project's deadline: a calendar date with no time component (SPEC §24.1).
 ///
 /// Validation is constructive — the failable initializers are the only way to
 /// obtain a value, and they reject anything that is not a real Gregorian
 /// calendar date, so an invalid deadline (2026-02-30, month 13, garbage text)
 /// is unrepresentable and collapses to unset (`nil`) at the model boundary.
-struct GroupDeadline: Codable, Equatable, Hashable, Comparable {
+struct ProjectDeadline: Codable, Equatable, Hashable, Comparable {
     let year: Int
     let month: Int
     let day: Int
@@ -371,7 +371,7 @@ struct GroupDeadline: Codable, Equatable, Hashable, Comparable {
     /// Whether this deadline is past `today` (SPEC §24.2): strictly earlier —
     /// the deadline's own day is not yet overdue. Date-only comparison; the
     /// single-stage judgment behind the subtle overdue emphasis.
-    func isOverdue(today: GroupDeadline) -> Bool {
+    func isOverdue(today: ProjectDeadline) -> Bool {
         self < today
     }
 
@@ -384,11 +384,11 @@ struct GroupDeadline: Codable, Equatable, Hashable, Comparable {
 
     // Codable: persist as the canonical text form so the saved record stays
     // readable, and re-validate on decode — a hand-edited or corrupt save
-    // holding an impossible date fails decode, which the group record's
+    // holding an impossible date fails decode, which the project record's
     // lenient decode turns into unset (SPEC §24.1).
     init(from decoder: Decoder) throws {
         let text = try decoder.singleValueContainer().decode(String.self)
-        guard let parsed = GroupDeadline(parsing: text) else {
+        guard let parsed = ProjectDeadline(parsing: text) else {
             throw DecodingError.dataCorrupted(.init(
                 codingPath: decoder.codingPath,
                 debugDescription: "invalid deadline: \(text)"))

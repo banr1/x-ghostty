@@ -9,7 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-033"
+    "T-034",
+    "T-035"
   ],
   "items": [
     {
@@ -1342,7 +1343,7 @@
     {
       "id": "T-033",
       "title": "Full group-to-project rename (pure rename, no behavior change): fork-specific keybind action names (hide_group, close_group, toggle_group_zoom, rename_group, goto_group, edit_group_note, sort_groups_by_* etc. to their project forms) across the Zig core / C header / Swift dispatch, Swift identifiers (GroupState to ProjectState etc.), directory and file names (macos/Sources/Features/Groups/ to Projects/, macos/Tests/Groups/ to Projects/), user-visible wording (menus, dialogs, hidden shelf), and SPEC.md / README.md terminology; upstream terminal-core vocabulary untouched; AGENTS.md is excluded (high-risk path, T-043); all three gates green afterwards",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-066",
@@ -1355,7 +1356,53 @@
       },
       "batch_group": "rename",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with all fork actions renamed to the project family, regenerated C header, macOS app with the renamed Projects/ sources) exited 0 after the complete rename."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the renamed XGHOSTTY_ACTION_* tags (enum order unchanged, tags renamed in place) and the renamed keybind parse tests (goto_project, edit_project_note, sort_projects_by_*, etc.)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) with every renamed test class (ProjectNoteTests, ProjectPrimaryPaneTests, ProjectTerminatedTests, ProjectPriorityDeadlineTests, ProjectNameGeneratorTests, WorkspaceModelTests, WorkspaceStateTests) passing, plus the new WorkspaceStateTests/decodesLegacyGroupVocabularyKeys pinning that pre-rename saved workspaces (canonicalGroupTree/groups/focusedGroup keys) still decode so no persisted notes/priorities/deadlines are lost."
+        },
+        {
+          "type": "command",
+          "command": "ls macos/Sources/Features/Projects macos/Tests/Projects; ls macos/Sources/Features/Groups macos/Tests/Groups; grep -rn -E (old fork action names) src/ include/ | wc -l; grep -rnE (Group-family identifiers) macos/Sources macos/Tests --include=*.swift | wc -l; grep (group string literals) macos/Sources; grep -c -i (group / project vocabulary) SPEC.md README.md",
+          "exit_code": 0,
+          "summary": "Rename completion checks (success criterion 17): macos/Sources/Features/Projects/ and macos/Tests/Projects/ exist, the old Groups/ directories do not (ls: No such file or directory); zero old fork action names remain under src/ and include/; zero Group-family Swift identifiers remain; the only remaining group string literals are the three intentional legacy decode keys in WorkspaceState.swift (not user-visible); SPEC.md and README.md contain zero group/former-vocabulary occurrences. Upstream terminal-core vocabulary (pty process groups, font groups, kitty graphics, etc.) deliberately untouched; AGENTS.md deliberately excluded (high-risk path, T-043)."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "src/Surface.zig",
+            "src/apprt/surface.zig",
+            "src/apprt/embedded.zig",
+            "include/xghostty.h",
+            "macos/Sources/Features/Projects/",
+            "macos/Tests/Projects/",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "Full group-to-project rename (pure rename; S-066/S-067/S-073). Zig/C: all 15 fork action names and their C ABI tags renamed in place (XGHOSTTY_ACTION_NEW_PROJECT_SPLIT..SORT_PROJECTS_BY_DEADLINE, XGHOSTTY_GOTO_PROJECT_*, xghostty_action_goto_project_e, XGHOSTTY_SURFACE_CONTEXT_PROJECT, NewSurfaceContext.project), enum order preserved for the checkXGhosttyHEnum sync guard; upstream core vocabulary (pty/font/kitty groups) untouched. Swift: Features/Groups/ -> Features/Projects/ and Tests/Groups/ -> Tests/Projects/ via git mv with per-file renames (GroupState.swift -> ProjectState.swift, HiddenGroupShelf.swift -> HiddenProjectShelf.swift, GroupNoteTests.swift -> ProjectNoteTests.swift, etc.); all Group-family identifiers, user-visible strings (Close Project dialog, New/Hide/Show/Move Project undo names, hidden shelf), notification names, and comments renamed; SwiftUI's own Group view (3 sites), WindowGroup, and compositingGroup preserved. pbxproj needed no edit (PBXFileSystemSynchronizedRootGroup folders; no Groups-file membership exceptions). Persistence: ProjectState coding keys never contained the old vocabulary; WorkspaceStateOf's three renamed keys gained a LegacyCodingKeys decode fallback (canonicalGroupTree/groups/focusedGroup) so pre-rename saves restore losslessly (Essence mandatory item 31), pinned by the new decodesLegacyGroupVocabularyKeys test; new saves write the project keys (recorded as R-010). Docs: SPEC.md and README.md fully re-worded (English and Japanese vocabulary). TODO.md (historical phase log) left as history; AGENTS.md excluded for T-043."
+        }
+      ]
     },
     {
       "id": "T-034",

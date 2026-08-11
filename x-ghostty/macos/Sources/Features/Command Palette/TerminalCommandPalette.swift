@@ -138,9 +138,9 @@ struct TerminalCommandPaletteView: View {
         guard let controller = TerminalController.shared,
               let window = controller.window else { return [] }
 
-        // Every group's panes are reachable, not just the focused group's — the
-        // present handler focuses the owning group before the surface.
-        let focusedGroup = controller.workspace.state.focusedGroup
+        // Every project's panes are reachable, not just the focused project's — the
+        // present handler focuses the owning project before the surface.
+        let focusedProject = controller.workspace.state.focusedProject
 
         return controller.allSurfaces.map { surface in
             // The window-scoped title override is a fallback here, not an
@@ -157,12 +157,12 @@ struct TerminalCommandPaletteView: View {
                 displayTitle = "Untitled"
             }
 
-            // Qualify panes that live outside the focused group by group name so
+            // Qualify panes that live outside the focused project by project name so
             // otherwise-identical entries are distinguishable.
-            let groupName: String? = {
-                guard let groupID = controller.groupID(containing: surface),
-                      groupID != focusedGroup else { return nil }
-                return controller.workspace.state.groups[groupID]?.name
+            let projectName: String? = {
+                guard let projectID = controller.projectID(containing: surface),
+                      projectID != focusedProject else { return nil }
+                return controller.workspace.state.projects[projectID]?.name
             }()
 
             let pwd = surface.pwd?.abbreviatedPath
@@ -171,7 +171,7 @@ struct TerminalCommandPaletteView: View {
             } else {
                 nil
             }
-            let subtitleParts = [groupName, pwdPart].compactMap { $0 }
+            let subtitleParts = [projectName, pwdPart].compactMap { $0 }
             let subtitle: String? = subtitleParts.isEmpty
                 ? nil
                 : subtitleParts.joined(separator: " · ")

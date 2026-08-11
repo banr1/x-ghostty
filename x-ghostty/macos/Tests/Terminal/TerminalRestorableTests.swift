@@ -6,7 +6,7 @@ import AppKit
 struct TerminalRestorableTests {
     @Test
     func areYouForgettingToAddMigrationTests() {
-        // v8 adds the optional group-layer `workspace` field (`SPEC.md` §12).
+        // v8 adds the optional project-layer `workspace` field (`SPEC.md` §12).
         // It is additive: pre-v8 archives lack the key and decode it as `nil`,
         // which is exercised by `restoreTerminal57` below (the v5/v7 fixtures
         // still round-trip into the v8 `InternalState`).

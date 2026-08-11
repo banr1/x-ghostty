@@ -28,8 +28,8 @@ enum TerminalSplitOperation {
 struct TerminalSplitTreeView: View {
     let tree: SplitTree<XGhostty.SurfaceView>
 
-    /// The pane to draw a small top-right mark badge on, if any. The group
-    /// layer marks the primary pane while its group is zoomed (`SPEC.md`
+    /// The pane to draw a small top-right mark badge on, if any. The project
+    /// layer marks the primary pane while its project is zoomed (`SPEC.md`
     /// §22.6); this layer only knows "mark this leaf".
     var markedPane: UUID? = nil
 
@@ -153,7 +153,7 @@ private struct TerminalSplitLeaf: View {
         case dropping(TerminalSplitDropZone)
     }
 
-    /// The small top-right badge drawn on a marked pane (the group layer's
+    /// The small top-right badge drawn on a marked pane (the project layer's
     /// primary mark, `SPEC.md` §22.6). Kept subtle — a dimmed star on a thin
     /// material chip — so it reads as terminal chrome rather than content.
     private struct PaneMarkBadge: View {

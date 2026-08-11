@@ -1071,7 +1071,7 @@ extension XGhostty {
 
         override func keyDown(with event: NSEvent) {
             // Once the child process has exited the pane no longer talks to a
-            // live pty, so its key input belongs to the group layer: Enter
+            // live pty, so its key input belongs to the project layer: Enter
             // restarts a terminated pane's shell, any key closes an exited
             // sibling pane. Only plain keyDowns land here — command chords go
             // through the key-equivalent path first, so keybinds such as

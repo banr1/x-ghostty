@@ -373,98 +373,98 @@ extension XGhostty.Notification {
     /// userdata has one key "direction" with the direction to split to.
     static let ghosttyNewSplit = Notification.Name("com.mitchellh.xghostty.newSplit")
 
-    /// Posted when a new group split is requested. Like `ghosttyNewSplit`, the sending object is the
+    /// Posted when a new project split is requested. Like `ghosttyNewSplit`, the sending object is the
     /// surface that had focus and the userinfo carries a "direction" key, but this creates a sibling
-    /// group in the workspace's group tree rather than a split within the focused group (`SPEC.md` §11.1).
-    static let ghosttyNewGroupSplit = Notification.Name("com.mitchellh.xghostty.newGroupSplit")
+    /// project in the workspace's project tree rather than a split within the focused project (`SPEC.md` §11.1).
+    static let ghosttyNewProjectSplit = Notification.Name("com.mitchellh.xghostty.newProjectSplit")
 
-    /// Posted when `rename_group` is requested. The sending object is the surface that had focus;
-    /// the focused group enters inline-rename mode (`SPEC.md` §7.1).
-    static let ghosttyRenameGroup = Notification.Name("com.mitchellh.xghostty.renameGroup")
+    /// Posted when `rename_project` is requested. The sending object is the surface that had focus;
+    /// the focused project enters inline-rename mode (`SPEC.md` §7.1).
+    static let ghosttyRenameProject = Notification.Name("com.mitchellh.xghostty.renameProject")
 
-    /// Posted when `set_group_title:<name>` is requested. The sending object is the surface that
+    /// Posted when `set_project_title:<name>` is requested. The sending object is the surface that
     /// had focus; the userinfo carries a "title" key with the new name (`SPEC.md` §9.1).
-    static let ghosttySetGroupTitle = Notification.Name("com.mitchellh.xghostty.setGroupTitle")
+    static let ghosttySetProjectTitle = Notification.Name("com.mitchellh.xghostty.setProjectTitle")
 
-    /// Posted when `goto_group` is requested. The sending object is the surface that had focus;
-    /// the userinfo carries a `GroupDirectionKey` (a `SplitFocusDirection`). Focus moves to the
-    /// visible neighbor group in that direction (`SPEC.md` §11.3).
-    static let ghosttyGotoGroup = Notification.Name("com.mitchellh.xghostty.gotoGroup")
-    static let GroupDirectionKey = ghosttyGotoGroup.rawValue + ".direction"
+    /// Posted when `goto_project` is requested. The sending object is the surface that had focus;
+    /// the userinfo carries a `ProjectDirectionKey` (a `SplitFocusDirection`). Focus moves to the
+    /// visible neighbor project in that direction (`SPEC.md` §11.3).
+    static let ghosttyGotoProject = Notification.Name("com.mitchellh.xghostty.gotoProject")
+    static let ProjectDirectionKey = ghosttyGotoProject.rawValue + ".direction"
 
-    /// Posted when `goto_group:<1-9>` is requested. The sending object is the surface that had
-    /// focus; the userinfo carries a `GotoGroupIndexKey` with the 1-based group number (an `Int`).
-    /// Focus moves to that numbered visible group, clearing any group zoom on the way
-    /// (`SPEC.md` §11.3). Kept separate from `ghosttyGotoGroup` because the semantics differ:
+    /// Posted when `goto_project:<1-9>` is requested. The sending object is the surface that had
+    /// focus; the userinfo carries a `GotoProjectIndexKey` with the 1-based project number (an `Int`).
+    /// Focus moves to that numbered visible project, clearing any project zoom on the way
+    /// (`SPEC.md` §11.3). Kept separate from `ghosttyGotoProject` because the semantics differ:
     /// the directional form is a no-op while zoomed, the indexed form un-zooms and jumps.
-    static let ghosttyGotoGroupIndex = Notification.Name("com.mitchellh.xghostty.gotoGroupIndex")
-    static let GotoGroupIndexKey = ghosttyGotoGroupIndex.rawValue + ".index"
+    static let ghosttyGotoProjectIndex = Notification.Name("com.mitchellh.xghostty.gotoProjectIndex")
+    static let GotoProjectIndexKey = ghosttyGotoProjectIndex.rawValue + ".index"
 
-    /// Posted when `move_group` is requested. The sending object is the surface that had focus;
-    /// the userinfo carries a `MoveGroupDirectionKey` (a `SplitFocusDirection`). The focused group
+    /// Posted when `move_project` is requested. The sending object is the surface that had focus;
+    /// the userinfo carries a `MoveProjectDirectionKey` (a `SplitFocusDirection`). The focused project
     /// swaps places with its neighbor in that direction (`SPEC.md` §11.3).
-    static let ghosttyMoveGroup = Notification.Name("com.mitchellh.xghostty.moveGroup")
-    static let MoveGroupDirectionKey = ghosttyMoveGroup.rawValue + ".direction"
+    static let ghosttyMoveProject = Notification.Name("com.mitchellh.xghostty.moveProject")
+    static let MoveProjectDirectionKey = ghosttyMoveProject.rawValue + ".direction"
 
-    /// Posted when `resize_group` is requested. The sending object is the surface that had focus;
-    /// the userinfo carries a `ResizeGroupDirectionKey` (a `SplitResizeDirection`) and a
-    /// `ResizeGroupAmountKey` (a `UInt16` pixel amount). Resizes the canonical split between the
-    /// focused group and its visible neighbor (`SPEC.md` §11.4).
-    static let ghosttyResizeGroup = Notification.Name("com.mitchellh.xghostty.resizeGroup")
-    static let ResizeGroupDirectionKey = ghosttyResizeGroup.rawValue + ".direction"
-    static let ResizeGroupAmountKey = ghosttyResizeGroup.rawValue + ".amount"
+    /// Posted when `resize_project` is requested. The sending object is the surface that had focus;
+    /// the userinfo carries a `ResizeProjectDirectionKey` (a `SplitResizeDirection`) and a
+    /// `ResizeProjectAmountKey` (a `UInt16` pixel amount). Resizes the canonical split between the
+    /// focused project and its visible neighbor (`SPEC.md` §11.4).
+    static let ghosttyResizeProject = Notification.Name("com.mitchellh.xghostty.resizeProject")
+    static let ResizeProjectDirectionKey = ghosttyResizeProject.rawValue + ".direction"
+    static let ResizeProjectAmountKey = ghosttyResizeProject.rawValue + ".amount"
 
-    /// Posted when `equalize_groups` is requested. The sending object is the surface that had
-    /// focus; the visible group layout is equalized (`SPEC.md` §11.5).
-    static let ghosttyEqualizeGroups = Notification.Name("com.mitchellh.xghostty.equalizeGroups")
+    /// Posted when `equalize_projects` is requested. The sending object is the surface that had
+    /// focus; the visible project layout is equalized (`SPEC.md` §11.5).
+    static let ghosttyEqualizeProjects = Notification.Name("com.mitchellh.xghostty.equalizeProjects")
 
-    /// Posted when `toggle_group_zoom` is requested. The sending object is the surface that had
-    /// focus; the focused group's zoom is toggled (`SPEC.md` §11.6).
-    static let ghosttyToggleGroupZoom = Notification.Name("com.mitchellh.xghostty.toggleGroupZoom")
+    /// Posted when `toggle_project_zoom` is requested. The sending object is the surface that had
+    /// focus; the focused project's zoom is toggled (`SPEC.md` §11.6).
+    static let ghosttyToggleProjectZoom = Notification.Name("com.mitchellh.xghostty.toggleProjectZoom")
 
-    /// Posted when `hide_group` is requested. The sending object is the surface that had focus;
-    /// the focused group is hidden and focus moves to a visible neighbor (`SPEC.md` §11.7).
-    static let ghosttyHideGroup = Notification.Name("com.mitchellh.xghostty.hideGroup")
+    /// Posted when `hide_project` is requested. The sending object is the surface that had focus;
+    /// the focused project is hidden and focus moves to a visible neighbor (`SPEC.md` §11.7).
+    static let ghosttyHideProject = Notification.Name("com.mitchellh.xghostty.hideProject")
 
-    /// Posted when `show_group:<name>` is requested. The sending object is the surface that had
-    /// focus; the userinfo carries a `ShowGroupNameKey` with the target group's name. The matching
-    /// hidden group is shown and focused (`SPEC.md` §11.8).
-    static let ghosttyShowGroup = Notification.Name("com.mitchellh.xghostty.showGroup")
-    static let ShowGroupNameKey = ghosttyShowGroup.rawValue + ".name"
+    /// Posted when `show_project:<name>` is requested. The sending object is the surface that had
+    /// focus; the userinfo carries a `ShowProjectNameKey` with the target project's name. The matching
+    /// hidden project is shown and focused (`SPEC.md` §11.8).
+    static let ghosttyShowProject = Notification.Name("com.mitchellh.xghostty.showProject")
+    static let ShowProjectNameKey = ghosttyShowProject.rawValue + ".name"
 
-    /// Posted when `close_group` is requested. The sending object is the surface that had focus;
-    /// the focused group is closed after confirmation and focus moves to the nearest remaining
-    /// group, or the tab/window closes when it was the only group (`SPEC.md` §11.9, §18.5).
-    static let ghosttyCloseGroup = Notification.Name("com.mitchellh.xghostty.closeGroup")
+    /// Posted when `close_project` is requested. The sending object is the surface that had focus;
+    /// the focused project is closed after confirmation and focus moves to the nearest remaining
+    /// project, or the tab/window closes when it was the only project (`SPEC.md` §11.9, §18.5).
+    static let ghosttyCloseProject = Notification.Name("com.mitchellh.xghostty.closeProject")
 
-    /// Posted when `edit_group_note` is requested. The sending object is the surface that had
-    /// focus; the focused group's note editor overlay opens.
-    static let ghosttyEditGroupNote = Notification.Name("com.mitchellh.xghostty.editGroupNote")
+    /// Posted when `edit_project_note` is requested. The sending object is the surface that had
+    /// focus; the focused project's note editor overlay opens.
+    static let ghosttyEditProjectNote = Notification.Name("com.mitchellh.xghostty.editProjectNote")
 
     /// Posted when `toggle_note_overview` is requested. The sending object is the surface that
-    /// had focus; the read-only note overview over all visible groups is toggled.
+    /// had focus; the read-only note overview over all visible projects is toggled.
     static let ghosttyToggleNoteOverview = Notification.Name("com.mitchellh.xghostty.toggleNoteOverview")
 
     /// Posted when `set_primary` is requested. The sending object is the surface that had
-    /// focus; the focused pane becomes its group's primary pane (zoom-only, `SPEC.md` §22.4).
+    /// focus; the focused pane becomes its project's primary pane (zoom-only, `SPEC.md` §22.4).
     static let ghosttySetPrimary = Notification.Name("com.mitchellh.xghostty.setPrimary")
 
-    /// Posted when `sort_groups_by_priority` is requested. The sending object is the surface
-    /// that had focus; the visible groups' layout reorders by priority (`SPEC.md` §24.4).
-    static let ghosttySortGroupsByPriority = Notification.Name("com.mitchellh.xghostty.sortGroupsByPriority")
+    /// Posted when `sort_projects_by_priority` is requested. The sending object is the surface
+    /// that had focus; the visible projects' layout reorders by priority (`SPEC.md` §24.4).
+    static let ghosttySortProjectsByPriority = Notification.Name("com.mitchellh.xghostty.sortProjectsByPriority")
 
-    /// Posted when `sort_groups_by_deadline` is requested. The sending object is the surface
-    /// that had focus; the visible groups' layout reorders by deadline (`SPEC.md` §24.4).
-    static let ghosttySortGroupsByDeadline = Notification.Name("com.mitchellh.xghostty.sortGroupsByDeadline")
+    /// Posted when `sort_projects_by_deadline` is requested. The sending object is the surface
+    /// that had focus; the visible projects' layout reorders by deadline (`SPEC.md` §24.4).
+    static let ghosttySortProjectsByDeadline = Notification.Name("com.mitchellh.xghostty.sortProjectsByDeadline")
 
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 
     /// Posted when a surface's child process has exited (any way: normal exit,
     /// abnormal exit, process death). The sending object is the surface. The
-    /// core never closes a surface on child exit; the group layer judges what
+    /// core never closes a surface on child exit; the project layer judges what
     /// the exit means for the pane — close an exited sibling pane, or keep a
-    /// group's last pane as a terminated pane (deletion protection).
+    /// project's last pane as a terminated pane (deletion protection).
     static let ghosttyChildExited = Notification.Name("com.mitchellh.xghostty.childExited")
     /// Bool: whether the exit was judged abnormal (runtime below the
     /// `abnormal-command-exit-runtime` threshold).
@@ -472,7 +472,7 @@ extension XGhostty.Notification {
 
     /// Posted when a key is pressed on a surface whose child process has
     /// exited. The sending object is the surface. The pane no longer talks to
-    /// a live pty, so the group layer owns the key: Enter restarts a
+    /// a live pty, so the project layer owns the key: Enter restarts a
     /// terminated pane's shell; any key closes an exited sibling pane.
     static let ghosttyExitedSurfaceKeyDown = Notification.Name("com.mitchellh.xghostty.exitedSurfaceKeyDown")
     /// Bool: whether the pressed key was Return / keypad Enter.

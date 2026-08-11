@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// The note editor overlay, opened by the `edit_group_note` action (Cmd+N)
-/// for the focused group (`SPEC.md` §21.2).
+/// The note editor overlay, opened by the `edit_project_note` action (Cmd+N)
+/// for the focused project (`SPEC.md` §21.2).
 ///
-/// `TerminalWorkspaceView` presents this over the whole group layer while
-/// `WorkspaceModel.noteEditingGroup` is set, and removes it entirely when the
+/// `TerminalWorkspaceView` presents this over the whole project layer while
+/// `WorkspaceModel.noteEditingProject` is set, and removes it entirely when the
 /// editor closes, so the terminal returns to the full area.
 ///
 /// The editor shows the full note — the model caps notes at
-/// `GroupState.maxNoteLines` lines, and the editor is sized to fit that many
+/// `ProjectState.maxNoteLines` lines, and the editor is sized to fit that many
 /// lines. Cmd+Enter (or a backdrop click) saves the draft and closes;
 /// Escape discards the draft and closes without confirmation, keeping the
 /// text the note had when the editor opened.
@@ -21,31 +21,31 @@ import SwiftUI
 /// `selectAll:`/`copy:`/`cut:`/`paste:` selectors. The window's key-equivalent
 /// pass runs before the menu bar's, so this wins only while the overlay
 /// exists; terminal copy/paste behavior outside the editor is unchanged.
-struct GroupNoteEditor: View {
+struct ProjectNoteEditor: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
-    /// The edited group's name, shown as the overlay header.
-    let groupName: String
+    /// The edited project's name, shown as the overlay header.
+    let projectName: String
 
     /// The note text at open time; seeds the draft.
     let note: String
 
     /// The priority at open time; seeds the priority draft (SPEC §24.1).
-    let priority: GroupPriority?
+    let priority: ProjectPriority?
 
     /// The deadline at open time; seeds the deadline text draft (SPEC §24.1).
-    let deadline: GroupDeadline?
+    let deadline: ProjectDeadline?
 
     /// Save the given draft set — note, priority, deadline text input — and
     /// close the editor (Cmd+Enter / backdrop click). The deadline input is
     /// validated at the model boundary: invalid input is rejected to unset.
-    let onEnd: (String, GroupPriority?, String) -> Void
+    let onEnd: (String, ProjectPriority?, String) -> Void
 
     /// Discard all drafts and close the editor (Escape).
     let onCancel: () -> Void
 
     @State private var draft: String = ""
-    @State private var priorityDraft: GroupPriority?
+    @State private var priorityDraft: ProjectPriority?
     @State private var deadlineDraft: String = ""
     @FocusState private var editorFocused: Bool
 
@@ -69,7 +69,7 @@ struct GroupNoteEditor: View {
 
             // Cmd+Enter save chord. The system key-equivalent pass delivers
             // it here even while the TextEditor owns keyboard focus (same
-            // hidden-button pattern as GroupNoteOverviewKeyCatcher). Only
+            // hidden-button pattern as ProjectNoteOverviewKeyCatcher). Only
             // works because this fork unbinds the upstream
             // cmd+enter=toggle_fullscreen default (Config.zig).
             Button { commit() } label: { Color.clear }
@@ -149,10 +149,10 @@ struct GroupNoteEditor: View {
             Text("priority")
                 .opacity(0.5)
             Picker("", selection: $priorityDraft) {
-                Text("none").tag(GroupPriority?.none)
-                Text("high").tag(GroupPriority?.some(.high))
-                Text("med").tag(GroupPriority?.some(.medium))
-                Text("low").tag(GroupPriority?.some(.low))
+                Text("none").tag(ProjectPriority?.none)
+                Text("high").tag(ProjectPriority?.some(.high))
+                Text("med").tag(ProjectPriority?.some(.medium))
+                Text("low").tag(ProjectPriority?.some(.low))
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -189,14 +189,14 @@ struct GroupNoteEditor: View {
     /// non-empty but not a real date (SPEC §24.1).
     private var deadlineDraftInvalid: Bool {
         let trimmed = deadlineDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && GroupDeadline(parsing: trimmed) == nil
+        return !trimmed.isEmpty && ProjectDeadline(parsing: trimmed) == nil
     }
 
-    /// Header band: the group name plus the save/discard affordances. Styled
-    /// like `GroupLabel`'s band so the overlay reads as part of the group UI.
+    /// Header band: the project name plus the save/discard affordances. Styled
+    /// like `ProjectLabel`'s band so the overlay reads as part of the project UI.
     private var header: some View {
         HStack {
-            Text(groupName)
+            Text(projectName)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
             Text("⌘↩ save · esc discard")
@@ -213,7 +213,7 @@ struct GroupNoteEditor: View {
         }
     }
 
-    /// A monospaced font matching `GroupLabel`'s terminal-adjacent styling.
+    /// A monospaced font matching `ProjectLabel`'s terminal-adjacent styling.
     private var editorFont: Font {
         .system(size: 12, design: .monospaced)
     }
@@ -221,6 +221,6 @@ struct GroupNoteEditor: View {
     /// Tall enough to show the model's full line cap at once, so the edit
     /// overlay always shows the entire note.
     private var editorHeight: CGFloat {
-        CGFloat(GroupState.maxNoteLines) * 17
+        CGFloat(ProjectState.maxNoteLines) * 17
     }
 }

@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The top of the group-layer view hierarchy (`SPEC.md` §6.2).
+/// The top of the project-layer view hierarchy (`SPEC.md` §6.2).
 ///
-/// Renders the effective visible group tree and (from Phase 5) overlays the
-/// hidden-group shelf.
+/// Renders the effective visible project tree and (from Phase 5) overlays the
+/// hidden-project shelf.
 ///
 /// `workspace` is observed (Phase 2): a `surfaceTree` change still re-renders
-/// this view via the focused group's mirrored pane tree, but switching the
-/// focused group (and, later, renaming) mutates `WorkspaceModel.state` without
+/// this view via the focused project's mirrored pane tree, but switching the
+/// focused project (and, later, renaming) mutates `WorkspaceModel.state` without
 /// a `surfaceTree` change, so direct observation is required for those.
 struct TerminalWorkspaceView: View {
     @ObservedObject var workspace: WorkspaceModel
@@ -16,108 +16,108 @@ struct TerminalWorkspaceView: View {
     /// the terminal when the note editor overlay closes.
     @Environment(\.ghosttyLastFocusedSurface) private var lastFocusedSurface
 
-    /// Pane-level operations, forwarded to each rendered group. In Phase 1 only
-    /// the focused group exists, so this routes to the controller's
+    /// Pane-level operations, forwarded to each rendered project. In Phase 1 only
+    /// the focused project exists, so this routes to the controller's
     /// `surfaceTree`-based handler.
     let paneAction: (TerminalSplitOperation) -> Void
 
-    /// Switch the focused group (a label single-click). This needs the
+    /// Switch the focused project (a label single-click). This needs the
     /// controller to swap `surfaceTree`, so it is injected rather than handled
     /// in the model. Rename callbacks are model-only and built below.
-    let onFocusGroup: (GroupID) -> Void
+    let onFocusProject: (ProjectID) -> Void
 
-    /// Show a hidden group (a shelf pill click, `SPEC.md` §11.8). Like
-    /// `onFocusGroup` this swaps `surfaceTree`, so the controller handles it.
-    let onShowGroup: (GroupID) -> Void
+    /// Show a hidden project (a shelf pill click, `SPEC.md` §11.8). Like
+    /// `onFocusProject` this swaps `surfaceTree`, so the controller handles it.
+    let onShowProject: (ProjectID) -> Void
 
-    /// Equalize the group layout (a group-divider double-click, `SPEC.md` §11.5).
+    /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
     /// The pane-level equivalent routes through `XGhostty.App` because the pane
-    /// tree's owner is the controller's `surfaceTree`; the group tree's owner is
-    /// the controller too, so this is injected the same way as `onFocusGroup`.
-    let onEqualizeGroups: () -> Void
+    /// tree's owner is the controller's `surfaceTree`; the project tree's owner is
+    /// the controller too, so this is injected the same way as `onFocusProject`.
+    let onEqualizeProjects: () -> Void
 
-    /// Hidden groups in a stable display order for the shelf. Sorted by creation
+    /// Hidden projects in a stable display order for the shelf. Sorted by creation
     /// time (then id) so the pill order does not jump as visibility changes.
-    private var hiddenGroups: [GroupState] {
-        workspace.state.hiddenGroupIDs
-            .compactMap { workspace.state.groups[$0] }
+    private var hiddenProjects: [ProjectState] {
+        workspace.state.hiddenProjectIDs
+            .compactMap { workspace.state.projects[$0] }
             .sorted { ($0.createdAt, $0.id.rawValue.uuidString) < ($1.createdAt, $1.id.rawValue.uuidString) }
     }
 
-    private var labelActions: GroupLabelActions {
-        GroupLabelActions(
-            focus: onFocusGroup,
+    private var labelActions: ProjectLabelActions {
+        ProjectLabelActions(
+            focus: onFocusProject,
             beginRename: { workspace.beginRenaming($0) },
-            commitRename: { workspace.renameGroup($0, to: $1) },
+            commitRename: { workspace.renameProject($0, to: $1) },
             cancelRename: { workspace.cancelRenaming() },
             // The header-band mouse affordance (SPEC §21.2): opens that
-            // group's note editor directly, leaving the group focus unchanged.
-            // `beginNoteEditing` already guards the unknown-group and
+            // project's note editor directly, leaving the project focus unchanged.
+            // `beginNoteEditing` already guards the unknown-project and
             // overview-active cases.
             openNote: { workspace.beginNoteEditing($0) })
     }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if let tree = workspace.state.effectiveVisibleGroupTree {
-                GroupSplitTreeView(
+            if let tree = workspace.state.effectiveVisibleProjectTree {
+                ProjectSplitTreeView(
                     tree: tree,
-                    groups: workspace.state.groups,
-                    focusedGroup: workspace.state.focusedGroup,
+                    projects: workspace.state.projects,
+                    focusedProject: workspace.state.focusedProject,
                     // Numbers come from the canonical tree, so they stay stable
                     // under zoom and re-pack on hide / show / close / move.
-                    ordinals: workspace.state.groupOrdinals,
-                    renamingGroup: workspace.renamingGroup,
+                    ordinals: workspace.state.projectOrdinals,
+                    renamingProject: workspace.renamingProject,
                     noteOverview: workspace.noteOverviewActive,
-                    // The overall (non-zoomed) view draws only each group's
+                    // The overall (non-zoomed) view draws only each project's
                     // primary pane; the zoomed local view keeps the full
                     // layout (SPEC §22.3).
-                    primaryOnly: workspace.state.zoomedGroup == nil,
-                    // The primary mark shows only while a multi-pane group
+                    primaryOnly: workspace.state.zoomedProject == nil,
+                    // The primary mark shows only while a multi-pane project
                     // is zoomed (SPEC §22.6).
                     primaryMarks: workspace.state.primaryMarkPaneIDs,
                     // The pane-count badge shows only in the overall view,
-                    // on groups holding non-primary panes (SPEC §22.7).
+                    // on projects holding non-primary panes (SPEC §22.7).
                     paneCountBadges: workspace.state.overallViewPaneCountBadges,
                     paneAction: paneAction,
                     labelActions: labelActions,
-                    onEqualize: onEqualizeGroups)
+                    onEqualize: onEqualizeProjects)
             }
 
-            // Hidden-group shelf overlay (`SPEC.md` §7.2). Only rendered when
-            // groups are hidden; `HiddenGroupShelf` itself draws nothing for an
+            // Hidden-project shelf overlay (`SPEC.md` §7.2). Only rendered when
+            // projects are hidden; `HiddenProjectShelf` itself draws nothing for an
             // empty list, but skipping it entirely keeps the overlay absent.
-            if !hiddenGroups.isEmpty {
-                HiddenGroupShelf(groups: hiddenGroups, onShow: onShowGroup)
+            if !hiddenProjects.isEmpty {
+                HiddenProjectShelf(projects: hiddenProjects, onShow: onShowProject)
                     .padding(6)
             }
 
             // Note editor overlay: presented while a note is being edited,
-            // absent otherwise so the terminal keeps the full area. The group
+            // absent otherwise so the terminal keeps the full area. The project
             // is resolved through live state, so the overlay vanishes if the
-            // group disappears mid-edit.
-            if let noteID = workspace.noteEditingGroup,
-               let group = workspace.state.groups[noteID] {
-                GroupNoteEditor(
-                    groupName: group.name,
-                    note: group.note,
-                    priority: group.priority,
-                    deadline: group.deadline,
+            // project disappears mid-edit.
+            if let noteID = workspace.noteEditingProject,
+               let project = workspace.state.projects[noteID] {
+                ProjectNoteEditor(
+                    projectName: project.name,
+                    note: project.note,
+                    priority: project.priority,
+                    deadline: project.deadline,
                     onEnd: { workspace.endNoteEditing(saving: $0, priority: $1, deadlineInput: $2) },
                     onCancel: { workspace.cancelNoteEditing() })
             }
 
             // Note overview interaction layer: while the viewing-only mode is
-            // up it blocks the mouse everywhere (the per-group note panels
-            // render inside each `GroupView`) and owns the keyboard so Escape
+            // up it blocks the mouse everywhere (the per-project note panels
+            // render inside each `ProjectView`) and owns the keyboard so Escape
             // and a re-pressed Cmd+Opt+N leave the mode.
             if workspace.noteOverviewActive {
-                GroupNoteOverviewKeyCatcher(
+                ProjectNoteOverviewKeyCatcher(
                     onExit: { workspace.endNoteOverview() },
                     onToggle: { workspace.toggleNoteOverview() })
             }
         }
-        .onChange(of: workspace.noteEditingGroup) { newValue in
+        .onChange(of: workspace.noteEditingProject) { newValue in
             // When the note editor closes, hand keyboard focus back to the
             // terminal (same pattern as the command palette's dismissal).
             if newValue == nil {

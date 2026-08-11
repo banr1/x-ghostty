@@ -449,7 +449,7 @@ class AppDelegate: NSObject,
         }
 
         // The window already exists. We're single-window, so the dropped path
-        // opens as a new *group* alongside the existing ones, carrying the same
+        // opens as a new *project* alongside the existing ones, carrying the same
         // config the pre-launch seeding path would have used (working directory
         // = the folder, or the file's parent for a plain file).
         //
@@ -460,9 +460,9 @@ class AppDelegate: NSObject,
         NSApp.activate(ignoringOtherApps: true)
 
         if let anchor = controller.focusedSurface ?? controller.surfaceTree.firstLeaf {
-            // `newGroupSplit` declines at the visible-group cap; fall back to a
+            // `newProjectSplit` declines at the visible-project cap; fall back to a
             // plain split so an explicit file-open is never silently dropped.
-            if controller.newGroupSplit(at: anchor, direction: .right, baseConfig: config) == nil {
+            if controller.newProjectSplit(at: anchor, direction: .right, baseConfig: config) == nil {
                 controller.newSplit(at: anchor, direction: .right, baseConfig: config)
             }
         }
@@ -809,8 +809,8 @@ class AppDelegate: NSObject,
     // MARK: - GhosttyAppDelegate
 
     func findSurface(forUUID uuid: UUID) -> XGhostty.SurfaceView? {
-        // Search every group, not just the focused one: hidden and unfocused
-        // groups own live surfaces too.
+        // Search every project, not just the focused one: hidden and unfocused
+        // projects own live surfaces too.
         TerminalController.shared?.allSurfaces.first { $0.id == uuid }
     }
 

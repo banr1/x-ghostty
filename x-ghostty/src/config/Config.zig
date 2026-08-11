@@ -264,7 +264,7 @@ pub const compatibility = std.StaticStringMap(
 /// codepoint mappings.
 ///
 /// Changing this configuration at runtime will only affect new terminals,
-/// i.e. new groups, splits, etc.
+/// i.e. new projects, splits, etc.
 @"font-codepoint-map": RepeatableCodepointMap = .{},
 
 /// Map specific Unicode codepoints to replacement values when copying text
@@ -870,7 +870,7 @@ palette: Palette = .{},
 /// Hide the mouse immediately when typing. The mouse becomes visible again
 /// when the mouse is used (button, movement, etc.). Platform-specific behavior
 /// may dictate other scenarios where the mouse is shown. For example on macOS,
-/// the mouse is shown again when a new group or split is created.
+/// the mouse is shown again when a new project or split is created.
 @"mouse-hide-while-typing": bool = false,
 
 /// When to scroll the surface to the bottom. The format of this is a list of
@@ -1082,7 +1082,7 @@ palette: Palette = .{},
 /// command in a shell. This can be used to ensure our heuristics to choose the
 /// right mode are not used in case they are wrong. (Available since: 1.2.0)
 ///
-/// This command will be used for all new terminal surfaces, i.e. new groups,
+/// This command will be used for all new terminal surfaces, i.e. new projects,
 /// splits, etc. If you want to run a command only for the first terminal surface
 /// created when XGhostty starts, use the `initial-command` configuration.
 ///
@@ -1356,13 +1356,13 @@ link: RepeatableLink = .{},
 @"link-previews": LinkPreviews = .true,
 
 /// Whether to start the window in a maximized state. This applies only to the
-/// window itself and does not apply to groups, splits, etc.
+/// window itself and does not apply to projects, splits, etc.
 ///
 /// Available since: 1.1.0
 maximize: bool = false,
 
 /// Start the window in fullscreen. This applies only to the window itself and
-/// does not apply to groups, splits, etc.
+/// does not apply to projects, splits, etc.
 ///
 /// Allowable values are:
 ///
@@ -1397,7 +1397,7 @@ title: ?[:0]const u8 = null,
 
 /// The directory to change to after starting the command.
 ///
-/// This setting is secondary to the inheritance behavior of new groups and
+/// This setting is secondary to the inheritance behavior of new projects and
 /// splits: if a previous XGhostty terminal exists in the same process, its
 /// working directory takes precedence. Otherwise, this setting will be used.
 /// Typically, this setting is used only for the first surface.
@@ -1514,7 +1514,7 @@ title: ?[:0]const u8 = null,
 ///
 ///   * If a prefix in a sequence is previously bound, the sequence will
 ///     override the previous binding. For example, if `ctrl+a` is bound to
-///     `toggle_fullscreen` and `ctrl+a>n` is bound to `close_group`, pressing `ctrl+a`
+///     `toggle_fullscreen` and `ctrl+a>n` is bound to `close_project`, pressing `ctrl+a`
 ///     will do nothing.
 ///
 ///   * Adding to the above, if a previously bound sequence prefix is
@@ -1783,7 +1783,7 @@ keybind: Keybinds = .{},
 /// will appear in the logs.
 ///
 /// Changing this configuration at runtime will only affect new terminals, i.e.
-/// new groups, splits, etc.
+/// new projects, splits, etc.
 ///
 /// To set a different left and right padding, specify two numerical values
 /// separated by a comma. For example, `window-padding-x = 2,4` will set the
@@ -1802,7 +1802,7 @@ keybind: Keybinds = .{},
 /// will appear in the logs.
 ///
 /// Changing this configuration at runtime will only affect new terminals,
-/// i.e. new groups, splits, etc.
+/// i.e. new projects, splits, etc.
 ///
 /// To set a different top and bottom padding, specify two numerical values
 /// separated by a comma. For example, `window-padding-y = 2,4` will set the
@@ -1958,7 +1958,7 @@ keybind: Keybinds = .{},
 /// Sizes larger than the screen size will be clamped to the screen size.
 /// This can be used to create a maximized-by-default window size.
 ///
-/// This will not affect groups, splits, or other nested terminal elements.
+/// This will not affect projects, splits, or other nested terminal elements.
 /// This only affects the initial window size. Changing this value will not
 /// affect the size of the window after it has been created. This is only used
 /// for the initial size.
@@ -1990,7 +1990,7 @@ keybind: Keybinds = .{},
 @"window-position-y": ?i16 = null,
 
 /// Whether to enable saving and restoring window state. Window state includes
-/// the window position, size, groups, splits, etc. Some window state requires shell
+/// the window position, size, projects, splits, etc. Some window state requires shell
 /// integration, such as preserving working directories. See `shell-integration`
 /// for more information.
 ///
@@ -2289,7 +2289,7 @@ keybind: Keybinds = .{},
 /// Whether to enable shell integration auto-injection or not. Shell integration
 /// greatly enhances the terminal experience by enabling a number of features:
 ///
-///   * Working directory reporting so new groups and splits inherit the
+///   * Working directory reporting so new projects and splits inherit the
 ///     previous terminal's working directory.
 ///
 ///   * Prompt marking that enables the "jump_to_prompt" keybinding.
@@ -5803,7 +5803,7 @@ pub const Keybinds = struct {
             );
         }
         if (comptime builtin.target.os.tag.isDarwin()) {
-            // Cmd+1..9 focus the Nth visible group in tree traversal order.
+            // Cmd+1..9 focus the Nth visible project in tree traversal order.
             const mods: inputpkg.Mods = .{ .super = true };
 
             const start: u21 = '1';
@@ -5825,7 +5825,7 @@ pub const Keybinds = struct {
                         ) },
                         .mods = mods,
                     },
-                    .{ .goto_group = .{ .index = (i - start) + 1 } },
+                    .{ .goto_project = .{ .index = (i - start) + 1 } },
                     .{ .performable = true },
                 );
 
@@ -5839,14 +5839,14 @@ pub const Keybinds = struct {
                         .key = .{ .unicode = i },
                         .mods = mods,
                     },
-                    .{ .goto_group = .{ .index = (i - start) + 1 } },
+                    .{ .goto_project = .{ .index = (i - start) + 1 } },
                     .{ .performable = true },
                 );
             }
         }
 
         // This fork deliberately leaves ctrl/cmd+enter unbound: cmd+enter
-        // confirms the group-note editor overlay (SPEC.md §21.2), so the
+        // confirms the project-note editor overlay (SPEC.md §21.2), so the
         // upstream toggle_fullscreen default would shadow it. Fullscreen
         // stays reachable via ctrl+cmd+f (below), the Window menu, and the
         // window zoom button.
@@ -5963,22 +5963,22 @@ pub const Keybinds = struct {
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true } },
-                .{ .new_group_split = .right },
+                .{ .new_project_split = .right },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true, .shift = true } },
-                .{ .new_group_split = .down },
+                .{ .new_project_split = .down },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'r' }, .mods = .{ .super = true, .alt = true } },
-                .{ .rename_group = {} },
+                .{ .rename_project = {} },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true } },
-                .{ .edit_group_note = {} },
+                .{ .edit_project_note = {} },
             );
             try self.set.put(
                 alloc,
@@ -5993,87 +5993,87 @@ pub const Keybinds = struct {
                 .{ .set_primary = {} },
             );
             // Neither plain Cmd+S nor Cmd+Shift+S has another default
-            // binding (upstream binds neither), so the group sort actions
+            // binding (upstream binds neither), so the project sort actions
             // take them.
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true } },
-                .{ .sort_groups_by_priority = {} },
+                .{ .sort_projects_by_priority = {} },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true, .shift = true } },
-                .{ .sort_groups_by_deadline = {} },
+                .{ .sort_projects_by_deadline = {} },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .{ .direction = .left } },
+                .{ .goto_project = .{ .direction = .left } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .{ .direction = .right } },
+                .{ .goto_project = .{ .direction = .right } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .{ .direction = .up } },
+                .{ .goto_project = .{ .direction = .up } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_group = .{ .direction = .down } },
+                .{ .goto_project = .{ .direction = .down } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
-                .{ .move_group = .left },
+                .{ .move_project = .left },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
-                .{ .move_group = .right },
+                .{ .move_project = .right },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
-                .{ .move_group = .up },
+                .{ .move_project = .up },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
-                .{ .move_group = .down },
+                .{ .move_project = .down },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_group = .{ .left, 10 } },
+                .{ .resize_project = .{ .left, 10 } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_group = .{ .right, 10 } },
+                .{ .resize_project = .{ .right, 10 } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_group = .{ .up, 10 } },
+                .{ .resize_project = .{ .up, 10 } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_group = .{ .down, 10 } },
+                .{ .resize_project = .{ .down, 10 } },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .physical = .enter }, .mods = .{ .super = true, .alt = true } },
-                .{ .toggle_group_zoom = {} },
+                .{ .toggle_project_zoom = {} },
             );
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'h' }, .mods = .{ .super = true, .alt = true } },
-                .{ .hide_group = {} },
+                .{ .hide_project = {} },
             );
             try self.set.put(
                 alloc,
@@ -6133,7 +6133,7 @@ pub const Keybinds = struct {
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = '=' }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
-                .{ .equalize_groups = {} },
+                .{ .equalize_projects = {} },
             );
 
             // Jump to prompt, matches Terminal.app
@@ -6537,15 +6537,15 @@ pub const Keybinds = struct {
         const alloc = arena.allocator();
 
         var list: Keybinds = .{};
-        try list.parseCLI(alloc, "ctrl+z>1=goto_group:1");
-        try list.parseCLI(alloc, "ctrl+z>2=goto_group:2");
+        try list.parseCLI(alloc, "ctrl+z>1=goto_project:1");
+        try list.parseCLI(alloc, "ctrl+z>2=goto_project:2");
         try list.formatEntry(formatterpkg.entryFormatter("keybind", &buf.writer));
 
         // Note they turn into translated keys because they match
         // their ASCII mapping.
         const want =
-            \\keybind = ctrl+z>1=goto_group:1
-            \\keybind = ctrl+z>2=goto_group:2
+            \\keybind = ctrl+z>1=goto_project:1
+            \\keybind = ctrl+z>2=goto_project:2
             \\
         ;
         try std.testing.expectEqualStrings(want, buf.written());
@@ -6563,7 +6563,7 @@ pub const Keybinds = struct {
         var list: Keybinds = .{};
         try list.parseCLI(alloc, "ctrl+a>ctrl+b>n=toggle_fullscreen");
         try list.parseCLI(alloc, "ctrl+a>ctrl+b>w=close_surface");
-        try list.parseCLI(alloc, "ctrl+a>ctrl+c>t=close_group");
+        try list.parseCLI(alloc, "ctrl+a>ctrl+c>t=close_project");
         try list.parseCLI(alloc, "ctrl+b>ctrl+d>a=toggle_split_zoom");
         try list.formatEntry(formatterpkg.entryFormatter("a", &buf.writer));
 
@@ -6571,7 +6571,7 @@ pub const Keybinds = struct {
         const want =
             \\a = ctrl+a>ctrl+b>n=toggle_fullscreen
             \\a = ctrl+a>ctrl+b>w=close_surface
-            \\a = ctrl+a>ctrl+c>t=close_group
+            \\a = ctrl+a>ctrl+c>t=close_project
             \\a = ctrl+b>ctrl+d>a=toggle_split_zoom
             \\
         ;
@@ -6796,7 +6796,7 @@ pub const Keybinds = struct {
 
         try testing.expectError(
             error.InvalidFormat,
-            keybinds.parseCLI(alloc, "chain=close_group"),
+            keybinds.parseCLI(alloc, "chain=close_project"),
         );
     }
 

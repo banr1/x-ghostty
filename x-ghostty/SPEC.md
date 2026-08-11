@@ -2,24 +2,24 @@
 
 ## 1. 目的
 
-Ghostty の既存 split pane の上位に、**グループレイヤー**を追加する。
+Ghostty の既存 split pane の上位に、**プロジェクトレイヤー**を追加する。
 
-既存のペイン分割は「同一グループ内の terminal surface 分割」として維持し、新たに「グループ単位の分割・移動・ズーム・非表示・復元」を実装する。
+既存のペイン分割は「同一プロジェクト内の terminal surface 分割」として維持し、新たに「プロジェクト単位の分割・移動・ズーム・非表示・復元」を実装する。
 
 ```text
 Window（アプリ唯一のウィンドウ）
-└─ GroupTree
-   ├─ Group: calm-river
+└─ ProjectTree
+   ├─ Project: calm-river
    │  └─ PaneTree
    │     ├─ pane
    │     └─ pane
-   └─ Group: copper-owl
+   └─ Project: copper-owl
       └─ PaneTree
          ├─ pane
          └─ pane
 ```
 
-Ghostty 既存の action model には `new_split`, `goto_split`, `toggle_split_zoom`, `resize_split`, `equalize_splits`, `close_surface` があり、`new_split` は方向指定で split を作り、`toggle_split_zoom` は現在 split をウィンドウ全体に拡大し、`resize_split` と `equalize_splits` も split 単位で定義されています。したがって、本機能は既存 action を上書きせず、**グループ版 action を並列追加する**設計にする。([Ghostty][1])
+Ghostty 既存の action model には `new_split`, `goto_split`, `toggle_split_zoom`, `resize_split`, `equalize_splits`, `close_surface` があり、`new_split` は方向指定で split を作り、`toggle_split_zoom` は現在 split をウィンドウ全体に拡大し、`resize_split` と `equalize_splits` も split 単位で定義されています。したがって、本機能は既存 action を上書きせず、**プロジェクト版 action を並列追加する**設計にする。([Ghostty][1])
 
 ## 2. 非目的
 
@@ -32,13 +32,13 @@ Ghostty 既存の action model には `new_split`, `goto_split`, `toggle_split_z
 - floating pane
 - live session 完全復元
 - scrollback / PTY 状態の永続復元
-- drag & drop によるグループ移動
-- グループ入れ替え UI
+- drag & drop によるプロジェクト移動
+- プロジェクト入れ替え UI
 - hidden 状態の永続化
 - zoom 状態の永続化
 ```
 
-MVPでは、**グループ作成・名前表示・rename・focus移動・resize・equalize・zoom・hide/show・layout復元**までを対象とする。
+MVPでは、**プロジェクト作成・名前表示・rename・focus移動・resize・equalize・zoom・hide/show・layout復元**までを対象とする。
 
 ## 3. 基本設計
 
@@ -46,62 +46,62 @@ MVPでは、**グループ作成・名前表示・rename・focus移動・resize�
 
 ```swift
 WorkspaceState
-  canonicalGroupTree: SplitTree<GroupRef>
-  groups: [GroupID: GroupState]
-  hiddenGroupIDs: Set<GroupID>
-  focusedGroup: GroupID?
-  zoomedGroup: GroupID?
+  canonicalProjectTree: SplitTree<ProjectRef>
+  projects: [ProjectID: ProjectState]
+  hiddenProjectIDs: Set<ProjectID>
+  focusedProject: ProjectID?
+  zoomedProject: ProjectID?
 ```
 
-各 `GroupState` は、内部に通常のペイン分割木を持つ。
+各 `ProjectState` は、内部に通常のペイン分割木を持つ。
 
 ```swift
-GroupState
-  id: GroupID
+ProjectState
+  id: ProjectID
   name: String
   paneTree: SplitTree<SurfaceRef>
   focusedSurface: SurfaceID?
 ```
 
-Ghostty macOS 側の `SplitTree.swift` は、leaf/split 構造、zoom tracking、codable path、focus traversal、spatial navigation、insert/remove/replace/equalize/resize semantics を担う split model として整理されているため、グループ層でも `SplitTree<GroupRef>` を使い、既存の抽象を最大限再利用する。([Rexbrahh][2])
+Ghostty macOS 側の `SplitTree.swift` は、leaf/split 構造、zoom tracking、codable path、focus traversal、spatial navigation、insert/remove/replace/equalize/resize semantics を担う split model として整理されているため、プロジェクト層でも `SplitTree<ProjectRef>` を使い、既存の抽象を最大限再利用する。([Rexbrahh][2])
 
 ## 4. 最重要設計判断
 
-### 4.1 `canonicalGroupTree` と `effectiveVisibleGroupTree` を分ける
+### 4.1 `canonicalProjectTree` と `effectiveVisibleProjectTree` を分ける
 
-グループの配置は常に `canonicalGroupTree` に保持する。
-canonical tree の leaf 集合 = visible group の集合であり、
-hidden group は leaf を持たず、`groups` の `GroupState` としてのみ生存する。
+プロジェクトの配置は常に `canonicalProjectTree` に保持する。
+canonical tree の leaf 集合 = visible project の集合であり、
+hidden project は leaf を持たず、`projects` の `ProjectState` としてのみ生存する。
 
 ```text
-canonicalGroupTree:
+canonicalProjectTree:
   calm-river | server
 
-hiddenGroupIDs:
-  logs, agent        ← groups には残るが leaf は持たない
+hiddenProjectIDs:
+  logs, agent        ← projects には残るが leaf は持たない
 
-effectiveVisibleGroupTree:
-  canonicalGroupTree に zoom を適用した派生tree
+effectiveVisibleProjectTree:
+  canonicalProjectTree に zoom を適用した派生tree
 ```
 
-`hide_group` は対象の leaf を canonical tree から削除する(process は生存)。
-`show_group` は末尾 leaf を左右分割して右側に再接続する(位置は復元しない)。
-`close_group` だけが `groups` からも削除して process を終了する。
+`hide_project` は対象の leaf を canonical tree から削除する(process は生存)。
+`show_project` は末尾 leaf を左右分割して右側に再接続する(位置は復元しない)。
+`close_project` だけが `projects` からも削除して process を終了する。
 
-これにより、非表示グループを元の場所に戻すための path 復元ロジックが不要になり、
-hide 中は残りの visible group がスペースを回収できる。
+これにより、非表示プロジェクトを元の場所に戻すための path 復元ロジックが不要になり、
+hide 中は残りの visible project がスペースを回収できる。
 
-### 4.2 グループは最上位レイアウト単位
+### 4.2 プロジェクトは最上位レイアウト単位
 
-`Cmd+D` は常に focused group 内の `paneTree` だけを分割する。
-グループ境界は越えない。
+`Cmd+D` は常に focused project 内の `paneTree` だけを分割する。
+プロジェクト境界は越えない。
 
 ```text
 Cmd+D:
-  focusedGroup.paneTree を split
+  focusedProject.paneTree を split
 
 Cmd+Opt+D:
-  canonicalGroupTree を split して新 group を作る
+  canonicalProjectTree を split して新 project を作る
 ```
 
 ### 4.3 terminal surface の lifetime と layout tree を分離する
@@ -109,14 +109,14 @@ Cmd+Opt+D:
 `SplitTree` は layout を表す。
 PTY / surface / renderer / scrollback の実体は registry 側で保持し、tree 変形に伴って安易に再生成しない。
 
-Ghostty の `TerminalSplitTreeView` は `SplitTree<Ghostty.SurfaceView>` を受け取り、tree の `zoomed ?? root` を描画対象にしており、SwiftUI の structural identity 問題を避けるために `.id(node.structuralIdentity)` を使っています。この既存設計に合わせ、グループ層も view identity を慎重に扱う。([GitHub][3])
+Ghostty の `TerminalSplitTreeView` は `SplitTree<Ghostty.SurfaceView>` を受け取り、tree の `zoomed ?? root` を描画対象にしており、SwiftUI の structural identity 問題を避けるために `.id(node.structuralIdentity)` を使っています。この既存設計に合わせ、プロジェクト層も view identity を慎重に扱う。([GitHub][3])
 
 ## 5. データモデル
 
 ### 5.1 ID 型
 
 ```swift
-struct GroupID: Codable, Hashable, Identifiable {
+struct ProjectID: Codable, Hashable, Identifiable {
     let rawValue: UUID
     var id: UUID { rawValue }
 }
@@ -126,8 +126,8 @@ struct SurfaceID: Codable, Hashable, Identifiable {
     var id: UUID { rawValue }
 }
 
-struct GroupRef: Codable, Hashable, Identifiable {
-    let id: GroupID
+struct ProjectRef: Codable, Hashable, Identifiable {
+    let id: ProjectID
 }
 
 struct SurfaceRef: Codable, Hashable, Identifiable {
@@ -141,24 +141,24 @@ struct SurfaceRef: Codable, Hashable, Identifiable {
 struct WorkspaceState: Codable {
     var version: Int = 1
 
-    var canonicalGroupTree: SplitTree<GroupRef>
-    var groups: [GroupID: GroupState]
+    var canonicalProjectTree: SplitTree<ProjectRef>
+    var projects: [ProjectID: ProjectState]
 
     // runtime-only
-    var hiddenGroupIDs: Set<GroupID> = []
-    var focusedGroup: GroupID?
-    var zoomedGroup: GroupID?
+    var hiddenProjectIDs: Set<ProjectID> = []
+    var focusedProject: ProjectID?
+    var zoomedProject: ProjectID?
 }
 ```
 
-`hiddenGroupIDs` と `zoomedGroup` は原則 runtime-only。
+`hiddenProjectIDs` と `zoomedProject` は原則 runtime-only。
 保存してもよいが、restore時には破棄する。
 
-### 5.3 GroupState
+### 5.3 ProjectState
 
 ```swift
-struct GroupState: Codable, Identifiable {
-    let id: GroupID
+struct ProjectState: Codable, Identifiable {
+    let id: ProjectID
     var name: String
 
     var paneTree: SplitTree<SurfaceRef>
@@ -190,11 +190,11 @@ MVPでは `initialWorkingDirectory` と `initialCommand` は nil でもよい。
 
 ```text
 TerminalWorkspaceView
-  ├─ GroupSplitTreeView
-  │   └─ GroupView (VStack)
-  │       ├─ GroupLabel header band
+  ├─ ProjectSplitTreeView
+  │   └─ ProjectView (VStack)
+  │       ├─ ProjectLabel header band
   │       └─ TerminalSplitTreeView
-  └─ HiddenGroupShelf overlay
+  └─ HiddenProjectShelf overlay
 ```
 
 ### 6.2 TerminalWorkspaceView
@@ -205,43 +205,43 @@ struct TerminalWorkspaceView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if let tree = workspace.effectiveVisibleGroupTree {
-                GroupSplitTreeView(
+            if let tree = workspace.effectiveVisibleProjectTree {
+                ProjectSplitTreeView(
                     tree: tree,
-                    focusedGroup: workspace.focusedGroup,
-                    action: workspace.handleGroupOperation
+                    focusedProject: workspace.focusedProject,
+                    action: workspace.handleProjectOperation
                 )
             }
 
-            HiddenGroupShelf(
-                hiddenGroups: workspace.hiddenGroupsInDisplayOrder,
-                onShow: { workspace.showGroup($0) }
+            HiddenProjectShelf(
+                hiddenProjects: workspace.hiddenProjectsInDisplayOrder,
+                onShow: { workspace.showProject($0) }
             )
         }
     }
 }
 ```
 
-### 6.3 GroupView
+### 6.3 ProjectView
 
-Group label は各 group 上部の **ヘッダー帯**（VStack の上段）として表示し、terminal
+Project label は各 project 上部の **ヘッダー帯**（VStack の上段）として表示し、terminal
 描画領域をその高さぶん押し下げる。overlay ではない。帯はターミナル配色に馴染ませる
 （背景色フィル + split-divider 色のヘアライン）。
 
 ```swift
-struct GroupView: View {
-    let group: GroupState
+struct ProjectView: View {
+    let project: ProjectState
     let isFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            GroupLabel(
-                title: group.name,
+            ProjectLabel(
+                title: project.name,
                 isFocused: isFocused
             )
 
             TerminalSplitTreeView(
-                tree: group.paneTree,
+                tree: project.paneTree,
                 action: handlePaneOperation
             )
         }
@@ -251,9 +251,9 @@ struct GroupView: View {
 
 ## 7. UI 仕様
 
-### 7.1 グループラベル
+### 7.1 プロジェクトラベル
 
-各 group 上部のヘッダー帯に、序数と名前を左寄せで表示する。帯はターミナルに馴染ませる
+各 project 上部のヘッダー帯に、序数と名前を左寄せで表示する。帯はターミナルに馴染ませる
 （ターミナル背景色フィル + 下端に split-divider 色のヘアライン、monospace フォント）。
 
 ```text
@@ -265,17 +265,17 @@ struct GroupView: View {
 ```
 
 ラベル表示形式は `"{ordinal}. {name}"` 。序数は表示専用（1～9、canonical tree の葉走査順で動的決定）で、
-`GroupState.name` には保存されない。inline rename 時は裸の名前を編集し、`show_group:<name>` の引数も裸の名前とマッチする。
-zoom 中のグループは canonical 序数をそのまま表示する。
+`ProjectState.name` には保存されない。inline rename 時は裸の名前を編集し、`show_project:<name>` の引数も裸の名前とマッチする。
+zoom 中のプロジェクトは canonical 序数をそのまま表示する。
 
 表示ルール（material ピル等の浮いた装飾は用いず、フラットに馴染ませる）:
 
 ```text
-focused group:
+focused project:
   text opacity 1.0
   weight やや強め（medium）
 
-unfocused group:
+unfocused project:
   text opacity 0.35〜0.5（weight regular）
   視認はできるが主張しすぎない
 
@@ -287,21 +287,21 @@ unfocused group:
 
 ```text
 single click label:
-  その group に focus
+  その project に focus
 
 double click label:
   inline rename
 
 click note glyph (帯の右端):
-  その group のノート編集オーバーレイを開く(§21.2、focus は変えない)
+  その project のノート編集オーバーレイを開く(§21.2、focus は変えない)
 
-rename_group action:
-  focused group の名前を prompt で変更
+rename_project action:
+  focused project の名前を prompt で変更
 ```
 
-### 7.2 Hidden Group Shelf
+### 7.2 Hidden Project Shelf
 
-非表示groupは右上固定の shelf に表示する。
+非表示projectは右上固定の shelf に表示する。
 
 ```text
 ┌─ 1. main ────┬─ 2. server ─── hidden: [logs] [agent] ┐
@@ -328,71 +328,71 @@ hidden shelf の pill は裸の名前を表示する（序数なし）。
 
 ```text
 pill click:
-  即 show_group（ただし visible が既に 9 個の場合は no-op・toast/beep なし）
+  即 show_project（ただし visible が既に 9 個の場合は no-op・toast/beep なし）
 
 +N click:
-  hidden group menu を開く
+  hidden project menu を開く
 ```
 
 Hidden shelf は `TerminalWorkspaceView` の overlay。
-個別 `GroupView` の責務ではない。
+個別 `ProjectView` の責務ではない。
 
-### 7.3 グループ番号（1～9）と表示上限
+### 7.3 プロジェクト番号（1～9）と表示上限
 
-visible group は最大 9 個まで。`WorkspaceState.maxVisibleGroups = 9` として実装。
+visible project は最大 9 個まで。`WorkspaceState.maxVisibleProjects = 9` として実装。
 
 #### 動的序数
 
-visible group は canonical tree の **葉走査順序**（in-order、前後 focus 移動と同じ順）で
+visible project は canonical tree の **葉走査順序**（in-order、前後 focus 移動と同じ順）で
 1～N（N = visible count）の序数を自動付与する。序数は display-only で内部保持しない。
 
-枚数変化時（hide / close / show / move_group）、序数は自動的に再計算・再配置される。
+枚数変化時（hide / close / show / move_project）、序数は自動的に再計算・再配置される。
 
 ```text
-canon: [group-A | group-B | group-C]  (3 visible)
+canon: [project-A | project-B | project-C]  (3 visible)
 
-序数: 1. group-A | 2. group-B | 3. group-C
+序数: 1. project-A | 2. project-B | 3. project-C
 
-group-B を hide:
+project-B を hide:
 
-canon: [group-A | group-C]  (2 visible)
+canon: [project-A | project-C]  (2 visible)
 
-序数: 1. group-A | 2. group-C  ← 自動 re-pack
+序数: 1. project-A | 2. project-C  ← 自動 re-pack
 ```
 
-zoom 中のグループは canonical tree 上の序数をそのまま表示する（zoom は派生表示で canonical 不変のため）。
+zoom 中のプロジェクトは canonical tree 上の序数をそのまま表示する（zoom は派生表示で canonical 不変のため）。
 
 ```text
-canon: [group-A | group-B | group-C]  (3 visible)
-zoom: group-B
+canon: [project-A | project-B | project-C]  (3 visible)
+zoom: project-B
 
-表示: 2. group-B  (canonical 上の序数 2)
+表示: 2. project-B  (canonical 上の序数 2)
 ```
 
 #### 表示上限 9 と no-op 挙動
 
-visible group が既に 9 個のとき:
+visible project が既に 9 個のとき:
 
-- `new_group_split` ... quietly no-op（モデル・UI 変化なし）
-- `show_group`（shelf pill click と `show_group:<name>` action 両方） ... quietly no-op（pill は表示されたまま）
-- `goto_group` index form（`goto_group:1`～`goto_group:9`）... 無効な index は no-op、performability gate あり
-- `goto_group` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
+- `new_project_split` ... quietly no-op（モデル・UI 変化なし）
+- `show_project`（shelf pill click と `show_project:<name>` action 両方） ... quietly no-op（pill は表示されたまま）
+- `goto_project` index form（`goto_project:1`～`goto_project:9`）... 無効な index は no-op、performability gate あり
+- `goto_project` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
 
 performability gate の扱い：
 
-- `show_group` ... 上限到達時（または対象が hidden でないとき）は performable = false で
+- `show_project` ... 上限到達時（または対象が hidden でないとき）は performable = false で
   keybind を消費しない
-- `goto_group` index form ... 対象 index が解決できない・focused と同じ
-  （zoom 中は zoomed group 自身と同じ）とき performable = false で keybind を消費しない
-- `new_group_split` ... performability 配線が無いため keybind は消費されるが、
-  controller/model 側の gate（`canAddVisibleGroup`）で静かに no-op
+- `goto_project` index form ... 対象 index が解決できない・focused と同じ
+  （zoom 中は zoomed project 自身と同じ）とき performable = false で keybind を消費しない
+- `new_project_split` ... performability 配線が無いため keybind は消費されるが、
+  controller/model 側の gate（`canAddVisibleProject`）で静かに no-op
 
-## 8. グループ名生成
+## 8. プロジェクト名生成
 
-新規group名は固定 word list から `adjective-noun` 形式でランダム生成する。
+新規project名は固定 word list から `adjective-noun` 形式でランダム生成する。
 
 ```swift
-enum GroupNameGenerator {
+enum ProjectNameGenerator {
     static let adjectives = [
         "amber", "brave", "calm", "copper", "fuzzy",
         "gentle", "hidden", "lucky", "quiet", "silver"
@@ -410,80 +410,80 @@ enum GroupNameGenerator {
         }
 
         var n = existing.count + 1
-        while existing.contains("group-\(n)") { n += 1 }
-        return "group-\(n)"
+        while existing.contains("project-\(n)") { n += 1 }
+        return "project-\(n)"
     }
 }
 ```
 
 生成は作成時のみ。
 復元時に再生成してはいけない。
-名前は `GroupState.name` に保存する。
+名前は `ProjectState.name` に保存する。
 
 ## 9. Action 仕様
 
-Ghostty既存の action naming に合わせ、`focus_group` ではなく `goto_group` を推奨する。既存の `goto_split` は方向または previous/next で split focus を移す action として定義されているため、グループ版も同じ語彙に寄せる。([Ghostty][1])
+Ghostty既存の action naming に合わせ、`focus_project` ではなく `goto_project` を推奨する。既存の `goto_split` は方向または previous/next で split focus を移す action として定義されているため、プロジェクト版も同じ語彙に寄せる。([Ghostty][1])
 
 ### 9.1 追加action一覧
 
 ```text
-new_group_split:right
-new_group_split:down
-new_group_split:left
-new_group_split:up
-new_group_split:auto
+new_project_split:right
+new_project_split:down
+new_project_split:left
+new_project_split:up
+new_project_split:auto
 
-goto_group:right
-goto_group:down
-goto_group:left
-goto_group:up
-goto_group:next
-goto_group:previous
-goto_group:1
-goto_group:2
-goto_group:3
-goto_group:4
-goto_group:5
-goto_group:6
-goto_group:7
-goto_group:8
-goto_group:9
+goto_project:right
+goto_project:down
+goto_project:left
+goto_project:up
+goto_project:next
+goto_project:previous
+goto_project:1
+goto_project:2
+goto_project:3
+goto_project:4
+goto_project:5
+goto_project:6
+goto_project:7
+goto_project:8
+goto_project:9
 
-resize_group:right,10
-resize_group:left,10
-resize_group:up,10
-resize_group:down,10
+resize_project:right,10
+resize_project:left,10
+resize_project:up,10
+resize_project:down,10
 
-equalize_groups
+equalize_projects
 
-toggle_group_zoom
+toggle_project_zoom
 
-hide_group
-show_group:<group-id-or-name>
+hide_project
+show_project:<project-id-or-name>
 
-rename_group
-set_group_title:<name>
+rename_project
+set_project_title:<name>
 
-edit_group_note
+edit_project_note
 toggle_note_overview
 
 set_primary
 
-sort_groups_by_priority
-sort_groups_by_deadline
+sort_projects_by_priority
+sort_projects_by_deadline
 
-close_group
+close_project
 ```
 
 ### 9.2 既存actionとの対応
 
 ```text
-new_split          -> new_group_split
-goto_split         -> goto_group
-resize_split       -> resize_group
-equalize_splits    -> equalize_groups
-toggle_split_zoom  -> toggle_group_zoom
-close_surface      -> close_group
+new_split          -> new_project_split
+goto_split         -> goto_project
+resize_split       -> resize_project
+equalize_splits    -> equalize_projects
+toggle_split_zoom  -> toggle_project_zoom
+close_surface      -> close_project
 ```
 
 ## 10. デフォルトキー割り当て
@@ -497,62 +497,62 @@ Cmd+D                 -> new_split:right
 Cmd+Shift+D           -> new_split:down
 ```
 
-### 10.2 グループ分割
+### 10.2 プロジェクト分割
 
 ```text
-Cmd+Opt+D             -> new_group_split:right
-Cmd+Opt+Shift+D       -> new_group_split:down
+Cmd+Opt+D             -> new_project_split:right
+Cmd+Opt+Shift+D       -> new_project_split:down
 ```
 
-### 10.3 グループ移動
+### 10.3 プロジェクト移動
 
 方向移動:
 
 ```text
-Cmd+Ctrl+Opt+Left     -> goto_group:left
-Cmd+Ctrl+Opt+Right    -> goto_group:right
-Cmd+Ctrl+Opt+Up       -> goto_group:up
-Cmd+Ctrl+Opt+Down     -> goto_group:down
+Cmd+Ctrl+Opt+Left     -> goto_project:left
+Cmd+Ctrl+Opt+Right    -> goto_project:right
+Cmd+Ctrl+Opt+Up       -> goto_project:up
+Cmd+Ctrl+Opt+Down     -> goto_project:down
 ```
 
 序数ジャンプ:
 
 ```text
-Cmd+1                 -> goto_group:1
-Cmd+2                 -> goto_group:2
-Cmd+3                 -> goto_group:3
-Cmd+4                 -> goto_group:4
-Cmd+5                 -> goto_group:5
-Cmd+6                 -> goto_group:6
-Cmd+7                 -> goto_group:7
-Cmd+8                 -> goto_group:8
-Cmd+9                 -> goto_group:9
+Cmd+1                 -> goto_project:1
+Cmd+2                 -> goto_project:2
+Cmd+3                 -> goto_project:3
+Cmd+4                 -> goto_project:4
+Cmd+5                 -> goto_project:5
+Cmd+6                 -> goto_project:6
+Cmd+7                 -> goto_project:7
+Cmd+8                 -> goto_project:8
+Cmd+9                 -> goto_project:9
 ```
 
 Cmd+1～9 は physical `digit_1`～`digit_9` と unicode `1`～`9` の両方に登録し
-（AZERTY 等のレイアウト対策）、`goto_group:1`～`goto_group:9` に performable 付きでバインドする。
+（AZERTY 等のレイアウト対策）、`goto_project:1`～`goto_project:9` に performable 付きでバインドする。
 本 fork にタブは存在せず、上流の `goto_tab` / `last_tab` は core ごと削除済みなので衝突しない。
 
-### 10.4 グループリサイズ
+### 10.4 プロジェクトリサイズ
 
 ```text
-Cmd+Ctrl+Opt+Shift+Left     -> resize_group:left,10
-Cmd+Ctrl+Opt+Shift+Right    -> resize_group:right,10
-Cmd+Ctrl+Opt+Shift+Up       -> resize_group:up,10
-Cmd+Ctrl+Opt+Shift+Down     -> resize_group:down,10
+Cmd+Ctrl+Opt+Shift+Left     -> resize_project:left,10
+Cmd+Ctrl+Opt+Shift+Right    -> resize_project:right,10
+Cmd+Ctrl+Opt+Shift+Up       -> resize_project:up,10
+Cmd+Ctrl+Opt+Shift+Down     -> resize_project:down,10
 ```
 
 ### 10.5 その他
 
 ```text
-Cmd+Opt+Enter         -> toggle_group_zoom
-Cmd+Opt+H             -> hide_group
-Cmd+Opt+R             -> rename_group
-Cmd+N                 -> edit_group_note
+Cmd+Opt+Enter         -> toggle_project_zoom
+Cmd+Opt+H             -> hide_project
+Cmd+Opt+R             -> rename_project
+Cmd+N                 -> edit_project_note
 Cmd+Opt+N             -> toggle_note_overview
 Cmd+P                 -> set_primary
-Cmd+S                 -> sort_groups_by_priority
-Cmd+Shift+S           -> sort_groups_by_deadline
+Cmd+S                 -> sort_projects_by_priority
+Cmd+Shift+S           -> sort_projects_by_deadline
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
@@ -568,103 +568,103 @@ Cmd+Shift+S           -> sort_groups_by_deadline
 
 ## 11. 状態遷移仕様
 
-### 11.1 `new_group_split`
+### 11.1 `new_project_split`
 
 表示上限到達時は no-op（§7.3）。
 
 挙動:
 
 ```text
-1. visible group 数が既に 9 個の場合は no-op（§7.3 の上限 gate）
-2. focusedGroup を基準groupにする
-3. zoomedGroup がある場合は、まず zoom を解除する
-4. 新規 GroupState を作る
-5. 新規 group 内に初期paneを1つ作る
-6. canonicalGroupTree に GroupRef を挿入する
-7. focus を新group内の初期paneへ移す
+1. visible project 数が既に 9 個の場合は no-op（§7.3 の上限 gate）
+2. focusedProject を基準projectにする
+3. zoomedProject がある場合は、まず zoom を解除する
+4. 新規 ProjectState を作る
+5. 新規 project 内に初期paneを1つ作る
+6. canonicalProjectTree に ProjectRef を挿入する
+7. focus を新project内の初期paneへ移す
 ```
 
 ズーム中に実行した場合:
 
 ```text
 Before:
-  zoomedGroup = server
+  zoomedProject = server
 
-new_group_split:right
+new_project_split:right
 
 After:
-  zoomedGroup = nil
-  server の右に新group
-  focus = 新groupの初期pane
+  zoomedProject = nil
+  server の右に新project
+  focus = 新projectの初期pane
 ```
 
 ### 11.2 `Cmd+D`
 
-常に focused group 内の `paneTree` のみを分割する。
+常に focused project 内の `paneTree` のみを分割する。
 
 ```text
-focusedGroup = server
+focusedProject = server
 
 Cmd+D:
-  groups[server].paneTree.insert(...)
+  projects[server].paneTree.insert(...)
 ```
 
-グループズーム中も同じ。
-ズーム中group内でpane splitされる。
+プロジェクトズーム中も同じ。
+ズーム中project内でpane splitされる。
 
-### 11.3 `goto_group`
+### 11.3 `goto_project`
 
-#### 方向移動形式（`goto_group:right` 等）
+#### 方向移動形式（`goto_project:right` 等）
 
-方向移動は `effectiveVisibleGroupTree` に対して行う。
+方向移動は `effectiveVisibleProjectTree` に対して行う。
 
 ```swift
-func gotoGroup(_ direction: FocusDirection) {
-    guard zoomedGroup == nil else { return }
-    guard let visibleTree = effectiveVisibleGroupTree else { return }
+func gotoProject(_ direction: FocusDirection) {
+    guard zoomedProject == nil else { return }
+    guard let visibleTree = effectiveVisibleProjectTree else { return }
 
     let next = visibleTree.focusTarget(
-        from: focusedGroup,
+        from: focusedProject,
         direction: direction
     )
 
     if let next {
-        focusedGroup = next
+        focusedProject = next
         focusLastPane(in: next)
     }
 }
 ```
 
-移動先groupでは、最後にfocusしていたpaneへ戻す。
+移動先projectでは、最後にfocusしていたpaneへ戻す。
 
 ```text
-goto_group:right:
-  group focus を移す
-  targetGroup.focusedSurface を復元
+goto_project:right:
+  project focus を移す
+  targetProject.focusedSurface を復元
 ```
 
-hidden group は focus 対象にしない。
-zoom中の `goto_group` 方向移動は no-op でよい。
+hidden project は focus 対象にしない。
+zoom中の `goto_project` 方向移動は no-op でよい。
 
-#### 序数ジャンプ形式（`goto_group:1`～`goto_group:9`）
+#### 序数ジャンプ形式（`goto_project:1`～`goto_project:9`）
 
-N 番目の visible group にジャンプする（traversal order の序数 1～9）。
+N 番目の visible project にジャンプする（traversal order の序数 1～9）。
 
 ```swift
-func gotoGroup(index: UInt8) {
-    // index が resolveしないか focusedGroup と同じならno-op
-    guard let target = visibleGroupID(ordinal: index),
-          target != focusedGroup
+func gotoProject(index: UInt8) {
+    // index が resolveしないか focusedProject と同じならno-op
+    guard let target = visibleProjectID(ordinal: index),
+          target != focusedProject
     else { return }
 
-    zoomedGroup = nil  // zoom を解除してからジャンプ
-    focusedGroup = target
+    zoomedProject = nil  // zoom を解除してからジャンプ
+    focusedProject = target
     focusLastPane(in: target)
 }
 ```
 
 **zoom中の特別ルール**: zoom 中に index form を実行するとまず **zoom を解除してからジャンプ** する。
-ただし zoomed group 自身の序数を指定した場合（e.g. zoomed = 2. server、Cmd+2 押下）は、
+ただし zoomed project 自身の序数を指定した場合（e.g. zoomed = 2. server、Cmd+2 押下）は、
 no-op で zoom は保持される。
 
 ```text
@@ -673,52 +673,52 @@ Before:
   focused: 2. server
   zoomed: 2. server
 
-Cmd+3 (goto_group:3):
+Cmd+3 (goto_project:3):
   zoom解除 → focus 移動 → last pane focus
 
   After:
     focused: 3. logs
     zoomed: nil
 
-Cmd+2 (goto_group:2,自 group):
+Cmd+2 (goto_project:2,自 project):
   no-op、zoom 保持
 
   Before の状態のまま
 ```
 
-hidden group は jump 対象にならない（序数は visible only）。
+hidden project は jump 対象にならない（序数は visible only）。
 無効な index（0、10+、目標が hidden 等）は no-op。
 
-### 11.4 `resize_group`
+### 11.4 `resize_project`
 
-`resize_group` は `effectiveVisibleGroupTree` の見た目上の隣接関係を使うが、ratio変更は `canonicalGroupTree` に適用する。
+`resize_project` は `effectiveVisibleProjectTree` の見た目上の隣接関係を使うが、ratio変更は `canonicalProjectTree` に適用する。
 
 ```text
-1. visible tree で focusedGroup の隣接groupを探す
-2. focusedGroup と neighbor の canonical tree 上の LCA split を探す
+1. visible tree で focusedProject の隣接projectを探す
+2. focusedProject と neighbor の canonical tree 上の LCA split を探す
 3. その split ratio を変更する
 ```
 
-hidden group がいる状態でも、canonical tree を直接正しく更新する。
+hidden project がいる状態でも、canonical tree を直接正しく更新する。
 
 ```swift
-func resizeGroup(_ direction: Direction, amount: CGFloat) {
-    guard zoomedGroup == nil else { return }
-    guard let focused = focusedGroup else { return }
-    guard let visibleTree = effectiveVisibleGroupTree else { return }
+func resizeProject(_ direction: Direction, amount: CGFloat) {
+    guard zoomedProject == nil else { return }
+    guard let focused = focusedProject else { return }
+    guard let visibleTree = effectiveVisibleProjectTree else { return }
 
     guard let neighbor = visibleTree.spatialNeighbor(
         from: focused,
         direction: direction
     ) else { return }
 
-    guard let splitPath = canonicalGroupTree.lowestCommonSplitPath(
+    guard let splitPath = canonicalProjectTree.lowestCommonSplitPath(
         between: focused,
         and: neighbor,
         matchingResizeDirection: direction
     ) else { return }
 
-    canonicalGroupTree = canonicalGroupTree.adjustRatio(
+    canonicalProjectTree = canonicalProjectTree.adjustRatio(
         at: splitPath,
         direction: direction,
         amount: amount
@@ -726,135 +726,135 @@ func resizeGroup(_ direction: Direction, amount: CGFloat) {
 }
 ```
 
-### 11.5 `equalize_groups`
+### 11.5 `equalize_projects`
 
-`equalize_groups` は visible group のレイアウトを均等化する。
+`equalize_projects` は visible project のレイアウトを均等化する。
 
-hidden group は canonical tree に leaf を持たない(§11.7)ため、
-`canonicalGroupTree.equalized()` をそのまま保存すればよい。
-均等化されるのは visible group 間の split ratio だけである。
+hidden project は canonical tree に leaf を持たない(§11.7)ため、
+`canonicalProjectTree.equalized()` をそのまま保存すればよい。
+均等化されるのは visible project 間の split ratio だけである。
 
 ```swift
-func equalizeGroups() -> Bool {
-    guard canonicalGroupTree.isSplit else { return false }
-    canonicalGroupTree = canonicalGroupTree.equalized()
+func equalizeProjects() -> Bool {
+    guard canonicalProjectTree.isSplit else { return false }
+    canonicalProjectTree = canonicalProjectTree.equalized()
     return true
 }
 ```
 
-group が1つ以下で split が存在しない場合は no-op。
-hidden group の有無で実行を拒否してはいけない。
+project が1つ以下で split が存在しない場合は no-op。
+hidden project の有無で実行を拒否してはいけない。
 
-### 11.6 `toggle_group_zoom`
+### 11.6 `toggle_project_zoom`
 
 ```text
-if zoomedGroup == focusedGroup:
-  zoomedGroup = nil
+if zoomedProject == focusedProject:
+  zoomedProject = nil
 else:
-  zoomedGroup = focusedGroup
+  zoomedProject = focusedProject
 ```
 
 描画時は:
 
 ```swift
-if let zoomedGroup {
-    effectiveVisibleGroupTree = canonicalGroupTree.subtreeContainingOnly(zoomedGroup)
+if let zoomedProject {
+    effectiveVisibleProjectTree = canonicalProjectTree.subtreeContainingOnly(zoomedProject)
 } else {
-    effectiveVisibleGroupTree = canonicalGroupTree.pruning(hiddenGroupIDs)
+    effectiveVisibleProjectTree = canonicalProjectTree.pruning(hiddenProjectIDs)
 }
 ```
 
-group zoom と inner split zoom は共存可能。
+project zoom と inner split zoom は共存可能。
 
 描画順序:
 
 ```text
-1. group zoom を適用
-2. group 内 paneTree の split zoom を適用
+1. project zoom を適用
+2. project 内 paneTree の split zoom を適用
 ```
 
 つまり外側から内側へ適用する。
 
-### 11.7 `hide_group`
+### 11.7 `hide_project`
 
 ```text
 1. focus の移動先を hide 前の canonical tree 上で解決(nearest leaf)
-2. focusedGroup の leaf を canonicalGroupTree から削除
-   → 残りの visible group がスペースを回収する
-3. focusedGroup を hiddenGroupIDs に追加(shelf の source of truth)
-4. process / PTY / surface は生存(GroupState は groups に残る)
-5. zoomedGroup == hidden target なら zoom解除
+2. focusedProject の leaf を canonicalProjectTree から削除
+   → 残りの visible project がスペースを回収する
+3. focusedProject を hiddenProjectIDs に追加(shelf の source of truth)
+4. process / PTY / surface は生存(ProjectState は projects に残る)
+5. zoomedProject == hidden target なら zoom解除
 6. focus を 1 で解決した neighbor へ移す
 7. hidden shelf に pill 表示
 ```
 
 ```swift
-func hideGroup(_ id: GroupID) {
-    guard groups[id] != nil else { return }
-    // 最後の visible group は hide できない
-    guard let neighbor = canonicalGroupTree.nearestLeaf(to: id) else { return }
+func hideProject(_ id: ProjectID) {
+    guard projects[id] != nil else { return }
+    // 最後の visible project は hide できない
+    guard let neighbor = canonicalProjectTree.nearestLeaf(to: id) else { return }
 
-    canonicalGroupTree = canonicalGroupTree.removing(.leaf(view: GroupRef(id: id)))
-    hiddenGroupIDs.insert(id)
+    canonicalProjectTree = canonicalProjectTree.removing(.leaf(view: ProjectRef(id: id)))
+    hiddenProjectIDs.insert(id)
 
-    if zoomedGroup == id {
-        zoomedGroup = nil
+    if zoomedProject == id {
+        zoomedProject = nil
     }
 
-    focusedGroup = neighbor
+    focusedProject = neighbor
 }
 ```
 
-全groupをhiddenにしようとした場合:
+全projectをhiddenにしようとした場合:
 
 ```text
-最後の visible group は hide できない
+最後の visible project は hide できない
 ```
 
 理由: workspace が空になると操作・復帰UIが不安定になるため。
 
-### 11.8 `show_group`
+### 11.8 `show_project`
 
 表示上限到達時は no-op（§7.3）。
 
 ```text
-1. visible group 数が既に 9 個の場合は no-op（pill は表示のまま、toast/beep なし）
-2. hiddenGroupIDs から除外
-3. 末尾グループ(走査順の最後の leaf)を 50/50 で左右分割し、
+1. visible project 数が既に 9 個の場合は no-op（pill は表示のまま、toast/beep なし）
+2. hiddenProjectIDs から除外
+3. 末尾プロジェクト(走査順の最後の leaf)を 50/50 で左右分割し、
    その右側に leaf を再接続
-4. zoomedGroup を解除
-5. focus をそのgroupへ移す
-6. group内では最後にfocusしていたpaneへ戻す
+4. zoomedProject を解除
+5. focus をそのprojectへ移す
+6. project内では最後にfocusしていたpaneへ戻す
 ```
 
 ```swift
-func showGroup(_ id: GroupID) {
-    guard !hiddenGroupIDs.contains(id) else { return }
-    guard visibleGroupCount < 9 else { return }  // cap gate
+func showProject(_ id: ProjectID) {
+    guard !hiddenProjectIDs.contains(id) else { return }
+    guard visibleProjectCount < 9 else { return }  // cap gate
 
-    hiddenGroupIDs.remove(id)
-    canonicalGroupTree = canonicalGroupTree.appendingAtTrailingLeaf(GroupRef(id: id))
-    zoomedGroup = nil
-    focusedGroup = id
+    hiddenProjectIDs.remove(id)
+    canonicalProjectTree = canonicalProjectTree.appendingAtTrailingLeaf(ProjectRef(id: id))
+    zoomedProject = nil
+    focusedProject = id
     focusLastPane(in: id)
 }
 ```
 
 hide が leaf を削除しているため、show は元の位置を復元しない。
-再表示された group は末尾グループのスペースを半分もらうだけで、
-他の visible group のサイズと split ratio は一切変わらない。
+再表示された project は末尾プロジェクトのスペースを半分もらうだけで、
+他の visible project のサイズと split ratio は一切変わらない。
 空 tree への再接続は単一 leaf になる。
 
-### 11.9 `close_group`
+### 11.9 `close_project`
 
 破壊的操作。必ず確認ダイアログを出す。
 
 ```text
-Close Group “server”?
+Close Project “server”?
 
 This will close 4 panes and terminate their processes.
 
-[Cancel] [Close Group]
+[Cancel] [Close Project]
 ```
 
 `Hide Instead` は入れない。
@@ -863,31 +863,31 @@ This will close 4 panes and terminate their processes.
 
 ```text
 1. confirmation
-2. group内の全surfaceを close
-3. canonicalGroupTree から GroupRef を削除
-4. groups から削除
-5. hiddenGroupIDs から削除
-6. zoomedGroup が対象なら解除
-7. focus を nearest visible group に移す
-8. visible group が残らない場合は最古の hidden group を
+2. project内の全surfaceを close
+3. canonicalProjectTree から ProjectRef を削除
+4. projects から削除
+5. hiddenProjectIDs から削除
+6. zoomedProject が対象なら解除
+7. focus を nearest visible project に移す
+8. visible project が残らない場合は最古の hidden project を
    §11.8 と同じ末尾分割で再表示してから focus する(§14.6)
 ```
 
-既存 `close_surface` は close confirmation popup を出し得る action として定義されているため、`close_group` も同じく破壊的操作として確認を持つ。([Ghostty][1])
+既存 `close_surface` は close confirmation popup を出し得る action として定義されているため、`close_project` も同じく破壊的操作として確認を持つ。([Ghostty][1])
 
 ### 11.10 最後のpaneで `Cmd+W`
 
 ```text
-if group.paneTree.leafCount > 1:
+if project.paneTree.leafCount > 1:
   close_surface normally
-else if groups.count > 1:
-  close_group confirmation
+else if projects.count > 1:
+  close_project confirmation
 else:
-  close_surface normally  (唯一の group なので window close → app 終了, §18.5)
+  close_surface normally  (唯一の project なので window close → app 終了, §18.5)
 ```
 
-最後のpaneを閉じることは、実質groupを閉じること。group が複数ある場合のみ
-close_group confirmation に昇格する(実装: `BaseTerminalController` の
+最後のpaneを閉じることは、実質projectを閉じること。project が複数ある場合のみ
+close_project confirmation に昇格する(実装: `BaseTerminalController` の
 close_surface 経路)。
 
 ## 12. 復元仕様
@@ -895,19 +895,19 @@ close_surface 経路)。
 ### 12.1 保存するもの
 
 ```text
-- canonicalGroupTree
-- groups
-- group names
-- group paneTree
-- focusedGroup
-- focusedSurface per group
+- canonicalProjectTree
+- projects
+- project names
+- project paneTree
+- focusedProject
+- focusedSurface per project
 ```
 
 ### 12.2 保存しないもの
 
 ```text
-- hiddenGroupIDs
-- zoomedGroup
+- hiddenProjectIDs
+- zoomedProject
 ```
 
 復元時はすべて visible、非zoom状態に戻す。ただし §7.3 の表示上限 9 を適用する。
@@ -918,10 +918,10 @@ MVPでは各paneは新規 shell として復元する。
 
 ```text
 Before quit:
-  group / pane layout 保存
+  project / pane layout 保存
 
 After launch:
-  同じ group / pane layout で shell を起動
+  同じ project / pane layout で shell を起動
 ```
 
 live process / scrollback / PTY状態は復元しない。
@@ -929,96 +929,96 @@ live process / scrollback / PTY状態は復元しない。
 ### 12.4 表示上限による pruning
 
 保存時の canonical tree に 9 個を超える leaf がある場合は、復元時に **先頭 9 個のみを visible のまま、
-超過分を hiddenGroupIDs に移す**（alive・shelf に表示されるが leaf なし）。
+超過分を hiddenProjectIDs に移す**（alive・shelf に表示されるが leaf なし）。
 
-保存時に hidden だった group は canonical tree に leaf を持たないまま
-`groups` に残っている(§11.7)。復元時はまず canonical 上限 9 個の枠に収めてから、
-orphaned group（leaf なし・creation order 順）を末尾に再接続する。枠内に収まる orphaned のみ
+保存時に hidden だった project は canonical tree に leaf を持たないまま
+`projects` に残っている(§11.7)。復元時はまず canonical 上限 9 個の枠に収めてから、
+orphaned project（leaf なし・creation order 順）を末尾に再接続する。枠内に収まる orphaned のみ
 再接続し、超過分は hidden のまま。
 
 ```swift
 func applyRestoreLayout() -> WorkspaceState {
     var restored = self
-    restored.hiddenGroupIDs = []
-    restored.zoomedGroup = nil
+    restored.hiddenProjectIDs = []
+    restored.zoomedProject = nil
 
     // canonical が 9 を超える場合は超過分を非表示化
-    restored.capVisibleGroups()  // 先頭 9 保持、以降を hiddenGroupIDs へ
+    restored.capVisibleProjects()  // 先頭 9 保持、以降を hiddenProjectIDs へ
 
-    // orphaned（leaf なし）group を末尾から順に再接続（枠内で止める）
-    restored.reconcileOrphanedGroups()  // 再接続可能な分のみ connect
+    // orphaned（leaf なし）project を末尾から順に再接続（枠内で止める）
+    restored.reconcileOrphanedProjects()  // 再接続可能な分のみ connect
 
-    // focusedGroup 検証・フォールバック
-    let focusValid = restored.focusedGroup.map { id in
-        restored.groups[id] != nil && restored.canonicalGroupTree.find(id: id) != nil
+    // focusedProject 検証・フォールバック
+    let focusValid = restored.focusedProject.map { id in
+        restored.projects[id] != nil && restored.canonicalProjectTree.find(id: id) != nil
     } ?? false
     if !focusValid {
-        restored.focusedGroup = restored.canonicalGroupTree.firstLeaf?.id
+        restored.focusedProject = restored.canonicalProjectTree.firstLeaf?.id
     }
     return restored
 }
 ```
 
-## 13. effectiveVisibleGroupTree
+## 13. effectiveVisibleProjectTree
 
-`effectiveVisibleGroupTree` は描画・focus・visible hit testing 用の派生状態。
+`effectiveVisibleProjectTree` は描画・focus・visible hit testing 用の派生状態。
 
 ```swift
-var effectiveVisibleGroupTree: SplitTree<GroupRef>? {
-    if let zoomedGroup {
-        guard !hiddenGroupIDs.contains(zoomedGroup),
-              canonicalGroupTree.find(id: zoomedGroup) != nil
+var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
+    if let zoomedProject {
+        guard !hiddenProjectIDs.contains(zoomedProject),
+              canonicalProjectTree.find(id: zoomedProject) != nil
         else { return nil }
-        return canonicalGroupTree.treeContainingOnly(zoomedGroup)
+        return canonicalProjectTree.treeContainingOnly(zoomedProject)
     }
 
-    // hidden group は canonical tree に leaf を持たない(§11.7)ため、
-    // この pruning は stale な hiddenGroupIDs に対する防御でしかない。
-    return canonicalGroupTree.pruningLeaves { ref in
-        hiddenGroupIDs.contains(ref.id)
+    // hidden project は canonical tree に leaf を持たない(§11.7)ため、
+    // この pruning は stale な hiddenProjectIDs に対する防御でしかない。
+    return canonicalProjectTree.pruningLeaves { ref in
+        hiddenProjectIDs.contains(ref.id)
     }
 }
 ```
 
-`canonicalGroupTree` は source of truth。
-`effectiveVisibleGroupTree` を永続化してはいけない。
+`canonicalProjectTree` は source of truth。
+`effectiveVisibleProjectTree` を永続化してはいけない。
 
 ## 14. 不変条件
 
 必ずテストする。
 
 ```text
-1. canonicalGroupTree の leaf は必ず groups に存在する
-2. groups に存在しない GroupID は canonicalGroupTree に存在しない
-3. hiddenGroupIDs は groups.keys の部分集合であり、hidden group は
-   canonicalGroupTree に leaf を持たない(leaf 集合 = visible group 集合)
-4. hiddenGroupIDs は永続復元しない
-5. zoomedGroup は visible group のみ
-6. focusedGroup は visible group のみ
-7. hide_group は process を終了しない
-8. close_group は process を終了する
-9. Cmd+D は focused group 内の paneTree だけを変更する
-10. new_group_split は canonicalGroupTree を変更し、新group内に初期paneを1つ作る
-11. new_group_split 後は新groupの初期paneにfocusする
-12. goto_group 後は対象groupの last focused pane にfocusする
-13. group label はヘッダー帯であり、terminal layout を自身の高さぶん押し下げる
-14. hidden shelf は workspace overlay であり、group overlay ではない
-15. group zoom と pane zoom は外側から内側へ適用する
-16. hidden group は focus / resize / equalize の直接対象にならない
-17. 最後の visible group は hide できない
-18. group が複数あるとき、最後の pane で close_surface すると close_group
-    confirmation に昇格する（唯一の group では通常の close_surface として
+1. canonicalProjectTree の leaf は必ず projects に存在する
+2. projects に存在しない ProjectID は canonicalProjectTree に存在しない
+3. hiddenProjectIDs は projects.keys の部分集合であり、hidden project は
+   canonicalProjectTree に leaf を持たない(leaf 集合 = visible project 集合)
+4. hiddenProjectIDs は永続復元しない
+5. zoomedProject は visible project のみ
+6. focusedProject は visible project のみ
+7. hide_project は process を終了しない
+8. close_project は process を終了する
+9. Cmd+D は focused project 内の paneTree だけを変更する
+10. new_project_split は canonicalProjectTree を変更し、新project内に初期paneを1つ作る
+11. new_project_split 後は新projectの初期paneにfocusする
+12. goto_project 後は対象projectの last focused pane にfocusする
+13. project label はヘッダー帯であり、terminal layout を自身の高さぶん押し下げる
+14. hidden shelf は workspace overlay であり、project overlay ではない
+15. project zoom と pane zoom は外側から内側へ適用する
+16. hidden project は focus / resize / equalize の直接対象にならない
+17. 最後の visible project は hide できない
+18. project が複数あるとき、最後の pane で close_surface すると close_project
+    confirmation に昇格する（唯一の project では通常の close_surface として
     window close → app 終了になる。§11.10, §18.5）
-19. visible group 数は常に ≤ 9（§7.3）
-20. visible group の序数は canonical tree 葉走査順で 1～visibleCount となり、
+19. visible project 数は常に ≤ 9（§7.3）
+20. visible project の序数は canonical tree 葉走査順で 1～visibleCount となり、
     hide/close/show/move 時に自動 re-pack される（表示のみ、保存しない）
 21. restore 時は canonical が 9 を超える場合は先頭 9 のみ visible、
-    超過分と orphaned group を hiddenGroupIDs に移す（§12.4）
+    超過分と orphaned project を hiddenProjectIDs に移す（§12.4）
 ```
 
 ## 15. 実装フェーズ
 
-### Phase 0: 既存挙動を1グループに包む
+### Phase 0: 既存挙動を1プロジェクトに包む
 
 目的: 見た目と操作を一切変えず、内部だけ二層化する。
 
@@ -1027,8 +1027,8 @@ Before:
   controller.surfaceTree: SplitTree<SurfaceView>
 
 After:
-  workspace.canonicalGroupTree = leaf(defaultGroup)
-  groups[defaultGroup].paneTree = old surfaceTree
+  workspace.canonicalProjectTree = leaf(defaultProject)
+  projects[defaultProject].paneTree = old surfaceTree
 ```
 
 成功条件:
@@ -1042,26 +1042,26 @@ After:
 - close_surface が従来通り動く
 ```
 
-### Phase 1: `GroupSplitTreeView`
+### Phase 1: `ProjectSplitTreeView`
 
-`SplitTree<GroupRef>` を描画できるようにする。
+`SplitTree<ProjectRef>` を描画できるようにする。
 
 ```text
 TerminalWorkspaceView
-  -> GroupSplitTreeView
-     -> GroupView
+  -> ProjectSplitTreeView
+     -> ProjectView
         -> TerminalSplitTreeView
 ```
 
 成功条件:
 
 ```text
-- 1 group でも既存と同じ表示
-- 2 group でもそれぞれの paneTree が独立表示
+- 1 project でも既存と同じ表示
+- 2 project でもそれぞれの paneTree が独立表示
 - SwiftUI identity 破綻がない
 ```
 
-### Phase 2: `new_group_split`
+### Phase 2: `new_project_split`
 
 ```text
 Cmd+Opt+D
@@ -1071,19 +1071,19 @@ Cmd+Opt+Shift+D
 成功条件:
 
 ```text
-- 新groupがランダム名で作成される
-- 新group内に初期paneが1つ作られる
-- focusが新group paneへ移る
-- Cmd+D は新group内だけを分割する
+- 新projectがランダム名で作成される
+- 新project内に初期paneが1つ作られる
+- focusが新project paneへ移る
+- Cmd+D は新project内だけを分割する
 ```
 
 ### Phase 3: label / rename
 
 ```text
-- group label ヘッダー帯（§6.3 / §7.1）
+- project label ヘッダー帯（§6.3 / §7.1）
 - focused強調 / unfocused薄表示
 - double click inline rename
-- rename_group prompt
+- rename_project prompt
 ```
 
 成功条件:
@@ -1094,15 +1094,15 @@ Cmd+Opt+Shift+D
 - 復元後も名前が残る
 ```
 
-### Phase 4: `goto_group` / `resize_group` / `equalize_groups`
+### Phase 4: `goto_project` / `resize_project` / `equalize_projects`
 
 成功条件:
 
 ```text
 - 方向移動できる
-- 移動先groupのlast focused paneに戻る
-- group境界をresizeできる
-- group境界double-clickまたはactionでequalizeできる
+- 移動先projectのlast focused paneに戻る
+- project境界をresizeできる
+- project境界double-clickまたはactionでequalizeできる
 ```
 
 ### Phase 5: zoom / hide / shelf
@@ -1110,10 +1110,10 @@ Cmd+Opt+Shift+D
 成功条件:
 
 ```text
-- toggle_group_zoom が group単位で動く
-- zoom中 Cmd+D は group内splitになる
-- zoom中 new_group_split は zoom解除して隣にgroup作成
-- hide_group は process を殺さない
+- toggle_project_zoom が project単位で動く
+- zoom中 Cmd+D は project内splitになる
+- zoom中 new_project_split は zoom解除して隣にproject作成
+- hide_project は process を殺さない
 - hidden shelf が右上に出る
 - pill click で即visibleに戻る
 ```
@@ -1123,10 +1123,10 @@ Cmd+Opt+Shift+D
 成功条件:
 
 ```text
-- group layout が復元される
-- group names が復元される
+- project layout が復元される
+- project names が復元される
 - pane layout が復元される
-- hidden 状態は復元されず全group visible
+- hidden 状態は復元されず全project visible
   （後続変更: 表示上限 9 の cap を適用、超過分は hidden。§12.4）
 - zoom 状態は復元されず非zoom
 ```
@@ -1134,27 +1134,27 @@ Cmd+Opt+Shift+D
 ## 16. 推奨ファイル構成
 
 ```text
-macos/Sources/Features/Groups/
-  GroupID.swift
-  GroupState.swift
+macos/Sources/Features/Projects/
+  ProjectID.swift
+  ProjectState.swift
   WorkspaceState.swift
   WorkspaceModel.swift
-  GroupNameGenerator.swift
-  GroupSplitTreeView.swift
-  GroupView.swift
-  GroupLabel.swift            (GroupPriorityDeadlineMeta を含む、§24.2)
-  HiddenGroupShelf.swift
+  ProjectNameGenerator.swift
+  ProjectSplitTreeView.swift
+  ProjectView.swift
+  ProjectLabel.swift            (ProjectPriorityDeadlineMeta を含む、§24.2)
+  HiddenProjectShelf.swift
   TerminalWorkspaceView.swift
-  GroupNoteEditor.swift
-  GroupNoteOverview.swift
-  GroupTerminatedPaneView.swift  (§23.3)
+  ProjectNoteEditor.swift
+  ProjectNoteOverview.swift
+  ProjectTerminatedPaneView.swift  (§23.3)
 ```
 
 (close 確認ダイアログは専用ファイルではなく `BaseTerminalController` の既存
 確認経路を流用する。§23.1)
 
 既存 split と密接に関わるため、最終的には `Features/Splits` 配下に統合してもよい。
-ただし初期実装では `Features/Groups` として分離した方が差分を追いやすい。
+ただし初期実装では `Features/Projects` として分離した方が差分を追いやすい。
 
 ## 17. Action parser 追加方針
 
@@ -1168,75 +1168,75 @@ enum Action {
     case equalizeSplits
     case toggleSplitZoom
 
-    case newGroupSplit(NewSplitDirection)
-    case gotoGroup(FocusDirection)
-    case resizeGroup(Direction, Int)
-    case equalizeGroups
-    case toggleGroupZoom
-    case hideGroup
-    case showGroup(String?)
-    case renameGroup
-    case setGroupTitle(String)
-    case closeGroup
+    case newProjectSplit(NewSplitDirection)
+    case gotoProject(FocusDirection)
+    case resizeProject(Direction, Int)
+    case equalizeProjects
+    case toggleProjectZoom
+    case hideProject
+    case showProject(String?)
+    case renameProject
+    case setProjectTitle(String)
+    case closeProject
 }
 ```
 
 config syntax:
 
 ```text
-keybind = cmd+opt+d=new_group_split:right
-keybind = cmd+opt+shift+d=new_group_split:down
-keybind = cmd+ctrl+opt+left=goto_group:left
-keybind = cmd+one=goto_group:1
-keybind = cmd+ctrl+opt+shift+left=resize_group:left,10
-keybind = cmd+opt+enter=toggle_group_zoom
-keybind = cmd+opt+h=hide_group
-keybind = cmd+opt+r=rename_group
+keybind = cmd+opt+d=new_project_split:right
+keybind = cmd+opt+shift+d=new_project_split:down
+keybind = cmd+ctrl+opt+left=goto_project:left
+keybind = cmd+one=goto_project:1
+keybind = cmd+ctrl+opt+shift+left=resize_project:left,10
+keybind = cmd+opt+enter=toggle_project_zoom
+keybind = cmd+opt+h=hide_project
+keybind = cmd+opt+r=rename_project
 ```
 
 ## 18. エッジケース
 
-### 18.1 hidden group がある状態で close_group
+### 18.1 hidden project がある状態で close_project
 
-hidden中の group を shelf menu から close する機能はMVPでは不要。
-MVPでは visible focused group のみ close 対象。
+hidden中の project を shelf menu から close する機能はMVPでは不要。
+MVPでは visible focused project のみ close 対象。
 
-### 18.2 focused group を hide
+### 18.2 focused project を hide
 
 ```text
-1. 対象の leaf を canonicalGroupTree から削除し、hiddenGroupIDs に追加
-2. nearest group にfocus(削除前の tree 上で解決する)
-3. visible group が残らないなら hide を拒否
+1. 対象の leaf を canonicalProjectTree から削除し、hiddenProjectIDs に追加
+2. nearest project にfocus(削除前の tree 上で解決する)
+3. visible project が残らないなら hide を拒否
 ```
 
-### 18.3 zoomed group を hide
+### 18.3 zoomed project を hide
 
 ```text
 1. zoom解除
 2. hide
-3. nearest visible group にfocus
+3. nearest visible project にfocus
 ```
 
-### 18.4 zoomed group 中の `new_group_split`
+### 18.4 zoomed project 中の `new_project_split`
 
 ```text
-1. base = zoomedGroup
+1. base = zoomedProject
 2. zoom解除
-3. base の隣に new group
-4. new group にfocus
+3. base の隣に new project
+4. new project にfocus
 ```
 
-### 18.5 close_group 後に group が0個になる
+### 18.5 close_project 後に project が0個になる
 
-原則、最後のgroupの close はウィンドウ close と同等に扱う。
+原則、最後のprojectの close はウィンドウ close と同等に扱う。
 本 fork は単一ウィンドウなので、**ウィンドウが閉じる = アプリ終了**である。
 
 実装:
 
 ```text
-最後のgroupをclose:
-  Close Group? confirmation（live process が残っている場合のみ）
-  WorkspaceModel.closeFocusedGroup() は .closedLast を返し、モデルは変更しない
+最後のprojectをclose:
+  Close Project? confirmation（live process が残っている場合のみ）
+  WorkspaceModel.closeFocusedProject() は .closedLast を返し、モデルは変更しない
   controller が空の surfaceTree を replaceSurfaceTree に渡す
   TerminalController の override が closeWindowImmediately() でウィンドウを閉じる
   ウィンドウが閉じると AppDelegate がアプリを終了する
@@ -1248,42 +1248,42 @@ MVPでは visible focused group のみ close 対象。
 ### 19.1 Unit tests
 
 ```text
-- random group name uniqueness
-- hide/show does not mutate canonicalGroupTree
-- close_group mutates canonicalGroupTree and groups
-- focusedGroup never points to hidden group
-- zoomedGroup never points to hidden group
-- restore clears hiddenGroupIDs
-- restore clears zoomedGroup
-- new_group_split creates group + initial pane
-- Cmd+D changes only focused group paneTree
-- goto_group restores target focusedSurface
+- random project name uniqueness
+- hide/show does not mutate canonicalProjectTree
+- close_project mutates canonicalProjectTree and projects
+- focusedProject never points to hidden project
+- zoomedProject never points to hidden project
+- restore clears hiddenProjectIDs
+- restore clears zoomedProject
+- new_project_split creates project + initial pane
+- Cmd+D changes only focused project paneTree
+- goto_project restores target focusedSurface
 ```
 
 ### 19.2 Layout tests
 
 ```text
-- group split right
-- group split down
-- nested group split
-- hide middle group
-- show hidden group
-- resize with hidden group
-- equalize without hidden group
-- equalize with hidden group
-- zoom group with inner split zoom
+- project split right
+- project split down
+- nested project split
+- hide middle project
+- show hidden project
+- resize with hidden project
+- equalize without hidden project
+- equalize with hidden project
+- zoom project with inner split zoom
 ```
 
 ### 19.3 UI tests
 
 ```text
-- label visible on all groups
+- label visible on all projects
 - focused label emphasized
 - unfocused label dimmed
 - label double-click starts rename
-- shelf appears only with hidden groups
-- shelf pill click immediately shows group
-- close_group dialog has only Cancel / Close Group
+- shelf appears only with hidden projects
+- shelf pill click immediately shows project
+- close_project dialog has only Cancel / Close Project
 ```
 
 ## 20. 最終MVP仕様サマリ
@@ -1293,15 +1293,15 @@ MVPでは visible focused group のみ close 対象。
   Cmd+D              pane split right
   Cmd+Shift+D        pane split down
 
-追加（グループ分割）:
-  Cmd+Opt+D          group split right
-  Cmd+Opt+Shift+D    group split down
+追加（プロジェクト分割）:
+  Cmd+Opt+D          project split right
+  Cmd+Opt+Shift+D    project split down
 
-追加（グループ番号・序数ジャンプ）:
-  Cmd+1～9           goto_group:1～9（visible group の序数でジャンプ）
+追加（プロジェクト番号・序数ジャンプ）:
+  Cmd+1～9           goto_project:1～9（visible project の序数でジャンプ）
   ※ 本 fork にタブはなく、goto_tab / last_tab は core から削除済み
 
-group UI:
+project UI:
   ヘッダー帯に "{序数}. {名前}" を表示
   序数は表示のみ（canonical tree の葉走査順で動的）
   focus時だけ強調
@@ -1314,73 +1314,73 @@ hidden UI:
   pill clickで即show（ただし visible が 9 個では no-op）
 
 表示上限:
-  visible group 最大 9 個
-  9 個で満杯のとき new_group_split / show_group は no-op
+  visible project 最大 9 個
+  9 個で満杯のとき new_project_split / show_project は no-op
   序数は自動的に 1～9 に re-pack（hide/close/show時）
 
 zoom:
-  group単位
-  zoom中 Cmd+D はgroup内pane split
-  zoom中 new_group_split はzoom解除して隣に作成
-  goto_group:<N> で zoom 解除してジャンプ（自 group は no-op）
+  project単位
+  zoom中 Cmd+D はproject内pane split
+  zoom中 new_project_split はzoom解除して隣に作成
+  goto_project:<N> で zoom 解除してジャンプ（自 project は no-op）
 
 focus:
-  goto_group方向移動（zoom中は no-op）
-  goto_group序数ジャンプ（1～9）
-  移動先groupのlast focused paneに戻る
+  goto_project方向移動（zoom中は no-op）
+  goto_project序数ジャンプ（1～9）
+  移動先projectのlast focused paneに戻る
 
 resize:
-  group境界をresize
-  equalize_groupsあり
+  project境界をresize
+  equalize_projectsあり
 
 close:
-  最後のpaneでCmd+W -> Close Group?
-  [Cancel] [Close Group]
+  最後のpaneでCmd+W -> Close Project?
+  [Cancel] [Close Project]
   Hide Insteadなし
-  最後のgroupをcloseするとウィンドウが閉じ、アプリが終了する（§18.5）
+  最後のprojectをcloseするとウィンドウが閉じ、アプリが終了する（§18.5）
 
 restore:
   layout/name/pane layout復元
   canonical が 9 超える場合は先頭 9 のみ visible、超過分を hidden に移す
   hidden は復元しない（runtime-only）
   zoom は復元しない（runtime-only）
-  orphaned group は可能な限り再接続（9 cap内）
-  focusedGroup 無効時は firstLeaf へフォールバック
+  orphaned project は可能な限り再接続（9 cap内）
+  focusedProject 無効時は firstLeaf へフォールバック
 ```
 
-この仕様の核は、**`canonicalGroupTree` を唯一のグループ配置source of truthにし、hide/zoomを派生表示状態として扱うこと**です。これにより、グループは第一級レイアウト単位になりつつ、既存のペイン分割・surface lifetime・GhosttyのSplitTree設計を壊さずに拡張できます。また、**表示上限 9 と動的序数により、UI の安定性と操作性を両立**させています。
+この仕様の核は、**`canonicalProjectTree` を唯一のプロジェクト配置source of truthにし、hide/zoomを派生表示状態として扱うこと**です。これにより、プロジェクトは第一級レイアウト単位になりつつ、既存のペイン分割・surface lifetime・GhosttyのSplitTree設計を壊さずに拡張できます。また、**表示上限 9 と動的序数により、UI の安定性と操作性を両立**させています。
 
 ## 21. ノート仕様
 
-グループ(=プロジェクト)ごとに人間が手書きする短いメモを保持する層。
+プロジェクト(=プロジェクト)ごとに人間が手書きする短いメモを保持する層。
 判断ロジック(保持・復元・表示対象)はすべてモデル層に置き、`XGhosttyTests`
 から検証する。
 
 ### 21.1 データモデル
 
 ```swift
-// GroupState に追加
+// ProjectState に追加
 var note: String = ""            // 常に正規化済み
 static let maxNoteLines = 10
 ```
 
-- ノートは**グループに属する**。ペイン(split)には属さない。
-- 正規化 `GroupState.normalizedNote`: 改行を `\n` に統一し、
+- ノートは**プロジェクトに属する**。ペイン(split)には属さない。
+- 正規化 `ProjectState.normalizedNote`: 改行を `\n` に統一し、
   `maxNoteLines`(10 行)を超える行を捨てる。init / `setNote` / decode の
   3 経路すべてで適用されるため、レガシー保存(note キーなし → `""`)や
   改竄された保存(10 行超)も読み込み時に再正規化される。
-- 永続化はグループ名と同一経路(workspace state の Codable →
-  `invalidateRestorableState`)。再起動後、同じグループへ復元される。
-- `WorkspaceModel.setGroupNote(_:to:)` が唯一の書込み口。正規化後に変化が
+- 永続化はプロジェクト名と同一経路(workspace state の Codable →
+  `invalidateRestorableState`)。再起動後、同じプロジェクトへ復元される。
+- `WorkspaceModel.setProjectNote(_:to:)` が唯一の書込み口。正規化後に変化が
   なければ状態を発行しない。
 
-### 21.2 編集オーバーレイ(edit_group_note / Cmd+N)
+### 21.2 編集オーバーレイ(edit_project_note / Cmd+N)
 
-- focused グループのノート編集オーバーレイを開く。セッション状態は
-  `WorkspaceModel.noteEditingGroup`(transient、永続化しない)。
-- マウス導線: 各グループのヘッダー帯右端のノートグリフ(hover で強調)を
-  クリックすると、**そのグループ**のノート編集オーバーレイが開く。focused
-  でないグループも直接編集でき、グループ focus は変更しない。rename 編集中の
+- focused プロジェクトのノート編集オーバーレイを開く。セッション状態は
+  `WorkspaceModel.noteEditingProject`(transient、永続化しない)。
+- マウス導線: 各プロジェクトのヘッダー帯右端のノートグリフ(hover で強調)を
+  クリックすると、**そのプロジェクト**のノート編集オーバーレイが開く。focused
+  でないプロジェクトも直接編集でき、プロジェクト focus は変更しない。rename 編集中の
   帯ではグリフを出さない。一望モード中は捕捉層がマウスを遮断し、モデル側の
   `beginNoteEditing` ガードも no-op にする(§21.3)。
 - 複数行 `TextEditor` は 10 行ぶんの高さを確保し、**編集中は常に全文が
@@ -1407,21 +1407,21 @@ static let maxNoteLines = 10
   Esc は 3 ドラフト(ノート・優先度・締切)とも破棄する。
 - 閉じると(保存・破棄どちらでも)first responder は端末 surface に戻る。
 - オーバーレイは編集中のみ描画され、端末領域を恒久的に占有しない。
-- 編集対象グループが消えた場合(undo 復元・全グループ削除)はセッションを
+- 編集対象プロジェクトが消えた場合(undo 復元・全プロジェクト削除)はセッションを
   クリアする。
 
 ### 21.3 一望モード(toggle_note_overview / Cmd+Opt+N)
 
-- visible な全グループの上に、それぞれのノートを同時に読み取り専用
+- visible な全プロジェクトの上に、それぞれのノートを同時に読み取り専用
   オーバーレイ表示するトグルモード。状態は
   `WorkspaceModel.noteOverviewActive`(transient、永続化しない)。
-- **進入時に zoom を先に解除**してから表示する(`zoomedGroup = nil`)。
-  `focusedGroup` は変更しない。
-- **表示対象集合は visible グループのみ**:
-  `noteOverviewGroupIDs == WorkspaceState.visibleGroupIDs`
-  (canonical tree の葉 = visible。hidden グループは含まれない)。
+- **進入時に zoom を先に解除**してから表示する(`zoomedProject = nil`)。
+  `focusedProject` は変更しない。
+- **表示対象集合は visible プロジェクトのみ**:
+  `noteOverviewProjectIDs == WorkspaceState.visibleProjectIDs`
+  (canonical tree の葉 = visible。hidden プロジェクトは含まれない)。
 - **閲覧専用**: モード中は `beginNoteEditing*` と focus 移動 3 経路
-  (`gotoGroupTarget` / `gotoGroupIndexTarget` / `switchFocusedGroup`)が
+  (`gotoProjectTarget` / `gotoProjectIndexTarget` / `switchFocusedProject`)が
   すべて no-op。ワークスペース全面の捕捉層がマウス操作も遮断する。
 - ノート編集オーバーレイが開いている間のトグルは no-op(編集ドラフトを
   黙って破棄しない)。
@@ -1430,50 +1430,50 @@ static let maxNoteLines = 10
   効かないため、Esc は捕捉層内の focused field の `onExitCommand`、
   再トグルはデフォルト chord (cmd+opt+n) を再照合する隠し
   `keyboardShortcut` ボタンで受ける(keybind を変更した場合の退出は Esc)。
-- **切り詰め表示**: 各グループのパネルは `lineLimit(maxNoteLines)` +
-  末尾切り詰めをグループ境界内のフレームで行い、レイアウトを壊さない。
+- **切り詰め表示**: 各プロジェクトのパネルは `lineLimit(maxNoteLines)` +
+  末尾切り詰めをプロジェクト境界内のフレームで行い、レイアウトを壊さない。
   全文表示は編集オーバーレイの役割。
-- undo 復元(`restoreState`)・全グループ削除はモードを終了させる
+- undo 復元(`restoreState`)・全プロジェクト削除はモードを終了させる
   (復元された zoom が「zoom 解除済み」不変条件と矛盾しないように)。
 
-### 21.4 テスト(GroupNoteTests)
+### 21.4 テスト(ProjectNoteTests)
 
 ```text
 - 正規化: 10 行上限(init / setNote / decode)、改行統一、レガシー decode
-- setGroupNote: 保存・上限・未知グループ no-op・クリア
+- setProjectNote: 保存・上限・未知プロジェクト no-op・クリア
 - Codable round trip でノート本文復元
 - 編集セッション: begin は focused を対象 / begin(id) は非 focused でも
   開き focus を変えない(ヘッダー帯マウス導線) / end(Cmd+Enter)は保存して
   閉じる / cancel(Esc)は破棄して閉じ開く前の本文を保持 /
   超過ペースト(CRLF 行末含む)は保存時に先頭 10 行へ切り詰め /
-  グループ消滅でクリア
+  プロジェクト消滅でクリア
 - 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /
-  focusedGroup 不変 / 再トグル・endNoteOverview で退出 /
+  focusedProject 不変 / 再トグル・endNoteOverview で退出 /
   モード中はノート編集・focus 移動 3 経路とも no-op /
   編集オーバーレイ表示中のトグルは no-op /
-  restoreState・removeAllGroups で終了
+  restoreState・removeAllProjects で終了
 ```
 
 ## 22. プライマリーペイン仕様
 
-グループ(=プロジェクト)ごとに常に 1 つだけ存在する代表ペインの層。全体ビュー
-(非 zoom)は各グループのプライマリーペインだけを描画し、一望に適した情報密度を
+プロジェクト(=プロジェクト)ごとに常に 1 つだけ存在する代表ペインの層。全体ビュー
+(非 zoom)は各プロジェクトのプライマリーペインだけを描画し、一望に適した情報密度を
 作る。判断ロジック(既定付与・唯一性・昇格・復元時正規化・全体ビューの表示対象)
 はすべてモデル層に置き、`XGhosttyTests` から検証する(§22.7)。
 
 ### 22.1 データモデル
 
 ```swift
-// GroupState に追加
+// ProjectState に追加
 private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょうど 1 つ
 ```
 
-- プライマリーは**グループに属する単一値フラグ**。非空の `paneTree` を持つ
-  グループには常にちょうど 1 つ存在し、空グループには存在しない。単一値なので
+- プライマリーは**プロジェクトに属する単一値フラグ**。非空の `paneTree` を持つ
+  プロジェクトには常にちょうど 1 つ存在し、空プロジェクトには存在しない。単一値なので
   「複数プライマリー」は構造的に表現できない。
-- 既定付与:新規グループの初期ペイン(= 最初に作られたペイン)がプライマリー。
+- 既定付与:新規プロジェクトの初期ペイン(= 最初に作られたペイン)がプライマリー。
 - 永続化はペインレイアウトと同一経路・同一レコード:保存形式は `primaryPanes`
-  (フラグの立ったペイン id のリスト)で、GroupState の Codable レコードに乗る。
+  (フラグの立ったペイン id のリスト)で、ProjectState の Codable レコードに乗る。
   健全な保存は常に 1 要素。リスト形式なのは、壊れた保存(0 個/複数/迷子 id/
   キー欠落)を decode が**拒否せず修復**するため。
 - 復元時正規化 `SplitTree.normalizedPrimary(from:)`(init / decode の両経路):
@@ -1497,18 +1497,18 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
     新ツリーへ生き残っているペインの最近傍 leaf を昇格する。
   - 昇格候補がない(旧プライマリー不明・生存者なし)場合は first leaf。空ツリーは
     プライマリーなし(最後のペインの close は §11.10 / §18.5 の既存挙動どおり
-    グループごと閉じる)。
+    プロジェクトごと閉じる)。
 
 ### 22.3 全体ビューの描画対象
 
-- モデル層の判断は `WorkspaceState.overallViewPaneIDs`(`[GroupID: SurfaceID]`):
-  visible な各グループ → そのプライマリー。hidden グループと空グループは
+- モデル層の判断は `WorkspaceState.overallViewPaneIDs`(`[ProjectID: SurfaceID]`):
+  visible な各プロジェクト → そのプライマリー。hidden プロジェクトと空プロジェクトは
   含まれない。zoom 中の局所視点はこの判断を使わず、従来どおり全ペインを
   レイアウトのまま表示する。
-- 描画には `GroupState.overallViewPaneTree`(プライマリーだけを含む単一 leaf
-  ツリー)を使い、`TerminalWorkspaceView` → `GroupSplitTreeView` → `GroupView` の
-  `primaryOnly`(`zoomedGroup == nil`)経由で切り替える。不変条件が壊れて
-  プライマリーを解決できない場合のフォールバックは全ツリー表示(グループを
+- 描画には `ProjectState.overallViewPaneTree`(プライマリーだけを含む単一 leaf
+  ツリー)を使い、`TerminalWorkspaceView` → `ProjectSplitTreeView` → `ProjectView` の
+  `primaryOnly`(`zoomedProject == nil`)経由で切り替える。不変条件が壊れて
+  プライマリーを解決できない場合のフォールバックは全ツリー表示(プロジェクトを
   白紙にしない)。
 
 ### 22.4 focus と set_primary(Cmd+P)
@@ -1517,14 +1517,14 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   `WorkspaceState.snapFocusToPrimaryInOverallView()`(非 zoom 時のみ作用)を、
   非 zoom 状態に着地しうる全ミューテーションの後段で呼ぶ:
   `replaceFocusedPaneTree`(プライマリー exit 昇格を含む)/ `setFocusedSurface` /
-  `switchFocusedGroup` / `gotoGroup` / `toggleGroupZoom`(zoom 解除時の寄せ)/
-  `hideFocusedGroup` / `showGroup` / `closeFocusedGroup`。
-- controller 側の focus 配線:`ghosttyDidToggleGroupZoom` は zoom 解除時に
+  `switchFocusedProject` / `gotoProject` / `toggleProjectZoom`(zoom 解除時の寄せ)/
+  `hideFocusedProject` / `showProject` / `closeFocusedProject`。
+- controller 側の focus 配線:`ghosttyDidToggleProjectZoom` は zoom 解除時に
   プライマリーへ focus を渡し、`ghosttyDidPresentTerminal` と
   `replaceSurfaceTree` は非 zoom 時の focus 先をプライマリーへ付け替える。
 - `set_primary` action(§9.1、既定 `Cmd+P`)は zoom 中に focused ペインを
   プライマリーへ指定する。
-  - 判定は `WorkspaceModel.canSetPrimaryToFocusedPane`:focused グループに
+  - 判定は `WorkspaceModel.canSetPrimaryToFocusedPane`:focused プロジェクトに
     zoom 中 + focused ペインがツリー内 + まだプライマリーでない。performable
     チェックと実行が同じ判定を共有するため常に一致し、不成立時はキーを消費せず
     fall through する。
@@ -1535,9 +1535,9 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 ### 22.5 ペイン系操作の no-op(zoom 中のみ有効)
 
 - モデル層の判断は `WorkspaceState.paneOperationsEnabled`:
-  `zoomedGroup != nil && zoomedGroup == focusedGroup` のときだけ true。
+  `zoomedProject != nil && zoomedProject == focusedProject` のときだけ true。
   全体ビューでは false(プライマリーしか描画されず、ペイン操作は視認できない
-  ツリーへの操作になる)。別グループへ zoom した過渡状態でも false。
+  ツリーへの操作になる)。別プロジェクトへ zoom した過渡状態でも false。
 - ガード地点:
   - controller:`newSplit` / `performSplitAction`(divider resize・drop)/
     `ghosttyDidFocusSplit` / `ghosttyDidToggleSplitZoom` /
@@ -1550,65 +1550,65 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
     グレーアウトする。
 - 全体ビューはペイン間 divider・drop ターゲットを描画しない(§22.3 の単一 leaf
   ツリーの帰結)。
-- この変更に伴い `canToggleGroupZoom` は「focused グループがあること」だけを
-  要求する(従来は複数グループが前提)。ペイン操作が zoom 中のみになった結果、
-  単一グループでも zoom できなければ分割に到達できないため(設計判断 R-005)。
+- この変更に伴い `canToggleProjectZoom` は「focused プロジェクトがあること」だけを
+  要求する(従来は複数プロジェクトが前提)。ペイン操作が zoom 中のみになった結果、
+  単一プロジェクトでも zoom できなければ分割に到達できないため(設計判断 R-005)。
   zoom は局所視点への入口である。
 
 ### 22.6 プライマリー印
 
-- モデル層の判断は `WorkspaceState.primaryMarkPaneIDs`:zoom 中のグループの
-  プライマリーを、**そのグループが複数ペインを持つときだけ**返す。全体ビュー
-  (プライマリーしか表示されず印はノイズ)と単一ペインのグループ(唯一のペインが
+- モデル層の判断は `WorkspaceState.primaryMarkPaneIDs`:zoom 中のプロジェクトの
+  プライマリーを、**そのプロジェクトが複数ペインを持つときだけ**返す。全体ビュー
+  (プライマリーしか表示されず印はノイズ)と単一ペインのプロジェクト(唯一のペインが
   自明にプライマリー)では常に空。
-- 描画は `TerminalWorkspaceView` → `GroupSplitTreeView` → `GroupView` →
+- 描画は `TerminalWorkspaceView` → `ProjectSplitTreeView` → `ProjectView` →
   `TerminalSplitTreeView.markedPane` と通し、`TerminalSplitLeaf` がマーク対象
   leaf の右上に `PaneMarkBadge`(控えめな 9pt の star + ultraThinMaterial
   チップ、hit-test 無効)をオーバーレイする。split 層は中立な「mark this leaf」
-  概念しか知らず、どのペインに印を付けるかの判断は group 層が持つ。
+  概念しか知らず、どのペインに印を付けるかの判断は project 層が持つ。
 
 ### 22.7 ペイン数バッジ(全体ビュー)
 
 - モデル層の判断は `WorkspaceState.overallViewPaneCountBadges`:**全体ビュー
-  (非 zoom)のときだけ**、visible なグループのうち**非プライマリーペインを
-  持つもの(ペイン 2 つ以上)**に、そのグループの総ペイン数を返す。zoom 中
-  (局所視点は実レイアウトを表示)と単一ペインのグループ(隠れているものが
-  ない)では常に空。hidden なグループは visible 集合に入らないので対象外。
+  (非 zoom)のときだけ**、visible なプロジェクトのうち**非プライマリーペインを
+  持つもの(ペイン 2 つ以上)**に、そのプロジェクトの総ペイン数を返す。zoom 中
+  (局所視点は実レイアウトを表示)と単一ペインのプロジェクト(隠れているものが
+  ない)では常に空。hidden なプロジェクトは visible 集合に入らないので対象外。
 - 意図: 全体ビューはプライマリーしか描画しないため、「その背後にさらに
   ペインがある」ことが分かる控えめな手掛かりを出す(任意対応事項)。
-- 描画は `TerminalWorkspaceView` → `GroupSplitTreeView` → `GroupView` と通し、
-  ペイン領域(プライマリー leaf)の右上に `GroupPaneCountBadge`
+- 描画は `TerminalWorkspaceView` → `ProjectSplitTreeView` → `ProjectView` と通し、
+  ペイン領域(プライマリー leaf)の右上に `ProjectPaneCountBadge`
   (rectangle.split.2x1 グリフ + 等幅数字、プライマリー印 `PaneMarkBadge` と
   同じ ultraThinMaterial チップ様式、hit-test 無効)をオーバーレイする。
   印(§22.6)は zoom 中のみ・バッジは非 zoom のみなので、同じ右上スロットを
   排他的に共有する。
 
-### 22.8 テスト(GroupPrimaryPaneTests、35 件)
+### 22.8 テスト(ProjectPrimaryPaneTests、35 件)
 
-モデル層はジェネリック(`GroupStateOf` / `WorkspaceStateOf` /
+モデル層はジェネリック(`ProjectStateOf` / `WorkspaceStateOf` /
 `WorkspaceModelOf`。runtime は `SurfaceView` への typealias)なので、テストは
 値型ペインに特殊化して実 leaf 入りのツリーで同一の判断コードを検証する
 (`SurfaceView` の生成は live app を要するため)。
 
 ```text
-- 既定付与・唯一性: 新規グループの初期ペイン / WorkspaceModel(wrapping:) /
+- 既定付与・唯一性: 新規プロジェクトの初期ペイン / WorkspaceModel(wrapping:) /
   空ツリーはなし / 後続分割は非プライマリー / setPrimaryPane の移動と
   旧プライマリー解除・ツリー外 id 拒否
 - 昇格: [A|B]・[A|[B|C]] でのプライマリー close 最近傍昇格 / 非プライマリー
   close はフラグ不変 / 最終ペイン close でクリア
 - 永続化・復元正規化: Codable round trip で同一ペインに復元 / 0 個・キー
   なし・複数・迷子 id の decode 正規化 / ワークスペース全体 round trip
-- 全体ビュー: 表示対象 = visible 各グループのプライマリーのみ(hidden 除外)/
-  overallViewPaneTree は単一 leaf / 空グループは空
-- focus と no-op: paneOperationsEnabled は focused グループ zoom 中のみ
-  (別グループ zoom では無効)/ 非 zoom の setFocusedSurface・
-  switchFocusedGroup はプライマリーへスナップ / zoom 解除で寄せ /
+- 全体ビュー: 表示対象 = visible 各プロジェクトのプライマリーのみ(hidden 除外)/
+  overallViewPaneTree は単一 leaf / 空プロジェクトは空
+- focus と no-op: paneOperationsEnabled は focused プロジェクト zoom 中のみ
+  (別プロジェクト zoom では無効)/ 非 zoom の setFocusedSurface・
+  switchFocusedProject はプライマリーへスナップ / zoom 解除で寄せ /
   非 zoom のプライマリー close は昇格先へ focus
 - set_primary: zoom 中の移動と旧プライマリー解除 / 非 zoom no-op /
   既にプライマリー no-op
 - 印: zoom 中かつ複数ペインのみ(全体ビューでは空)/ 単一ペイン非表示 /
   再指定に追従 / zoom 解除で消える
-- ペイン数バッジ: 複数ペインの visible グループのみ(単一ペイン・hidden は
+- ペイン数バッジ: 複数ペインの visible プロジェクトのみ(単一ペイン・hidden は
   対象外)/ 総ペイン数を表示(3 ペインで 3)/ zoom 中は空・解除で復帰 /
   1 ペインに減ると消える
 - controller ミラー経路(replaceFocusedPaneTree)でのフラグ維持・昇格
@@ -1616,21 +1616,21 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 
 ## 23. 削除保護仕様
 
-グループは「情報を預ける場所」(ノート・優先度・締切)であるため、グループと
+プロジェクトは「情報を預ける場所」(ノート・優先度・締切)であるため、プロジェクトと
 その情報が失われる経路を、確認ダイアログを経た明示的な close 操作だけに限定する
 層。判断ロジックはモデル層に置き、`XGhosttyTests` から検証する(§23.5)。
 
-### 23.1 常時確認(close_group / 最終ペインの Cmd+W)
+### 23.1 常時確認(close_project / 最終ペインの Cmd+W)
 
-- 判断はモデルの `WorkspaceModel.closeGroupRequiresConfirmation(anyLiveProcess:)`
-  で、**無条件に true** を返す。確認済み close ダイアログがグループとその情報を
+- 判断はモデルの `WorkspaceModel.closeProjectRequiresConfirmation(anyLiveProcess:)`
+  で、**無条件に true** を返す。確認済み close ダイアログがプロジェクトとその情報を
   失う唯一の正規経路だからである(§23.4)。
-- controller の `closeFocusedGroup` は従来の surfaceTree `needsConfirmQuit`
+- controller の `closeFocusedProject` は従来の surfaceTree `needsConfirmQuit`
   スキャンではなくこの判断を使うため、実行中プロセスの有無によらず既存の
-  Cancel / Close Group ダイアログ(同一形式を流用)が出る。
+  Cancel / Close Project ダイアログ(同一形式を流用)が出る。
 - 最終ペインの `Cmd+W`:`ghosttyDidCloseSurface` の最終ペイン昇格から
-  `groups.count > 1` ガードを外し、単一グループの最終ペイン close も確認付き
-  `close_group` へ昇格する(確定後の経路は §18.5 どおり window close へ委譲)。
+  `projects.count > 1` ガードを外し、単一プロジェクトの最終ペイン close も確認付き
+  `close_project` へ昇格する(確定後の経路は §18.5 どおり window close へ委譲)。
 - この常時確認が健全なのは §23.2 の帰結:core は child exit でペインを閉じなく
   なったため、controller に届く close_surface 通知はすべて明示的なユーザー操作
   であり、シェル死をきっかけに確認ダイアログが出ることはない。
@@ -1648,35 +1648,35 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   表示自体は上流の可視性ガードを維持する。
 - モデル判断 `WorkspaceModel.childExitOutcome(for:abnormalExit:)`(純粋・
   値型検証可能):
-  - グループの**最終ペイン** → `.terminated`。正常終了・異常終了・process 死は
+  - プロジェクトの**最終ペイン** → `.terminated`。正常終了・異常終了・process 死は
     いずれも同じ経路で届き、同じ判定になる。
   - 兄弟のいるペイン → `.closePane`(正常)/ `.keepPaneAwaitingKey`(異常。
     上流の「キーで閉じる」契約を維持)。
-- `GroupState.terminatedPane`(`private(set)`):不変条件は「そのペインが
+- `ProjectState.terminatedPane`(`private(set)`):不変条件は「そのペインが
   ツリーの唯一 leaf のときのみ非 nil」。`paneTree` observer が分割・除去の
   たびにクリアする。`markPaneTerminated` は唯一 leaf のみ受理。
-  `removeExitedPane` はモデル側の兄弟ペイン close(hidden グループも対象)で、
+  `removeExitedPane` はモデル側の兄弟ペイン close(hidden プロジェクトも対象)で、
   最終ペインは拒否する — その場合は `.terminated` であって除去ではない。
 - terminated なプライマリーはフラグを保持する:プライマリー close の最終ペイン
   経路は本節の終了済み意味論に従う(§22.2 の昇格は兄弟がいる場合の話)。
 
 ### 23.3 終了済み表示と Enter 再開
 
-- `GroupTerminatedPaneView`:死んだ端末の最終フレームを薄暗く残したまま
+- `ProjectTerminatedPaneView`:死んだ端末の最終フレームを薄暗く残したまま
   (最後の出力にシェルの終わり方が出ていることが多い)、端末様式のパネル
   (poweroff グリフ・"Shell exited"・"Press Return to start a new shell"・
   等幅タイポ・端末自身の背景色と split divider ストローク)を重ねる。
-  hit-test 無効なので、終了済みグループのクリックは従来どおりグループ focus に
+  hit-test 無効なので、終了済みプロジェクトのクリックは従来どおりプロジェクト focus に
   落ち、続く Enter が再開経路へ届く。
 - キー配線:`SurfaceView.keyDown` は exited ペインでは死んだ pty へ書き込む
   代わりに `ghosttyExitedSurfaceKeyDown`(`isReturn` フラグ付き)を post する。
   素の keyDown だけが対象で、コマンド chord(`Cmd+W` 等)は exited ペインでも
   従来どおり効く。
-- controller:terminated なグループでの Enter は `restartTerminatedPane` —
+- controller:terminated なプロジェクトでの Enter は `restartTerminatedPane` —
   新しい `SurfaceView`(新シェル)を生成し、モデルの
   `WorkspaceModel.restartTerminatedPane` で**同じペインスロット**へ差し替える
   (新ペインはプライマリーかつ focused surface になり、ノートは保持)。
-  surfaceTree を再同期し、focused グループならキーボード focus も移す。
+  surfaceTree を再同期し、focused プロジェクトならキーボード focus も移す。
 - terminated でない exited ペイン(兄弟あり)は上流の any-key-closes 契約を
   維持する。判定はキー入力時に**再実行**するため、その間に兄弟が閉じ終わって
   最終ペインになっていた場合は close ではなく terminated 化する。
@@ -1684,23 +1684,23 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 ### 23.4 永続化と喪失経路
 
 - 終了済み状態は **runtime-only**(保存しない)。復元は全ペインを新しい
-  シェルで再生成するため、terminated だったグループも生きて戻る。ノート・
-  優先度・締切は GroupState レコードに乗って保持される(§21.1、§24.1)。
-- グループとその情報が失われる経路は、確認ダイアログを経た明示的な close
-  操作**のみ**。アプリ終了・再起動では従来どおり全グループが復元される。
+  シェルで再生成するため、terminated だったプロジェクトも生きて戻る。ノート・
+  優先度・締切は ProjectState レコードに乗って保持される(§21.1、§24.1)。
+- プロジェクトとその情報が失われる経路は、確認ダイアログを経た明示的な close
+  操作**のみ**。アプリ終了・再起動では従来どおり全プロジェクトが復元される。
 
-### 23.5 テスト(GroupTerminatedTests、16 件)
+### 23.5 テスト(ProjectTerminatedTests、16 件)
 
 ```text
 - 常時確認: 実行中プロセスの有無によらず確認要求
 - exit 判定: 最終ペインはあらゆる exit 種別で .terminated / 兄弟の正常 exit は
   .closePane / 兄弟の異常 exit は .keepPaneAwaitingKey / 未知ペインは判定なし /
   兄弟 close 後の再判定は .terminated へ昇格
-- terminated 状態: グループとノート・ペインを保持 / 複数ペイン中の mark は
+- terminated 状態: プロジェクトとノート・ペインを保持 / 複数ペイン中の mark は
   拒否 / terminated プライマリーはフラグ保持 / 分割で状態クリア
-- removeExitedPane: そのペインだけ閉じる(ノート保持・hidden グループ対応)/
+- removeExitedPane: そのペインだけ閉じる(ノート保持・hidden プロジェクト対応)/
   最終ペインは拒否
-- 永続化: terminated グループの round trip でノート保持(状態自体は
+- 永続化: terminated プロジェクトの round trip でノート保持(状態自体は
   runtime-only、復元は生きて戻る)
 - 再開: 同一スロットへ新ペイン(プライマリー化・focused 化・ノート保持・
   状態クリア)/ 非 terminated では拒否
@@ -1708,22 +1708,22 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 
 ## 24. 優先度・締切仕様
 
-プロジェクト(=グループ)ごとの優先度と締切を保持・表示し、明示的なソート
+プロジェクト(=プロジェクト)ごとの優先度と締切を保持・表示し、明示的なソート
 アクションで実レイアウトを並び替える層。保持・復元・ソート順・締切超過判定は
 すべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。
 
 ### 24.1 データモデルとエディタ統合
 
 ```swift
-// GroupState に追加(いずれも未設定 = nil)
-var priority: GroupPriority?     // high / medium / low
-var deadline: GroupDeadline?     // 日付のみ、時刻なし
+// ProjectState に追加(いずれも未設定 = nil)
+var priority: ProjectPriority?     // high / medium / low
+var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 ```
 
-- `GroupPriority`:String-raw の Codable enum(high/medium/low)。
+- `ProjectPriority`:String-raw の Codable enum(high/medium/low)。
   `sortRank` 0/1/2 と `unsetSortRank` 3 がソートキー。未設定は**値の不在**
   (Optional)で表現する。
-- `GroupDeadline`:日付のみの値型。**検証は構成的** — failable initializer
+- `ProjectDeadline`:日付のみの値型。**検証は構成的** — failable initializer
   だけが値を作れるため、不正な締切は型として表現不能:
   - `init(year:month:day:)` は `DateComponents.isValidDate` で実在しない
     グレゴリオ日付を拒否(閏日は受理)。
@@ -1731,18 +1731,18 @@ var deadline: GroupDeadline?     // 日付のみ、時刻なし
   - `Comparable` は `ordinalValue`(y×10000 + m×100 + d。ソートキー兼用)。
   - `init(from: Date, calendar:)` が実行時の「今日」を導出(時刻は落ちる)。
   - Codable は正準 `YYYY-MM-DD` テキストを保存し、decode で再検証する。
-- 永続化はノートと同一の GroupState レコード(`encodeIfPresent`)。decode は
+- 永続化はノートと同一の ProjectState レコード(`encodeIfPresent`)。decode は
   **不正→未設定**を寛容に適用:未知の priority 文字列や実在しない保存日付は
-  グループレコードごと拒否せず unset として読む。キーのないレガシー保存も
+  プロジェクトレコードごと拒否せず unset として読む。キーのないレガシー保存も
   unset。
-- 書込み口:`setGroupPriority` / `setGroupDeadline(to:)`(未知グループ・
-  無変化は no-op)。保存時境界 `setGroupDeadline(parsing:)`:空入力は意図的な
+- 書込み口:`setProjectPriority` / `setProjectDeadline(to:)`(未知プロジェクト・
+  無変化は no-op)。保存時境界 `setProjectDeadline(parsing:)`:空入力は意図的な
   クリア(true を返す)、不正入力は**未設定へ**拒否(false。前の値には
   戻さない)。
 - エディタ統合(§21.2 の metaRow):segmented な優先度 picker
   (none/high/med/low)と等幅 `YYYY-MM-DD` テキストフィールド(Return は
   Cmd+Enter と同じ commit)。不正入力の "→ unset" ヒントは
-  `GroupDeadline(parsing:)` を再利用するため、ヒントと保存時判断は乖離
+  `ProjectDeadline(parsing:)` を再利用するため、ヒントと保存時判断は乖離
   しえない。全保存経路は単一 commit ポイント
   `endNoteEditing(saving:priority:deadlineInput:)` に集約され、ノート・
   優先度・締切が一括保存される。note-only の `endNoteEditing(saving:)` は
@@ -1751,47 +1751,47 @@ var deadline: GroupDeadline?     // 日付のみ、時刻なし
 
 ### 24.2 締切超過の判定と表示
 
-- 判定はモデル:`GroupDeadline.isOverdue(today:)` — today より**厳密に前**の
-  日だけ超過(締切当日はまだ超過でない)。`WorkspaceState.overdueGroupIDs(today:)`
-  は**全グループ**を対象にする(超過は hiding をまたいで生存すべき情報で、
+- 判定はモデル:`ProjectDeadline.isOverdue(today:)` — today より**厳密に前**の
+  日だけ超過(締切当日はまだ超過でない)。`WorkspaceState.overdueProjectIDs(today:)`
+  は**全プロジェクト**を対象にする(超過は hiding をまたいで生存すべき情報で、
   表示層が既に visibility でスコープしているため)。
-- 表示は共有ビュー `GroupPriorityDeadlineMeta`(GroupLabel.swift。両表示面が
+- 表示は共有ビュー `ProjectPriorityDeadlineMeta`(ProjectLabel.swift。両表示面が
   同じビューを使うため乖離しない):優先度は等幅の bang 密度
   (high `!!!` / medium `!!` / low `!` — 色もアイコンも使わない控えめな印)、
   締切は `YYYY-MM-DD` テキスト、**未設定の項目は何も描かない**。超過は
   ちょうど 1 段階の控えめな強調(赤みのある tint + 不透明度引き上げ)。
   「間近」等の段階分けはしない。
 - 配置:ラベル帯の trailing(ノートグリフの手前。inline rename 中は非表示 —
-  帯は一度に 1 つの対話モードだけを持つ。unfocused グループでは 0.6 opacity)
-  と、一望モードの各パネルヘッダー(グループ名の横)。today は描画時に
-  `GroupDeadline(from: Date())` で導出し、表示層はモデルの答えだけを描く。
+  帯は一度に 1 つの対話モードだけを持つ。unfocused プロジェクトでは 0.6 opacity)
+  と、一望モードの各パネルヘッダー(プロジェクト名の横)。today は描画時に
+  `ProjectDeadline(from: Date())` で導出し、表示層はモデルの答えだけを描く。
 
 ### 24.3 ソート順序付け(純関数)
 
-- `priorityOrderedVisibleGroupIDs()`:high → medium → low → 未設定。
-- `deadlineOrderedVisibleGroupIDs()`:近い日付順、未設定は末尾。
-- 共通契約:入力は `visibleGroupIDs` のみ(hidden は入力に入らないため構造的に
+- `priorityOrderedVisibleProjectIDs()`:high → medium → low → 未設定。
+- `deadlineOrderedVisibleProjectIDs()`:近い日付順、未設定は末尾。
+- 共通契約:入力は `visibleProjectIDs` のみ(hidden は入力に入らないため構造的に
   影響不能)、純関数で副作用なし、**安定性は構成で保証**(stdlib の sort は
   安定性を文書化しないため、enumerated + offset の明示タイブレーク)。
   同順位・同日は現在の相対順を維持する。
 
-### 24.4 ソートアクション(sort_groups_by_priority / sort_groups_by_deadline)
+### 24.4 ソートアクション(sort_projects_by_priority / sort_projects_by_deadline)
 
-- `sort_groups_by_priority`(既定 `Cmd+S`)/ `sort_groups_by_deadline`
+- `sort_projects_by_priority`(既定 `Cmd+S`)/ `sort_projects_by_deadline`
   (既定 `Cmd+Shift+S`)。§10.5 のとおり両 chord とも既存割り当てなし。
-- 判定は `WorkspaceModel.canSortVisibleGroups`:visible グループ 2 つ以上 +
+- 判定は `WorkspaceModel.canSortVisibleProjects`:visible プロジェクト 2 つ以上 +
   一望モード中でない(一望モードは閲覧専用、§21.3)。`set_primary` と同型で、
   performable チェックと実行が同じ判定を共有し、不成立時はキー未消費で
   fall through する。
 - 実行:`SplitTree.reorderingLeaves(to:)` が**同一構造の上で leaf の載せ替え
   だけ**を行い(形状・分割方向・分割比は不変。現 leaf の順列でなければ nil)、
-  `WorkspaceState.applyVisibleGroupOrder` が §24.3 の順序を canonical tree へ
-  適用する。レイアウトはリフローせず、グループがスロットを入れ替える —
-  `move_group` の `swappingLeaves` と同じ意味論の n 項版。
+  `WorkspaceState.applyVisibleProjectOrder` が §24.3 の順序を canonical tree へ
+  適用する。レイアウトはリフローせず、プロジェクトがスロットを入れ替える —
+  `move_project` の `swappingLeaves` と同じ意味論の n 項版。
 - 帰結(いずれも構成から従う):
   - 序数(Cmd+1〜9)は走査順由来なので**自動追従**する。
-  - focus は id ベースなので不変(focused グループが新しいスロットに移る)。
-  - hidden グループは canonical leaf を持たないため影響を受けない。
+  - focus は id ベースなので不変(focused プロジェクトが新しいスロットに移る)。
+  - hidden プロジェクトは canonical leaf を持たないため影響を受けない。
   - **明示実行時のみソート**:優先度・締切の setter はツリーに触れないため、
     値の変更で自動再ソートは起きない。
   - ソート後の並びは次のソートまで持続する(leaf 割り当てを書き換える経路が
@@ -1799,10 +1799,10 @@ var deadline: GroupDeadline?     // 日付のみ、時刻なし
   - zoom 中も実行可(canonical tree は表示非依存。zoom 解除時に新しい並びが
     見える)。
 
-### 24.5 テスト(GroupPriorityDeadlineTests、21 件)
+### 24.5 テスト(ProjectPriorityDeadlineTests、21 件)
 
 ```text
-- 既定: 新規グループは優先度・締切とも未設定
+- 既定: 新規プロジェクトは優先度・締切とも未設定
 - 永続化: 優先度+締切の round trip 復元 / 壊れた保存(未知 priority 文字列・
   実在しない日付)は unset として decode
 - 入力境界: 不正日付は未設定へ拒否(前の値も残らない)/ 空入力は意図的
@@ -1811,10 +1811,10 @@ var deadline: GroupDeadline?     // 日付のみ、時刻なし
 - 順序付け: 優先度順(安定タイ)/ 締切順(未設定末尾・同日安定)/
   visible のみ・無副作用
 - ソートアクション: 実レイアウトの並び替え(優先度・締切とも、序数追従)/
-  hidden・focus 不変 / 明示実行のみで次のソートまで持続 / 単一グループと
+  hidden・focus 不変 / 明示実行のみで次のソートまで持続 / 単一プロジェクトと
   一望モード中は decline(退出後は可)
 - エディタ commit: 3 値一括保存 / 不正締切は unset へ / note-only 経路は
-  優先度・締切不変 / セッションなし no-op / 未知グループ setter no-op
+  優先度・締切不変 / セッションなし no-op / 未知プロジェクト setter no-op
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

@@ -1,14 +1,14 @@
 import Foundation
 
-/// Generates random `adjective-noun` names for newly created groups
+/// Generates random `adjective-noun` names for newly created projects
 /// (`SPEC.md` §8).
 ///
-/// Names are generated only at creation time and stored in `GroupState.name`;
+/// Names are generated only at creation time and stored in `ProjectState.name`;
 /// they are never regenerated on restore. Generation avoids collisions with
 /// the set of existing names. After a bounded number of random attempts it
-/// falls back to a deterministic `group-N` name so generation always
+/// falls back to a deterministic `project-N` name so generation always
 /// terminates and still returns a name not already in use.
-enum GroupNameGenerator {
+enum ProjectNameGenerator {
     static let adjectives = [
         "amber", "brave", "calm", "copper", "fuzzy",
         "gentle", "hidden", "lucky", "quiet", "silver",
@@ -27,7 +27,7 @@ enum GroupNameGenerator {
     ///
     /// Draws random `adjective-noun` combinations up to `maxAttempts` times. If
     /// every draw collides (e.g. the small word lists are exhausted), it walks
-    /// `group-N` upward until it finds a free name, guaranteeing the result is
+    /// `project-N` upward until it finds a free name, guaranteeing the result is
     /// never already in `existing`.
     ///
     /// Randomness is injectable so tests can be deterministic; production calls
@@ -48,10 +48,10 @@ enum GroupNameGenerator {
             if !existing.contains(name) { return name }
         }
 
-        // Deterministic fallback. Walk upward so we never return a `group-N`
+        // Deterministic fallback. Walk upward so we never return a `project-N`
         // name that already exists.
         var n = existing.count + 1
-        while existing.contains("group-\(n)") { n += 1 }
-        return "group-\(n)"
+        while existing.contains("project-\(n)") { n += 1 }
+        return "project-\(n)"
     }
 }

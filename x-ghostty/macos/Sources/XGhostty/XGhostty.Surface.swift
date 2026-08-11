@@ -92,7 +92,7 @@ extension XGhostty {
             xghostty_surface_mouse_captured(surface)
         }
 
-        /// The PID of the foreground process group attached to the PTY.
+        /// The PID of the foreground process project attached to the PTY.
         @MainActor
         var foregroundPID: Int? {
             let pid = xghostty_surface_foreground_pid(surface)
@@ -158,7 +158,7 @@ extension XGhostty {
         /// Perform a keybinding action.
         ///
         /// The action can be any valid keybind parameter. e.g. for
-        /// `keybind = goto_group:4` you can perform `goto_group:4` with this.
+        /// `keybind = goto_project:4` you can perform `goto_project:4` with this.
         ///
         /// Returns true if the action was performed. Invalid actions return false.
         @MainActor

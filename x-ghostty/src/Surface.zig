@@ -1275,7 +1275,7 @@ fn childExited(self: *Surface, info: apprt.surface.Message.ChildExited) void {
     // XGhostty: the surface never closes itself on a child exit. The app
     // layer was notified above (show_child_exited) and owns what the exit
     // means for the pane: an exited sibling pane is closed from the app
-    // side, while a group's last pane stays as a terminated pane whose
+    // side, while a project's last pane stays as a terminated pane whose
     // shell can be restarted (deletion protection). This makes every
     // remaining core-initiated close an explicit user operation.
 }
@@ -5270,13 +5270,13 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
-        // Group-layer actions. These mirror the split actions above but
-        // target the window's group tree. Group state lives in the apprt, so
+        // Project-layer actions. These mirror the split actions above but
+        // target the window's project tree. Project state lives in the apprt, so
         // they are forwarded to the apprt action layer like `new_split`.
 
-        .new_group_split => |direction| return try self.rt_app.performAction(
+        .new_project_split => |direction| return try self.rt_app.performAction(
             .{ .surface = self },
-            .new_group_split,
+            .new_project_split,
             switch (direction) {
                 .right => .right,
                 .left => .left,
@@ -5289,10 +5289,10 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             },
         ),
 
-        .goto_group => |target| switch (target) {
+        .goto_project => |target| switch (target) {
             .direction => |direction| return try self.rt_app.performAction(
                 .{ .surface = self },
-                .goto_group,
+                .goto_project,
                 switch (direction) {
                     inline else => |tag| @field(
                         apprt.action.GotoSplit,
@@ -5303,14 +5303,14 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
 
             .index => |index| return try self.rt_app.performAction(
                 .{ .surface = self },
-                .goto_group_index,
+                .goto_project_index,
                 @enumFromInt(index),
             ),
         },
 
-        .move_group => |direction| return try self.rt_app.performAction(
+        .move_project => |direction| return try self.rt_app.performAction(
             .{ .surface = self },
-            .move_group,
+            .move_project,
             switch (direction) {
                 inline else => |tag| @field(
                     apprt.action.GotoSplit,
@@ -5319,9 +5319,9 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             },
         ),
 
-        .resize_group => |value| return try self.rt_app.performAction(
+        .resize_project => |value| return try self.rt_app.performAction(
             .{ .surface = self },
-            .resize_group,
+            .resize_project,
             .{
                 .amount = value[1],
                 .direction = switch (value[0]) {
@@ -5333,33 +5333,33 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             },
         ),
 
-        .equalize_groups => return try self.rt_app.performAction(
+        .equalize_projects => return try self.rt_app.performAction(
             .{ .surface = self },
-            .equalize_groups,
+            .equalize_projects,
             {},
         ),
 
-        .toggle_group_zoom => return try self.rt_app.performAction(
+        .toggle_project_zoom => return try self.rt_app.performAction(
             .{ .surface = self },
-            .toggle_group_zoom,
+            .toggle_project_zoom,
             {},
         ),
 
-        .hide_group => return try self.rt_app.performAction(
+        .hide_project => return try self.rt_app.performAction(
             .{ .surface = self },
-            .hide_group,
+            .hide_project,
             {},
         ),
 
-        .rename_group => return try self.rt_app.performAction(
+        .rename_project => return try self.rt_app.performAction(
             .{ .surface = self },
-            .rename_group,
+            .rename_project,
             {},
         ),
 
-        .edit_group_note => return try self.rt_app.performAction(
+        .edit_project_note => return try self.rt_app.performAction(
             .{ .surface = self },
-            .edit_group_note,
+            .edit_project_note,
             {},
         ),
 
@@ -5375,40 +5375,40 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
-        .sort_groups_by_priority => return try self.rt_app.performAction(
+        .sort_projects_by_priority => return try self.rt_app.performAction(
             .{ .surface = self },
-            .sort_groups_by_priority,
+            .sort_projects_by_priority,
             {},
         ),
 
-        .sort_groups_by_deadline => return try self.rt_app.performAction(
+        .sort_projects_by_deadline => return try self.rt_app.performAction(
             .{ .surface = self },
-            .sort_groups_by_deadline,
+            .sort_projects_by_deadline,
             {},
         ),
 
-        .close_group => return try self.rt_app.performAction(
+        .close_project => return try self.rt_app.performAction(
             .{ .surface = self },
-            .close_group,
+            .close_project,
             {},
         ),
 
-        .show_group => |v| {
+        .show_project => |v| {
             const name = try self.alloc.dupeZ(u8, v);
             defer self.alloc.free(name);
             return try self.rt_app.performAction(
                 .{ .surface = self },
-                .show_group,
+                .show_project,
                 .{ .title = name },
             );
         },
 
-        .set_group_title => |v| {
+        .set_project_title => |v| {
             const name = try self.alloc.dupeZ(u8, v);
             defer self.alloc.free(name);
             return try self.rt_app.performAction(
                 .{ .surface = self },
-                .set_group_title,
+                .set_project_title,
                 .{ .title = name },
             );
         },
@@ -5661,7 +5661,7 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
 fn closingAction(action: input.Binding.Action) bool {
     return switch (action) {
         .close_surface,
-        .close_group,
+        .close_project,
         => true,
 
         else => false,

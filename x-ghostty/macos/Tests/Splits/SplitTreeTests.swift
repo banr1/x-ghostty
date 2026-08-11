@@ -27,7 +27,7 @@ class MockView: NSView, Codable, Identifiable {
 }
 
 /// A value-type leaf element used to verify `SplitTree` works for non-NSView
-/// elements (the F.1 generalization goal). This mirrors the future `GroupRef`.
+/// elements (the F.1 generalization goal). This mirrors the future `ProjectRef`.
 struct MockRef: Codable, Identifiable, Equatable {
     let id: UUID
     init(id: UUID = UUID()) { self.id = id }
@@ -676,7 +676,7 @@ struct SplitTreeTests {
         #expect(nodeIds.count == 2)
     }
 
-    // MARK: - Group-Layer Helpers (F.2)
+    // MARK: - Project-Layer Helpers (F.2)
 
     /// Builds a horizontal split of value-type refs: (a | b).
     static func makeRefSplit() throws -> (SplitTree<MockRef>, MockRef, MockRef) {

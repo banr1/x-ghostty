@@ -21,14 +21,14 @@ protocol TerminalViewDelegate: AnyObject {
     /// A split tree operation
     func performSplitAction(_ action: TerminalSplitOperation)
 
-    /// Switch the focused group (a group-label single-click, `SPEC.md` §7.1).
-    func focusGroup(_ id: GroupID)
+    /// Switch the focused project (a project-label single-click, `SPEC.md` §7.1).
+    func focusProject(_ id: ProjectID)
 
-    /// Show a hidden group (a shelf pill click, `SPEC.md` §11.8, §7.2).
-    func showGroup(_ id: GroupID)
+    /// Show a hidden project (a shelf pill click, `SPEC.md` §11.8, §7.2).
+    func showProject(_ id: ProjectID)
 
-    /// Equalize the group layout (a group-divider double-click, `SPEC.md` §11.5).
-    func equalizeGroups()
+    /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
+    func equalizeProjects()
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -39,9 +39,9 @@ protocol TerminalViewModel: ObservableObject {
     /// and children. This should be @Published.
     var surfaceTree: SplitTree<XGhostty.SurfaceView> { get set }
 
-    /// The group layer wrapping `surfaceTree`, used to drive the group-aware
+    /// The project layer wrapping `surfaceTree`, used to drive the project-aware
     /// render path (`TerminalWorkspaceView`). In Phase 0/1 this mirrors the
-    /// focused group's pane tree, so it is updated synchronously whenever
+    /// focused project's pane tree, so it is updated synchronously whenever
     /// `surfaceTree` changes and re-rendering is driven by the same
     /// `@Published surfaceTree` change. See `SPEC.md` §6.2.
     var workspace: WorkspaceModel { get }
@@ -98,9 +98,9 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                     TerminalWorkspaceView(
                         workspace: viewModel.workspace,
                         paneAction: { delegate?.performSplitAction($0) },
-                        onFocusGroup: { delegate?.focusGroup($0) },
-                        onShowGroup: { delegate?.showGroup($0) },
-                        onEqualizeGroups: { delegate?.equalizeGroups() })
+                        onFocusProject: { delegate?.focusProject($0) },
+                        onShowProject: { delegate?.showProject($0) },
+                        onEqualizeProjects: { delegate?.equalizeProjects() })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

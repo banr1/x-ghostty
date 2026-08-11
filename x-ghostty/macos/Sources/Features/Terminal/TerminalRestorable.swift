@@ -67,7 +67,7 @@ final class TerminalRestorableState: TerminalRestorable {
     var surfaceTree: SplitTree<XGhostty.SurfaceView> {
         internalState.surfaceTree
     }
-    /// The persisted group layer (`SPEC.md` §12.1), or `nil` for pre-v8 saves.
+    /// The persisted project layer (`SPEC.md` §12.1), or `nil` for pre-v8 saves.
     var workspace: WorkspaceState? {
         internalState.workspace
     }
@@ -166,12 +166,12 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
         // createWindow so that AppKit can place the window wherever it should
         // be.
         //
-        // When the save carries a group layer (v8+), restore the whole workspace
-        // (Phase 6 / `SPEC.md` §12): all groups visible, nothing zoomed, focus
+        // When the save carries a project layer (v8+), restore the whole workspace
+        // (Phase 6 / `SPEC.md` §12): all projects visible, nothing zoomed, focus
         // validated. Older saves fall back to the single-tree restore path.
         let restoredWorkspace = state.workspace.map(WorkspaceState.restoring)
         let c: TerminalController
-        if let restoredWorkspace, restoredWorkspace.focusedGroup != nil {
+        if let restoredWorkspace, restoredWorkspace.focusedProject != nil {
             c = TerminalController(
                 appDelegate.ghostty,
                 withWorkspace: restoredWorkspace)
@@ -190,11 +190,11 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
 
         // Setup our restored state on the controller. Find the focused surface
         // in `surfaceTree` (which, on a workspace restore, is the focused
-        // group's pane tree). Prefer the focused group's stored focus so we land
-        // in the right pane even if `focusedGroup` fell back to the first leaf
+        // project's pane tree). Prefer the focused project's stored focus so we land
+        // in the right pane even if `focusedProject` fell back to the first leaf
         // during restore; otherwise use the legacy top-level focused surface.
         let focusedStr: String? = restoredWorkspace != nil
-            ? c.workspace.focusedGroupState?.focusedSurface?.rawValue.uuidString
+            ? c.workspace.focusedProjectState?.focusedSurface?.rawValue.uuidString
             : state.focusedSurface
         if let focusedStr {
             var foundView: XGhostty.SurfaceView?

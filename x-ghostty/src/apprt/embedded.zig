@@ -442,7 +442,7 @@ pub const Surface = struct {
         wait_after_command: bool = false,
 
         /// Context for the new surface
-        context: apprt.surface.NewSurfaceContext = .group,
+        context: apprt.surface.NewSurfaceContext = .project,
     };
 
     pub fn init(self: *Surface, app: *App, opts: Options) !void {

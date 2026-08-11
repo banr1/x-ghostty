@@ -5,7 +5,7 @@ import Combine
 ///
 /// `Element` only needs to be `Codable & Identifiable & Equatable`. Reference
 /// types (e.g. `NSView` subclasses) get identity-based `Equatable` for free via
-/// `NSObject`, while value types (e.g. a group reference) get value equality.
+/// `NSObject`, while value types (e.g. a project reference) get value equality.
 /// NSView-specific helpers live in dedicated `where Element: NSView` extensions.
 struct SplitTree<Element: Codable & Identifiable & Equatable> {
     /// The root of the tree. This can be nil to indicate the tree is empty.
@@ -1072,11 +1072,11 @@ extension SplitTree.Spatial {
     }
 }
 
-// MARK: SplitTree Group-Layer Helpers
+// MARK: SplitTree Project-Layer Helpers
 //
-// Generic primitives required by the higher group layer (SPEC §F.2). They are
-// intentionally element-agnostic: group-specific wrappers (e.g. the SPEC's
-// `nearestVisibleGroup`) live in `WorkspaceModel` and are expressed in terms of
+// Generic primitives required by the higher project layer (SPEC §F.2). They are
+// intentionally element-agnostic: project-specific wrappers (e.g. the SPEC's
+// `nearestVisibleProject`) live in `WorkspaceModel` and are expressed in terms of
 // these by passing element ids and visibility predicates.
 
 extension SplitTree {
@@ -1200,8 +1200,8 @@ extension SplitTree {
     }
 
     /// Returns a copy of the tree with every leaf for which `shouldPrune` returns
-    /// true removed, collapsing now-empty splits. Used for the hidden-group
-    /// filtering that derives `effectiveVisibleGroupTree` (SPEC §13). The zoomed
+    /// true removed, collapsing now-empty splits. Used for the hidden-project
+    /// filtering that derives `effectiveVisibleProjectTree` (SPEC §13). The zoomed
     /// node is cleared if it pointed at a pruned leaf.
     func pruningLeaves(_ shouldPrune: (Element) -> Bool) -> Self {
         guard let root else { return self }
@@ -1218,8 +1218,8 @@ extension SplitTree {
     }
 
     /// Returns a tree containing only the single leaf identified by `element`,
-    /// or an empty tree if it is not present. Used for group zoom (SPEC §11.6,
-    /// §13), where the zoomed group becomes the sole visible leaf.
+    /// or an empty tree if it is not present. Used for project zoom (SPEC §11.6,
+    /// §13), where the zoomed project becomes the sole visible leaf.
     func subtreeContainingOnly(_ element: Element) -> Self {
         guard let node = find(id: element.id), case .leaf = node else {
             return .init()
@@ -1239,7 +1239,7 @@ extension SplitTree {
     /// layout. The zoomed node is left as-is — it identifies a node by value, so
     /// a zoomed leaf keeps following its element to the element's new position.
     ///
-    /// The group layer uses this for `move_group` (swap the focused group with a
+    /// The project layer uses this for `move_project` (swap the focused project with a
     /// neighbor); it is element-agnostic so pane-level callers can reuse it.
     ///
     /// - Returns: the swapped tree, or nil when `a` and `b` are the same element
@@ -1268,8 +1268,8 @@ extension SplitTree {
     /// as-is — it identifies a node by value, so a zoomed leaf keeps
     /// following its element to the element's new position.
     ///
-    /// The group layer uses this for the sort actions (reorder the visible
-    /// groups by priority/deadline); it is element-agnostic so other callers
+    /// The project layer uses this for the sort actions (reorder the visible
+    /// projects by priority/deadline); it is element-agnostic so other callers
     /// can reuse it.
     ///
     /// - Returns: the reordered tree, or nil when `newOrder` is not a
@@ -1312,9 +1312,9 @@ extension SplitTree {
     /// the trailing leaf keeps the left half of its own space and `element`
     /// takes the right half. Every other leaf's size is untouched.
     ///
-    /// Used when a hidden group is shown again (`SPEC.md` §11.8): it does not
+    /// Used when a hidden project is shown again (`SPEC.md` §11.8): it does not
     /// return to its old position, it takes the right half of the trailing
-    /// group's space. An empty tree simply becomes a single leaf.
+    /// project's space. An empty tree simply becomes a single leaf.
     func appendingAtTrailingLeaf(_ element: Element) -> Self {
         guard let root else { return .init(view: element) }
 
@@ -1335,9 +1335,9 @@ extension SplitTree {
     /// `matching`, always excluding `element` itself. Returns nil if none
     /// qualifies.
     ///
-    /// The group layer uses this to choose a focus target when hiding a group:
-    /// call on `canonicalGroupTree` with `matching: { !hidden.contains($0.id) }`.
-    /// `element` may itself fail the predicate (e.g. it is the group being
+    /// The project layer uses this to choose a focus target when hiding a project:
+    /// call on `canonicalProjectTree` with `matching: { !hidden.contains($0.id) }`.
+    /// `element` may itself fail the predicate (e.g. it is the project being
     /// hidden); it is excluded from the result regardless.
     func nearestLeaf(to element: Element, matching: (Element) -> Bool) -> Element? {
         guard let root,

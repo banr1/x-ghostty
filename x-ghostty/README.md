@@ -22,50 +22,50 @@ x-ghostty keeps Ghostty's terminal emulation and rendering core and replaces
 its window management with a single model:
 
 - **One window.** There is exactly one terminal window. There are no tabs, no
-  additional windows, and no quick terminal. Closing the last group closes the
+  additional windows, and no quick terminal. Closing the last project closes the
   window and quits the app.
-- **Groups.** A "group" layer sits above splits. Groups are arranged in a
-  `GroupTree` within the single window and can be created, moved, resized,
+- **Projects.** A "project" layer sits above splits. Projects are arranged in a
+  `ProjectTree` within the single window and can be created, moved, resized,
   zoomed, hidden, shown, renamed, and jumped to by ordinal (Cmd+1-9). See
   [SPEC.md](SPEC.md) for the design.
-- **Notes.** Each group holds a short handwritten note (up to 10 lines),
-  persisted with the group and restored across restarts. `Cmd+N` opens a
-  note editor overlay for the focused group (`Cmd+Enter` saves and closes,
+- **Notes.** Each project holds a short handwritten note (up to 10 lines),
+  persisted with the project and restored across restarts. `Cmd+N` opens a
+  note editor overlay for the focused project (`Cmd+Enter` saves and closes,
   Esc discards and closes; to keep `Cmd+Enter` free for this, the upstream
   `cmd+enter` fullscreen default is unbound — fullscreen remains on
   `Ctrl+Cmd+F` and the Window menu); clicking the note glyph at the right
-  edge of a group's header band opens that group's note editor directly,
+  edge of a project's header band opens that project's note editor directly,
   without moving focus; `Cmd+Opt+N` toggles a read-only
-  overview that lays every visible group's note over it at once (press
+  overview that lays every visible project's note over it at once (press
   `Cmd+Opt+N` again or Esc to leave). See SPEC.md §21.
-- **Primary panes.** Each group has exactly one primary pane (by default its
-  first pane). The overall (non-zoomed) view renders only each group's
+- **Primary panes.** Each project has exactly one primary pane (by default its
+  first pane). The overall (non-zoomed) view renders only each project's
   primary, so a many-pane project stays readable at a glance — a subtle
-  pane-count badge in the group's top-right corner signals when more panes
+  pane-count badge in the project's top-right corner signals when more panes
   exist behind the primary; zooming into a
-  group shows its full split layout, with a subtle mark on the primary when
-  the group has multiple panes. While zoomed, `Cmd+P` makes the focused pane
+  project shows its full split layout, with a subtle mark on the primary when
+  the project has multiple panes. While zoomed, `Cmd+P` makes the focused pane
   the primary. Pane operations (splitting, pane focus movement, pane zoom,
   resize/equalize) work only while zoomed. If the primary pane's shell exits,
   the nearest remaining pane is promoted. The primary flag is persisted with
   the pane layout and restored across restarts. See SPEC.md §22.
-- **Priorities & deadlines.** Each group can carry a priority
+- **Priorities & deadlines.** Each project can carry a priority
   (high/medium/low, unset by default) and a date-only deadline, set in the
   same `Cmd+N` overlay as the note (invalid dates are rejected to unset) and
-  persisted with it. The group's header band and the note overview show a
+  persisted with it. The project's header band and the note overview show a
   subtle priority mark (`!!!`/`!!`/`!`) and the deadline; a past-due deadline
-  gets a single-stage subtle emphasis. `Cmd+S` reorders the visible groups by
+  gets a single-stage subtle emphasis. `Cmd+S` reorders the visible projects by
   priority and `Cmd+Shift+S` by deadline — sorting happens only when invoked
-  (never automatically), the layout keeps its shape, hidden groups are
+  (never automatically), the layout keeps its shape, hidden projects are
   untouched, and the `Cmd+1-9` ordinals follow the new order. See SPEC.md §24.
-- **Deletion protection.** Closing a group always asks for confirmation,
-  whether or not anything is running in it. When a group's last pane's shell
-  exits, the group stays as a terminated pane — its note, priority, and
+- **Deletion protection.** Closing a project always asks for confirmation,
+  whether or not anything is running in it. When a project's last pane's shell
+  exits, the project stays as a terminated pane — its note, priority, and
   deadline kept — and pressing Return starts a new shell in the same pane.
-  The only way a group and its information are lost is an explicitly
+  The only way a project and its information are lost is an explicitly
   confirmed close. See SPEC.md §23.
-- **Splits** work as they do upstream, nested inside each group; in the
-  overall view only each group's primary pane is shown (see above).
+- **Splits** work as they do upstream, nested inside each project; in the
+  overall view only each project's primary pane is shown (see above).
 
 Everything else — the VT implementation, renderer, font stack, shell
 integration, configuration system, and command palette — is inherited from

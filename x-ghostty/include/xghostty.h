@@ -459,7 +459,7 @@ typedef union {
 } xghostty_platform_u;
 
 typedef enum {
-  XGHOSTTY_SURFACE_CONTEXT_GROUP = 0,
+  XGHOSTTY_SURFACE_CONTEXT_PROJECT = 0,
   XGHOSTTY_SURFACE_CONTEXT_SPLIT = 1,
 } xghostty_surface_context_e;
 
@@ -575,12 +575,12 @@ typedef struct {
   xghostty_action_resize_split_direction_e direction;
 } xghostty_action_resize_split_s;
 
-// apprt.action.GotoGroup
+// apprt.action.GotoProject
 typedef enum {
-  XGHOSTTY_GOTO_GROUP_PREVIOUS = -1,
-  XGHOSTTY_GOTO_GROUP_NEXT = -2,
-  XGHOSTTY_GOTO_GROUP_LAST = -3,
-} xghostty_action_goto_group_e;
+  XGHOSTTY_GOTO_PROJECT_PREVIOUS = -1,
+  XGHOSTTY_GOTO_PROJECT_NEXT = -2,
+  XGHOSTTY_GOTO_PROJECT_LAST = -3,
+} xghostty_action_goto_project_e;
 
 // apprt.action.Fullscreen
 typedef enum {
@@ -887,23 +887,23 @@ typedef enum {
   XGHOSTTY_ACTION_SEARCH_SELECTED,
   XGHOSTTY_ACTION_READONLY,
   XGHOSTTY_ACTION_COPY_TITLE_TO_CLIPBOARD,
-  XGHOSTTY_ACTION_NEW_GROUP_SPLIT,
-  XGHOSTTY_ACTION_GOTO_GROUP,
-  XGHOSTTY_ACTION_RESIZE_GROUP,
-  XGHOSTTY_ACTION_EQUALIZE_GROUPS,
-  XGHOSTTY_ACTION_TOGGLE_GROUP_ZOOM,
-  XGHOSTTY_ACTION_HIDE_GROUP,
-  XGHOSTTY_ACTION_SHOW_GROUP,
-  XGHOSTTY_ACTION_RENAME_GROUP,
-  XGHOSTTY_ACTION_SET_GROUP_TITLE,
-  XGHOSTTY_ACTION_CLOSE_GROUP,
-  XGHOSTTY_ACTION_MOVE_GROUP,
-  XGHOSTTY_ACTION_GOTO_GROUP_INDEX,
-  XGHOSTTY_ACTION_EDIT_GROUP_NOTE,
+  XGHOSTTY_ACTION_NEW_PROJECT_SPLIT,
+  XGHOSTTY_ACTION_GOTO_PROJECT,
+  XGHOSTTY_ACTION_RESIZE_PROJECT,
+  XGHOSTTY_ACTION_EQUALIZE_PROJECTS,
+  XGHOSTTY_ACTION_TOGGLE_PROJECT_ZOOM,
+  XGHOSTTY_ACTION_HIDE_PROJECT,
+  XGHOSTTY_ACTION_SHOW_PROJECT,
+  XGHOSTTY_ACTION_RENAME_PROJECT,
+  XGHOSTTY_ACTION_SET_PROJECT_TITLE,
+  XGHOSTTY_ACTION_CLOSE_PROJECT,
+  XGHOSTTY_ACTION_MOVE_PROJECT,
+  XGHOSTTY_ACTION_GOTO_PROJECT_INDEX,
+  XGHOSTTY_ACTION_EDIT_PROJECT_NOTE,
   XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW,
   XGHOSTTY_ACTION_SET_PRIMARY,
-  XGHOSTTY_ACTION_SORT_GROUPS_BY_PRIORITY,
-  XGHOSTTY_ACTION_SORT_GROUPS_BY_DEADLINE,
+  XGHOSTTY_ACTION_SORT_PROJECTS_BY_PRIORITY,
+  XGHOSTTY_ACTION_SORT_PROJECTS_BY_DEADLINE,
 } xghostty_action_tag_e;
 
 typedef union {
@@ -939,13 +939,13 @@ typedef union {
   xghostty_action_search_total_s search_total;
   xghostty_action_search_selected_s search_selected;
   xghostty_action_readonly_e readonly;
-  xghostty_action_split_direction_e new_group_split;
-  xghostty_action_goto_split_e goto_group;
-  xghostty_action_resize_split_s resize_group;
-  xghostty_action_set_title_s show_group;
-  xghostty_action_set_title_s set_group_title;
-  xghostty_action_goto_split_e move_group;
-  xghostty_action_goto_group_e goto_group_index;
+  xghostty_action_split_direction_e new_project_split;
+  xghostty_action_goto_split_e goto_project;
+  xghostty_action_resize_split_s resize_project;
+  xghostty_action_set_title_s show_project;
+  xghostty_action_set_title_s set_project_title;
+  xghostty_action_goto_split_e move_project;
+  xghostty_action_goto_project_e goto_project_index;
 } xghostty_action_u;
 
 typedef struct {

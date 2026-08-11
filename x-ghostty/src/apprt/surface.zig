@@ -145,19 +145,19 @@ pub const Mailbox = struct {
 /// Context for new surface creation to determine inheritance behavior.
 ///
 /// XGhostty is a single-window terminal, so the only two ways a new surface
-/// can come into existence are as a new group (the upper layer of the
-/// two-level split model) or as a new split within an existing group.
+/// can come into existence are as a new project (the upper layer of the
+/// two-level split model) or as a new split within an existing project.
 pub const NewSurfaceContext = enum(c_int) {
-    group = 0,
+    project = 0,
     split = 1,
 };
 
 pub fn shouldInheritWorkingDirectory(context: NewSurfaceContext, config: *const Config) bool {
     return switch (context) {
-        // New groups always inherit the working directory. This used to be
+        // New projects always inherit the working directory. This used to be
         // configurable via `tab-inherit-working-directory` (default true)
         // back when the upper layer was tabs.
-        .group => true,
+        .project => true,
         .split => config.@"split-inherit-working-directory",
     };
 }

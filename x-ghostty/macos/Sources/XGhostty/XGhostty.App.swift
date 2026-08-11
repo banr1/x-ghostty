@@ -483,14 +483,14 @@ extension XGhostty {
             case XGHOSTTY_ACTION_NEW_SPLIT:
                 newSplit(app, target: target, direction: action.action.new_split)
 
-            case XGHOSTTY_ACTION_NEW_GROUP_SPLIT:
-                newGroupSplit(app, target: target, direction: action.action.new_group_split)
+            case XGHOSTTY_ACTION_NEW_PROJECT_SPLIT:
+                newProjectSplit(app, target: target, direction: action.action.new_project_split)
 
-            case XGHOSTTY_ACTION_RENAME_GROUP:
-                renameGroup(app, target: target)
+            case XGHOSTTY_ACTION_RENAME_PROJECT:
+                renameProject(app, target: target)
 
-            case XGHOSTTY_ACTION_EDIT_GROUP_NOTE:
-                editGroupNote(app, target: target)
+            case XGHOSTTY_ACTION_EDIT_PROJECT_NOTE:
+                editProjectNote(app, target: target)
 
             case XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW:
                 toggleNoteOverview(app, target: target)
@@ -498,41 +498,41 @@ extension XGhostty {
             case XGHOSTTY_ACTION_SET_PRIMARY:
                 return setPrimary(app, target: target)
 
-            case XGHOSTTY_ACTION_SORT_GROUPS_BY_PRIORITY:
-                return sortGroups(app, target: target, notification: Notification.ghosttySortGroupsByPriority)
+            case XGHOSTTY_ACTION_SORT_PROJECTS_BY_PRIORITY:
+                return sortProjects(app, target: target, notification: Notification.ghosttySortProjectsByPriority)
 
-            case XGHOSTTY_ACTION_SORT_GROUPS_BY_DEADLINE:
-                return sortGroups(app, target: target, notification: Notification.ghosttySortGroupsByDeadline)
+            case XGHOSTTY_ACTION_SORT_PROJECTS_BY_DEADLINE:
+                return sortProjects(app, target: target, notification: Notification.ghosttySortProjectsByDeadline)
 
-            case XGHOSTTY_ACTION_SET_GROUP_TITLE:
-                setGroupTitle(app, target: target, v: action.action.set_group_title)
+            case XGHOSTTY_ACTION_SET_PROJECT_TITLE:
+                setProjectTitle(app, target: target, v: action.action.set_project_title)
 
-            case XGHOSTTY_ACTION_GOTO_GROUP:
-                return gotoGroup(app, target: target, direction: action.action.goto_group)
+            case XGHOSTTY_ACTION_GOTO_PROJECT:
+                return gotoProject(app, target: target, direction: action.action.goto_project)
 
-            case XGHOSTTY_ACTION_GOTO_GROUP_INDEX:
-                return gotoGroupIndex(app, target: target, index: action.action.goto_group_index)
+            case XGHOSTTY_ACTION_GOTO_PROJECT_INDEX:
+                return gotoProjectIndex(app, target: target, index: action.action.goto_project_index)
 
-            case XGHOSTTY_ACTION_MOVE_GROUP:
-                return moveGroup(app, target: target, direction: action.action.move_group)
+            case XGHOSTTY_ACTION_MOVE_PROJECT:
+                return moveProject(app, target: target, direction: action.action.move_project)
 
-            case XGHOSTTY_ACTION_RESIZE_GROUP:
-                return resizeGroup(app, target: target, resize: action.action.resize_group)
+            case XGHOSTTY_ACTION_RESIZE_PROJECT:
+                return resizeProject(app, target: target, resize: action.action.resize_project)
 
-            case XGHOSTTY_ACTION_EQUALIZE_GROUPS:
-                return equalizeGroups(app, target: target)
+            case XGHOSTTY_ACTION_EQUALIZE_PROJECTS:
+                return equalizeProjects(app, target: target)
 
-            case XGHOSTTY_ACTION_TOGGLE_GROUP_ZOOM:
-                return toggleGroupZoom(app, target: target)
+            case XGHOSTTY_ACTION_TOGGLE_PROJECT_ZOOM:
+                return toggleProjectZoom(app, target: target)
 
-            case XGHOSTTY_ACTION_HIDE_GROUP:
-                return hideGroup(app, target: target)
+            case XGHOSTTY_ACTION_HIDE_PROJECT:
+                return hideProject(app, target: target)
 
-            case XGHOSTTY_ACTION_SHOW_GROUP:
-                return showGroup(app, target: target, v: action.action.show_group)
+            case XGHOSTTY_ACTION_SHOW_PROJECT:
+                return showProject(app, target: target, v: action.action.show_project)
 
-            case XGHOSTTY_ACTION_CLOSE_GROUP:
-                closeGroup(app, target: target)
+            case XGHOSTTY_ACTION_CLOSE_PROJECT:
+                closeProject(app, target: target)
 
             case XGHOSTTY_ACTION_TOGGLE_FULLSCREEN:
                 toggleFullscreen(app, target: target, mode: action.action.toggle_fullscreen)
@@ -825,14 +825,14 @@ extension XGhostty {
             }
         }
 
-        private static func newGroupSplit(
+        private static func newProjectSplit(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             direction: xghostty_action_split_direction_e) {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                // A new group split does nothing with an app target.
-                XGhostty.logger.warning("new group split does nothing with an app target")
+                // A new project split does nothing with an app target.
+                XGhostty.logger.warning("new project split does nothing with an app target")
                 return
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -840,11 +840,11 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyNewGroupSplit,
+                    name: Notification.ghosttyNewProjectSplit,
                     object: surfaceView,
                     userInfo: [
                         "direction": direction,
-                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_GROUP)),
+                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_PROJECT)),
                     ]
                 )
 
@@ -853,12 +853,12 @@ extension XGhostty {
             }
         }
 
-        private static func renameGroup(
+        private static func renameProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s) {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("rename group does nothing with an app target")
+                XGhostty.logger.warning("rename project does nothing with an app target")
                 return
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -866,7 +866,7 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyRenameGroup,
+                    name: Notification.ghosttyRenameProject,
                     object: surfaceView)
 
             default:
@@ -874,12 +874,12 @@ extension XGhostty {
             }
         }
 
-        private static func editGroupNote(
+        private static func editProjectNote(
             _ app: xghostty_app_t,
             target: xghostty_target_s) {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("edit group note does nothing with an app target")
+                XGhostty.logger.warning("edit project note does nothing with an app target")
                 return
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -887,7 +887,7 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyEditGroupNote,
+                    name: Notification.ghosttyEditProjectNote,
                     object: surfaceView)
 
             default:
@@ -924,13 +924,13 @@ extension XGhostty {
             }
         }
 
-        private static func sortGroups(
+        private static func sortProjects(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             notification: Foundation.Notification.Name) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("sort groups does nothing with an app target")
+                XGhostty.logger.warning("sort projects does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -939,10 +939,10 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
                 // Only performable with something to reorder (two or more
-                // visible groups) outside the viewing-only note overview
+                // visible projects) outside the viewing-only note overview
                 // (SPEC §24.4); otherwise the keybind falls through
                 // unconsumed.
-                guard controller.workspace.canSortVisibleGroups else { return false }
+                guard controller.workspace.canSortVisibleProjects else { return false }
 
                 NotificationCenter.default.post(
                     name: notification,
@@ -976,13 +976,13 @@ extension XGhostty {
             }
         }
 
-        private static func setGroupTitle(
+        private static func setProjectTitle(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             v: xghostty_action_set_title_s) {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("set group title does nothing with an app target")
+                XGhostty.logger.warning("set project title does nothing with an app target")
                 return
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -991,7 +991,7 @@ extension XGhostty {
                 guard let title = String(cString: v.title!, encoding: .utf8) else { return }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttySetGroupTitle,
+                    name: Notification.ghosttySetProjectTitle,
                     object: surfaceView,
                     userInfo: ["title": title])
 
@@ -1000,13 +1000,13 @@ extension XGhostty {
             }
         }
 
-        private static func gotoGroup(
+        private static func gotoProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             direction: xghostty_action_goto_split_e) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("goto group does nothing with an app target")
+                XGhostty.logger.warning("goto project does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1017,17 +1017,17 @@ extension XGhostty {
                 // Convert the C API direction to our Swift type.
                 guard let focusDirection = SplitFocusDirection.from(direction: direction) else { return false }
 
-                // Only performable when there is actually a visible neighbor group
+                // Only performable when there is actually a visible neighbor project
                 // to move to; this keeps the keybind from consuming the key event
                 // when nothing would happen.
-                let treeDirection: SplitTree<GroupRef>.FocusDirection =
+                let treeDirection: SplitTree<ProjectRef>.FocusDirection =
                     focusDirection.toSplitTreeFocusDirection()
-                guard controller.workspace.gotoGroupTarget(treeDirection) != nil else { return false }
+                guard controller.workspace.gotoProjectTarget(treeDirection) != nil else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyGotoGroup,
+                    name: Notification.ghosttyGotoProject,
                     object: surfaceView,
-                    userInfo: [Notification.GroupDirectionKey: focusDirection])
+                    userInfo: [Notification.ProjectDirectionKey: focusDirection])
                 return true
 
             default:
@@ -1036,13 +1036,13 @@ extension XGhostty {
             }
         }
 
-        private static func gotoGroupIndex(
+        private static func gotoProjectIndex(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
-            index: xghostty_action_goto_group_e) -> Bool {
+            index: xghostty_action_goto_project_e) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("goto group index does nothing with an app target")
+                XGhostty.logger.warning("goto project index does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1050,21 +1050,21 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // The value is always a 1-based group number (libghostty rejects
+                // The value is always a 1-based project number (libghostty rejects
                 // anything outside 1..9 at parse time), so the enum's negative
                 // sentinels never apply here.
                 let ordinal = Int(index.rawValue)
 
                 // The Cmd+1..9 binding is `performable`, so only consume the key
                 // when the jump would actually change something: the number must
-                // resolve to a visible group that isn't already the zoomed one
+                // resolve to a visible project that isn't already the zoomed one
                 // (or, when nothing is zoomed, the focused one).
-                guard controller.workspace.gotoGroupIndexTarget(ordinal) != nil else { return false }
+                guard controller.workspace.gotoProjectIndexTarget(ordinal) != nil else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyGotoGroupIndex,
+                    name: Notification.ghosttyGotoProjectIndex,
                     object: surfaceView,
-                    userInfo: [Notification.GotoGroupIndexKey: ordinal])
+                    userInfo: [Notification.GotoProjectIndexKey: ordinal])
                 return true
 
             default:
@@ -1073,13 +1073,13 @@ extension XGhostty {
             }
         }
 
-        private static func moveGroup(
+        private static func moveProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             direction: xghostty_action_goto_split_e) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("move group does nothing with an app target")
+                XGhostty.logger.warning("move project does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1090,17 +1090,17 @@ extension XGhostty {
                 // Convert the C API direction to our Swift type.
                 guard let focusDirection = SplitFocusDirection.from(direction: direction) else { return false }
 
-                // Only performable when there is actually a neighbor group to
+                // Only performable when there is actually a neighbor project to
                 // swap with; this keeps the keybind from consuming the key event
-                // when nothing would happen (mirrors `goto_group`).
-                let treeDirection: SplitTree<GroupRef>.FocusDirection =
+                // when nothing would happen (mirrors `goto_project`).
+                let treeDirection: SplitTree<ProjectRef>.FocusDirection =
                     focusDirection.toSplitTreeFocusDirection()
-                guard controller.workspace.canMoveFocusedGroup(treeDirection) else { return false }
+                guard controller.workspace.canMoveFocusedProject(treeDirection) else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyMoveGroup,
+                    name: Notification.ghosttyMoveProject,
                     object: surfaceView,
-                    userInfo: [Notification.MoveGroupDirectionKey: focusDirection])
+                    userInfo: [Notification.MoveProjectDirectionKey: focusDirection])
                 return true
 
             default:
@@ -1109,13 +1109,13 @@ extension XGhostty {
             }
         }
 
-        private static func resizeGroup(
+        private static func resizeProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             resize: xghostty_action_resize_split_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("resize group does nothing with an app target")
+                XGhostty.logger.warning("resize project does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1123,18 +1123,18 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // Only performable when more than one group is visible (mirrors
+                // Only performable when more than one project is visible (mirrors
                 // resize_split's `isSplit` gate). Whether a neighbor exists in the
                 // specific direction is resolved by the handler.
-                guard controller.workspace.state.effectiveVisibleGroupTree?.isSplit ?? false else { return false }
+                guard controller.workspace.state.effectiveVisibleProjectTree?.isSplit ?? false else { return false }
 
                 guard let resizeDirection = SplitResizeDirection.from(direction: resize.direction) else { return false }
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyResizeGroup,
+                    name: Notification.ghosttyResizeProject,
                     object: surfaceView,
                     userInfo: [
-                        Notification.ResizeGroupDirectionKey: resizeDirection,
-                        Notification.ResizeGroupAmountKey: resize.amount,
+                        Notification.ResizeProjectDirectionKey: resizeDirection,
+                        Notification.ResizeProjectAmountKey: resize.amount,
                     ])
                 return true
 
@@ -1144,12 +1144,12 @@ extension XGhostty {
             }
         }
 
-        private static func equalizeGroups(
+        private static func equalizeProjects(
             _ app: xghostty_app_t,
             target: xghostty_target_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("equalize groups does nothing with an app target")
+                XGhostty.logger.warning("equalize projects does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1157,13 +1157,13 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // Only performable when more than one group is visible (mirrors
-                // resize_group's gate); a single group has nothing to equalize, so
+                // Only performable when more than one project is visible (mirrors
+                // resize_project's gate); a single project has nothing to equalize, so
                 // let the key fall through instead of consuming it.
-                guard controller.workspace.state.effectiveVisibleGroupTree?.isSplit ?? false else { return false }
+                guard controller.workspace.state.effectiveVisibleProjectTree?.isSplit ?? false else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyEqualizeGroups,
+                    name: Notification.ghosttyEqualizeProjects,
                     object: surfaceView)
                 return true
 
@@ -1173,12 +1173,12 @@ extension XGhostty {
             }
         }
 
-        private static func toggleGroupZoom(
+        private static func toggleProjectZoom(
             _ app: xghostty_app_t,
             target: xghostty_target_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("toggle group zoom does nothing with an app target")
+                XGhostty.logger.warning("toggle project zoom does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1187,12 +1187,12 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
                 // Only performable when zooming would change something (more than
-                // one visible group, or a zoom to clear); otherwise let the key
+                // one visible project, or a zoom to clear); otherwise let the key
                 // fall through (mirrors toggle_split_zoom's `isSplit` gate).
-                guard controller.workspace.canToggleGroupZoom else { return false }
+                guard controller.workspace.canToggleProjectZoom else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyToggleGroupZoom,
+                    name: Notification.ghosttyToggleProjectZoom,
                     object: surfaceView)
                 return true
 
@@ -1202,12 +1202,12 @@ extension XGhostty {
             }
         }
 
-        private static func hideGroup(
+        private static func hideProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("hide group does nothing with an app target")
+                XGhostty.logger.warning("hide project does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1215,12 +1215,12 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // Only performable when at least one other group would stay
-                // visible (`SPEC.md` §18.2: the last visible group can't be hidden).
-                guard controller.workspace.canHideFocusedGroup else { return false }
+                // Only performable when at least one other project would stay
+                // visible (`SPEC.md` §18.2: the last visible project can't be hidden).
+                guard controller.workspace.canHideFocusedProject else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyHideGroup,
+                    name: Notification.ghosttyHideProject,
                     object: surfaceView)
                 return true
 
@@ -1230,13 +1230,13 @@ extension XGhostty {
             }
         }
 
-        private static func showGroup(
+        private static func showProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s,
             v: xghostty_action_set_title_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("show group does nothing with an app target")
+                XGhostty.logger.warning("show project does nothing with an app target")
                 return false
 
             case XGHOSTTY_TARGET_SURFACE:
@@ -1245,16 +1245,16 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
                 guard let name = String(cString: v.title!, encoding: .utf8) else { return false }
 
-                // Only performable when a hidden group with that name exists and
-                // there is room for it under the visible-group cap; at the cap
+                // Only performable when a hidden project with that name exists and
+                // there is room for it under the visible-project cap; at the cap
                 // the reveal is a silent no-op, so leave the key unconsumed.
-                guard let id = controller.workspace.hiddenGroupID(named: name),
-                      controller.workspace.canShowGroup(id) else { return false }
+                guard let id = controller.workspace.hiddenProjectID(named: name),
+                      controller.workspace.canShowProject(id) else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyShowGroup,
+                    name: Notification.ghosttyShowProject,
                     object: surfaceView,
-                    userInfo: [Notification.ShowGroupNameKey: name])
+                    userInfo: [Notification.ShowProjectNameKey: name])
                 return true
 
             default:
@@ -1263,23 +1263,23 @@ extension XGhostty {
             }
         }
 
-        private static func closeGroup(
+        private static func closeProject(
             _ app: xghostty_app_t,
             target: xghostty_target_s) {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("close group does nothing with an app target")
+                XGhostty.logger.warning("close project does nothing with an app target")
                 return
 
             case XGHOSTTY_TARGET_SURFACE:
                 guard let surface = target.target.surface else { return }
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
 
-                // Always meaningful: there is always a focused group to close.
+                // Always meaningful: there is always a focused project to close.
                 // The controller shows the destructive-action confirmation and
-                // handles the §18.5 last-group → tab/window close delegation.
+                // handles the §18.5 last-project → tab/window close delegation.
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyCloseGroup,
+                    name: Notification.ghosttyCloseProject,
                     object: surfaceView)
 
             default:
@@ -1866,10 +1866,10 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let config = (NSApplication.shared.delegate as? AppDelegate)?.ghostty.config else { return false }
 
-                // The group layer owns what a child exit means for the pane
-                // (close an exited sibling pane, keep a group's last pane as a
+                // The project layer owns what a child exit means for the pane
+                // (close an exited sibling pane, keep a project's last pane as a
                 // terminated pane), so it is notified unconditionally — even
-                // for a window-less (hidden-group) or instantly-exited pane.
+                // for a window-less (hidden-project) or instantly-exited pane.
                 NotificationCenter.default.post(
                     name: Notification.ghosttyChildExited,
                     object: surfaceView,

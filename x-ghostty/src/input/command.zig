@@ -487,10 +487,10 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = "Equalize the size of all splits.",
         }},
 
-        .equalize_groups => comptime &.{.{
-            .action = .equalize_groups,
-            .title = "Equalize Groups",
-            .description = "Equalize the size of all visible groups.",
+        .equalize_projects => comptime &.{.{
+            .action = .equalize_projects,
+            .title = "Equalize Projects",
+            .description = "Equalize the size of all visible projects.",
         }},
 
         .reset_window_size => comptime &.{.{
@@ -619,27 +619,27 @@ fn actionCommands(action: Action.Key) []const Command {
         .toggle_command_palette,
         => comptime &.{},
 
-        // Group-layer actions are plumbed through the core and implemented
+        // Project-layer actions are plumbed through the core and implemented
         // apprt-side (macOS). Most of the ones excluded here take arguments
         // that don't have a sensible palette default (a direction, an
-        // amount, or a group name/title). Palette entries for the rest are
-        // added per-action as they become useful, mirroring how equalize_groups
+        // amount, or a project name/title). Palette entries for the rest are
+        // added per-action as they become useful, mirroring how equalize_projects
         // was added above.
-        .new_group_split,
-        .goto_group,
-        .move_group,
-        .resize_group,
-        .toggle_group_zoom,
-        .hide_group,
-        .show_group,
-        .rename_group,
-        .set_group_title,
-        .edit_group_note,
+        .new_project_split,
+        .goto_project,
+        .move_project,
+        .resize_project,
+        .toggle_project_zoom,
+        .hide_project,
+        .show_project,
+        .rename_project,
+        .set_project_title,
+        .edit_project_note,
         .toggle_note_overview,
         .set_primary,
-        .sort_groups_by_priority,
-        .sort_groups_by_deadline,
-        .close_group,
+        .sort_projects_by_priority,
+        .sort_projects_by_deadline,
+        .close_project,
         => comptime &.{},
 
         // No commands for obvious reasons

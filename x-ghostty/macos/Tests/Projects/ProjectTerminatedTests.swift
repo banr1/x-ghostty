@@ -12,16 +12,16 @@ private struct TestPane: Codable, Identifiable, Equatable {
     init(id: UUID = UUID()) { self.id = id }
 }
 
-private typealias TestGroupState = GroupStateOf<TestPane>
+private typealias TestProjectState = ProjectStateOf<TestPane>
 private typealias TestWorkspaceState = WorkspaceStateOf<TestPane>
 private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 
 /// Tests for the deletion-protection model layer (SPEC §23): the
-/// always-confirm group close, the child-exit judgment (terminated last pane
+/// always-confirm project close, the child-exit judgment (terminated last pane
 /// vs. closing sibling pane), the terminated state's persistence semantics,
 /// and the Enter-restart transition.
-struct GroupTerminatedTests {
-    /// A single-group model around `tree`, with a deterministic name.
+struct ProjectTerminatedTests {
+    /// A single-project model around `tree`, with a deterministic name.
     private static func makeModel(_ tree: SplitTree<TestPane>) -> TestWorkspaceModel {
         TestWorkspaceModel(wrapping: tree, name: "amber-owl")
     }
@@ -30,15 +30,15 @@ struct GroupTerminatedTests {
         SurfaceID(rawValue: pane.id)
     }
 
-    // MARK: Always-confirm group close (SPEC §23.1)
+    // MARK: Always-confirm project close (SPEC §23.1)
 
-    @Test func closeGroupRequiresConfirmationRegardlessOfRunningProcesses() {
+    @Test func closeProjectRequiresConfirmationRegardlessOfRunningProcesses() {
         let model = Self.makeModel(.init(view: TestPane()))
 
         // The confirmation requirement never depends on whether a process is
-        // alive: the dialog is the single sanctioned loss path for a group.
-        #expect(model.closeGroupRequiresConfirmation(anyLiveProcess: true))
-        #expect(model.closeGroupRequiresConfirmation(anyLiveProcess: false))
+        // alive: the dialog is the single sanctioned loss path for a project.
+        #expect(model.closeProjectRequiresConfirmation(anyLiveProcess: true))
+        #expect(model.closeProjectRequiresConfirmation(anyLiveProcess: false))
     }
 
     // MARK: Child-exit judgment (SPEC §23.2)
@@ -46,34 +46,34 @@ struct GroupTerminatedTests {
     @Test func lastPaneExitIsJudgedTerminatedForEveryExitKind() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
         // Normal exit, abnormal exit, and process death all reach the model
         // the same way; a last pane is always `.terminated`.
         #expect(model.childExitOutcome(for: Self.paneID(pane), abnormalExit: false)
-                == .terminated(groupID))
+                == .terminated(projectID))
         #expect(model.childExitOutcome(for: Self.paneID(pane), abnormalExit: true)
-                == .terminated(groupID))
+                == .terminated(projectID))
     }
 
     @Test func siblingPaneNormalExitIsJudgedClosePane() throws {
         let a = TestPane()
         let b = TestPane()
         let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
         #expect(model.childExitOutcome(for: Self.paneID(b), abnormalExit: false)
-                == .closePane(groupID))
+                == .closePane(projectID))
     }
 
     @Test func siblingPaneAbnormalExitAwaitsKeyClose() throws {
         let a = TestPane()
         let b = TestPane()
         let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
         #expect(model.childExitOutcome(for: Self.paneID(b), abnormalExit: true)
-                == .keepPaneAwaitingKey(groupID))
+                == .keepPaneAwaitingKey(projectID))
     }
 
     @Test func unknownPaneExitHasNoOutcome() {
@@ -83,48 +83,48 @@ struct GroupTerminatedTests {
 
     @Test func exitOutcomeIsRejudgedAfterSiblingsClosed() throws {
         // [A | B] where A exited abnormally and awaits a key. If B closes
-        // first, A becomes the group's last pane — a later judgment must be
+        // first, A becomes the project's last pane — a later judgment must be
         // `.terminated`, not a close (deletion protection).
         let a = TestPane()
         let b = TestPane()
         let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
         #expect(model.childExitOutcome(for: Self.paneID(a), abnormalExit: true)
-                == .keepPaneAwaitingKey(groupID))
+                == .keepPaneAwaitingKey(projectID))
 
         model.replaceFocusedPaneTree(model.focusedPaneTree.removing(.leaf(view: b)))
 
         #expect(model.childExitOutcome(for: Self.paneID(a), abnormalExit: true)
-                == .terminated(groupID))
+                == .terminated(projectID))
     }
 
     // MARK: Terminated state (SPEC §23.2)
 
-    @Test func markPaneTerminatedKeepsGroupWithNoteAndPane() throws {
+    @Test func markPaneTerminatedKeepsProjectWithNoteAndPane() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
-        model.setGroupNote(groupID, to: "deploy at five\ncheck the logs")
+        let projectID = try #require(model.state.focusedProject)
+        model.setProjectNote(projectID, to: "deploy at five\ncheck the logs")
 
         let marked = model.markPaneTerminated(Self.paneID(pane))
 
         #expect(marked)
-        let group = try #require(model.state.groups[groupID])
-        #expect(group.isTerminated)
-        #expect(model.isGroupTerminated(groupID))
-        #expect(group.terminatedPane == Self.paneID(pane))
-        #expect(group.paneTree.find(id: pane.id) != nil)
-        #expect(group.note == "deploy at five\ncheck the logs")
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.isTerminated)
+        #expect(model.isProjectTerminated(projectID))
+        #expect(project.terminatedPane == Self.paneID(pane))
+        #expect(project.paneTree.find(id: pane.id) != nil)
+        #expect(project.note == "deploy at five\ncheck the logs")
     }
 
     @Test func markPaneTerminatedRejectsPaneAmongSeveral() throws {
         let a = TestPane()
         let b = TestPane()
         let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
         #expect(!model.markPaneTerminated(Self.paneID(b)))
-        #expect(!model.isGroupTerminated(groupID))
+        #expect(!model.isProjectTerminated(projectID))
     }
 
     @Test func terminatedPrimaryLastPaneKeepsItsPrimaryFlag() throws {
@@ -133,16 +133,16 @@ struct GroupTerminatedTests {
         // both the pane and its flag in place.
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
         #expect(model.markPaneTerminated(Self.paneID(pane)))
-        #expect(model.state.groups[groupID]?.primaryPane == Self.paneID(pane))
+        #expect(model.state.projects[projectID]?.primaryPane == Self.paneID(pane))
     }
 
     @Test func splittingWhileTerminatedClearsTheTerminatedState() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
         #expect(model.markPaneTerminated(Self.paneID(pane)))
 
         // The terminated state is defined only for a sole last pane: a tree
@@ -151,7 +151,7 @@ struct GroupTerminatedTests {
         model.replaceFocusedPaneTree(
             try model.focusedPaneTree.inserting(view: other, at: pane, direction: .right))
 
-        #expect(!model.isGroupTerminated(groupID))
+        #expect(!model.isProjectTerminated(projectID))
     }
 
     // MARK: Sibling-pane close (SPEC §23.2)
@@ -160,75 +160,75 @@ struct GroupTerminatedTests {
         let a = TestPane()
         let b = TestPane()
         let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let groupID = try #require(model.state.focusedGroup)
-        model.setGroupNote(groupID, to: "still here")
+        let projectID = try #require(model.state.focusedProject)
+        model.setProjectNote(projectID, to: "still here")
 
         let removed = model.removeExitedPane(Self.paneID(b))
 
         #expect(removed)
-        let group = try #require(model.state.groups[groupID])
-        #expect(group.paneTree.find(id: b.id) == nil)
-        #expect(group.paneTree.find(id: a.id) != nil)
-        #expect(!group.isTerminated)
-        #expect(group.note == "still here")
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.paneTree.find(id: b.id) == nil)
+        #expect(project.paneTree.find(id: a.id) != nil)
+        #expect(!project.isTerminated)
+        #expect(project.note == "still here")
     }
 
-    @Test func removeExitedPaneRejectsAGroupsLastPane() throws {
+    @Test func removeExitedPaneRejectsAProjectsLastPane() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
         // A last pane is never removed by the exit path: that case is
-        // `.terminated` (the group must not close).
+        // `.terminated` (the project must not close).
         #expect(!model.removeExitedPane(Self.paneID(pane)))
-        #expect(model.state.groups[groupID]?.paneTree.find(id: pane.id) != nil)
+        #expect(model.state.projects[projectID]?.paneTree.find(id: pane.id) != nil)
     }
 
-    @Test func removeExitedPaneWorksForHiddenGroups() throws {
-        // Two groups; hide the second (multi-pane) one, then close one of its
+    @Test func removeExitedPaneWorksForHiddenProjects() throws {
+        // Two projects; hide the second (multi-pane) one, then close one of its
         // exited panes model-side — the path the controller uses for panes
-        // outside the focused group's mirrored tree.
+        // outside the focused project's mirrored tree.
         let visible = TestPane()
         let hiddenA = TestPane()
         let hiddenB = TestPane()
 
-        let visibleGroup = TestGroupState(
-            id: GroupID(), name: "visible", paneTree: .init(view: visible), createdAt: Date())
-        let hiddenGroup = TestGroupState(
-            id: GroupID(), name: "hidden",
+        let visibleProject = TestProjectState(
+            id: ProjectID(), name: "visible", paneTree: .init(view: visible), createdAt: Date())
+        let hiddenProject = TestProjectState(
+            id: ProjectID(), name: "hidden",
             paneTree: try .init(view: hiddenA).inserting(view: hiddenB, at: hiddenA, direction: .right),
             createdAt: Date())
 
         let model = TestWorkspaceModel(TestWorkspaceState(
-            canonicalGroupTree: .init(view: GroupRef(id: visibleGroup.id)),
-            groups: [visibleGroup.id: visibleGroup, hiddenGroup.id: hiddenGroup],
-            hiddenGroupIDs: [hiddenGroup.id],
-            focusedGroup: visibleGroup.id))
+            canonicalProjectTree: .init(view: ProjectRef(id: visibleProject.id)),
+            projects: [visibleProject.id: visibleProject, hiddenProject.id: hiddenProject],
+            hiddenProjectIDs: [hiddenProject.id],
+            focusedProject: visibleProject.id))
 
-        #expect(model.groupID(containing: Self.paneID(hiddenB)) == hiddenGroup.id)
+        #expect(model.projectID(containing: Self.paneID(hiddenB)) == hiddenProject.id)
         #expect(model.removeExitedPane(Self.paneID(hiddenB)))
-        let group = try #require(model.state.groups[hiddenGroup.id])
-        #expect(group.paneTree.find(id: hiddenB.id) == nil)
-        #expect(group.paneTree.find(id: hiddenA.id) != nil)
+        let project = try #require(model.state.projects[hiddenProject.id])
+        #expect(project.paneTree.find(id: hiddenB.id) == nil)
+        #expect(project.paneTree.find(id: hiddenA.id) != nil)
     }
 
     // MARK: Persistence (SPEC §23.4)
 
-    @Test func terminatedGroupRoundTripKeepsNote() throws {
+    @Test func terminatedProjectRoundTripKeepsNote() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
-        model.setGroupNote(groupID, to: "the note survives\nthe shell does not")
+        let projectID = try #require(model.state.focusedProject)
+        model.setProjectNote(projectID, to: "the note survives\nthe shell does not")
         #expect(model.markPaneTerminated(Self.paneID(pane)))
 
         let data = try JSONEncoder().encode(model.state)
         let decoded = try JSONDecoder().decode(TestWorkspaceState.self, from: data)
 
-        let group = try #require(decoded.groups[groupID])
-        #expect(group.note == "the note survives\nthe shell does not")
+        let project = try #require(decoded.projects[projectID])
+        #expect(project.note == "the note survives\nthe shell does not")
         // The terminated state itself is runtime-only: a restore recreates
-        // every pane with a fresh shell, so the group comes back live.
-        #expect(!group.isTerminated)
+        // every pane with a fresh shell, so the project comes back live.
+        #expect(!project.isTerminated)
     }
 
     // MARK: Enter restart (SPEC §23.3)
@@ -236,30 +236,30 @@ struct GroupTerminatedTests {
     @Test func restartTerminatedPaneStartsFreshPaneInSameSlot() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
-        model.setGroupNote(groupID, to: "keep me")
+        let projectID = try #require(model.state.focusedProject)
+        model.setProjectNote(projectID, to: "keep me")
         #expect(model.markPaneTerminated(Self.paneID(pane)))
 
         let fresh = TestPane()
-        let restarted = model.restartTerminatedPane(in: groupID, with: fresh)
+        let restarted = model.restartTerminatedPane(in: projectID, with: fresh)
 
         #expect(restarted)
-        let group = try #require(model.state.groups[groupID])
-        #expect(!group.isTerminated)
-        #expect(group.paneTree.find(id: fresh.id) != nil)
-        #expect(group.paneTree.find(id: pane.id) == nil)
-        #expect(!group.paneTree.isSplit)
-        #expect(group.primaryPane == Self.paneID(fresh))
-        #expect(group.focusedSurface == Self.paneID(fresh))
-        #expect(group.note == "keep me")
+        let project = try #require(model.state.projects[projectID])
+        #expect(!project.isTerminated)
+        #expect(project.paneTree.find(id: fresh.id) != nil)
+        #expect(project.paneTree.find(id: pane.id) == nil)
+        #expect(!project.paneTree.isSplit)
+        #expect(project.primaryPane == Self.paneID(fresh))
+        #expect(project.focusedSurface == Self.paneID(fresh))
+        #expect(project.note == "keep me")
     }
 
     @Test func restartIsRejectedWhenNotTerminated() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
-        let groupID = try #require(model.state.focusedGroup)
+        let projectID = try #require(model.state.focusedProject)
 
-        #expect(!model.restartTerminatedPane(in: groupID, with: TestPane()))
-        #expect(model.state.groups[groupID]?.paneTree.find(id: pane.id) != nil)
+        #expect(!model.restartTerminatedPane(in: projectID, with: TestPane()))
+        #expect(model.state.projects[projectID]?.paneTree.find(id: pane.id) != nil)
     }
 }

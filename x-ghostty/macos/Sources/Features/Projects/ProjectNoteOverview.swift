@@ -1,21 +1,21 @@
 import SwiftUI
 
 /// The read-only note panel the note overview (`toggle_note_overview`,
-/// Cmd+Opt+N, `SPEC.md` §21.3) lays over one visible group.
+/// Cmd+Opt+N, `SPEC.md` §21.3) lays over one visible project.
 ///
-/// `GroupView` renders this over its own content while the overview is
-/// active, so every visible group shows its note at once. The panel never
-/// edits: it only displays the note, truncated to whatever fits the group
-/// without breaking the layout — the edit overlay (`GroupNoteEditor`) is
+/// `ProjectView` renders this over its own content while the overview is
+/// active, so every visible project shows its note at once. The panel never
+/// edits: it only displays the note, truncated to whatever fits the project
+/// without breaking the layout — the edit overlay (`ProjectNoteEditor`) is
 /// where the full text is guaranteed visible.
-struct GroupNoteOverviewOverlay: View {
+struct ProjectNoteOverviewOverlay: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
-    let group: GroupState
+    let project: ProjectState
 
     var body: some View {
         ZStack {
-            // Local backdrop: dims this group's terminal so the note reads as
+            // Local backdrop: dims this project's terminal so the note reads as
             // a transient layer above it, and swallows clicks — the overview
             // is viewing-only.
             Color.black.opacity(0.25)
@@ -33,18 +33,18 @@ struct GroupNoteOverviewOverlay: View {
             header
 
             Group {
-                if group.note.isEmpty {
+                if project.note.isEmpty {
                     Text("no note")
                         .opacity(0.4)
                 } else {
-                    Text(group.note)
+                    Text(project.note)
                 }
             }
             .font(.system(size: 12, design: .monospaced))
             // The model caps notes at `maxNoteLines`; the line limit plus the
-            // group-bounded frame truncate the display when the group is too
+            // project-bounded frame truncate the display when the project is too
             // small, instead of growing past its bounds.
-            .lineLimit(GroupState.maxNoteLines)
+            .lineLimit(ProjectState.maxNoteLines)
             .truncationMode(.tail)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
@@ -59,19 +59,19 @@ struct GroupNoteOverviewOverlay: View {
         .shadow(radius: 8)
     }
 
-    /// Header band: the group name plus the priority/deadline meta
+    /// Header band: the project name plus the priority/deadline meta
     /// (SPEC §24 — the overview shows them with the note; unset values show
     /// nothing, an overdue deadline is subtly emphasized). Styled like
-    /// `GroupNoteEditor`'s header so the two note surfaces read as one family.
+    /// `ProjectNoteEditor`'s header so the two note surfaces read as one family.
     private var header: some View {
         HStack {
-            Text(group.name)
+            Text(project.name)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            GroupPriorityDeadlineMeta(
-                priority: group.priority,
-                deadline: group.deadline,
-                isOverdue: group.deadline?.isOverdue(today: GroupDeadline(from: Date())) ?? false)
+            ProjectPriorityDeadlineMeta(
+                priority: project.priority,
+                deadline: project.deadline,
+                isOverdue: project.deadline?.isOverdue(today: ProjectDeadline(from: Date())) ?? false)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -92,8 +92,8 @@ struct GroupNoteOverviewOverlay: View {
 /// Cmd+Opt+N chord both leave the mode. An invisible focused text field holds
 /// first responder — the terminal must not see keystrokes while the mode is
 /// up, and `onExitCommand` needs a focused view to deliver Escape to (the
-/// same mechanics as `GroupNoteEditor`'s TextEditor).
-struct GroupNoteOverviewKeyCatcher: View {
+/// same mechanics as `ProjectNoteEditor`'s TextEditor).
+struct ProjectNoteOverviewKeyCatcher: View {
     /// Leave the overview (Escape).
     let onExit: () -> Void
 

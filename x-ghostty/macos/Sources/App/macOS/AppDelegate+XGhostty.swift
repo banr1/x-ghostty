@@ -6,8 +6,8 @@ import AppKit
 /// APIs for app-global information.
 extension AppDelegate: XGhostty.Delegate {
     func ghosttySurface(id: UUID) -> XGhostty.SurfaceView? {
-        // Search every group, not just the focused one: hidden and unfocused
-        // groups own live surfaces too, and drop resolution has to reach them.
+        // Search every project, not just the focused one: hidden and unfocused
+        // projects own live surfaces too, and drop resolution has to reach them.
         // Mirrors `AppDelegate.findSurface(forUUID:)`.
         TerminalController.shared?.allSurfaces.first { $0.id == id }
     }

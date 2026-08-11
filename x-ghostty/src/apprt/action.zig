@@ -109,7 +109,7 @@ pub const Action = union(Key) {
     /// to take up the entire window.
     toggle_split_zoom,
 
-    /// Present the target terminal whether its a group or a split.
+    /// Present the target terminal whether its a project or a split.
     present_terminal,
 
     /// Sets a size limit (in pixels) for the target terminal.
@@ -291,80 +291,80 @@ pub const Action = union(Key) {
     /// otherwise the terminal-set title.
     copy_title_to_clipboard,
 
-    // Group-layer actions. A group is the upper layer of the two-level split
-    // model; these operate on the window's group tree rather than a single
-    // group's pane tree. The argument types are shared with the corresponding
+    // Project-layer actions. A project is the upper layer of the two-level split
+    // model; these operate on the window's project tree rather than a single
+    // project's pane tree. The argument types are shared with the corresponding
     // split actions. New actions must be appended (here and in the Key enum
     // below) to preserve C ABI compatibility.
 
-    /// Create a new group split in the given direction.
-    new_group_split: SplitDirection,
+    /// Create a new project split in the given direction.
+    new_project_split: SplitDirection,
 
-    /// Focus a group in the given direction or creation order.
-    goto_group: GotoSplit,
+    /// Focus a project in the given direction or creation order.
+    goto_project: GotoSplit,
 
-    /// Resize the current group in the given direction.
-    resize_group: ResizeSplit,
+    /// Resize the current project in the given direction.
+    resize_project: ResizeSplit,
 
-    /// Equalize the size of all visible groups in the target window.
-    equalize_groups,
+    /// Equalize the size of all visible projects in the target window.
+    equalize_projects,
 
-    /// Toggle whether the current group is zoomed. A zoomed group is resized
+    /// Toggle whether the current project is zoomed. A zoomed project is resized
     /// to take up the entire window.
-    toggle_group_zoom,
+    toggle_project_zoom,
 
-    /// Hide the current group without terminating its processes.
-    hide_group,
+    /// Hide the current project without terminating its processes.
+    hide_project,
 
-    /// Show a previously hidden group, identified by its id or name.
-    show_group: SetTitle,
+    /// Show a previously hidden project, identified by its id or name.
+    show_project: SetTitle,
 
-    /// Prompt to rename the current group. It is up to the apprt to prompt.
-    rename_group,
+    /// Prompt to rename the current project. It is up to the apprt to prompt.
+    rename_project,
 
-    /// Set the name of the current group to the requested value.
-    set_group_title: SetTitle,
+    /// Set the name of the current project to the requested value.
+    set_project_title: SetTitle,
 
-    /// Close the current group, terminating the processes of all its panes.
-    close_group,
+    /// Close the current project, terminating the processes of all its panes.
+    close_project,
 
-    /// Swap the current group with an adjacent group. Mirrors `goto_group`
-    /// but exchanges the two groups' contents instead of moving focus.
-    /// Appended last (rather than next to `goto_group`) to preserve C ABI
+    /// Swap the current project with an adjacent project. Mirrors `goto_project`
+    /// but exchanges the two projects' contents instead of moving focus.
+    /// Appended last (rather than next to `goto_project`) to preserve C ABI
     /// compatibility; see the note above.
-    move_group: GotoSplit,
+    move_project: GotoSplit,
 
-    /// Focus the Nth visible group (1-indexed) in tree traversal order.
-    /// Uses `GotoGroup` (only its non-negative index values are used here).
-    /// Appended last (rather than next to `goto_group`) to preserve C ABI
+    /// Focus the Nth visible project (1-indexed) in tree traversal order.
+    /// Uses `GotoProject` (only its non-negative index values are used here).
+    /// Appended last (rather than next to `goto_project`) to preserve C ABI
     /// compatibility; see the note above.
-    goto_group_index: GotoGroup,
+    goto_project_index: GotoProject,
 
-    /// Open the note editor overlay for the current group. It is up to the
+    /// Open the note editor overlay for the current project. It is up to the
     /// apprt to present the editor. Appended last (rather than next to
-    /// `rename_group`) to preserve C ABI compatibility; see the note above.
-    edit_group_note,
+    /// `rename_project`) to preserve C ABI compatibility; see the note above.
+    edit_project_note,
 
-    /// Toggle the read-only note overview over all visible groups. It is up
+    /// Toggle the read-only note overview over all visible projects. It is up
     /// to the apprt to present the overlays. Appended last to preserve C ABI
     /// compatibility; see the note above.
     toggle_note_overview,
 
-    /// Make the focused pane the primary pane of its group (the pane the
+    /// Make the focused pane the primary pane of its project (the pane the
     /// overall view renders). It is up to the apprt to apply it — only
-    /// effective while zoomed into the group. Appended last to preserve
+    /// effective while zoomed into the project. Appended last to preserve
     /// C ABI compatibility; see the note above.
     set_primary,
 
-    /// Reorder the visible groups' layout by priority (high → medium → low →
+    /// Reorder the visible projects' layout by priority (high → medium → low →
     /// unset, stable ties). It is up to the apprt to apply it. Appended last
     /// to preserve C ABI compatibility; see the note above.
-    sort_groups_by_priority,
+    sort_projects_by_priority,
 
-    /// Reorder the visible groups' layout by deadline (nearest first, unset
+    /// Reorder the visible projects' layout by deadline (nearest first, unset
     /// last, stable ties). It is up to the apprt to apply it. Appended last
     /// to preserve C ABI compatibility; see the note above.
-    sort_groups_by_deadline,
+    sort_projects_by_deadline,
 
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
@@ -420,26 +420,26 @@ pub const Action = union(Key) {
         readonly,
         copy_title_to_clipboard,
 
-        // Group-layer actions, appended for C ABI compatibility. Keep this
+        // Project-layer actions, appended for C ABI compatibility. Keep this
         // order in sync with the union above and with `xghostty_action_tag_e`
         // in include/xghostty.h.
-        new_group_split,
-        goto_group,
-        resize_group,
-        equalize_groups,
-        toggle_group_zoom,
-        hide_group,
-        show_group,
-        rename_group,
-        set_group_title,
-        close_group,
-        move_group,
-        goto_group_index,
-        edit_group_note,
+        new_project_split,
+        goto_project,
+        resize_project,
+        equalize_projects,
+        toggle_project_zoom,
+        hide_project,
+        show_project,
+        rename_project,
+        set_project_title,
+        close_project,
+        move_project,
+        goto_project_index,
+        edit_project_note,
         toggle_note_overview,
         set_primary,
-        sort_groups_by_priority,
-        sort_groups_by_deadline,
+        sort_projects_by_priority,
+        sort_projects_by_deadline,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");
@@ -564,18 +564,18 @@ pub const ResizeSplit = extern struct {
     };
 };
 
-/// The group to jump to. This is non-exhaustive so that integer values
-/// represent the index (zero-based) of the group to jump to. Negative values
+/// The project to jump to. This is non-exhaustive so that integer values
+/// represent the index (zero-based) of the project to jump to. Negative values
 /// are special values.
-pub const GotoGroup = enum(c_int) {
+pub const GotoProject = enum(c_int) {
     previous = -1,
     next = -2,
     last = -3,
     _,
 
     // TODO: check non-exhaustive enums
-    // test "xghostty.h GotoGroup" {
-    //     try lib.checkXGhosttyHEnum(GotoGroup, "XGHOSTTY_GOTO_GROUP_");
+    // test "xghostty.h GotoProject" {
+    //     try lib.checkXGhosttyHEnum(GotoProject, "XGHOSTTY_GOTO_PROJECT_");
     // }
 };
 
