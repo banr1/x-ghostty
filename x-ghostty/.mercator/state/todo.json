@@ -8,10 +8,7 @@
     "avoid_mixing_high_risk_items": true,
     "avoid_mixing_executors": true
   },
-  "active_batch": [
-    "T-038",
-    "T-039"
-  ],
+  "active_batch": [],
   "items": [
     {
       "id": "T-001",
@@ -1078,7 +1075,7 @@
             "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
             "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
           ],
-          "summary": "Priority/deadline controls inside the Cmd+N note editor (SPEC section 24, to be written in T-028). Model: new full commit point WorkspaceModel.endNoteEditing(saving:priority:deadlineInput:) - the note, the priority, and the deadline text input save together on the editing session's single commit; deadlineInput goes through the existing setGroupDeadline(parsing:) boundary (empty clears deliberately, invalid input rejected to unset), and the note-only endNoteEditing(saving:) remains for callers that must not touch priority/deadline. Escape keeps its existing semantics: cancelNoteEditing drops all three drafts at once because the drafts are view state and the model is untouched until commit. View: GroupNoteEditor gains priority/deadline seed props and drafts (seeded onAppear from the group record; GroupDeadline.displayText renders the current deadline), a metaRow under the TextEditor with a small segmented priority picker (none/high/med/low over GroupPriority?, nil = unset) and a plain monospaced YYYY-MM-DD text field (onSubmit commits like Cmd+Enter), plus a subtle '-> unset' hint previewing the model's rejection judgment by reusing GroupDeadline(parsing:) so hint and save can never disagree; every save path (Cmd+Enter hidden chord, backdrop click, deadline-field Return) funnels through one commit() helper. TerminalWorkspaceView passes the seeds and wires onEnd to the full-commit model call. Judgment stays in the model; the view only forwards drafts."
+          "summary": "Priority/deadline controls inside the Cmd+N note editor (SPEC section 24, to be written in T-028). Model: new full commit point WorkspaceModel.endNoteEditing(saving:priority:deadlineInput:) - the note, the priority, and the deadline text input save together on the editing session's single commit; deadlineInput goes through the existing setGroupDeadline(parsing:) boundary (empty clears deliberately, invalid input is rejected to unset), and the note-only endNoteEditing(saving:) remains for callers that must not touch priority/deadline. Escape keeps its existing semantics: cancelNoteEditing drops all three drafts at once because the drafts are view state and the model is untouched until commit. View: GroupNoteEditor gains priority/deadline seed props and drafts (seeded onAppear from the group record; GroupDeadline.displayText renders the current deadline), a metaRow under the TextEditor with a small segmented priority picker (none/high/med/low over GroupPriority?, nil = unset) and a plain monospaced YYYY-MM-DD text field (onSubmit commits like Cmd+Enter), plus a subtle '-> unset' hint previewing the model's rejection judgment by reusing GroupDeadline(parsing:) so hint and save can never disagree; every save path (Cmd+Enter hidden chord, backdrop click, deadline-field Return) funnels through one commit() helper. TerminalWorkspaceView passes the seeds and wires onEnd to the full-commit model call. Judgment stays in the model; the view only forwards drafts."
         },
         {
           "type": "command",
@@ -1620,7 +1617,7 @@
     {
       "id": "T-038",
       "title": "Update SPEC.md and README.md to describe the hide-selection and layout-application layers as implemented, in the post-rename vocabulary",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-068"
@@ -1630,12 +1627,39 @@
       },
       "batch_group": "batch4-docs",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: new section 25 hide 選択仕様 (session/model judgment - transient hideSelection set, canBeginHideSelection >= 2 visible + no other overlay shared with keybind performability, begin releases zoom, ordinal-order listing with hidden projects never listed, select-all rejected so at least one project stays visible, empty-selection confirm closes hiding nothing, one-state-write batch commit with the hideFocusedProject nearest-leaf focus rule and mid-session zoom backstop, cancel/Esc hides nothing, overlaySessionActive interaction ownership incl. restoreState/removeAllProjects teardown; UI - ProjectHideSelector rendering, footer messages, CommandPaletteView-style sink-TextField keyboard mechanics with Space toggle and backdrop-click-cancels, ONE batch 'Hide Projects' undo, shared with the layout hide-pick via title/hint/footer parametrization; the 14 ProjectHideSelectionTests inventory) AND new section 26 登録レイアウト仕様 (26.1 ProjectLayout data model - the closed 11-layout set, equalSplitRowCounts sqrt-n rule pinning the Essence table, rowCounts, slotFrames row-major assignment order with ALL rows equal height including the +1 row explicitly flagged as a design interpretation for T-041 review, SplitTree.init(gridRows:) equal-ratio grid construction; 26.2 choose_project_layout / Cmd+L selector overlay with the per-row effect preview; 26.3 count matching - equal/shortfall/excess outcomes, applyLayout validation, exact-count hide-pick confirm gating, Esc-cancels-the-whole-application, one 'Apply Layout' undo per application; 26.4 one-shot semantics - no applied-layout state, unselected hidden projects unaffected, ordinals follow, normal persistence; 26.5 the 14 ProjectLayoutTests inventory). Section 9.1 action list gains choose_project_layout; 10.5 gains the Cmd+L row plus notes that hide_project now opens the section-25 screen and that plain Cmd+L has no existing assignment; 11.7 annotated - the hide_project action opens the selection screen while the single-hide model primitive remains for show/undo flows; 16 file layout gains ProjectHideSelector.swift / ProjectLayout.swift / ProjectLayoutSelector.swift; 24.4's sort guard rewritten to the unified overlaySessionActive predicate; two rename artifacts ('プロジェクト(=プロジェクト)' in the section 22/24 intros) cleaned. README.md About: new 'Hide selection' bullet (Cmd+Opt+H selection screen, batch hide into the shelf, Esc hides nothing, at-least-one-visible rule, SPEC section 25 pointer) and new 'Layouts' bullet (Cmd+L list of the 11 built-in layouts, equal/shortfall/excess behaviors, one-shot application, SPEC section 26 pointer). Verified: zero group-vocabulary occurrences in SPEC.md and README.md (grep -c -i = 0 for both), no stale 'to be written' phrasing, and every pre-existing section-25/26.x doc-comment citation in the implementation (WorkspaceModel, ProjectHideSelector, ProjectLayout, ProjectLayoutSelector, TerminalWorkspaceView, TerminalView, BaseTerminalController, XGhostty.App, XGhosttyPackage, both test files) now resolves to a matching real section - the subsection numbering was written to align with them."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 after the docs edits (docs-only change; gate shared with T-039, run in cycle R-20260811T171006)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 after the docs edits (gate shared with T-039)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: full suite TEST SUCCEEDED (exit 0) after the docs edits (gate shared with T-039)."
+        }
+      ]
     },
     {
       "id": "T-039",
       "title": "Full verification: zig build / just test / just swift-test all exit 0 with every S-069 / S-071 test present and passing, the rename completion checks (Projects/ exists, no Groups/, project-family action names and identifiers, no 'Group' in fork user-visible strings) verified by command, and no regression beyond the sanctioned exceptions",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-069",
@@ -1649,7 +1673,38 @@
       },
       "batch_group": "batch4-verify",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete batch-4 tree (rename + hide selection + layouts, T-033..T-038 all in). Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the full renamed project-family action tag set incl. XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT, and the renamed keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete project/note/primary/terminated/priority-deadline/hide-selection/layout suite passes with the batch-4 docs in the tree. No regression beyond S-010's sanctioned exceptions (the Cmd+Opt+H selection-screen replacement and the new cmd+l assignment being the batch-4 ones)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/ProjectHideSelectionTests -only-testing:XGhosttyTests/ProjectLayoutTests test",
+          "exit_code": 0,
+          "summary": "Success-criteria 13/15 gate: TEST SUCCEEDED with every S-069 and S-071 test named passing in the log. S-069 (all 14 ProjectHideSelectionTests): confirmHidesSelectedProjectsInOneBatch, cancelHideSelectionHidesNothing, selectAllCannotConfirmAndAtLeastOneProjectStaysVisible, beginHideSelectionListsVisibleProjectsInOrdinalOrder, beginHideSelectionReleasesZoom, beginHideSelectionDeclinesForSingleVisibleProject, beginHideSelectionDeclinesWhileAnotherOverlayIsUp, toggleHideSelectionTogglesMultipleProjects, toggleHideSelectionRejectsHiddenAndUnknownProjects, confirmWithEmptySelectionClosesHidingNothing, confirmMovesFocusToNearestSurvivorWhenFocusedProjectIsHidden, focusMovesEditingAndSortsAreNoOpsWhileSelectionIsUp, restoreStateAndTeardownEndTheSession, batchHiddenProjectsReturnThroughTheShelfUnchanged. S-071 (all 14 ProjectLayoutTests): registeredLayoutsMatchTheDefinition, equalSplitRowRuleMatchesTheEssenceTable, slotFramesFollowTheGridRule, gridTreeConstructionMatchesHandBuiltShape, equalCountApplyAssignsOrdinalOrderAndOrdinalsFollow, shortfallCreatesNewProjectsAtTheOrdinalTail, applyLayoutRejectsAWrongShortfallCount, excessOpensHidePickGatedOnExactCount, hidePickFocusMovesToNearestSurvivorWhenFocusedProjectPicked, unselectedHiddenProjectsAreUnaffected, escCancelsTheWholeApplication, beginReleasesZoomAndDeclinesWhileOtherOverlaysUp, layoutSessionsOwnTheInteractionWhileUp, restoreStateAndTeardownEndTheSessions, applicationIsOneShotAndTheArrangementPersistsLikeAnyOther."
+        },
+        {
+          "type": "command",
+          "command": "ls macos/Sources/Features/Projects macos/Tests/Projects; ls macos/Sources/Features/Groups macos/Tests/Groups; grep -rn -E (old fork action names) src/ include/ | wc -l; grep -rnE (Group-family identifiers) macos/Sources macos/Tests --include=*.swift; grep -c -i (group vocabulary) SPEC.md README.md",
+          "exit_code": 0,
+          "summary": "Rename completion checks re-verified by command this cycle (success criterion 17, S-073): macos/Sources/Features/Projects/ and macos/Tests/Projects/ exist; the old Groups/ directories do not (ls: No such file or directory); zero old fork action names (hide_group/close_group/toggle_group_zoom/rename_group/goto_group/new_group_split/resize_group/equalize_groups/edit_group_note/sort_groups_by/set_group_title/show_group) under src/ and include/; the only Group-family matches in Swift sources are the two intentional legacy decode-key string literals ('focusedGroup' in WorkspaceState.swift LegacyCodingKeys and in the decodesLegacyGroupVocabularyKeys test fixture, R-010 - string data, not identifiers, not user-visible); zero group-vocabulary occurrences in SPEC.md and README.md (grep -c -i = 0). The remaining criterion-17 item - no 'Group' in on-device user-visible wording - is the human check T-042."
+        }
+      ]
     },
     {
       "id": "T-040",

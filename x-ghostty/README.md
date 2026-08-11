@@ -64,6 +64,21 @@ its window management with a single model:
   deadline kept — and pressing Return starts a new shell in the same pane.
   The only way a project and its information are lost is an explicitly
   confirmed close. See SPEC.md §23.
+- **Hide selection.** `Cmd+Opt+H` opens a selection screen listing every
+  visible project: toggle any number of them (arrows + Space, or click) and
+  press Enter to hide them all in one batch into the hidden-project shelf;
+  Esc closes without hiding anything. At least one project always stays
+  visible, and hidden projects return through the shelf as before. See
+  SPEC.md §25.
+- **Layouts.** `Cmd+L` opens a list of 11 built-in layouts — equal splits for
+  4–9 projects and X+1 (X = 4–8: X projects on top, one full-width across the
+  bottom). Arrow keys + Enter apply one, Esc closes without changing
+  anything. If the layout holds more projects than are visible, new projects
+  with fresh shells are created at the ordinal tail; if fewer, a pick screen
+  asks to select exactly the excess to hide (never close) before applying.
+  Applying is a one-shot arrangement: nothing remembers the "current layout",
+  and manual resizing, splitting, and sorting keep working as before. See
+  SPEC.md §26.
 - **Splits** work as they do upstream, nested inside each project; in the
   overall view only each project's primary pane is shown (see above).
 

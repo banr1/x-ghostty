@@ -472,6 +472,8 @@ set_primary
 sort_projects_by_priority
 sort_projects_by_deadline
 
+choose_project_layout
+
 close_project
 ```
 
@@ -553,6 +555,7 @@ Cmd+Opt+N             -> toggle_note_overview
 Cmd+P                 -> set_primary
 Cmd+S                 -> sort_projects_by_priority
 Cmd+Shift+S           -> sort_projects_by_deadline
+Cmd+L                 -> choose_project_layout
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
@@ -562,6 +565,11 @@ Cmd+Shift+S           -> sort_projects_by_deadline
 `Cmd+P` に既存割り当てはない(コマンドパレットは `Cmd+Shift+P`)。
 ソート 2 action の仕様は §24.4。素の `Cmd+S` / `Cmd+Shift+S` にも既存割り当てが
 ないことを確認済み(上流はどちらの chord も未使用)。
+`hide_project` は §25 の hide 選択画面を開く(即時 hide ではない。単一 hide の
+モデルプリミティブは §11.7 のまま残る)。`choose_project_layout`(§26.2)は
+レイアウト選択オーバーレイを開く。素の `Cmd+L` に既存割り当てはない(config
+デフォルトにもメニュー key equivalent にも `l` の super chord は無いことを
+確認済み)。
 また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
 ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
 `Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる。
@@ -776,6 +784,11 @@ project zoom と inner split zoom は共存可能。
 つまり外側から内側へ適用する。
 
 ### 11.7 `hide_project`
+
+`hide_project` action(既定 `Cmd+Opt+H`)自体は §25 の hide 選択画面を開く。
+本節が定める単一プロジェクト hide はモデルのプリミティブ
+(`hideFocusedProject`)として残り、show/undo フローと §25 の一括 hide が
+この意味論を共有する。
 
 ```text
 1. focus の移動先を hide 前の canonical tree 上で解決(nearest leaf)
@@ -1148,6 +1161,9 @@ macos/Sources/Features/Projects/
   ProjectNoteEditor.swift
   ProjectNoteOverview.swift
   ProjectTerminatedPaneView.swift  (§23.3)
+  ProjectHideSelector.swift        (hide 選択画面とレイアウト hide-pick が共用、§25/§26.3)
+  ProjectLayout.swift              (登録レイアウト 11 種とスロット計算、§26.1)
+  ProjectLayoutSelector.swift      (レイアウト選択オーバーレイ、§26.2)
 ```
 
 (close 確認ダイアログは専用ファイルではなく `BaseTerminalController` の既存
@@ -1456,7 +1472,7 @@ static let maxNoteLines = 10
 
 ## 22. プライマリーペイン仕様
 
-プロジェクト(=プロジェクト)ごとに常に 1 つだけ存在する代表ペインの層。全体ビュー
+プロジェクトごとに常に 1 つだけ存在する代表ペインの層。全体ビュー
 (非 zoom)は各プロジェクトのプライマリーペインだけを描画し、一望に適した情報密度を
 作る。判断ロジック(既定付与・唯一性・昇格・復元時正規化・全体ビューの表示対象)
 はすべてモデル層に置き、`XGhosttyTests` から検証する(§22.7)。
@@ -1708,7 +1724,7 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 
 ## 24. 優先度・締切仕様
 
-プロジェクト(=プロジェクト)ごとの優先度と締切を保持・表示し、明示的なソート
+プロジェクトごとの優先度と締切を保持・表示し、明示的なソート
 アクションで実レイアウトを並び替える層。保持・復元・ソート順・締切超過判定は
 すべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。
 
@@ -1780,7 +1796,8 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 - `sort_projects_by_priority`(既定 `Cmd+S`)/ `sort_projects_by_deadline`
   (既定 `Cmd+Shift+S`)。§10.5 のとおり両 chord とも既存割り当てなし。
 - 判定は `WorkspaceModel.canSortVisibleProjects`:visible プロジェクト 2 つ以上 +
-  一望モード中でない(一望モードは閲覧専用、§21.3)。`set_primary` と同型で、
+  オーバーレイセッション中でない(`overlaySessionActive`:一望モード §21.3・
+  hide 選択 §25・レイアウトセッション §26 を統合した判定)。`set_primary` と同型で、
   performable チェックと実行が同じ判定を共有し、不成立時はキー未消費で
   fall through する。
 - 実行:`SplitTree.reorderingLeaves(to:)` が**同一構造の上で leaf の載せ替え
@@ -1815,6 +1832,178 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   一望モード中は decline(退出後は可)
 - エディタ commit: 3 値一括保存 / 不正締切は unset へ / note-only 経路は
   優先度・締切不変 / セッションなし no-op / 未知プロジェクト setter no-op
+```
+
+## 25. hide 選択仕様
+
+`Cmd+Opt+H`(`hide_project` action)は focused プロジェクトの即時 hide ではなく、
+visible なプロジェクトから隠すものを複数選ぶ選択画面を開く(即時 hide の置換は
+必須対応事項 14 の列挙済み意図的変更)。判断ロジックはモデル層に置き、
+`XGhosttyTests` から検証する(本節末尾)。
+
+### セッションとモデル判断
+
+- セッション状態は `WorkspaceModel.hideSelection`(`Set<ProjectID>?`、nil =
+  画面なし)。**transient(保存しない)**で、`restoreState`(undo/redo)と
+  `removeAllProjects` がセッションを終了する。
+- `canBeginHideSelection`:visible プロジェクト 2 つ以上(1 つでは「最低 1 つは
+  visible に残る」制約により何も隠せない)+ ノートエディタ・他のオーバーレイ
+  セッションが開いていないこと。performable チェックと実行が同じ判定を共有し、
+  不成立時はキー未消費で fall through する(`set_primary` と同型)。
+- `beginHideSelection` は zoom を先に解除する(zoom 中呼び出しの挙動は Essence が
+  実装に委ねた部分)。列挙対象 `hideSelectionProjectIDs` は visible な
+  プロジェクトを序数順で返す。hidden なプロジェクトは列挙されず選択にも
+  入れない — 復帰導線は従来どおり hidden シェルフで、変更しない(§7.2)。
+- `toggleHideSelection` は visible なプロジェクトのみトグルする。
+- `canConfirmHideSelection`:**select-all は拒否**(selection.count <
+  visibleProjectCount。最低 1 つは visible に残る)。空選択は確定可能 —
+  「何も隠さず閉じる」として扱う。
+- `confirmHideSelection(savingOutgoingPaneTree:)`:選択された全プロジェクトを
+  **1 回の state 書き込みで一括 hide** — 各 leaf が canonical tree から抜けて
+  残存プロジェクトがスペースを回収し、id が `hiddenProjectIDs`(シェルフの
+  source of truth)へ入る。focused プロジェクトが選択に含まれる場合、除去前の
+  ツリー上で `hideFocusedProject` と同じ nearest-leaf 規則により生存者へ focus を
+  渡す。ミッドセッションの menu-bar zoom に備えた zoom 解除バックストップと
+  `snapFocusToPrimaryInOverallView` を適用する。
+- `cancelHideSelection`(Esc 経路)は何も隠さず閉じる。
+- セッション中は画面が対話を占有する:focus 移動(`switchFocusedProject` /
+  `gotoProjectTarget` / `gotoProjectIndexTarget`)・ノート編集・一望モード・
+  ソートは既存の閲覧専用ガードと統合された `overlaySessionActive` 判定で
+  no-op になる(一望モード §21.3・レイアウトセッション §26 と相互排他)。
+
+### UI(ProjectHideSelector)
+
+- オーバーレイはセッション中のみ描画され、端末領域を恒久的に占有しない。抜ければ
+  端末が全面に戻り、キーボード focus も端末へ返る(ノートエディタと同じ流儀)。
+- visible なプロジェクトを序数順に列挙(チェックボックスグリフ + 序数 + 名前、
+  カーソル行ハイライト、ProjectNoteEditor 様式のスタイリング)。フッターは
+  選択中の件数、または Enter がブロックされる理由(「at least one project must
+  stay visible」)を表示する。
+- キーボードは CommandPaletteView と同じ機構(不可視の focused TextField が
+  キーボードを所有):Esc(`onExitCommand`)= キャンセル、Enter(`onSubmit`)=
+  確定(モデルが `canConfirmHideSelection` を再判定するため、拒否された確定は
+  画面が残る)、矢印(`onMoveCommand`)= カーソル移動、Space = カーソル行
+  トグル。行クリックでトグル、**背景クリックはキャンセル**(hide するのは
+  Enter だけ)。
+- controller の確定経路は、バッチ全体に対して **1 つ**のプロジェクト対応
+  「Hide Projects」undo を登録する。
+- 本画面はレイアウト適用の超過分 hide-pick(§26.3)と共用で、title / hint /
+  footer をパラメータ化してある。
+
+### テスト(ProjectHideSelectionTests、14 件)
+
+```text
+- 確定: 選択した複数プロジェクトが一括で hidden(1 コミット、leaf 除去、
+  projects には生存、シェルフ復帰導線不変)
+- キャンセル: 何も hidden にならず、画面を開く前と完全に同一
+- select-all: 確定できず画面が残る / 1 つ外せば確定でき、外した 1 つが
+  visible に残る
+- セッション機構: begin は序数順列挙・zoom 解除 / visible 1 つ・ノート
+  エディタ中・一望モード中は begin 拒否 / toggle は複数可・hidden と未知 id
+  拒否 / 空選択の確定は何も隠さず閉じる
+- focus: focused プロジェクトが選択に含まれると最近傍の生存者へ移る
+- 占有: セッション中の focus 移動・ノート編集・一望モード・ソートは no-op、
+  終了後に復活 / restoreState と removeAllProjects がセッションを終了
+```
+
+## 26. 登録レイアウト仕様
+
+組み込み固定 11 種の画面配置テンプレートを一手で適用する層。スロット計算・
+数合わせ・割り当て順の判断ロジックはモデル層に置き、`XGhosttyTests` から
+検証する(§26.5)。
+
+### 26.1 レイアウト定義とスロット計算(ProjectLayout)
+
+- `ProjectLayout.registered`:等分割(プロジェクト数 4〜9 の 6 種)と X+1
+  (X = 4〜8 の 5 種)の計 11 種。**データとしての閉集合**で、ユーザー定義
+  レイアウトは存在しない(非対応事項)。
+- 等分割の行配分は純関数 `equalSplitRowCounts(n)`:行数 = √n に最も近い整数、
+  余りは上の行から 1 つずつ配る — 4 = 2+2、5 = 3+2、6 = 3+3、7 = 3+2+2、
+  8 = 3+3+2、9 = 3+3+3(Essence の表をそのまま固定)。
+- `rowCounts`:X+1 は X 部分の行配分の末尾に `[1]`(最下段・全幅)を足したもの。
+- `slotFrames`:単位正方形上の rect 列を**割り当て順**(row-major:上の行から、
+  行内は左から右 — +1 枠は最下段なので自然に最後)で返す。**全行の高さは等分**
+  (X+1 の +1 行も他の行と同じ高さ — Essence は +1 行の高さを規定しないため、
+  行高等分をそのまま延長する設計解釈。T-041 の実機確認対象)。行内の各スロット
+  幅は等分。
+- `SplitTree.init(gridRows:)`(element-agnostic)がグリッドを入れ子の等比
+  split として構築する(行方向 vertical、行内 horizontal。equalChain により
+  先頭ノード比 1/n、以降は残りの 1/(n-1) で全スロット等分)。走査順は
+  row-major で、`slotFrames` の割り当て順と一致する。
+
+### 26.2 レイアウト選択オーバーレイ(choose_project_layout / Cmd+L)
+
+- 新規 action `choose_project_layout`(§9.1、既定 `Cmd+L`。§10.5 のとおり
+  既存割り当てなし)。performability は `canBeginLayoutSelection`(visible
+  プロジェクト 1 つ以上 + 他のオーバーレイなし)で、不成立時はキー未消費で
+  fall through する。
+- `beginLayoutSelection` は zoom を先に解除する(zoom 中呼び出しの挙動は
+  Essence が実装に委ねた部分)。セッション状態 `layoutSelectionActive` は
+  transient で、`restoreState` / `removeAllProjects` が終了する。
+- `ProjectLayoutSelector` オーバーレイ:11 種を列挙(ラベル・プロジェクト数・
+  **効果プレビュー** — モデルの数合わせ判断をそのまま行ごとに表示:
+  「fits」/「+N new」/「pick N to hide」)。矢印でカーソル移動、Enter または
+  行クリックで選択、Esc または背景クリックで何も変えずに閉じる。キーボード
+  機構は ProjectHideSelector と同じ sink-TextField 方式。
+- オーバーレイは呼び出し中のみ描画され、抜ければ端末が全面に戻る。selector →
+  hide-pick の遷移では focus 手戻りをスキップし、キーボードは pick 画面に
+  着地する。
+
+### 26.3 数合わせ(chooseLayout の判断)
+
+`chooseLayout` がモデルの数合わせ判断を一手に持つ:
+
+- **等数**(レイアウト数 = 現表示数):即時適用(`.applied`)。visible な
+  プロジェクトが現在の序数順のままスロットへ入る。
+- **不足**(レイアウト数 > 現表示数):`.needsNewProjects(n)` を返し、controller
+  が不足分を通常の新規作成と同様に構築(fresh `SurfaceView` = 新シェル、
+  `ProjectNameGenerator` 名、初期ペインがプライマリー)して
+  `applyLayout(appending:)` で完了する。新規プロジェクトは**序数の末尾**に
+  登録され、既存 visible が先頭側スロットを、新規が末尾側スロットを埋める。
+  `applyLayout` は不足数の不一致・id 衝突を拒否する(無変化で false)。
+- **超過**(レイアウト数 < 現表示数):hide-pick セッション
+  (`layoutHidePick`:選ばれたレイアウト + 選択集合)が開く。
+  - `layoutHidePickRequiredCount`(超過数)は live state から再導出される。
+  - `canConfirmLayoutHidePick`:**選択数が超過分ちょうど**のときのみ確定可
+    (多くても少なくても不可。画面は残る)。
+  - `confirmLayoutHidePick`:選択されたプロジェクトを hide(**close はしない**
+     — ペイン・プロセス・情報はシェルフの背後に生存)し、残りへレイアウトを
+    序数順で適用 — **1 回の state 書き込み**。focus 規則は §25 の確定と同一。
+  - `cancelLayoutHidePick`(Esc)は**レイアウト適用ごと**キャンセルする —
+    何も隠れず、何も並び替わらない。
+  - UI は ProjectHideSelector の再利用(title「apply <layout>」、footer
+    「select exactly N to hide (k/N)」/確定サマリ)。
+- controller は適用 1 回につき **1 つ**の「Apply Layout」undo を登録する
+  (等数・不足・超過のいずれの完了経路でも)。
+
+### 26.4 一回性と永続化
+
+- 適用は `applyLayoutTree` による canonical tree の再構築のみ:**「適用中の
+  レイアウト」という状態は持たない**(one-shot)。適用後の手動 resize・分割・
+  ソートは従来どおり可能で、配置は従来の経路でそのまま保存・復元される。
+- 選択されなかった hidden プロジェクトは `projects` エントリもシェルフ位置も
+  一切影響を受けない。
+- 序数(Cmd+1〜9)は走査順由来なので適用後の配置に自動追従する。zoom は
+  クリアされる(適用は全体ビューの配置替え)。
+
+### 26.5 テスト(ProjectLayoutTests、14 件)
+
+```text
+- 定義とスロット計算: 11 種の registered 定義 / 等分割行配分の Essence 表 /
+  slotFrames のグリッド規則(行高等分〔+1 行含む〕・行内幅等分・+1 全幅
+  最下段・row-major 割り当て順・7 分割の具体ピン)/ gridRows ツリーが
+  手組みの等比ノードツリーと一致
+- 等数: 序数順割り当て・ツリー = 期待グリッド・序数追従
+- 不足: 新規プロジェクトが序数末尾に作成・割り当て / 不足数不一致は拒否
+- 超過: hide-pick が超過分ちょうどで確定ゲート(0/1/3 選択は拒否・画面
+  維持)/ 選択 2 つだけが hidden(close されない)・残り 4 つが序数順割り
+  当て・序数追従 / focused が選択されると最近傍生存者へ focus /
+  選択外の hidden プロジェクトは不変
+- キャンセル: selector の Esc も hide-pick の Esc も適用ごと取りやめ(無変化)
+- セッション: begin は zoom 解除・他オーバーレイ中は拒否 / セッション中は
+  画面が対話を占有 / restoreState・teardown で終了
+- 一回性: 適用後のソートは自由 / Codable round trip で適用後の canonical
+  tree が保存・復元される
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

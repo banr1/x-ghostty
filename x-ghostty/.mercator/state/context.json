@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "4d80ad7feb9d08c234bfa836b626d1869ac2b0c71c76b1be619a039315f66aa1",
+    "last_signature": "d5f3450fed626c335cc00f697410e7fda29080bcef178f0aefe3217dd94faf31",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-11T17:05:50+09:00",
-    "last_checked_at": "2026-08-11T17:05:50+09:00"
+    "last_progress_at": "2026-08-11T17:31:04+09:00",
+    "last_checked_at": "2026-08-11T17:31:04+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -22,20 +22,20 @@
   "counters": {
     "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 25,
-    "completed_todos_since_reset": 4,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 2,
+    "completed_todos_since_reset": 2,
+    "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-11T17:05:30+09:00",
-    "summary": "Cycle R-20260811T163334: batch layout DONE with evidence - T-036 (registered-layout model) + T-037 (Cmd+L UI), all three gates green (zig build / just test / just swift-test exit 0, TEST SUCCEEDED, 14 new ProjectLayoutTests all named passing in a targeted run; prior suite incl. hide-selection tests unchanged). Model: ProjectLayout (11 layouts as data; equalSplitRowCounts = sqrt-n rule pinning 4=2+2..9=3+3+3; slotFrames row-major with ALL rows equal height including the +1 row - design interpretation, flag to the human at T-041), SplitTree.init(gridRows:) equal-ratio grid builder, WorkspaceModel layout sessions (beginLayoutSelection releases zoom; chooseLayout: equal->applied / shortfall->needsNewProjects / excess->layoutHidePick with exact-count confirm gating; applyLayoutTree one-shot, hidden untouched, ordinals follow; overlaySessionActive unifies all overlay guards). UI: new choose_project_layout action (cmd+l default, C ABI tag appended, checkXGhosttyHEnum green), ProjectLayoutSelector overlay (effect preview per row), excess screen reuses ProjectHideSelector (now parametrized title/hint/footer), controller chooseLayout/confirmLayoutHidePick with one 'Apply Layout' undo per application; shortfall projects built like newProjectSplit (fresh SurfaceView shell). NOTE counters: changed_files_since_reset hit 25 (8 prior cycle + 17 this cycle) -> should-reset will fire at the boundary; this handoff is the reset handoff. NEXT: active_batch = [T-038, T-039] (batch4-docs + batch4-verify; both mercator, normal risk - can run as one batch or T-038 first). T-038 = SPEC.md new section 25 (hide selection: session semantics, select-all rejection, backdrop-click-cancels, empty-selection-Enter-closes, keyboard mechanics) + new section 26 (layouts: 26.1 slot rule incl. equal-height +1 row, 26.2 selector, 26.3 count matching + exact-count hide-pick + Esc-cancels-all, 26.4 one-shot/persistence, 26.5 test inventory), update section 9.1 action list (choose_project_layout) and 10.5 keybinds (Cmd+L, no-conflict note), section 16 file layout (ProjectLayout.swift, ProjectHideSelector.swift, ProjectLayoutSelector.swift), and README About (hide selection + layouts bullets); post-rename vocabulary throughout; grep for stale doc-comment section references (sources cite sections 25/26 pre-emptively). T-039 = full verification: three gates + re-run the T-033 rename completion checks by command (Projects/ exists, no Groups/, no old action names under src/include, no Group-family Swift identifiers, no group in SPEC/README) + confirm every S-069/S-071 test named passing. AFTER T-038/T-039: all autonomous musts done -> record ONE combined Human-input Recommendation (stop_until_human_review) for the deferred on-device checks T-030/T-031/T-032 (R-009) + T-040/T-041/T-042, noting R-010 (legacy decode keys) and the equal-height +1 row interpretation for review in the same sitting. T-043 (AGENTS.md, HIGH-RISK, should) runs alone afterwards under the relaxed profile.",
+    "written_at": "2026-08-11T17:21:00+09:00",
+    "summary": "Cycle R-20260811T171006 (approx): batch [T-038, T-039] DONE with evidence — batch 4 (rename + hide selection + layouts) fully implemented, documented, verified. All mercator-runnable musts are now complete; the only remaining musts are the six human on-device checks. T-038: SPEC.md section 25 (hide selection: session semantics, select-all rejection, one-write batch commit, ProjectHideSelector UI/keyboard mechanics, backdrop-click-cancels, 14-test inventory) + section 26 (layouts: 26.1 slot rule with the equal-height +1 row design interpretation flagged for T-041, 26.2 Cmd+L selector with effect preview, 26.3 count matching + exact-count hide-pick + Esc-cancels-all, 26.4 one-shot/persistence, 26.5 14-test inventory); 9.1 + choose_project_layout, 10.5 + Cmd+L row and hide_project->§25 note, 11.7 annotation (action opens the screen; single-hide primitive remains), 16 file layout + 3 files, 24.4 guard rewritten to overlaySessionActive, 2 rename artifacts cleaned. README About + Hide selection / Layouts bullets. T-039: three gates exit 0; targeted run: all 14 ProjectHideSelectionTests (S-069) + 14 ProjectLayoutTests (S-071) named passing; rename checks re-verified by command (Projects/ exist, no Groups/, zero old action names, only the 2 intentional legacy decode-key literals — R-010, zero group vocabulary in SPEC/README). RECORDED R-011 (Human-input, stop_until_human_review, proposed): combined 6-item on-device verification T-030/T-031/T-032/T-040/T-041/T-042 (success criteria 9/10/12/14/16/17) per R-009's defer-and-batch instruction, also flagging R-010 (legacy decode keys — keep or drop) and the equal-height +1 row interpretation for the same sitting. The loop should now stop on R-011 until the human resumes.",
     "next_actions": [
-      "Execute T-038 (SPEC.md sections 25/26 + README for hide-selection and layout layers, post-rename vocabulary) and T-039 (full verification: three gates, rename completion checks by command, S-069/S-071 tests named passing)",
-      "Then record ONE combined Human-input Recommendation (stop_until_human_review) for on-device checks T-030/T-031/T-032 + T-040/T-041/T-042, referencing R-009's deferral, R-010 (legacy decode keys), and the equal-height +1 row design interpretation",
-      "T-043 (AGENTS.md vocabulary, HIGH-RISK target AGENTS.md, should) runs alone in its own batch under the relaxed unsandboxed profile with hook-recorded hashes",
-      "Operational: gates FOREGROUND; state bundles via Write tool into ../x-ghostty/.mercator/tmp (3 parts + cat merge), apply-projection, rm; reflection via Edit tool, context.json via Write tool; Bash touching canonical state paths with interpreters/redirects is guard-denied (R-002 class)"
+      "WAIT on R-011: the human performs the six on-device checks (T-030/T-031/T-032/T-040/T-041/T-042) and resumes; per the resolution, mark those Todos done with human evidence (type: human, referencing the resume timestamp and R-011 resolution) or bounce specific Todos back with fixes",
+      "After the human gate: T-043 (AGENTS.md post-rename vocabulary, HIGH-RISK target AGENTS.md, should priority, phase already extended_approved) runs ALONE in its own batch under the relaxed unsandboxed profile — declare evidence linkage to the hook-recorded before/after hashes in high_risk_changes.jsonl, append the completed record (reviewed_by/risk_reason), diff summary in evidence + reflection",
+      "R-010 stays proposed until the human answers (keep legacy decode keys unless told otherwise)",
+      "Operational: gates FOREGROUND; zig build direct (just build-app is guard-denied, R-002); state bundles via Write tool into ../x-ghostty/.mercator/tmp (parts + cat merge; cp/interpreters/redirects touching .mercator/state are guard-denied even for reads); reflection via Edit tool appending after the last line; context.json via Write tool"
     ],
     "open_questions": [],
     "pending_cycle": false
