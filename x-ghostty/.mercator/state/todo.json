@@ -9,8 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-034",
-    "T-035"
+    "T-036",
+    "T-037"
   ],
   "items": [
     {
@@ -1407,7 +1407,7 @@
     {
       "id": "T-034",
       "title": "Hide-selection model layer: selection session over visible projects (multi-toggle, batch hide on confirm, cancel hides nothing, confirm rejected while all visible projects are selected so at least one stays visible), judgment logic in the model layer with XGhosttyTests covering the S-069 criteria; hidden-shelf return path unchanged",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-055",
@@ -1421,12 +1421,45 @@
       },
       "batch_group": "hide-select",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Tests/Projects/ProjectHideSelectionTests.swift"
+          ],
+          "summary": "Hide-selection model layer (SPEC section 25, to be written in T-038, continuing the pre-cited-section pattern of sections 22-24). WorkspaceModelOf gains the transient session state hideSelection (@Published private(set) Set<ProjectID>?, nil = no screen up; never persisted) plus the judgment API: canBeginHideSelection (>= 2 visible projects - with one, nothing could ever be hidden since at least one must stay visible - and neither the note editor nor the note overview up; also the keybind performability answer), beginHideSelection (releases any zoom first, per the Essence's implementation-defined zoomed-invocation clause), hideSelectionProjectIDs (visible projects in canonical/ordinal order), toggleHideSelection (visible projects only - hidden projects are not listed and can never join the selection), canConfirmHideSelection (select-all rejected: selection.count < visibleProjectCount, so at least one project always stays visible; an empty selection is confirmable as close-hiding-nothing), confirmHideSelection(savingOutgoingPaneTree:) (batch commit in one state write: every selected leaf removed so the survivors reclaim the space, ids join hiddenProjectIDs - the shelf's source of truth, its return path unchanged; focus resolved on the pre-removal tree exactly like hideFocusedProject's neighbor rule - a still-visible focused project keeps focus, a selected one hands it to the nearest surviving leaf; a zoom backstop covers a mid-session menu-bar zoom; snapFocusToPrimaryInOverallView applied), and cancelHideSelection (the Escape path - hides nothing). While a session is up the screen owns the interaction: the existing viewing-only guards (switchFocusedProject, gotoProjectTarget, gotoProjectIndexTarget, beginNoteEditing, canSortVisibleProjects, toggleNoteOverview) now also check the session, and restoreState (undo/redo) / removeAllProjects end it. The single-project hideFocusedProject model primitive remains (used by show/undo flows and existing tests); only its keybind entry point was repurposed (T-035)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/ProjectHideSelectionTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 14 new ProjectHideSelectionTests named passing in the log, covering every S-069 criterion: confirmHidesSelectedProjectsInOneBatch (two selected projects hidden in one commit, leaves removed, alive in projects behind the shelf, session closed), cancelHideSelectionHidesNothing (session closed, workspace exactly as before the screen opened), selectAllCannotConfirmAndAtLeastOneProjectStaysVisible (select-all rejected with the screen staying up and nothing hidden; after deselecting one project the confirm succeeds, hides the rest, and the deselected project stays visible). Session mechanics also covered: begin lists visible projects in ordinal order, releases zoom, declines for a single visible project and while the note editor or the note overview is up; toggle toggles multiple projects and rejects hidden/unknown ids; an empty-selection confirm closes hiding nothing; focus moves to the nearest survivor when the focused project is among the hidden; focus moves / note editing / note overview / sorts are no-ops while the screen is up and work again after it closes; restoreState and removeAllProjects end the session; batch-hidden projects return through the existing show_project shelf path unchanged (S-057)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete prior project/note/primary/terminated/priority-deadline suite passes unchanged with the hide-selection layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the hide-selection layer) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (the only Zig-side change is the hide_project doc comment; confirms no cross-language breakage)."
+        }
+      ]
     },
     {
       "id": "T-035",
       "title": "Hide-selection UI: repurpose Cmd+Opt+H (the renamed hide_project action) to open the selection screen listing visible projects, multi-toggle selection, Enter batch-hides into the hidden shelf, Esc closes hiding nothing; overlay only while invoked, terminal returns to full view on exit",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-055",
@@ -1438,7 +1471,38 @@
       },
       "batch_group": "hide-select",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectHideSelector.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Terminal/TerminalView.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "src/input/Binding.zig"
+          ],
+          "summary": "Cmd+Opt+H repurposed to the hide-selection screen (SPEC section 25, to be written in T-038; the immediate-hide replacement is S-010's sanctioned exception). The hide_project action keeps its name, default cmd+opt+h binding, and dispatch path; only its meaning changes: XGhostty.App.hideProject's performability now answers workspace.canBeginHideSelection instead of canHideFocusedProject, and BaseTerminalController.ghosttyDidHideProject calls workspace.beginHideSelection() instead of the immediate hide. The old controller-level hideFocusedProject() was replaced by confirmHideSelection() (Enter): the model batch-hides and resolves the next focus, the controller swaps surfaceTree, moves keyboard focus, and registers ONE project-aware 'Hide Projects' undo for the whole batch; toggle and cancel are model-only, wired in TerminalWorkspaceView. New overlay view ProjectHideSelector, rendered only while the session is up (no permanent terminal area; the terminal returns to full view on exit with keyboard focus handed back like the note editor/overview): lists visible projects in ordinal order (checkbox glyph + ordinal + name, cursor row highlighted, ProjectNoteEditor-family styling), footer shows the pending count or why Enter is blocked ('at least one project must stay visible'). Keyboard follows the proven CommandPaletteView mechanics - an invisible focused TextField owns the keyboard: Escape via onExitCommand cancels, Enter via onSubmit confirms (the model re-judges canConfirm, so a rejected confirm keeps the screen up), arrows via onMoveCommand move the cursor, Space arrives as sink text and toggles the cursor row; rows toggle on click, backdrop click cancels (only Enter ever hides). TerminalViewDelegate gains confirmHideSelection, threaded TerminalView -> TerminalWorkspaceView. Binding.zig's hide_project doc comment updated to the selection-screen behavior (doc-only; no action surface change, C header untouched)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the selection screen and rewired action) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 with the hide_project doc-comment change (no action surface change; the header enum-sync check is unaffected)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) with the UI rewiring in the tree - the pre-existing hide/show/undo suite passes unchanged against the repurposed action (the hideFocusedProject model primitive they cover is untouched). The screen's own model semantics are covered by the 14 ProjectHideSelectionTests (T-034 evidence)."
+        }
+      ]
     },
     {
       "id": "T-036",

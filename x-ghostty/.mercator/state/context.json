@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "98d81b51e18d9a34a51be09fc29211f3b32588791eaabf55cb3d3422c8f6c75b",
+    "last_signature": "b4f8b3fbeed7ff42cbc479157ec676d37d2ef0a167c3d57975d64fa7e6482194",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-11T16:06:00+09:00",
-    "last_checked_at": "2026-08-11T16:06:00+09:00"
+    "last_progress_at": "2026-08-11T16:33:34+09:00",
+    "last_checked_at": "2026-08-11T16:33:34+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,21 +20,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.6,
+    "context_usage_estimate": 0.45,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 47,
-    "completed_todos_since_reset": 1,
+    "changed_files_since_reset": 8,
+    "completed_todos_since_reset": 2,
     "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-11T16:12:00+09:00",
-    "summary": "Cycle R-20260811T154408: T-033 (full group-to-project rename) DONE with evidence — all three gates green (zig build / just test / just swift-test exit 0, TEST SUCCEEDED 0 failures) and the rename completion checks verified by command: macos/Sources/Features/Projects/ + macos/Tests/Projects/ exist (old Groups/ gone, git mv with per-file renames like GroupState.swift -> ProjectState.swift), zero old fork action names under src//include/ (15 actions renamed in place, C ABI enum order preserved, checkXGhosttyHEnum green), zero Group-family Swift identifiers, SPEC.md/README.md fully re-worded (0 group/グループ). Deliberately preserved: SwiftUI Group view (3 sites), WindowGroup, compositingGroup, upstream core vocabulary (pty/font/kitty groups), TODO.md (historical log), AGENTS.md (high-risk, T-043). ONE deliberate pure-rename exception recorded as R-010 (Non-blocking, proposed): WorkspaceStateOf decode keeps a LegacyCodingKeys fallback (canonicalGroupTree/groups/focusedGroup) so pre-rename saved workspaces restore losslessly (mandatory item 31); pinned by new test WorkspaceStateTests/decodesLegacyGroupVocabularyKeys; new saves write project keys. ~47 files changed -> reset expected (changed_files threshold). active_batch already set to T-034/T-035 (hide-selection model + UI, batch_group hide-select): T-034 = selection session over visible projects in the model layer (multi-toggle, batch hide on confirm, cancel hides nothing, confirm rejected while ALL visible selected - at least one stays visible; S-069 tests), T-035 = repurpose Cmd+Opt+H (hide_project action already renamed) to open the selection screen (Enter batch-hides into hidden shelf, Esc closes hiding nothing, overlay-only UI). Follow the established model-first pattern: judgment in WorkspaceModel/WorkspaceState (value-type testable), UI overlay like ProjectNoteEditor/Overview (hidden keyboardShortcut receivers for chords, onExitCommand for Esc).",
+    "written_at": "2026-08-11T16:32:30+09:00",
+    "summary": "Cycle R-20260811T160601: batch hide-select DONE with evidence - T-034 (model) + T-035 (UI), all three gates green (zig build / just test / just swift-test exit 0, TEST SUCCEEDED, 14 new ProjectHideSelectionTests all named passing in a targeted run). Model: WorkspaceModel.hideSelection transient session (begin releases zoom; toggle visible-only; canConfirm rejects select-all so >=1 stays visible, empty selection = close-hiding-nothing; confirm batch-hides in one state write with focus resolved on the pre-removal tree; cancel hides nothing; viewing-only guards extended to the session; restoreState/removeAllProjects end it; hideFocusedProject primitive kept for undo/show flows). UI: hide_project (Cmd+Opt+H) performability -> canBeginHideSelection, controller opens the session, confirmHideSelection() swaps surfaceTree + one 'Hide Projects' undo; new ProjectHideSelector overlay uses the CommandPalette keyboard mechanics (sink TextField: Esc cancel, Enter confirm, arrows cursor, Space toggles via sink text; rows click-toggle; backdrop click cancels; footer explains blocked Enter). Binding.zig hide_project doc comment updated (doc-only, no ABI change). active_batch already set to T-036/T-037 (batch_group layout): T-036 = model layer for the 11 registered layouts - slot computation (equal-split rows = integer nearest sqrt(n), top rows filled as evenly as possible: 4=2+2, 5=3+2, 6=3+3, 7=3+2+2, 8=3+3+2, 9=3+3+3; row heights and in-row widths equal; X+1 = X equal-split on top + 1 full-width bottom, X=4-8), assignment of visible projects in ordinal order (top row first, left-to-right, +1 slot last), count matching (shortfall -> new projects at ordinal tail with fresh shells; excess -> exact-count hide-pick, confirm gated on exact count, Esc cancels whole application; unselected hidden projects unaffected), no persistent applied-layout state, ordinals follow (S-071 tests). T-037 = NEW Cmd+L action (follow the set_primary end-to-end pattern: Binding.zig + parse test, action.zig appended last for C ABI, Surface.zig, command.zig palette exclusion, Config.zig default keybind cmd+l - CHECK no existing l super binding first, xghostty.h appended tag) opening the layout-selection overlay (arrow list, Enter applies, Esc closes unchanged) + the excess hide-pick screen; reuse the ProjectHideSelector keyboard mechanics. Suggest: model the layout application as pure WorkspaceState/Model functions (slot rects + assignment + count-matching plan) that the controller executes (new projects need SurfaceView creation - controller-side like restartTerminatedPane). Design decisions this cycle recorded in reflection (backdrop-click cancels, empty-selection Enter closes, begin releases zoom) - revisit wording at T-038 docs.",
     "next_actions": [
-      "Execute T-034 (hide-selection model layer) + T-035 (hide-selection UI on Cmd+Opt+H): model-first, XGhosttyTests for the S-069 criteria, then verify zig build / just test / just swift-test",
-      "Then T-036/T-037 (11 registered layouts: model slot computation per the sqrt-n row rule + Cmd+L overlay UI), T-038 (SPEC.md/README.md for both layers), T-039 (full verification incl. re-running the rename completion checks)",
-      "After all autonomous Todos green: ONE combined Human-input Recommendation for on-device checks T-030/T-031/T-032 + T-040/T-041/T-042 (per R-009 resolution), and note R-010 (legacy decode keys) for the human to review in the same sitting",
+      "Execute T-036 (registered-layout model: 11 layouts, sqrt-n slot rule, ordinal assignment, count matching, S-071 tests) + T-037 (Cmd+L layout overlay UI + excess hide-pick screen), then verify zig build / just test / just swift-test",
+      "Then T-038 (SPEC.md section 25 hide-selection + section 26 layouts, README update, post-rename vocabulary) and T-039 (full verification incl. re-running the rename completion checks by command)",
+      "After all autonomous musts green: ONE combined Human-input Recommendation for on-device checks T-030/T-031/T-032 (deferred per R-009) + T-040/T-041/T-042, and note R-010 (legacy decode keys) for the human to review in the same sitting",
       "T-043 (AGENTS.md vocabulary, HIGH-RISK target AGENTS.md, should) runs alone in its own batch under the relaxed unsandboxed profile with hook-recorded hashes"
     ],
     "open_questions": [],

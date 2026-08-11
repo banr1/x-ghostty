@@ -1304,7 +1304,10 @@ class BaseTerminalController: NSWindowController,
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(view) else { return }
 
-        hideFocusedProject()
+        // `hide_project` opens the hide-selection screen (`SPEC.md` §25);
+        // the actual hiding happens on the screen's confirm
+        // (`confirmHideSelection`).
+        workspace.beginHideSelection()
     }
 
     @objc private func ghosttyDidShowProject(_ notification: Notification) {
@@ -1673,21 +1676,23 @@ class BaseTerminalController: NSWindowController,
         workspace.equalizeProjects()
     }
 
-    /// Hide the focused project in response to `hide_project` (`SPEC.md` §11.7). The
-    /// model moves focus to a visible neighbor and keeps the hidden project's
-    /// processes alive; here we swap `surfaceTree` to the neighbor's panes and
-    /// move keyboard focus, mirroring `focusProject`. No-op when the focused project
-    /// is the last visible one (§18.2). Registers a project-aware undo ("Hide
-    /// Project") so the hide can be reversed; the snapshot keeps the hidden project's
-    /// panes (its processes already stay alive via `projects`, §14.7).
-    func hideFocusedProject() {
+    /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). The model
+    /// hides every selected project in one batch and resolves the next focus;
+    /// here we swap `surfaceTree` to the surviving focused project's panes and
+    /// move keyboard focus, mirroring `focusProject`. No-op when the confirm
+    /// is rejected (every visible project selected — the screen stays up) or
+    /// when the selection was empty (the screen just closes). Registers a
+    /// project-aware undo ("Hide Projects") so the batch hide can be
+    /// reversed; the snapshot keeps the hidden projects' panes (their
+    /// processes already stay alive via `projects`, §14.7).
+    func confirmHideSelection() {
         let before = workspace.state
-        guard let result = workspace.hideFocusedProject(
+        guard let result = workspace.confirmHideSelection(
             savingOutgoingPaneTree: surfaceTree) else { return }
 
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toProjectSurface: result.focus)
-        registerWorkspaceUndo("Hide Project", undo: before, redo: workspace.state)
+        registerWorkspaceUndo("Hide Projects", undo: before, redo: workspace.state)
     }
 
     /// Show the hidden project `id` in response to a shelf pill click or the

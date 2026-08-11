@@ -29,6 +29,11 @@ protocol TerminalViewDelegate: AnyObject {
 
     /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
     func equalizeProjects()
+
+    /// Confirm the hide-selection screen (Enter, `SPEC.md` §25): batch-hide
+    /// the selected projects. Hiding can move focus to another project, which
+    /// swaps `surfaceTree`, so the controller handles it like `showProject`.
+    func confirmHideSelection()
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -100,7 +105,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         paneAction: { delegate?.performSplitAction($0) },
                         onFocusProject: { delegate?.focusProject($0) },
                         onShowProject: { delegate?.showProject($0) },
-                        onEqualizeProjects: { delegate?.equalizeProjects() })
+                        onEqualizeProjects: { delegate?.equalizeProjects() },
+                        onConfirmHideSelection: { delegate?.confirmHideSelection() })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

@@ -36,6 +36,12 @@ struct TerminalWorkspaceView: View {
     /// the controller too, so this is injected the same way as `onFocusProject`.
     let onEqualizeProjects: () -> Void
 
+    /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). Batch-hiding
+    /// can move focus to another project, which swaps `surfaceTree`, so the
+    /// controller handles it like `onShowProject`; toggle and cancel are
+    /// model-only and wired below.
+    let onConfirmHideSelection: () -> Void
+
     /// Hidden projects in a stable display order for the shelf. Sorted by creation
     /// time (then id) so the pill order does not jump as visibility changes.
     private var hiddenProjects: [ProjectState] {
@@ -116,6 +122,23 @@ struct TerminalWorkspaceView: View {
                     onExit: { workspace.endNoteOverview() },
                     onToggle: { workspace.toggleNoteOverview() })
             }
+
+            // Hide-selection overlay (`SPEC.md` §25): presented while the
+            // selection session is up, absent otherwise so the terminal keeps
+            // the full area. The listed projects resolve through live state,
+            // in ordinal order.
+            if let selection = workspace.hideSelection {
+                ProjectHideSelector(
+                    projects: workspace.hideSelectionProjectIDs.compactMap {
+                        workspace.state.projects[$0]
+                    },
+                    ordinals: workspace.state.projectOrdinals,
+                    selection: selection,
+                    canConfirm: workspace.canConfirmHideSelection,
+                    onToggle: { workspace.toggleHideSelection($0) },
+                    onConfirm: onConfirmHideSelection,
+                    onCancel: { workspace.cancelHideSelection() })
+            }
         }
         .onChange(of: workspace.noteEditingProject) { newValue in
             // When the note editor closes, hand keyboard focus back to the
@@ -131,6 +154,17 @@ struct TerminalWorkspaceView: View {
         .onChange(of: workspace.noteOverviewActive) { active in
             // Leaving the overview hands keyboard focus back to the terminal,
             // exactly like the note editor's dismissal above.
+            if !active {
+                DispatchQueue.main.async {
+                    if let surface = lastFocusedSurface?.value {
+                        surface.window?.makeFirstResponder(surface)
+                    }
+                }
+            }
+        }
+        .onChange(of: workspace.hideSelectionActive) { active in
+            // Closing the hide-selection screen hands keyboard focus back to
+            // the terminal, exactly like the overlays above.
             if !active {
                 DispatchQueue.main.async {
                     if let surface = lastFocusedSurface?.value {

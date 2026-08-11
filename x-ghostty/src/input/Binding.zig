@@ -643,8 +643,11 @@ pub const Action = union(enum) {
     /// `toggle_split_zoom`, which zooms a pane within a project.
     toggle_project_zoom,
 
-    /// Hide the current project. The project's panes and their processes keep
-    /// running; the project can be restored with `show_project`.
+    /// Open the hide-selection screen: every visible project is listed for
+    /// multi-toggle selection, Enter hides the selected projects in one
+    /// batch, and Escape closes without hiding anything. At least one
+    /// project always stays visible. Hidden projects' panes and processes
+    /// keep running; they can be restored with `show_project`.
     hide_project,
 
     /// Show a previously hidden project, identified by its id or name.
