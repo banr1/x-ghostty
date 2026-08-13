@@ -62,3 +62,5 @@
 {"at": "2026-08-11T23:32:32+09:00", "run_id": "R-20260811T231436+0900-82e3b1", "event": "end", "status": "ok", "project": "x-ghostty"}
 {"at": "2026-08-11T23:42:29+09:00", "run_id": "R-20260811T234229+0900-cf5e65", "event": "start", "agent": "Over-Project Agent", "cwd": "/Users/banriyanahama/workspace/mercator-xghostty/.mercator", "project": "x-ghostty"}
 {"at": "2026-08-11T23:49:01+09:00", "run_id": "R-20260811T234229+0900-cf5e65", "event": "end", "status": "ok", "project": "x-ghostty"}
+{"at": "2026-08-14T04:13:35+09:00", "run_id": "R-20260814T041335+0900-001cfa", "event": "start", "agent": "Over-Project Agent", "cwd": "/Users/banriyanahama/workspace/mercator-xghostty/.atlas-builder", "project": "x-ghostty"}
+{"at": "2026-08-14T04:22:53+09:00", "run_id": "R-20260814T041335+0900-001cfa", "event": "end", "status": "ok", "project": "x-ghostty"}
