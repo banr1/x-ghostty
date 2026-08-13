@@ -1,0 +1,852 @@
+{
+  "schema_version": "1.0.0",
+  "projected_from_essence_sha256": "04844c7824015e6312b89d948d464196d3e912f5b8dfdef25983ab89398cf832",
+  "projected_at": "2026-08-11T15:42:40+09:00",
+  "items": [
+    {
+      "id": "S-001",
+      "title": "Per-project note model: hand-written note held per project (not per pane), max 10 lines, with retention/restore/display-set judgment logic in the model layer verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトごとに、人間が手書きする短いノートを保持できる。",
+        "ノートは最大 10 行とし、10 行を超えて保持しない。",
+        "ノートはプロジェクトに属し、プロジェクト内のペイン(split)には属さない。",
+        "ノートの保持・復元・表示対象の判断ロジックはモデル層に置き、`XGhosttyTests` から",
+        "検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-002",
+      "title": "Note persisted like the project name and restored to the same project after app restart",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノートはプロジェクト名と同様に永続化され、アプリ再起動後に同じプロジェクトへ",
+        "復元される。"
+      ]
+    },
+    {
+      "id": "S-003",
+      "title": "Cmd+N opens a multi-line note edit overlay for the focused project; Cmd+Enter saves and closes; the edit overlay shows the full text",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+N` で focused プロジェクトのノート編集オーバーレイが開き、複数行を編集でき、",
+        "`Cmd+Enter` で保存して閉じる。",
+        "編集オーバーレイでは全文が見える。"
+      ]
+    },
+    {
+      "id": "S-004",
+      "title": "Cmd+Opt+N toggles overview mode: notes overlay simultaneously on all visible projects; Cmd+Opt+N again or Esc exits",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+Opt+N` で一望モードをトグルし、visible な全プロジェクトの上にそれぞれのノートが",
+        "同時にオーバーレイ表示される。再度 `Cmd+Opt+N` を押すか Esc を押すと抜ける。"
+      ]
+    },
+    {
+      "id": "S-005",
+      "title": "Overview mode targets only visible projects; hidden projects' notes are not shown",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードの表示対象は visible なプロジェクトのみとし、hidden なプロジェクトの",
+        "ノートは表示しない。"
+      ]
+    },
+    {
+      "id": "S-006",
+      "title": "Entering overview mode while zoomed releases the zoom before overlaying all projects",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "zoom 中に一望モードへ入った場合は zoom を解除してから全プロジェクトに重ねる。"
+      ]
+    },
+    {
+      "id": "S-007",
+      "title": "Overview mode is read-only: no note editing and no focus movement during the mode",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードは閲覧専用とし、モード中にノート編集も focus 移動も行わない。"
+      ]
+    },
+    {
+      "id": "S-008",
+      "title": "Overview notes that do not fit the frame are truncated without breaking layout",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードで枠に収まらないノートは切り詰めて表示し、レイアウトを壊さない。"
+      ]
+    },
+    {
+      "id": "S-009",
+      "title": "Note UI never permanently occupies terminal area: shown only when invoked, terminal returns to full view on exit",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノートに関する UI は端末領域を恒久的に占有しない。呼び出したときだけ表示され、",
+        "抜ければ端末が全面に戻る。"
+      ]
+    },
+    {
+      "id": "S-010",
+      "title": "No regression of existing project features or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter's fullscreen default, overall-view rendering of primary panes only, no-op pane operations in the overall view, focus snapping to the primary on zoom release, unconditional close confirmation, last-pane shell exit leaving a terminated project, note-editor Cmd+A/C/X/V routed to text editing, the Cmd+S / Cmd+Shift+S sort assignments, replacing Cmd+Opt+H's immediate hide with the hide-selection screen, the new Cmd+L layout-selection assignment, and the full group-to-project rename (wording, action names, identifiers, directory names)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "既存のプロジェクト機能(列挙・zoom・序数ジャンプ・hide/show・resize/equalize・",
+        "rename・close)および上流由来のターミナル動作を退行させない。ただし以下の意図的",
+        "変更は例外とする:`Cmd+Enter` の fullscreen 既定割り当ての解除(fullscreen は",
+        "`Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる)、全体ビューの",
+        "描画をプライマリーペインのみに変えること、全体ビューでのペイン系操作の no-op 化、",
+        "zoom 解除時に focus をプライマリーペインへ寄せること、プロジェクトを閉じる操作の",
+        "確認を常時化すること、最後のペインのシェル exit でプロジェクトを閉じず終了済み",
+        "状態で残すこと、ノート編集オーバーレイ中の Cmd+A / C / X / V をエディタのテキスト",
+        "編集に向けること、`Cmd+S` / `Cmd+Shift+S` へのソートアクションの新規割り当て、",
+        "`Cmd+Opt+H` の即時 hide を hide 選択画面に置き換えること、`Cmd+L` へのレイアウト",
+        "選択の新規割り当て、「グループ」→「プロジェクト」への全面改名(文言・action 名・",
+        "識別子・ディレクトリ名)。"
+      ]
+    },
+    {
+      "id": "S-011",
+      "title": "Update SPEC.md and README.md to match the implemented note layer; README's Building section lists all three verification commands (zig build / just test / just swift-test)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装したノート層の仕様に合わせて更新する。",
+        "`README.md` の Building 節には `zig build` / `just test` / `just swift-test` の",
+        "3 つの検証コマンドをすべて載せる。"
+      ]
+    },
+    {
+      "id": "S-012",
+      "title": "Success gates: zig build / just test / just swift-test exit 0, and XGhosttyTests contains passing tests for note save/restore, 10-line cap, save-and-close keeps the edited text, discard-and-close keeps the pre-open text, visible-only display set, zoom release on overview entry, and no focus movement or note editing during overview",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`zig build` が exit 0 で終わる。",
+        "`just test` が exit 0 で終わる。",
+        "`just swift-test` が exit 0 で終わる。",
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "ノートを持つプロジェクトを保存し復元すると、同じノート本文が復元される",
+        "ノートは 10 行を超えて保持されない",
+        "ノート編集を保存して閉じると、編集後の本文が保持される",
+        "ノート編集を破棄して閉じると、開く前の本文が保持される",
+        "一望モードの表示対象集合が visible なプロジェクトのみと一致し、hidden な",
+        "プロジェクトを含まない",
+        "zoom 中に一望モードへ入ると zoom が解除される",
+        "一望モード中に focus 移動もノート編集も発生しない"
+      ]
+    },
+    {
+      "id": "S-013",
+      "title": "Human performs a one-time on-device visual verification after all note-layer implementation is in place; not complete until confirmed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "すべての実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。"
+      ]
+    },
+    {
+      "id": "S-014",
+      "title": "Optional: mouse affordance to open a note (e.g. clicking the header band); keybinds alone suffice this time",
+      "status": "active",
+      "priority": "should",
+      "essence_refs": [
+        "ヘッダー帯のクリック等、マウスからノートを開く導線(今回はキーバインドのみで足りる。",
+        "余力があれば)。"
+      ]
+    },
+    {
+      "id": "S-015",
+      "title": "Optional: visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)",
+      "status": "active",
+      "priority": "should",
+      "essence_refs": [
+        "ノート編集オーバーレイ・一望モード・プライマリー印の見た目の洗練(配色・余白・",
+        "アニメーション)。"
+      ]
+    },
+    {
+      "id": "S-016",
+      "title": "Esc in the note edit overlay discards the edits and closes, keeping the pre-open text; no confirmation dialog on discard",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノート編集オーバーレイで Esc を押すと、編集内容を破棄して閉じ、開く前の本文が",
+        "保持される。破棄に確認は挟まない。"
+      ]
+    },
+    {
+      "id": "S-017",
+      "title": "Remove the default fullscreen assignment of Cmd+Enter",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+Enter` の既定割り当てである fullscreen を解除する。"
+      ]
+    },
+    {
+      "id": "S-018",
+      "title": "Primary pane flag: every pane carries a primary flag; the first pane of a group is primary, panes created afterwards are not",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "各ペインはプライマリーフラグを持つ。プロジェクト内の最初のペインはプライマリーとし、",
+        "それ以降に作られたペインは非プライマリーとする。"
+      ]
+    },
+    {
+      "id": "S-019",
+      "title": "Exactly one primary pane exists per group at all times",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーペインはプロジェクト内で常に 1 つのみとする。"
+      ]
+    },
+    {
+      "id": "S-020",
+      "title": "Overall view (non-zoom) renders only each group's primary pane; the zoomed local view shows all panes in their layout as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "全体ビュー(非 zoom)では、各プロジェクトはプライマリーペインのみを描画する。",
+        "プロジェクトに zoom した局所視点では従来どおり全ペインをレイアウトのまま表示する。"
+      ]
+    },
+    {
+      "id": "S-021",
+      "title": "Keyboard input and focus in the overall view go to the primary pane; on zoom release, focus resting on a non-primary pane snaps to the primary",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "全体ビューでのキーボード入力・focus はプライマリーペインへ向く。zoom 解除時に",
+        "focus がプライマリー以外のペインにあった場合はプライマリーへ寄せる。"
+      ]
+    },
+    {
+      "id": "S-022",
+      "title": "Pane operations (split, inter-pane focus movement, pane zoom, pane resize/equalize) are no-ops in the overall view; pane operations are effective only while zoomed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "全体ビューではペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・ペインの",
+        "resize/equalize)を no-op とする。ペイン操作は zoom 中のみ有効とする。"
+      ]
+    },
+    {
+      "id": "S-023",
+      "title": "New action that assigns the focused pane as primary while zoomed, bound to Cmd+P (plain Cmd+P confirmed unassigned); the former primary is demoted on assignment",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "zoom 中に focused ペインをプライマリーへ指定する action を追加し、`Cmd+P` に",
+        "割り当てる(素の `Cmd+P` に既存割り当てが無いことは確認済み)。指定時、元の",
+        "プライマリーは解除される。"
+      ]
+    },
+    {
+      "id": "S-024",
+      "title": "When the primary pane closes (shell exit, Cmd+W, or process death), the nearest leaf in the split tree is promoted if other panes remain; if the primary was the last pane, items 28-31 apply (shell exit leaves the terminated state; close operations confirm and then close)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーペインが閉じた場合(シェルの exit・`Cmd+W`・process 死のいずれでも)、",
+        "プロジェクトに他のペインがあれば分割木上の最近傍 leaf を昇格する。プライマリーが",
+        "最後のペインの場合は 28〜31 項に従う(シェル exit では終了済み状態で残り、",
+        "close 操作では確認を経て閉じる)。"
+      ]
+    },
+    {
+      "id": "S-025",
+      "title": "Primary flag persisted through the same path as the pane layout and restored to the same pane after app restart; invalid saves (zero or multiple primaries) are normalized to exactly one on restore",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーフラグはペインレイアウトと同じ経路で永続化され、アプリ再起動後に",
+        "同じペインへ復元される。不正な保存(プライマリー 0 個/複数)は復元時に 1 つへ",
+        "正規化する。"
+      ]
+    },
+    {
+      "id": "S-026",
+      "title": "Primary mark shown at the primary pane's top-right only while zoomed with multiple panes in the group; never in the overall view or in single-pane groups",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーの印は、zoom 中かつプロジェクト内に複数ペインがあるときだけ、",
+        "プライマリーペインの右上に表示する。全体ビューおよび単一ペインのプロジェクトでは",
+        "表示しない。"
+      ]
+    },
+    {
+      "id": "S-027",
+      "title": "Primary judgment logic (default assignment, uniqueness, promotion, restore normalization, overall-view display target) lives in the model layer, verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーの判断ロジック(既定付与・唯一性・昇格・復元時正規化・全体ビューの",
+        "表示対象)はモデル層に置き、`XGhosttyTests` から検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-028",
+      "title": "Update SPEC.md and README.md to match the implemented primary pane layer",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装したプライマリーペイン層の仕様に合わせて更新する。"
+      ]
+    },
+    {
+      "id": "S-029",
+      "title": "Success gates for the primary pane layer: XGhosttyTests contains passing tests for default primary on a new group's initial pane, non-primary later splits with per-group uniqueness, restore round trip with 0/multiple normalization, nearest-leaf promotion on primary close, overall-view display set == primaries only, pane-op no-ops in the overall view, focus snap to primary on zoom release, and set_primary reassignment while zoomed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "新規プロジェクトの初期ペインがプライマリーになっている",
+        "後続分割で作られたペインはプライマリーでなく、プロジェクト内のプライマリーは",
+        "常に 1 つである",
+        "保存し復元すると同じペインにプライマリーが復元され、不正な保存(0 個/複数)は",
+        "復元時に 1 つへ正規化される",
+        "プライマリーが閉じたとき、残ペインがあれば分割木上の最近傍 leaf が昇格する",
+        "全体ビュー(非 zoom)の描画対象が各プロジェクトのプライマリーのみと一致する",
+        "全体ビューではペイン系操作(分割・ペイン間 focus 移動・ペイン zoom・",
+        "resize/equalize)が no-op になる",
+        "zoom 解除時に focus がプライマリーへ寄る",
+        "zoom 中の set_primary で focused ペインがプライマリーになり、元のプライマリーは",
+        "解除される"
+      ]
+    },
+    {
+      "id": "S-030",
+      "title": "Human performs a one-time on-device visual verification of the primary pane layer after its implementation is in place; not complete until confirmed (overall view shows only primaries, zoom shows all panes with the mark on multi-pane groups, Cmd+P reassignment carries into the overall view, promotion on primary shell exit, mark appearance fits the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プライマリーペインの実装が揃った後、人間が実機で一度だけ以下を目視確認し、",
+        "確認が取れる。確認が取れるまで完了とはしない。",
+        "全体ビューで各プロジェクトにプライマリーペインだけが表示される",
+        "zoom すると全ペインがレイアウトのまま表示され、複数ペインのときプライマリーの",
+        "右上に印が見える",
+        "zoom 中 `Cmd+P` で focused ペインがプライマリーになり、zoom を抜けると",
+        "全体ビューにそのペインが表示される",
+        "プライマリーのシェルを exit すると、残ペインの最近傍が昇格して全体ビューの",
+        "表示が入れ替わる",
+        "印の見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-031",
+      "title": "Optional: subtle indicator (e.g. a pane-count badge) in the overall view showing that a group has non-primary panes",
+      "status": "active",
+      "priority": "should",
+      "essence_refs": [
+        "全体ビューで、プロジェクトに非プライマリーペインがあるとき、その存在が分かる控えめな",
+        "インジケータ(例:ペイン数バッジ)の表示。"
+      ]
+    },
+    {
+      "id": "S-032",
+      "title": "Project-close confirmation is unconditional: close operations and Cmd+W on the last pane always show the confirmation dialog regardless of running processes, reusing the existing running-process confirmation form (Cancel / Close)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトを閉じる操作(`close_group`、および最後のペインでの `Cmd+W`)では、",
+        "実行中プロセスの有無によらず常に確認ダイアログを表示する。ダイアログは既存の",
+        "実行中プロセス確認と同じ形式(Cancel / Close)を流用する。"
+      ]
+    },
+    {
+      "id": "S-033",
+      "title": "Last-pane shell exit (normal, abnormal, or process death) never closes the group: the pane remains in a terminated state and the group's information including the note is retained",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "最後のペインのシェルが exit したとき(正常終了・異常終了・process 死のいずれでも)、",
+        "プロジェクトを閉じず、ペインを「終了済み」状態のまま残す。ノートを含むプロジェクト",
+        "の情報は保持される。"
+      ]
+    },
+    {
+      "id": "S-034",
+      "title": "Pressing Enter in a terminated pane starts a new shell in the same pane so work can resume",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "終了済み状態のペインで Enter を押すと、新しいシェルが起動して同じペインで作業を",
+        "再開できる。"
+      ]
+    },
+    {
+      "id": "S-035",
+      "title": "The only path that loses a group and its information (notes etc.) is an explicit close through the confirmation dialog; app quit and restart restore all groups as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトとその情報(ノート等)が失われる経路は、確認ダイアログを経た明示的な",
+        "close 操作のみとする。アプリ終了・再起動では従来どおり全プロジェクトが復元される。"
+      ]
+    },
+    {
+      "id": "S-036",
+      "title": "Standard text-editing shortcuts (Cmd+A select all, Cmd+C copy, Cmd+X cut, Cmd+V paste) act on the editor while the note edit overlay is shown",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノート編集オーバーレイ表示中は、標準的なテキスト編集ショートカット(Cmd+A 全選択・",
+        "Cmd+C コピー・Cmd+X 切り取り・Cmd+V 貼り付け)がエディタに対して効く。"
+      ]
+    },
+    {
+      "id": "S-037",
+      "title": "A paste that pushes the note over 10 lines is truncated to the first 10 lines on save, same as manual input (the item-2 cap behavior is unchanged)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "貼り付けにより 10 行を超えた場合も、従来の手入力と同様、保存時に先頭 10 行へ",
+        "切り詰める(2 項の挙動を変えない)。"
+      ]
+    },
+    {
+      "id": "S-038",
+      "title": "Per-project priority (high / medium / low / unset), default unset",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトごとに優先度(high / medium / low / 未設定)を設定できる。既定は",
+        "未設定。"
+      ]
+    },
+    {
+      "id": "S-039",
+      "title": "Per-project deadline (date only, no time), default unset; invalid date input is rejected on save and treated as unset",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトごとに締切(日付のみ、時刻なし)を設定できる。既定は未設定。不正な",
+        "日付入力は保存時に弾き、未設定として扱う。"
+      ]
+    },
+    {
+      "id": "S-040",
+      "title": "Priority and deadline are set and changed inside the Cmd+N note edit overlay, persisted like the note, and restored to the same project after app restart",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "優先度・締切は `Cmd+N` のノート編集オーバーレイ内で設定・変更でき、ノートと同様に",
+        "永続化され、アプリ再起動後に同じプロジェクトへ復元される。"
+      ]
+    },
+    {
+      "id": "S-041",
+      "title": "The group label band shows a subtle priority mark and the deadline; unset items are not shown",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトのラベル帯に、優先度の控えめな印と締切を表示する。未設定の項目は",
+        "表示しない。"
+      ]
+    },
+    {
+      "id": "S-042",
+      "title": "Overview mode shows priority and deadline together with the note",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一望モードでは、ノートと併せて優先度・締切を表示する。"
+      ]
+    },
+    {
+      "id": "S-043",
+      "title": "Projects past their deadline are subtly emphasized in the label band and overview mode; a single overdue stage only, no approaching-deadline tiers",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "締切を過ぎたプロジェクトは、ラベル帯・一望モードで控えめに強調する。強調は",
+        "「超過」の 1 段階のみとし、「間近」等の段階分けはしない。"
+      ]
+    },
+    {
+      "id": "S-044",
+      "title": "New action sorting visible groups by priority (high, medium, low, then unset; stable within ties), reordering the real layout, bound to Cmd+S (plain Cmd+S confirmed unassigned)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "visible なプロジェクトを優先度順(high → medium → low → 未設定。同順位内は現在の",
+        "相対順を維持)に実レイアウトごと並び替えるアクションを追加し、`Cmd+S` に",
+        "割り当てる(素の `Cmd+S` に既存割り当てが無いことは確認済み)。"
+      ]
+    },
+    {
+      "id": "S-045",
+      "title": "New action sorting visible groups by deadline (nearest first, unset last, stable within the same day), reordering the real layout, bound to Cmd+Shift+S (confirmed unassigned)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "visible なプロジェクトを締切順(近い順。未設定は末尾、同日内は現在の相対順を維持)",
+        "に実レイアウトごと並び替えるアクションを追加し、`Cmd+Shift+S` に割り当てる",
+        "(`Cmd+Shift+S` に既存割り当てが無いことは確認済み)。"
+      ]
+    },
+    {
+      "id": "S-046",
+      "title": "Sorting happens only on explicit action execution, never automatically on priority/deadline changes; the sorted order persists until the next sort and ordinal jumps (Cmd+1-9) follow the new order",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ソートは明示的なアクション実行時のみ行い、優先度・締切の変更によって自動では",
+        "並び替えない。ソート後の並びは次のソート実行まで維持され、序数ジャンプ",
+        "(Cmd+1〜9)はソート後の並びに追従する。"
+      ]
+    },
+    {
+      "id": "S-047",
+      "title": "Sorting targets only visible groups; hidden groups are unaffected",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ソートの対象は visible なプロジェクトのみとし、hidden なプロジェクトは影響を",
+        "受けない。"
+      ]
+    },
+    {
+      "id": "S-048",
+      "title": "Judgment logic for priority/deadline retention and restore, sort orders, overdue determination, and the terminated state lives in the model layer, verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "優先度・締切の保持・復元・ソート順・締切超過判定・終了済み状態の判断ロジックは",
+        "モデル層に置き、`XGhosttyTests` から検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-049",
+      "title": "Update SPEC.md and README.md to match the implemented deletion-protection, shortcut-handling, priority, and deadline layers",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装した削除保護・ショートカット対応・優先度・締切層の",
+        "仕様に合わせて更新する。"
+      ]
+    },
+    {
+      "id": "S-050",
+      "title": "Success gates (deletion protection): XGhosttyTests contains passing tests for unconditional close confirmation, last-pane shell exit leaving a terminated group with the note retained, a single pane's exit in a multi-pane group closing only that pane as before, and terminated-group save/restore retaining the note",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "プロジェクトを閉じる操作の確認要求が、実行中プロセスの有無によらず常に発生する",
+        "最後のペインのシェルが exit してもプロジェクトは閉じず、終了済み状態になり、",
+        "ノートが保持される",
+        "複数ペインのプロジェクトで 1 ペインのシェルが exit したときは、そのペインだけが",
+        "従来どおり閉じる",
+        "終了済み状態のプロジェクトを保存し復元しても、ノートが保持されている"
+      ]
+    },
+    {
+      "id": "S-051",
+      "title": "Human performs a one-time on-device visual verification of the deletion-protection layer after its implementation is in place; not complete until confirmed (close confirmation on an idle-shell-only group with Cancel losing nothing, last-pane exit leaving the terminated display, Enter restarting a shell to resume, terminated appearance fitting the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "削除保護の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。",
+        "アイドルなシェルだけのプロジェクトを close しようとすると確認ダイアログが出て、",
+        "Cancel で何も失われない",
+        "最後のペインのシェルを exit すると、プロジェクトが閉じずに終了済み表示で残る",
+        "終了済みペインで Enter を押すと新しいシェルが起動し、作業を再開できる",
+        "終了済み表示の見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-052",
+      "title": "Human performs a one-time on-device verification that Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the note editor as standard and that an over-10-line paste is truncated to the first 10 lines on save",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ノート編集オーバーレイの実機確認として、Cmd+A / Cmd+C / Cmd+X / Cmd+V が",
+        "エディタに対して標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ",
+        "切り詰められることを人間が一度だけ目視確認し、確認が取れる。"
+      ]
+    },
+    {
+      "id": "S-053",
+      "title": "Success gates (priority/deadline): XGhosttyTests contains passing tests for priority/deadline save-restore round trip, invalid deadline input treated as unset, stable priority sort order over visible groups, stable deadline sort order with unset last, sorts not affecting hidden groups, and model-layer overdue determination",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "優先度・締切を保存し復元すると同じ値が復元される",
+        "不正な締切入力は未設定として扱われる",
+        "優先度ソートが visible なプロジェクトを high → medium → low → 未設定の順に",
+        "並べ、同順位内は元の相対順を維持する",
+        "締切ソートが visible なプロジェクトを締切の近い順に並べ、未設定を末尾に置き、",
+        "同日内は元の相対順を維持する",
+        "ソートが hidden なプロジェクトに影響しない",
+        "締切超過の判定がモデル層で行われる"
+      ]
+    },
+    {
+      "id": "S-054",
+      "title": "Human performs a one-time on-device visual verification of the priority/deadline layer after its implementation is in place; not complete until confirmed (overlay sets priority/deadline shown in the label band, overview shows them with the note, overdue subtly emphasized, Cmd+S / Cmd+Shift+S reorder with Cmd+1-9 following, appearance fitting the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "優先度・締切の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
+        "取れる。確認が取れるまで完了とはしない。",
+        "`Cmd+N` のオーバーレイで優先度と締切を設定でき、保存後ラベル帯に表示される",
+        "一望モードでノートと併せて優先度・締切が表示される",
+        "締切超過のプロジェクトが控えめに強調されて見える",
+        "`Cmd+S` で優先度順、`Cmd+Shift+S` で締切順に並びが変わり、Cmd+1〜9 が",
+        "新しい並びに追従する",
+        "表示の見た目(印・締切・強調)がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-055",
+      "title": "Cmd+Opt+H no longer hides the focused project immediately; it opens a hide-selection screen listing all visible projects with multi-toggle selection, Enter hides the selected projects in one batch, Esc closes hiding nothing (behavior when invoked while zoomed is left to the implementation)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+Opt+H` は「focused プロジェクトを即座に隠す」挙動を廃止し、hide 選択画面を",
+        "開く。選択画面には visible な全プロジェクトが列挙され、複数をトグル選択でき、",
+        "Enter で選択したプロジェクトを一括で hidden にし、Esc で何も隠さず閉じる",
+        "(zoom 中に呼び出した場合の挙動は定めず、実装に任せる)。"
+      ]
+    },
+    {
+      "id": "S-056",
+      "title": "Hide selection can never hide all visible projects: at least one stays visible and a select-all state cannot be confirmed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "hide 選択では visible な全プロジェクトを隠すことはできず、最低 1 つは visible に",
+        "残る。"
+      ]
+    },
+    {
+      "id": "S-057",
+      "title": "The return path for hidden projects stays the existing hidden shelf, unchanged",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "隠したプロジェクトの復帰導線は従来どおり hidden シェルフとし、変更しない。"
+      ]
+    },
+    {
+      "id": "S-058",
+      "title": "Built-in registered layouts: 11 total - equal-split for 4-9 projects (6 kinds) and X+1 for X = 4-8 (5 kinds: X equal-split on top, 1 full-width at the bottom)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "組み込みの登録レイアウトとして、等分割(プロジェクト数 4〜9 の 6 種)と X+1",
+        "(X = 4〜8 の 5 種。X 個を等分割し、1 個を最下段に全幅横長で配置)の計 11 種を",
+        "持つ。"
+      ]
+    },
+    {
+      "id": "S-059",
+      "title": "Equal-split rule: rows = the integer nearest sqrt(n), projects distributed top-down as evenly as possible (4=2+2, 5=3+2, 6=3+3, 7=3+2+2, 8=3+3+2, 9=3+3+3), row heights and in-row widths equal; the X part of X+1 follows the same rule",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "等分割は、行数を √n に最も近い整数とするグリッドに、プロジェクトを上の行から",
+        "できるだけ均等に配る(4 = 2+2、5 = 3+2、6 = 3+3、7 = 3+2+2、8 = 3+3+2、",
+        "9 = 3+3+3)。行の高さは等分、行内の各プロジェクトの幅は等分とする。X+1 の X 部分",
+        "も同じ規則で配置する。"
+      ]
+    },
+    {
+      "id": "S-060",
+      "title": "Cmd+L opens a layout-selection overlay: arrow keys choose from the registered-layout list, Enter applies, Esc closes changing nothing; the overlay appears only when invoked and the terminal returns to full view on exit (zoomed invocation left to the implementation)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+L` でレイアウト選択オーバーレイが開き、登録レイアウトの一覧から矢印キーで",
+        "選択して Enter で適用し、Esc で何も変えずに閉じる。オーバーレイは呼び出したとき",
+        "だけ表示され、抜ければ端末が全面に戻る(zoom 中に呼び出した場合の挙動は定めず、",
+        "実装に任せる)。"
+      ]
+    },
+    {
+      "id": "S-061",
+      "title": "Layout application assigns visible projects in current ordinal order to slots top row first, left to right within a row, the +1 slot last; ordinals (Cmd+1-9) follow the applied arrangement",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "レイアウト適用時、visible なプロジェクトは現在の序数順のまま、スロットへ",
+        "「上の行から、行内は左から右、+1 枠は最後」の順で割り当てる。序数(Cmd+1〜9)は",
+        "適用後の配置に追従する。"
+      ]
+    },
+    {
+      "id": "S-062",
+      "title": "When the layout holds more projects than currently shown, the shortfall is created as new projects appended at the ordinal tail before applying; new projects start a new shell like normal creation",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "レイアウトのプロジェクト数が現表示数より多い場合、不足分の新規プロジェクトを",
+        "序数の末尾に作成してから適用する。新規プロジェクトは通常の新規作成と同様に",
+        "新しいシェルを起動する。"
+      ]
+    },
+    {
+      "id": "S-063",
+      "title": "When the layout holds fewer projects than currently shown, a hide-pick screen appears and can be confirmed only with exactly the excess count selected; confirming hides the selected projects (never closes, no information lost) and applies with the rest; Esc cancels the whole layout application",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "レイアウトのプロジェクト数が現表示数より少ない場合、隠すプロジェクトを選ぶ",
+        "選択画面を表示し、超過分(現表示数 − レイアウト数)ちょうどを選択したときのみ",
+        "確定できる。確定で選択したプロジェクトが hidden になり(close はされず情報は",
+        "失われない)、残りのプロジェクトで適用する。Esc でレイアウト適用ごとキャンセル",
+        "する。"
+      ]
+    },
+    {
+      "id": "S-064",
+      "title": "Layout application is a one-shot arrangement change with no persistent applied-layout state; manual resize, splits, and sorts remain possible afterwards and the arrangement saves and restores as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "レイアウト適用はその時点の配置変更であり、「適用中のレイアウト」という状態は",
+        "持たない。適用後の手動 resize・分割・ソートは従来どおり可能で、配置は従来どおり",
+        "保存・復元される。"
+      ]
+    },
+    {
+      "id": "S-065",
+      "title": "Judgment logic for hide selection, layout slot computation, count matching (how many to create / hide), and assignment order lives in the model layer, verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "hide 選択・レイアウトのスロット計算・数合わせ(新規作成数・隠す数)・割り当て順の",
+        "判断ロジックはモデル層に置き、`XGhosttyTests` から検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-066",
+      "title": "Full group-to-project rename: user-visible wording (menus, dialogs, shelf), fork-specific action names (hide_group to hide_project etc.), internal code identifiers (GroupState to ProjectState etc.), directory and file names (macos/Sources/Features/Groups/ to Projects/ etc.), and SPEC.md / README.md terminology; upstream terminal-core vocabulary and identifiers untouched",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "「グループ」を「プロジェクト」へ全面改名する:ユーザー可視文言(メニュー・",
+        "ダイアログ・シェルフ等)、fork 固有の action 名(`hide_group` → `hide_project`",
+        "等)、コード内部識別子(`GroupState` → `ProjectState` 等)、ディレクトリ・",
+        "ファイル名(`macos/Sources/Features/Groups/` → `Projects/` 等)、および",
+        "SPEC.md / README.md の用語。上流由来のターミナルコアの語彙・識別子には触れない。"
+      ]
+    },
+    {
+      "id": "S-067",
+      "title": "The rename is a pure behavior-preserving rename with no feature regression; backward compatibility of keybind configs etc. is, as before, not guaranteed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "改名は挙動を変えない純粋なリネームとし、既存機能を退行させない。キーバインド設定",
+        "等の後方互換は従来どおり保証しない。"
+      ]
+    },
+    {
+      "id": "S-068",
+      "title": "Update SPEC.md and README.md to match the implemented hide-selection and layout-application specs and the post-rename vocabulary",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装した hide 選択・レイアウト適用の仕様と改名後の",
+        "語彙に合わせて更新する。"
+      ]
+    },
+    {
+      "id": "S-069",
+      "title": "Success gates (hide selection): XGhosttyTests contains passing tests for batch hiding of the selected multiple projects on confirm, cancel hiding nothing, and select-all being unconfirmable so at least one project stays visible",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "hide 選択の確定で、選択した複数のプロジェクトが一括で hidden になる",
+        "hide 選択をキャンセルすると、何も hidden にならない",
+        "visible な全プロジェクトを選択した状態では確定できず、最低 1 つは visible に",
+        "残る"
+      ]
+    },
+    {
+      "id": "S-070",
+      "title": "Human performs a one-time on-device visual verification of the hide-selection screen after its implementation is in place; not complete until confirmed (Cmd+Opt+H opens the screen, multi-select + Enter hides in one batch into the hidden shelf, Esc closes hiding nothing, appearance fits the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "hide 選択の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。",
+        "`Cmd+Opt+H` で hide 選択画面が開き、複数選択して Enter で選択したプロジェクト",
+        "が一括で隠れ、hidden シェルフに現れる",
+        "Esc で何も隠れずに閉じる",
+        "選択画面の見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-071",
+      "title": "Success gates (registered layouts): XGhosttyTests contains passing tests for all 11 layouts' slot computation matching the definition, equal-count assignment in ordinal order, shortfall creating new projects at the ordinal tail, excess hiding exactly the selected projects (never closing) with the rest assigned in ordinal order, confirm disabled while the hide-pick count mismatches the excess, unselected hidden projects unaffected, and post-apply ordinals following the new arrangement",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "全 11 種の登録レイアウトのスロット計算が定義どおりである(等分割は行数 =",
+        "√n に最も近い整数のグリッドに上の行からできるだけ均等に配り、行高・行内幅は",
+        "等分。X+1 は X 個を同規則で配置し、1 個を最下段に全幅)",
+        "レイアウト数 = 現表示数のとき、visible なプロジェクトが序数順にスロットへ",
+        "割り当てられる",
+        "レイアウト数 > 現表示数のとき、不足分の新規プロジェクトが序数の末尾に作成",
+        "されて割り当てられる",
+        "レイアウト数 < 現表示数のとき、選択された超過分ちょうどのプロジェクトが",
+        "hidden になり(close はされない)、残りが序数順に割り当てられる",
+        "隠す選択の数が超過分と一致しない間は確定できない",
+        "選択されたもの以外の hidden なプロジェクトはレイアウト適用の影響を受けない",
+        "適用後の序数(Cmd+1〜9)が新しい配置に追従する"
+      ]
+    },
+    {
+      "id": "S-072",
+      "title": "Human performs a one-time on-device visual verification of layout application after its implementation is in place; not complete until confirmed (Cmd+L list opens, arrows + Enter apply, Esc changes nothing; equal count applies directly; more creates new projects at the tail; fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "レイアウト適用の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
+        "取れる。確認が取れるまで完了とはしない。",
+        "`Cmd+L` でレイアウト一覧が開き、矢印キーで選んで Enter で適用され、Esc で",
+        "何も変わらずに閉じる",
+        "レイアウト数が現表示数と等しいとき、そのまま適用される",
+        "多いとき、新プロジェクトが後ろに作られて適用される",
+        "少ないとき、隠すプロジェクトの選択画面が出て、確定で適用される",
+        "一覧・選択画面の見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-073",
+      "title": "Rename completion gates: macos/Sources/Features/Projects/ exists and the old Groups/ does not; fork-specific action names, code identifiers, and SPEC.md / README.md terminology are renamed to the project family; success criteria 1-3 build/test gates exit 0; and a human verifies once on device that no user-visible wording shows 'Group'",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "改名の完了として、以下が確認できる。",
+        "`macos/Sources/Features/Projects/` が存在し、旧 `Groups/` が存在しない",
+        "fork 固有の action 名・コード識別子・SPEC.md / README.md の用語が project 系へ",
+        "改名されている",
+        "成功条件 1〜3 のビルド・テストが exit 0 で終わる",
+        "メニュー・ダイアログ・シェルフ等のユーザー可視文言に「Group」が現れないことを",
+        "人間が実機で一度だけ目視確認し、確認が取れる"
+      ]
+    }
+  ]
+}

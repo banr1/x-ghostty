@@ -1,0 +1,1929 @@
+{
+  "schema_version": "1.0.0",
+  "batch_policy": {
+    "default_batch_size": 3,
+    "max_batch_size": 5,
+    "max_context_cost_per_batch": 8,
+    "prefer_same_batch_group": true,
+    "avoid_mixing_high_risk_items": true,
+    "avoid_mixing_executors": true
+  },
+  "active_batch": [],
+  "items": [
+    {
+      "id": "T-001",
+      "title": "Model layer: add note storage to GroupState (max 10 lines, project-scoped), persist and restore it like the group name, and cover save/restore plus the 10-line cap with XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-001",
+        "S-002",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core test suite (zig build test) passed after the unsandboxed re-initialization; package fetch from deps.files.ghostty.org succeeded."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 410 test cases passed, including all 14 GroupNoteTests (note save/restore Codable round trip, 10-line cap enforced at init/setNote/decode, legacy decode without note key, oversized-note decode re-normalization, setGroupNote paths)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (exact recipe body of the build-app wrapper) exited 0. The wrapper itself was denied by the control-plane pre-tool hook (misclassified as a maintenance transition, see R-002); the underlying command is identical."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "GroupState.note with 10-line cap (init/setNote/decode, custom Codable keeps pre-note saves decodable), WorkspaceModel.setGroupNote, 14 unit tests. Persistence rides the existing workspace state -> invalidateRestorableState hook."
+        }
+      ]
+    },
+    {
+      "id": "T-002",
+      "title": "Cmd+N note edit overlay: opens for the focused project, multi-line editing with full text visible, Esc saves and closes, terminal returns to full view",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-003",
+        "S-009"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-ui",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (recipe body of the build-app wrapper, per R-002) exited 0 with the new edit_group_note action compiled through the Zig core, the regenerated C header, and the Swift app."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite passed, including the xghostty.h enum-sync check (checkXGhosttyHEnum) covering the appended XGHOSTTY_ACTION_EDIT_GROUP_NOTE tag and the new edit_group_note keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 420 test cases passed, including 9 new note-editing-session tests (begin targets focused group, unknown-group/no-focus no-ops, end saves draft with 10-line cap and closes, no-session no-op, restoreState clears/keeps editing state, removeAllGroups clears)."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "New edit_group_note action following the rename_group pattern end to end: keybind action (default cmd+n, no conflict — config defaults and menu xibs have no existing N binding), C ABI tag appended last, Swift dispatch posts ghosttyEditGroupNote, controller opens the model's note-editing session (noteEditingGroup on WorkspaceModel, begin/end methods, cleared when the group vanishes), and a SwiftUI GroupNoteEditor overlay in TerminalWorkspaceView: multi-line TextEditor sized to the full 10-line cap, Esc (onExitCommand) and backdrop click save-and-close, focus handed back to the terminal surface on dismissal. Overlay renders only while editing, so no permanent terminal area is occupied. NOTE: the Esc-saves semantics implemented here was superseded by the 2026-08-08 Essence update (Cmd+Enter saves, Esc discards — see T-009)."
+        }
+      ]
+    },
+    {
+      "id": "T-003",
+      "title": "Overview mode (Cmd+Opt+N): toggle simultaneous note overlays on all visible projects, visible-only display set, zoom release on entry, read-only, truncated display; model-layer judgment logic covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-004",
+        "S-005",
+        "S-006",
+        "S-007",
+        "S-008",
+        "S-009",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-ui",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (recipe body of the build-app wrapper, per R-002) exited 0 with the new toggle_note_overview action compiled through the Zig core, the C header, and the Swift app."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite passed, including the xghostty.h enum-sync check (checkXGhosttyHEnum) covering the appended XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW tag and the new toggle_note_overview keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 434 test cases passed, including 14 new note-overview tests: display set == visible groups only (hidden excluded), zoom released on entry, focused group unchanged on entry, re-toggle and endNoteOverview exit, note editing and all three focus-move paths (directional / index / direct switch) are no-ops while active, toggle is a no-op while the note editor is open, restoreState/removeAllGroups end the overview."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupNoteOverview.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "New toggle_note_overview action mirroring edit_group_note end to end (default cmd+opt+n, no conflict; C ABI tag appended last). Model layer: WorkspaceModel.noteOverviewActive (transient, never persisted), toggleNoteOverview releases zoom before showing and keeps focusedGroup, noteOverviewGroupIDs == WorkspaceState.visibleGroupIDs (canonical leaves = visible groups, hidden excluded), viewing-only guards make beginNoteEditing*/gotoGroupTarget/gotoGroupIndexTarget/switchFocusedGroup no-ops while active. UI: per-group GroupNoteOverviewOverlay rendered inside each visible GroupView (lineLimit(maxNoteLines) + tail truncation, group-bounded frame so layout never breaks), workspace-level GroupNoteOverviewKeyCatcher blocks the mouse and owns the keyboard (Esc via focused-field onExitCommand, re-pressed Cmd+Opt+N via hidden keyboardShortcut button since the surface binding path is inert while unfocused), focus handed back to the terminal on exit. Overlays render only while active, so no permanent terminal area is occupied."
+        }
+      ]
+    },
+    {
+      "id": "T-004",
+      "title": "Update SPEC.md and README.md to describe the note layer as implemented",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-011"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-docs",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md",
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/GroupNoteOverview.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupState.swift"
+          ],
+          "summary": "SPEC.md: new §21 ノート仕様 (21.1 data model with 10-line normalization at init/setNote/decode and name-path persistence; 21.2 edit overlay semantics incl. Esc-saves-and-closes and full-text visibility; 21.3 overview semantics incl. visible-only display set, zoom release before showing, viewing-only guards, truncated display, exit paths and the rebound-key Esc-only caveat; 21.4 GroupNoteTests inventory), plus edit_group_note/toggle_note_overview added to the §9.1 action list, Cmd+N/Cmd+Opt+N added to §10.5 default keybinds with the conflict-check note, and GroupNoteEditor.swift/GroupNoteOverview.swift added to the §16 file layout. README.md: new Notes bullet in About (10-line per-group note, persistence, Cmd+N editor, Cmd+Opt+N read-only overview, exit keys, SPEC §21 pointer). Source doc comments now reference the new SPEC sections (GroupNoteEditor §21.2, GroupNoteOverview §21.3, WorkspaceModel note session/overview §21.2-3, GroupState.note §21.1) — the section did not exist when they were written."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build (recipe body of the build-app wrapper, per R-002) exited 0 after the docs and comment edits."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite passed after the docs and comment edits."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 434 test cases passed after the docs and comment edits."
+        }
+      ]
+    },
+    {
+      "id": "T-005",
+      "title": "Full verification: zig build, just test, just swift-test all exit 0 with no regression of group features",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-012",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-verify",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build gate (exact recipe body of the build-app wrapper, which itself remains hook-denied per R-002) exited 0 with the complete note layer (T-001..T-004) in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core gate exited 0, including the xghostty.h enum-sync check over both appended note action tags and both note keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Swift gate: TEST SUCCEEDED, 434 test cases, 0 failures — the full pre-note suite (group enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) plus all 37 GroupNoteTests. No regression of group features observed; run at the point where every implementation Todo (T-001..T-004) is complete."
+        }
+      ]
+    },
+    {
+      "id": "T-006",
+      "title": "Human on-device visual verification (re-run after the Cmd+Enter/Esc rework): Cmd+N overlay opens and Cmd+Enter saves, Esc discards, Cmd+Enter no longer toggles fullscreen, Cmd+Opt+N overview show/hide, overlay appearance, note readability in overview (one-time, after all implementation)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-013"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "notes-verify",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-08T21:59:34+09:00",
+          "reference": "R-004 resolution / reflection.jsonl human_resume entry at 2026-08-08T21:59:34+09:00",
+          "summary": "The human performed the one-time on-device visual verification against the updated success criterion 5 and confirmed all six items behave as expected: (1) Cmd+N opens the focused project's note edit overlay and Cmd+Enter saves and closes, with the content restored after an app restart; (2) Esc discards the edit and the pre-open text remains; (3) Cmd+Enter no longer toggles fullscreen; (4) Cmd+Opt+N shows notes over all visible projects simultaneously and exits via re-toggle or Esc; (5) the overlay appearance (position, margins, colors) fits the terminal; (6) overview-mode notes are readable including truncated display. Recorded by the human in the R-004 resolution during the 2026-08-08T21:59:34+09:00 resume (gate release), which instructed marking T-006 done with this confirmation as evidence."
+        }
+      ]
+    },
+    {
+      "id": "T-007",
+      "title": "Optional mouse affordance: open the focused project's note from the header band (or equivalent) by mouse",
+      "status": "done",
+      "priority": "should",
+      "spec": [
+        "S-014"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-optional",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupLabel.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "Header-band mouse affordance for notes (SPEC §21.2 / §7.1): GroupLabel gains a trailing note glyph (square.and.pencil, 10pt) that recedes below the header text (opacity 0.5 focused / 0.3 unfocused) and brightens on hover (0.9), with contentShape hit area, accessibility button trait/label, and a help tooltip; it is hidden while the band is in inline-rename mode so the band holds one interactive mode at a time. Clicking it calls GroupLabelActions.openNote(group.id), wired in TerminalWorkspaceView to WorkspaceModel.beginNoteEditing(id) — the existing model entry point whose guards (unknown group, note-overview viewing-only mode) already apply, so a non-focused group's note opens directly WITHOUT moving group focus (judgment stays in the model; the view only forwards). New XGhosttyTests case beginNoteEditingNonFocusedGroupOpensItWithoutMovingFocus covers the mouse path's model semantics. SPEC.md updated: §7.1 interaction table adds the note-glyph click, §21.2 documents the mouse affordance (non-focused direct edit, no focus change, hidden during rename, blocked during overview), §21.4 test inventory extended. README.md Notes bullet mentions the header-band glyph."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: full suite TEST SUCCEEDED (exit 0) with the note-affordance changes and the new test in the tree."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupNoteTests test",
+          "exit_code": 0,
+          "summary": "Targeted confirmation run: TEST SUCCEEDED, and the new test case GroupNoteTests/beginNoteEditingNonFocusedGroupOpensItWithoutMovingFocus passed (named in the log)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the new header affordance) exited 0. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-008",
+      "title": "Optional visual refinement of the note edit overlay, overview mode, and the primary mark (colors, margins, animation)",
+      "status": "done",
+      "priority": "should",
+      "spec": [
+        "S-015"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-optional",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-10T14:05:04+09:00",
+          "reference": "R-008 resolution / reflection.jsonl human_resume entry at 2026-08-10T14:05:04+09:00",
+          "summary": "The human resolved R-008 by declaring the current appearance satisfactory and closing T-008 without concrete refinement direction: no specific refinement instruction exists, both on-device checks (R-004 note layer, R-006 primary-pane layer) recorded no visual complaints, and the two UIs added in the should phase (T-007 header-band note glyph, T-019 overall-view pane-count badge) also received no change requests at this time. Recorded per the human instruction in the R-008 resolution during the 2026-08-10T14:05:04+09:00 resume (gate release): mark T-008 done with this confirmation as evidence and treat T-008 as no longer an implementation target. No ESSENCE.md change required."
+        }
+      ]
+    },
+    {
+      "id": "T-009",
+      "title": "Note edit confirm/discard semantics: Cmd+Enter saves and closes, Esc discards and closes keeping the pre-open text (no confirmation), with XGhosttyTests covering save-and-close and discard-and-close",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-003",
+        "S-016",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift"
+          ],
+          "summary": "Editor confirm/discard split (authored in cycle R-20260808T210148, commit ff18da9): WorkspaceModel gains cancelNoteEditing() (drops the draft, keeps the pre-open note, clears the session) alongside endNoteEditing(saving:) which stays the save path; GroupNoteEditor routes Esc (onExitCommand) to onCancel and adds a hidden keyboardShortcut(.return, [.command]) button (same pattern as GroupNoteOverviewKeyCatcher) so Cmd+Enter saves-and-closes while the TextEditor owns focus; backdrop click remains save; header hint now reads '⌘↩ save · esc discard'. TerminalWorkspaceView wires onCancel to workspace.cancelNoteEditing(). Two new XGhosttyTests: cancelNoteEditingKeepsPreOpenTextAndCloses (edited draft discarded, pre-open text intact, session closed) and cancelNoteEditingWithoutSessionIsNoOp; the existing end-saves-draft test keeps covering the save-and-close success criterion."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 436 test cases passed (434 prior + the 2 new cancel tests), including both new-semantics tests and the pre-existing save-and-close test. Run in cycle R-20260808T212654 against the committed rework."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 with the reworked editor in the tree (cycle R-20260808T212654)."
+        }
+      ]
+    },
+    {
+      "id": "T-010",
+      "title": "Remove the Cmd+Enter default fullscreen keybind from the config defaults; fullscreen stays reachable via Ctrl+Cmd+F, the Window menu, and the green button",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-017",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/config/Config.zig"
+          ],
+          "summary": "The upstream default ctrl/cmd+enter=toggle_fullscreen put() in Keybinds.default is removed (authored in cycle R-20260808T210148, commit ff18da9), with a comment reserving the chord for the note-editor confirm; the ctrl+cmd+f alternate binding, the Window menu item, and the window zoom button remain as fullscreen paths (macOS menu key-equivalent lookup now resolves toggle_fullscreen to ctrl+cmd+f as the last-set trigger)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 without the default binding (cycle R-20260808T212654)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 — no default-keybind test referenced cmd+enter=toggle_fullscreen, and the config keybind parse/serialization tests all pass without it (cycle R-20260808T212654)."
+        }
+      ]
+    },
+    {
+      "id": "T-011",
+      "title": "Update SPEC.md and README.md for the new edit semantics; README's Building section lists zig build / just test / just swift-test",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-011"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md §21.2 now states Cmd+Enter saves-and-closes (hidden keyboardShortcut receiver), Esc discards keeping the pre-open text with no confirmation, and both exits return first responder to the terminal; §10.5 documents that the upstream cmd+enter=toggle_fullscreen default is unbound with the surviving fullscreen paths; §21.4 test inventory covers the cancel path. README.md: the About Notes bullet describes Cmd+Enter save / Esc discard and the unbound fullscreen default, and the Building section lists exactly the three verification commands — zig build, just test, just swift-test (authored in cycle R-20260808T210148, commit ff18da9)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig gate green after the docs updates (cycle R-20260808T212654)."
+        }
+      ]
+    },
+    {
+      "id": "T-012",
+      "title": "Full verification after the rework: zig build / just test / just swift-test all exit 0 with no regression of group features (Cmd+Enter fullscreen removal excepted)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-012",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-rework",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete rework in the tree (cycle R-20260808T212654, worktree == commit ff18da9)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check over both note action tags and both note keybind parse tests (cycle R-20260808T212654)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3+4 gate: TEST SUCCEEDED, 436 test cases, 0 failures — full group-feature suite (enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) plus all 39 GroupNoteTests covering every §S-012 test criterion (save/restore round trip, 10-line cap, save-and-close keeps edited text, discard-and-close keeps pre-open text, visible-only overview set, zoom release on entry, no focus move / no note editing during overview). No regression observed; the only intended behavior change is the unbound cmd+enter fullscreen default (S-010's sanctioned exception). Run in cycle R-20260808T212654."
+        }
+      ]
+    },
+    {
+      "id": "T-013",
+      "title": "Model layer: primary pane flag in the split-tree model — default assignment to a group's first pane, per-group uniqueness, nearest-leaf promotion when the primary closes, persistence through the pane-layout path with restore normalization of 0/multiple primaries to exactly 1, and the overall-view display-target judgment — covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-018",
+        "S-019",
+        "S-020",
+        "S-024",
+        "S-025",
+        "S-027",
+        "S-029"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "primary-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift"
+          ],
+          "summary": "Primary-pane model layer (SPEC §22 to be written in T-016). GroupState gains primaryPane (private(set) SurfaceID?, exactly one per non-empty tree by construction): init/decode normalize via SplitTree.normalizedPrimary (first stored valid flag wins, else first leaf — the 0/dangling/multiple repair), a paneTree didSet observer reconciles on every tree replacement via SplitTree.reconciledPrimary (later splits never take the flag; a departed primary promotes its nearest surviving leaf measured on the previous tree — shell exit / Cmd+W / process death all reach the model as such a replacement), setPrimaryPane rejects panes outside the tree and demotes the former primary implicitly, and the save format is a primaryPanes id-list riding the same GroupState record as the pane layout so a corrupt save can hold 0/dangling/several flags and decode repairs it. WorkspaceState gains overallViewPaneIDs ([GroupID: SurfaceID], visible groups -> their primary — the overall-view display-target judgment), forwarded by WorkspaceModel with primaryPaneID(of:). Testability refactor per Essence 思想 4: GroupState/WorkspaceState/WorkspaceModel became generic GroupStateOf/WorkspaceStateOf/WorkspaceModelOf over the pane element (runtime typealiases keep every call site unchanged; static stored properties became computed; WorkspaceError/CloseGroupOutcome moved to top-level non-generic enums WorkspaceModelError/WorkspaceCloseGroupOutcome with aliases, since Sendable synthesis inside the generic class would demand Pane: Sendable), so XGhosttyTests exercises the identical model code with value-type panes — real leaves in the trees, which SurfaceView construction (needs a live app) never allowed."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 453 test cases, 0 failures — the full prior suite plus 18 new GroupPrimaryPaneTests: initial pane primary on new group and on WorkspaceModel(wrapping:), empty tree has none, later splits non-primary with the flag staying put, setPrimaryPane moves/demotes and rejects outside panes, nearest-leaf promotion on primary close ([A|B] and [A|[B|C]] rows), non-primary close keeps the flag, last-pane close clears it, GroupState Codable round trip keeps a non-default primary on the same pane, decode normalizes zero/missing-key/multiple/dangling primaryPanes to exactly one, whole-workspace round trip restores every group's primary, overall-view display set == each visible group's primary only (hidden excluded), and the controller-mirror path (replaceFocusedPaneTree) keeps/promotes the flag."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the generic model layer) exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-014",
+      "title": "Overall view behavior: render only each group's primary pane (zoomed local view unchanged), direct keyboard input/focus to the primary, snap focus to the primary on zoom release, and no-op guards for pane operations (split, inter-pane focus movement, pane zoom, resize/equalize) outside zoom; guards covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-020",
+        "S-021",
+        "S-022",
+        "S-029"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "primary-view",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift",
+            "macos/Tests/Groups/WorkspaceModelTests.swift"
+          ],
+          "summary": "Overall-view behavior (SPEC §22.3-22.5, to be written in T-016). Model layer: WorkspaceState.paneOperationsEnabled (true only while zoomedGroup != nil && zoomedGroup == focusedGroup) and mutating snapFocusToPrimaryInOverallView() (outside zoom the focused group's focusedSurface snaps to its primary), called from every mutation that can land un-zoomed: replaceFocusedPaneTree (covers primary shell-exit promotion), setFocusedSurface, switchFocusedGroup, gotoGroup, toggleGroupZoom (the zoom-release snap), hideFocusedGroup, showGroup, closeFocusedGroup. GroupState.overallViewPaneTree derives the single-primary-leaf display tree. Rendering: TerminalWorkspaceView passes primaryOnly (zoomedGroup == nil) through GroupSplitTreeView/GroupSplitSubtreeView to GroupView, which renders overallViewPaneTree outside zoom and the full paneTree while zoomed. No-op guards: BaseTerminalController.newSplit, performSplitAction (divider resize + drop), ghosttyDidFocusSplit/ghosttyDidToggleSplitZoom/ghosttyDidResizeSplit/ghosttyDidEqualizeSplits all guard on workspace.paneOperationsEnabled; XGhostty.App performability checks (newSplit, gotoSplit, resizeSplit, toggleSplitZoom, equalizeSplits) decline before posting so performable keybinds fall through unconsumed; validateMenuItem grays out the 16 pane-op menu selectors. Focus wiring: ghosttyDidToggleGroupZoom targets the primary on release, ghosttyDidPresentTerminal and replaceSurfaceTree retarget focus to the primary while un-zoomed. Design judgment (recorded as R-005): canToggleGroupZoom now requires only a focused group — with pane ops zoom-only, a single-group workspace would otherwise never reach a split; zoom is the gateway to the local view."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 461 test cases, 0 failures — the full prior suite plus 7 new GroupPrimaryPaneTests (overall-view pane tree contains exactly the primary leaf and empty for an empty group; paneOperationsEnabled only while the focused group is zoomed, disabled when a different group is zoomed; setFocusedSurface outside zoom snaps to primary while zoomed focus is free; zoom release snaps focus to primary; switchFocusedGroup outside zoom lands on the target's primary despite a stored non-primary focus; primary close outside zoom moves focus to the promoted primary) and the updated canToggleGroupZoomRequiresOnlyAFocusedGroup covering the single-group zoom change."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the overall-view render path and action guards) exited 0. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage from the Swift-only edits)."
+        }
+      ]
+    },
+    {
+      "id": "T-015",
+      "title": "set_primary action bound to Cmd+P (effective only while zoomed; demotes the former primary) and the primary mark at the primary pane's top-right, shown only while zoomed with multiple panes; model logic covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-023",
+        "S-026",
+        "S-029"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "primary-action",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Splits/TerminalSplitTreeView.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift"
+          ],
+          "summary": "New set_primary action following the edit_group_note pattern end to end: keybind action with doc comment and parse test (src/input/Binding.zig incl. the .surface scope list), apprt action + Key enum entry appended last for C ABI (src/apprt/action.zig), Surface.zig dispatch, command.zig palette-exclusion list, default keybind cmd+p in Config.zig (plain Cmd+P is free — the command palette uses Cmd+Shift+P), and XGHOSTTY_ACTION_SET_PRIMARY appended to xghostty.h (checkXGhosttyHEnum keeps the header in sync). Swift: App.setPrimary performability declines unless workspace.canSetPrimaryToFocusedPane (zoom-only, focused pane in tree, not already primary — keybind falls through unconsumed otherwise), posts ghosttySetPrimary; BaseTerminalController.ghosttyDidSetPrimary calls workspace.setPrimaryToFocusedPane(), which moves the single-valued flag (former primary demoted implicitly, SPEC §22.4). Primary mark (SPEC §22.6): WorkspaceState.primaryMarkPaneIDs returns the zoomed group's primary only while that group holds multiple panes (empty in the overall view and for single-pane groups), threaded TerminalWorkspaceView → GroupSplitTreeView → GroupView → TerminalSplitTreeView.markedPane; TerminalSplitLeaf overlays a subtle top-right PaneMarkBadge (dimmed star on ultraThinMaterial chip, hit-testing disabled) on the marked pane. The split layer only knows the neutral 'mark this leaf' concept; the group layer owns the judgment."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with the new action, regenerated C header consumption, macOS app with the mark overlay) exited 0. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the appended XGHOSTTY_ACTION_SET_PRIMARY tag and the new set_primary keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 467 test cases, 0 failures — the full prior suite plus 6 new GroupPrimaryPaneTests: set_primary while zoomed moves the flag to the focused pane and demotes the former primary (S-029 criterion), declines outside zoom and when the focused pane is already primary; the primary mark shows only while a multi-pane group is zoomed (empty in the overall view), disappears on zoom release, stays hidden for single-pane groups, and follows a set_primary reassignment."
+        }
+      ]
+    },
+    {
+      "id": "T-016",
+      "title": "Update SPEC.md and README.md to describe the primary pane layer as implemented",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-028"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "primary-docs",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: new §22 プライマリーペイン仕様 mirroring §21's structure — §22.1 data model (single-valued GroupState.primaryPane, exactly one per non-empty tree, primaryPanes id-list save format riding the pane-layout record, normalizedPrimary restore repair of 0/missing-key/multiple/dangling flags, setPrimaryPane out-of-tree rejection), §22.2 promotion (paneTree didSet → reconciledPrimary; later splits never take the flag; departed primary promotes the nearest surviving leaf via SplitTree.nearestLeaf — Euclidean distance between slot origins measured on the previous tree, ties won by traversal order; shell exit / Cmd+W / process death all arrive as tree replacements), §22.3 overall-view display target (overallViewPaneIDs, overallViewPaneTree, primaryOnly render switch, full-tree fallback), §22.4 focus & set_primary (the 8 snapFocusToPrimaryInOverallView call sites, controller focus wiring, canSetPrimaryToFocusedPane shared between performability and execution, implicit demotion, keyboard focus unchanged), §22.5 pane-op no-ops (paneOperationsEnabled, 6 controller guards + 5 App performability declines + the 16 grayed menu selectors, no dividers/drop targets in the overall view, and the R-005 single-group-zoom change with its rationale), §22.6 primary mark (primaryMarkPaneIDs zoomed-multi-pane-only judgment, PaneMarkBadge threading, split layer's neutral mark concept), §22.7 test inventory (GroupPrimaryPaneTests, 31 cases, generic-model testability note). Also: set_primary added to the §9.1 action list, and Cmd+P -> set_primary added to §10.5 with the no-conflict note (palette is Cmd+Shift+P). §16 file layout needed no change (the layer added no new source file under Features/Groups). README.md About: new Primary panes bullet (default first-pane primary, overall view renders primaries only, zoom shows the full layout with the mark, Cmd+P reassignment, zoom-only pane operations, exit promotion, persistence, SPEC §22 pointer) and the Splits bullet now notes the overall-view rendering. Verified no leftover 'to be written' phrasing anywhere in macos/src, and all pre-existing §22.x doc-comment references in the implementation (GroupState/WorkspaceState/WorkspaceModel/BaseTerminalController/App/GroupSplitTreeView/GroupView/TerminalSplitTreeView/TerminalWorkspaceView/XGhosttyPackage/GroupPrimaryPaneTests) now resolve to the matching real sections — the section numbering was written to align with them."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 after the docs edits (docs-only change; gate shared with T-017, run in cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 after the docs edits (gate shared with T-017, run in cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 467 test cases, 0 failures after the docs edits (gate shared with T-017, run in cycle R-20260810T030952)."
+        }
+      ]
+    },
+    {
+      "id": "T-017",
+      "title": "Full verification of the primary pane layer: zig build / just test / just swift-test all exit 0, all S-029 tests present and passing, no regression of group features beyond the sanctioned exceptions",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-029",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "primary-verify",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete primary-pane layer (T-013..T-016) in the tree. Run as the exact recipe body of the build-app wrapper per R-002 (cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check over all three appended fork action tags (edit_group_note, toggle_note_overview, set_primary) and their keybind parse tests (cycle R-20260810T030952)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3+6 gate: TEST SUCCEEDED, 467 test cases, 0 failures, including all 31 GroupPrimaryPaneTests. Every S-029 test criterion was matched to a named passing test in this run's log: (1) initial pane primary → initialPaneOfNewGroupIsPrimary (+ wrappingModelAssignsPrimaryToFirstPane); (2) later splits non-primary, exactly one per group → laterSplitPanesAreNotPrimary (+ single-valued flag, setPrimaryPaneMovesFlagAndDemotesFormerPrimary); (3) save/restore to the same pane with 0/multiple normalization → saveRestoreRoundTripKeepsPrimaryOnSamePane, decodeNormalizesZeroPrimariesToFirstLeaf, decodeNormalizesMultiplePrimariesToOne, decodeNormalizesDanglingPrimaryToFirstLeaf, workspaceRoundTripRestoresEveryGroupsPrimary; (4) nearest-leaf promotion on primary close → primaryCloseProotesNearestLeaf, primaryClosePromotionPicksNearestLeafInDeepTree; (5) overall-view display set == primaries of visible groups only → overallViewDisplaySetIsEachVisibleGroupsPrimaryOnly, overallViewPaneTreeContainsExactlyThePrimaryLeaf; (6) pane-op no-ops in the overall view → paneOperationsAreEnabledOnlyWhileTheFocusedGroupIsZoomed, paneOperationsAreDisabledWhenTheZoomedGroupIsNotFocused; (7) zoom-release focus snap → zoomReleaseSnapsFocusToPrimary (+ setFocusedSurfaceInOverallViewSnapsToPrimary, switchFocusedGroupInOverallViewLandsOnPrimary); (8) set_primary while zoomed moves the flag and demotes the former primary → setPrimaryWhileZoomedMovesFlagToFocusedPane (+ setPrimaryOutsideZoomIsNoOp, setPrimaryOnAlreadyPrimaryPaneIsNoOp). No regression: the full group-feature suite (enumeration/zoom/ordinal-jump/hide/show/resize/equalize/rename/close, restore, undo) and all 39 GroupNoteTests pass unchanged; the only intended behavior changes are S-010's sanctioned exceptions (unbound cmd+enter fullscreen default, primary-only overall-view rendering, pane-op no-op guards, zoom-release focus snap) plus the R-005 single-group-zoom enablement recorded for human review (cycle R-20260810T030952)."
+        }
+      ]
+    },
+    {
+      "id": "T-018",
+      "title": "Human on-device visual verification of the primary pane layer (one-time, after all implementation): overall view shows only primaries, zoom shows all panes with the mark visible on multi-pane groups, Cmd+P reassigns while zoomed and the overall view shows that pane after unzoom, primary shell exit promotes the nearest pane and swaps the overall-view display, mark appearance fits the terminal",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-030"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "primary-verify",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-10T12:08:26+09:00",
+          "reference": "R-006 resolution / reflection.jsonl human_resume entry at 2026-08-10T12:08:26+09:00",
+          "summary": "The human performed the one-time on-device visual verification of the primary pane layer against success criterion 7 and confirmed all five items behave as expected: (1) the overall view shows only each group's primary pane; (2) zooming a group shows all panes in layout, with the mark visible at the primary's top-right when the group has multiple panes; (3) pressing Cmd+P on a focused pane while zoomed makes it primary (mark moves) and the overall view shows that pane after unzoom; (4) exiting the primary's shell promotes the nearest remaining pane and the overall-view display swaps accordingly; (5) the mark's appearance fits the terminal. No visual complaints were recorded and nothing was routed to T-008 (visual refinement). Recorded by the human in the R-006 resolution during the 2026-08-10T12:08:26+09:00 resume (gate release), which instructed marking T-018 done with this confirmation as evidence."
+        }
+      ]
+    },
+    {
+      "id": "T-019",
+      "title": "Optional pane-count badge: subtle overall-view indicator that a group has non-primary panes",
+      "status": "done",
+      "priority": "should",
+      "spec": [
+        "S-031"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "primary-optional",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/GroupSplitTreeView.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupPrimaryPaneTests.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "Pane-count badge (SPEC section 22.7, new; test inventory moved to 22.8). Model judgment in WorkspaceState.overallViewPaneCountBadges: only in the overall (non-zoomed) view, only for visible groups whose paneTree.isSplit (>= 2 panes), value = total pane count; empty while zoomed, absent for single-pane and hidden groups. Forwarded on WorkspaceModel for render/tests symmetry. Rendering threaded TerminalWorkspaceView -> GroupSplitTreeView (new paneCountBadges param, both recursive subtree calls) -> GroupView (paneCountBadge: Int?), which overlays GroupPaneCountBadge (rectangle.split.2x1 glyph + monospaced count, same ultraThinMaterial chip styling as the primary mark PaneMarkBadge, hit-testing disabled) at the pane area's top-right. The primary mark owns that slot only while zoomed, the badge only while not, so they never collide. SPEC and the project readme updated accordingly (badge section, 35-case test inventory, readme Primary panes bullet)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED (exit 0), including all 4 new GroupPrimaryPaneTests badge cases named passing in the log: paneCountBadgeShowsOnlyForMultiPaneVisibleGroups (single-pane and hidden groups excluded), paneCountBadgeCountsEveryPane (3 panes -> 3), paneCountBadgeIsHiddenWhileZoomed (empty while zoomed, returns on release), paneCountBadgeDisappearsWhenGroupDropsToOnePane."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the badge render path) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-020",
+      "title": "Unconditional group-close confirmation: close_group and last-pane Cmd+W always show the Cancel / Close Group dialog regardless of running processes, with XGhosttyTests covering the always-confirm requirement",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-032",
+        "S-050",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "protect-confirm",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupTerminatedTests.swift"
+          ],
+          "summary": "Always-confirm group close (SPEC section 23.1 to be written in T-028; authored in run R-20260810T160205+0900-7b3f90 / commit 9f707d8, reviewed and verified this cycle). The judgment lives on the model so tests can pin it: WorkspaceModel.closeGroupRequiresConfirmation(anyLiveProcess:) returns true unconditionally - the confirmed close-group dialog is the single sanctioned path that loses a group and its information. BaseTerminalController.closeFocusedGroup now consults that judgment instead of the surfaceTree needsConfirmQuit scan, so the existing Cancel / Close Group dialog appears regardless of running processes; ghosttyDidCloseSurface's last-pane escalation drops its groups.count>1 gate, so a single-group last-pane Cmd+W also escalates to the confirmed close_group (whose confirmed path still delegates to window close per section 18.5). Made sound by T-021: the core no longer closes surfaces on child exit, so every close_surface notification reaching the escalation is an explicit user operation - the always-confirm can never fire on a shell death."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupTerminatedTests test",
+          "exit_code": 0,
+          "summary": "Targeted run this cycle: TEST SUCCEEDED, including closeGroupRequiresConfirmationRegardlessOfRunningProcesses (confirmation required both with and without a live process - the S-050 always-confirm criterion), named passing in the log."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate this cycle: full XGhosttyTests suite TEST SUCCEEDED (exit 0) - the pre-existing close/undo suite passes unchanged against the new confirmation predicate."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate this cycle: full app build exited 0. Direct zig build per R-002."
+        }
+      ]
+    },
+    {
+      "id": "T-021",
+      "title": "Terminated-state model layer: last-pane shell exit (normal/abnormal/process death) keeps the group with its note as a terminated pane instead of closing; a single pane's exit in a multi-pane group still closes only that pane; terminated groups persist and restore with their notes; the primary-close last-pane path follows the terminated-state semantics; judgment logic in the model layer covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-033",
+        "S-035",
+        "S-024",
+        "S-048",
+        "S-050"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "protect-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/Surface.zig",
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Tests/Groups/GroupTerminatedTests.swift"
+          ],
+          "summary": "Terminated-state model layer (SPEC section 23.2/23.4 to be written in T-028; authored in run R-20260810T160205+0900-7b3f90, committed as 9f707d8 when that session died with claude_exit_1 before verifying; reviewed and verified this cycle). Zig core: Surface.childExited no longer closes the surface (message trimmed to 'Process exited.'; the wait_after_command early-return removed - the app layer owns what an exit means), and keyCallback swallows encoded key input on an exited pane instead of closing, so every remaining core-initiated close is an explicit operation. App layer: show_child_exited posts the new ghosttyChildExited notification unconditionally (even window-less/hidden or instantly-exited panes) with an abnormal-exit Bool derived from abnormalCommandExitRuntime; the message-bar display keeps the upstream visibility guards. Model judgment (pure, value-type-testable): WorkspaceModel.childExitOutcome(for:abnormalExit:) - a group's last pane -> .terminated on every exit kind (normal/abnormal/process death arrive identically), a sibling pane -> .closePane (normal) / .keepPaneAwaitingKey (abnormal, upstream contract kept); GroupState.terminatedPane (private(set), invariant: non-nil only while that pane is the tree's sole leaf, cleared by the paneTree observer on splits/removals), markPaneTerminated (sole-leaf-only), removeExitedPane (model-side sibling close incl. hidden groups; rejects a last pane - that case is .terminated, never a removal), and a terminated primary keeps its flag (the primary-close last-pane path follows the terminated semantics, S-024). Persistence: the terminated state is runtime-only - a restore recreates every pane with a fresh shell so the group comes back live, while the note rides the existing GroupState record; loss paths unchanged (explicit confirmed close only, S-048). Controller: ghosttyDidExitChild routes the outcome (mark terminated / close the exited pane via the focused-tree path or model-side removal / keep awaiting key)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupTerminatedTests test",
+          "exit_code": 0,
+          "summary": "Targeted run this cycle: TEST SUCCEEDED, all 16 GroupTerminatedTests named passing in the log, covering every S-050 model criterion: last-pane exit judged .terminated for every exit kind; markPaneTerminated keeps the group with its note and pane (and rejects a pane among several); sibling normal exit judged .closePane and removeExitedPane closes only that pane (note kept, hidden-group path included; a group's last pane rejected); terminated-group Codable round trip keeps the note (the state itself is runtime-only, so the group restores live); a terminated primary last pane keeps its flag; the outcome is re-judged after siblings close (promotes to .terminated); splitting while terminated clears the state; restart transition covered (fresh pane in the same slot / rejected when not terminated)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate this cycle: full XGhosttyTests suite TEST SUCCEEDED (exit 0) - the complete prior group/note/primary suite passes unchanged with the terminated-state layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate this cycle: full app build (Zig core with the childExited/keyCallback changes + C header + macOS app) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate this cycle: Zig test suite exited 0 with the Surface.zig changes in the tree (no action/keybind surface changed; the header enum-sync check is unaffected)."
+        }
+      ]
+    },
+    {
+      "id": "T-022",
+      "title": "Terminated pane UI and restart: a terminated pane renders a terminal-fitting terminated view, and pressing Enter starts a new shell in the same pane to resume work",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-034"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "protect-ui",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupTerminatedPaneView.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/XGhostty/Surface View/SurfaceView_AppKit.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift"
+          ],
+          "summary": "Terminated pane UI and Enter restart (SPEC section 23.3 to be written in T-028; authored in run R-20260810T160205+0900-7b3f90 / commit 9f707d8, reviewed and verified this cycle). UI: new GroupTerminatedPaneView rendered by GroupView over the pane area while the group is terminated - the dead terminal's last frame stays visible but dimmed (the final output often says how the shell ended), with a terminal-styled panel (poweroff glyph, 'Shell exited', 'Press Return to start a new shell' hint, monospaced type, the terminal's own background color and split-divider stroke - the note-surface styling family); hit-testing disabled so clicking a terminated group still focuses it, which routes the subsequent Enter to the restart path. Key routing: SurfaceView.keyDown posts ghosttyExitedSurfaceKeyDown (with an isReturn flag) for exited panes instead of writing to the dead pty - only plain keyDowns land there, so command chords (Cmd+W etc.) keep working on an exited pane. Controller: on Enter for a terminated group, restartTerminatedPane builds a fresh SurfaceView (fresh shell), swaps it into the same pane slot via the model (WorkspaceModel.restartTerminatedPane: the new pane becomes primary and the focused surface, note kept), re-syncs surfaceTree and moves keyboard focus when the group is focused; a non-terminated exited pane keeps the upstream any-key-closes contract, re-judged at key time so a pane whose siblings have since closed terminates instead of closing."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupTerminatedTests test",
+          "exit_code": 0,
+          "summary": "Targeted run this cycle: TEST SUCCEEDED - the restart transition's model semantics pass: restartTerminatedPaneStartsFreshPaneInSameSlot (fresh pane in the same sole slot, becomes primary and focused surface, note kept, terminated state cleared) and restartIsRejectedWhenNotTerminated, plus exitOutcomeIsRejudgedAfterSiblingsClosed for the key-time re-judgment."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate this cycle: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the terminated cover view and the exited-pane key routing in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate this cycle: full app build (macOS app with the terminated cover view and key path) exited 0. Direct zig build per R-002."
+        }
+      ]
+    },
+    {
+      "id": "T-023",
+      "title": "Note editor standard text-editing shortcuts: Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the editor while the note edit overlay is shown; pastes that push the note over 10 lines truncate to the first 10 on save (existing cap unchanged)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-036",
+        "S-037",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "editor-shortcuts",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Tests/Groups/GroupNoteTests.swift",
+            "SPEC.md"
+          ],
+          "summary": "Standard text-editing chords in the note editor (SPEC §21.2). Cause: the Edit menu's key equivalents are synced from config to terminal actions (copy_to_clipboard / paste_from_clipboard / select_all, AppDelegate.syncMenuShortcuts), so Cmd+A/C/X/V matched menu items that never reach the overlay's text view. Fix: four hidden keyboardShortcut receivers inside the GroupNoteEditor ZStack (the proven Cmd+Enter hidden-button pattern) forward Cmd+A/C/X/V to the first responder — the focused editor text view — as the standard selectAll:/copy:/cut:/paste: selectors via NSApp.sendAction(to: nil). The window hierarchy's key-equivalent pass runs before the menu bar's, so the forwarding wins only while the overlay exists; terminal copy/paste outside the editor is unchanged (S-010 sanctioned exception). Paste truncation (S-037) needed no code change: the existing save path normalizes CRLF/CR to LF and caps at maxNoteLines (GroupState.normalizedNote), now locked in by the new test endNoteEditingTruncatesOversizedPasteToFirstTenLines (14 CRLF-separated pasted lines -> exactly the first 10 lines stored). SPEC.md §21.2 documents the chord routing and the paste cap; §21.4 test inventory extended."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupNoteTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 41 GroupNoteTests passed, and the new test case GroupNoteTests/endNoteEditingTruncatesOversizedPasteToFirstTenLines passed (named in the log)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the editing-chord receivers and the new paste-truncation test in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the editor change) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-024",
+      "title": "Priority/deadline model layer: per-group priority (high/medium/low/unset) and date-only deadline with invalid input rejected to unset, persisted and restored like the note; overdue judgment and the priority/deadline sort orderings (stable ties, unset last, visible-only) in the model layer covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-038",
+        "S-039",
+        "S-043",
+        "S-047",
+        "S-048",
+        "S-053"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "priodl-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupState.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
+          ],
+          "summary": "Priority/deadline model layer (SPEC section 24 to be written in T-028, continuing the pre-cited-section pattern of sections 22/23). New top-level types in GroupState.swift: GroupPriority (String-raw Codable enum high/medium/low with sortRank 0/1/2 and unsetSortRank 3; unset is the absence of a value - GroupState.priority is Optional, mirroring the deadline) and GroupDeadline (date-only value type; validation is constructive - the failable initializers are the only way to obtain a value: init(year:month:day:) rejects non-real Gregorian dates via DateComponents.isValidDate, init(parsing:) accepts only YYYY-MM-DD / YYYY/MM/DD shapes, so an invalid deadline is unrepresentable; Comparable via ordinalValue y*10000+m*100+d which doubles as the sort key; init(from: Date, calendar:) derives the runtime today; Codable persists the canonical YYYY-MM-DD text and re-validates on decode). GroupState gains priority/deadline vars riding the same Codable record as the note (encodeIfPresent; decode applies the invalid-to-unset rule leniently - an unknown priority string or impossible stored date decodes as unset instead of rejecting the group record; legacy saves without the keys decode as unset). WorkspaceModel: setGroupPriority / setGroupDeadline(to:) (no-op on unknown group or unchanged value) and the save-time boundary setGroupDeadline(parsing:) - empty input clears deliberately (returns true), invalid input is rejected to unset (returns false); read accessors and forwarders for the orderings and overdue set. WorkspaceState (pure judgments): priorityOrderedVisibleGroupIDs() (high->medium->low->unset), deadlineOrderedVisibleGroupIDs() (nearest first, unset last), both over visibleGroupIDs only with construction-enforced stability (enumerated + explicit offset tie-break, since stdlib sort does not document stability) so hidden groups can never be affected and nothing is mutated; overdueGroupIDs(today:) / GroupDeadline.isOverdue(today:) - strictly earlier than today, the deadline's own day not yet overdue, judged over all groups because overdue-ness must survive hiding while the display layers are visibility-scoped. Layout reordering itself is T-027 (the sort actions consume these orderings)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 13 GroupPriorityDeadlineTests named passing in the log, covering every S-053 criterion: priority+deadline save/restore round trip (and corrupt stored priority/deadline decode as unset); invalid deadline input rejected to unset (impossible date clears rather than keeping the previous value; empty input is a deliberate clear; parser accepts only real dates incl. leap-day cases); priority sort high->medium->low->unset with stable ties (two mediums keep relative order); deadline sort nearest-first with unset last and stable same-day ties; orderings cover visible groups only and mutate nothing (hidden group excluded, layout and shelf untouched); overdue judged in the model (strictly past the deadline day; unset never; hidden groups included in the overdue set); plus unset defaults, today-derivation from a Date, and unknown-group no-ops."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) - the complete prior group/note/primary/terminated suite passes unchanged with the priority/deadline layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the new model types) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-025",
+      "title": "Overlay UI: set and change priority and deadline inside the Cmd+N note edit overlay, saved and restored through the note path",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-040"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "priodl-ui",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Sources/Features/Groups/GroupNoteEditor.swift",
+            "macos/Sources/Features/Groups/TerminalWorkspaceView.swift",
+            "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
+          ],
+          "summary": "Priority/deadline controls inside the Cmd+N note editor (SPEC section 24, to be written in T-028). Model: new full commit point WorkspaceModel.endNoteEditing(saving:priority:deadlineInput:) - the note, the priority, and the deadline text input save together on the editing session's single commit; deadlineInput goes through the existing setGroupDeadline(parsing:) boundary (empty clears deliberately, invalid input is rejected to unset), and the note-only endNoteEditing(saving:) remains for callers that must not touch priority/deadline. Escape keeps its existing semantics: cancelNoteEditing drops all three drafts at once because the drafts are view state and the model is untouched until commit. View: GroupNoteEditor gains priority/deadline seed props and drafts (seeded onAppear from the group record; GroupDeadline.displayText renders the current deadline), a metaRow under the TextEditor with a small segmented priority picker (none/high/med/low over GroupPriority?, nil = unset) and a plain monospaced YYYY-MM-DD text field (onSubmit commits like Cmd+Enter), plus a subtle '-> unset' hint previewing the model's rejection judgment by reusing GroupDeadline(parsing:) so hint and save can never disagree; every save path (Cmd+Enter hidden chord, backdrop click, deadline-field Return) funnels through one commit() helper. TerminalWorkspaceView passes the seeds and wires onEnd to the full-commit model call. Judgment stays in the model; the view only forwards drafts."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 17 GroupPriorityDeadlineTests passed, including the 4 new editor-commit cases named in the log: endNoteEditingSavesNotePriorityAndDeadlineTogether (all three values saved and session closed), endNoteEditingRejectsInvalidDeadlineInputToUnset (impossible date at the commit point clears the previous deadline to unset), noteOnlyEndNoteEditingKeepsPriorityAndDeadline (the legacy note-only commit path leaves both untouched), fullEndNoteEditingWithoutSessionIsNoOp."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the editor changes in the tree; the pre-existing note-editing-session suite passes unchanged against the extended editor."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-026",
+      "title": "Priority/deadline display: label band shows a subtle priority mark and the deadline (unset hidden); overview mode shows priority/deadline with the note; overdue projects are subtly emphasized in both (single stage)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-041",
+        "S-042",
+        "S-043"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "priodl-ui",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Groups/GroupLabel.swift",
+            "macos/Sources/Features/Groups/GroupView.swift",
+            "macos/Sources/Features/Groups/GroupNoteOverview.swift"
+          ],
+          "summary": "Priority/deadline display (SPEC section 24, to be written in T-028). New shared view GroupPriorityDeadlineMeta in GroupLabel.swift, used by both display surfaces so they cannot drift: a compact monospaced priority mark whose bang density mirrors urgency (high '!!!', medium '!!', low '!' - subtle: no color, no icon), the deadline as YYYY-MM-DD text, unset values render nothing, and an overdue deadline gets exactly one emphasis stage (reddish tint + raised opacity; no 'approaching' tiers per the Essence). Label band: GroupLabel gains priority/deadline/isOverdue props rendered at the trailing edge before the note glyph, hidden during inline rename (the band keeps one interactive mode at a time), receding to 0.6 opacity on unfocused groups - less than the name text, since the meta is workspace-level information. Note overview: GroupNoteOverviewOverlay's header shows the same meta beside the group name, so the overview presents priority/deadline with the note. Overdue judgment stays in the model (GroupDeadline.isOverdue(today:)): GroupView and the overview panel derive today at render time via GroupDeadline(from: Date()) and only render the model's answer."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0) with the display changes in the tree. The overdue and unset-hidden judgments the surfaces render are the model functions already covered by GroupPriorityDeadlineTests (overdueIsStrictlyPastTheDeadlineDay incl. unset-never; displayText via the round-trip and parser cases)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (macOS app with the label-band meta and overview header changes) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-027",
+      "title": "Sort actions: Cmd+S (priority order) and Cmd+Shift+S (deadline order) reorder the real layout of visible groups only, explicit-only with no automatic re-sort, order persisting until the next sort, ordinal jumps (Cmd+1-9) following the new order; covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-044",
+        "S-045",
+        "S-046",
+        "S-047",
+        "S-048",
+        "S-053",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "sort-actions",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Splits/SplitTree.swift",
+            "macos/Sources/Features/Groups/WorkspaceState.swift",
+            "macos/Sources/Features/Groups/WorkspaceModel.swift",
+            "macos/Tests/Groups/GroupPriorityDeadlineTests.swift"
+          ],
+          "summary": "Sort actions following the set_primary end-to-end pattern (SPEC section 24.4, to be written in T-028). Zig core: sort_groups_by_priority / sort_groups_by_deadline keybind actions with doc comments and parse tests (Binding.zig incl. the .surface scope list), apprt union fields + Key enum entries appended last for C ABI (action.zig), Surface.zig dispatch, command.zig palette-exclusion, default keybinds cmd+s / cmd+shift+s in Config.zig (grep confirms no other unicode 's' super binding exists; upstream binds neither chord), and both XGHOSTTY_ACTION_SORT_GROUPS_BY_* tags appended to xghostty.h (checkXGhosttyHEnum keeps the header in sync). Swift: one shared App.sortGroups performability path (declines via workspace.canSortVisibleGroups unless >= 2 visible groups outside the viewing-only note overview, so the keybind falls through unconsumed) posting ghosttySortGroupsByPriority / ghosttySortGroupsByDeadline; BaseTerminalController handlers call the model. Model: SplitTree.reorderingLeaves(to:) rebuilds the identical structure (same shape, directions, ratios) handing out a permutation of the current leaves in traversal order; WorkspaceState.applyVisibleGroupOrder applies an ordering to the canonical tree (hidden groups have no leaf and are untouched; ordinals derive from traversal order so Cmd+1-9 follows automatically; nothing else rewrites the leaf assignment so the order persists until the next sort); WorkspaceModel.sortVisibleGroupsByPriority/Deadline consume the existing stable T-024 orderings, guarded by canSortVisibleGroups which is also the keybind performability answer. Explicit-only holds by construction: priority/deadline setters never touch the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with both new actions, regenerated C header consumption, macOS app with the sort dispatch) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over both appended XGHOSTTY_ACTION_SORT_GROUPS_BY_* tags and the two new keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/GroupPriorityDeadlineTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 21 GroupPriorityDeadlineTests passed, including the 5 new sort-action cases named in the log covering every S-053 layout criterion: prioritySortActionReordersTheRealLayout (high->medium->low->unset applied to the real layout with the stable medium tie preserved through the reorder, ordinals following), deadlineSortActionReordersTheRealLayout (nearest first, unset last, stable same-day tie), sortActionLeavesHiddenGroupsAndFocusUntouched (hidden shelf gains no leaf, focus id-keyed and unchanged), sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort (priority/deadline changes never reorder; sorted layout persists until the next explicit sort), sortDeclinesForSingleGroupAndDuringNoteOverview (performability declines for one group and during the viewing-only overview, works again after it closes)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete prior group/note/primary/terminated/priority-deadline suite passes unchanged with the sort actions in the tree. The only intended behavior change is the new cmd+s / cmd+shift+s default assignment, S-010's sanctioned exception."
+        }
+      ]
+    },
+    {
+      "id": "T-028",
+      "title": "Update SPEC.md and README.md to describe the deletion-protection, editor-shortcut, priority/deadline, and sort layers as implemented",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-049"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch3-docs",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: new section 23 削除保護仕様 (23.1 always-confirm close incl. the last-pane Cmd+W escalation and why it is sound - the core no longer closes on child exit; 23.2 terminated state - Zig childExited/keyCallback changes, unconditional ghosttyChildExited with the abnormal Bool, childExitOutcome judgment table, GroupState.terminatedPane sole-leaf invariant, removeExitedPane, terminated primary keeps its flag; 23.3 GroupTerminatedPaneView rendering, exited-pane key routing via ghosttyExitedSurfaceKeyDown, restartTerminatedPane, key-time re-judgment; 23.4 runtime-only state, restore-comes-back-live, explicit-confirmed-close as the only loss path; 23.5 the 16 GroupTerminatedTests) AND new section 24 優先度・締切仕様 (24.1 GroupPriority/GroupDeadline constructive-validation data model, lenient invalid-to-unset decode, the setGroupDeadline(parsing:) boundary, the editor metaRow and the single endNoteEditing(saving:priority:deadlineInput:) commit point; 24.2 strict overdue judgment over all groups and the shared GroupPriorityDeadlineMeta display; 24.3 pure stable orderings; 24.4 sort actions - canSortVisibleGroups guard, reorderingLeaves shape preservation, and the derived consequences: ordinals follow, focus unchanged, hidden untouched, explicit-only, persistence, zoom-allowed; 24.5 the 21 GroupPriorityDeadlineTests). Section 9.1 action list gains sort_groups_by_priority/sort_groups_by_deadline; 10.5 gains the Cmd+S/Cmd+Shift+S rows and the no-conflict note; 21.2 gains the metaRow bullet pointing at 24.1; 16 file layout corrected to the actual Features/Groups contents (adds TerminalWorkspaceView.swift and GroupTerminatedPaneView.swift, drops the never-created GroupActions.swift/CloseGroupConfirmation.swift with a note that close confirmation reuses BaseTerminalController's existing path). All pre-existing section-23/24 doc-comment citations in the implementation now resolve to matching real sections - the numbering was written to align with them, verified by grep. README.md About: new 'Priorities & deadlines' bullet (editor-set values, band/overview display, single-stage overdue emphasis, Cmd+S/Cmd+Shift+S explicit-only sorts with ordinal follow-up, SPEC section 24 pointer) and new 'Deletion protection' bullet (always-confirm close, terminated state with note/priority/deadline kept, Return restart, confirmed close as the only loss path, SPEC section 23 pointer). Building section already lists the three verification commands."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 after the docs edits (docs-only cycle; gates shared with T-029)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 after the docs edits (gate shared with T-029)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 0 failures after the docs edits (gate shared with T-029)."
+        }
+      ]
+    },
+    {
+      "id": "T-029",
+      "title": "Full verification: zig build / just test / just swift-test all exit 0 with every S-050/S-053 test present and passing, and no regression of group features beyond the sanctioned exceptions",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-050",
+        "S-053",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch3-verify",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete batch-3 implementation (T-020..T-028) in the tree. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check over all five appended fork action tags (edit_group_note, toggle_note_overview, set_primary, sort_groups_by_priority, sort_groups_by_deadline) and their keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criteria 4/6/8/11 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete group/note/primary suite passes unchanged, and every S-050 and S-053 test is present and named passing in this run's log. S-050 (all 16 GroupTerminatedTests): closeGroupRequiresConfirmationRegardlessOfRunningProcesses, lastPaneExitIsJudgedTerminatedForEveryExitKind, siblingPaneNormalExitIsJudgedClosePane, siblingPaneAbnormalExitAwaitsKeyClose, unknownPaneExitHasNoOutcome, exitOutcomeIsRejudgedAfterSiblingsClosed, markPaneTerminatedKeepsGroupWithNoteAndPane, markPaneTerminatedRejectsPaneAmongSeveral, terminatedPrimaryLastPaneKeepsItsPrimaryFlag, splittingWhileTerminatedClearsTheTerminatedState, removeExitedPaneClosesOnlyThatPane, removeExitedPaneRejectsAGroupsLastPane, removeExitedPaneWorksForHiddenGroups, terminatedGroupRoundTripKeepsNote, restartTerminatedPaneStartsFreshPaneInSameSlot, restartIsRejectedWhenNotTerminated. S-053 (all 21 GroupPriorityDeadlineTests): newGroupDefaultsToUnsetPriorityAndDeadline, priorityAndDeadlineRoundTripThroughSaveRestore, corruptStoredPriorityAndDeadlineDecodeAsUnset, invalidDeadlineInputIsRejectedToUnset, emptyDeadlineInputClearsDeliberately, deadlineParserAcceptsOnlyRealDates, todayDerivationMatchesCalendarComponents, overdueIsStrictlyPastTheDeadlineDay, prioritySortOrdersHighMediumLowUnsetWithStableTies, deadlineSortOrdersNearestFirstUnsetLastWithStableTies, sortOrderingsCoverVisibleGroupsOnlyAndMutateNothing, prioritySortActionReordersTheRealLayout, deadlineSortActionReordersTheRealLayout, sortActionLeavesHiddenGroupsAndFocusUntouched, sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort, sortDeclinesForSingleGroupAndDuringNoteOverview, endNoteEditingSavesNotePriorityAndDeadlineTogether, endNoteEditingRejectsInvalidDeadlineInputToUnset, noteOnlyEndNoteEditingKeepsPriorityAndDeadline, fullEndNoteEditingWithoutSessionIsNoOp, settersOnUnknownGroupAreNoOps. No regression beyond S-010's sanctioned exceptions (always-confirm close, terminated-state last-pane exit, editor chord routing, cmd+s/cmd+shift+s assignment)."
+        }
+      ]
+    },
+    {
+      "id": "T-030",
+      "title": "Human on-device visual verification of the deletion-protection layer (one-time, after its implementation): close confirmation appears for an idle-shell-only group and Cancel loses nothing; last-pane shell exit leaves the group as a terminated display; Enter in the terminated pane starts a new shell; the terminated appearance fits the terminal",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-051"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch3-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:14:17+09:00",
+          "reference": "R-011 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:14:17+09:00",
+          "summary": "The human performed the one-time on-device visual verification of success criterion 9 (deletion protection) and confirmed all four items behave as expected: closing an idle-shell-only project always shows the confirmation dialog and Cancel loses nothing; the last pane shell exit leaves the project as a terminated display instead of closing it; pressing Enter in the terminated pane starts a new shell and work resumes; and the terminated appearance fits the terminal. Recorded per the human instruction in the R-011 resolution during the 2026-08-11T23:14:17+09:00 resume (gate release)."
+        }
+      ]
+    },
+    {
+      "id": "T-031",
+      "title": "Human on-device verification of note-editor shortcuts (one-time): Cmd+A / Cmd+C / Cmd+X / Cmd+V behave as standard against the editor, and a paste beyond 10 lines is truncated to the first 10 lines on save",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-052"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch3-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:42:25+09:00",
+          "reference": "R-012 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:42:25+09:00",
+          "summary": "The human performed the on-device re-verification of success criterion 10 after the T-044 fix and confirmed both items: Cmd+A / Cmd+C / Cmd+X / Cmd+V all behave as standard against the note edit overlay's editor, and a paste beyond 10 lines is truncated to the first 10 lines on save. Recorded per the human instruction in the R-012 resolution during the 2026-08-11T23:42:25+09:00 resume (gate release)."
+        }
+      ]
+    },
+    {
+      "id": "T-032",
+      "title": "Human on-device visual verification of the priority/deadline layer (one-time, after its implementation): overlay sets priority/deadline and the label band shows them; overview shows them with the note; overdue is subtly emphasized; Cmd+S / Cmd+Shift+S reorder with Cmd+1-9 following; the appearance fits the terminal",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-054"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch3-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:14:17+09:00",
+          "reference": "R-011 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:14:17+09:00",
+          "summary": "The human performed the one-time on-device visual verification of success criterion 12 (priority/deadline/sort) and confirmed all five items behave as expected: the Cmd+N overlay sets priority and deadline and the label band shows them after save; overview mode shows priority and deadline together with the note; overdue projects are subtly emphasized; Cmd+S reorders by priority and Cmd+Shift+S by deadline with Cmd+1-9 following the new order; and the appearance (marks, deadline, emphasis) fits the terminal. Recorded per the human instruction in the R-011 resolution during the 2026-08-11T23:14:17+09:00 resume (gate release)."
+        }
+      ]
+    },
+    {
+      "id": "T-033",
+      "title": "Full group-to-project rename (pure rename, no behavior change): fork-specific keybind action names (hide_group, close_group, toggle_group_zoom, rename_group, goto_group, edit_group_note, sort_groups_by_* etc. to their project forms) across the Zig core / C header / Swift dispatch, Swift identifiers (GroupState to ProjectState etc.), directory and file names (macos/Sources/Features/Groups/ to Projects/, macos/Tests/Groups/ to Projects/), user-visible wording (menus, dialogs, hidden shelf), and SPEC.md / README.md terminology; upstream terminal-core vocabulary untouched; AGENTS.md is excluded (high-risk path, T-043); all three gates green afterwards",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-066",
+        "S-067",
+        "S-073",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "rename",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with all fork actions renamed to the project family, regenerated C header, macOS app with the renamed Projects/ sources) exited 0 after the complete rename."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the renamed XGHOSTTY_ACTION_* tags (enum order unchanged, tags renamed in place) and the renamed keybind parse tests (goto_project, edit_project_note, sort_projects_by_*, etc.)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) with every renamed test class (ProjectNoteTests, ProjectPrimaryPaneTests, ProjectTerminatedTests, ProjectPriorityDeadlineTests, ProjectNameGeneratorTests, WorkspaceModelTests, WorkspaceStateTests) passing, plus the new WorkspaceStateTests/decodesLegacyGroupVocabularyKeys pinning that pre-rename saved workspaces (canonicalGroupTree/groups/focusedGroup keys) still decode so no persisted notes/priorities/deadlines are lost."
+        },
+        {
+          "type": "command",
+          "command": "ls macos/Sources/Features/Projects macos/Tests/Projects; ls macos/Sources/Features/Groups macos/Tests/Groups; grep -rn -E (old fork action names) src/ include/ | wc -l; grep -rnE (Group-family identifiers) macos/Sources macos/Tests --include=*.swift | wc -l; grep (group string literals) macos/Sources; grep -c -i (group / project vocabulary) SPEC.md README.md",
+          "exit_code": 0,
+          "summary": "Rename completion checks (success criterion 17): macos/Sources/Features/Projects/ and macos/Tests/Projects/ exist, the old Groups/ directories do not (ls: No such file or directory); zero old fork action names remain under src/ and include/; zero Group-family Swift identifiers remain; the only remaining group string literals are the three intentional legacy decode keys in WorkspaceState.swift (not user-visible); SPEC.md and README.md contain zero group/former-vocabulary occurrences. Upstream terminal-core vocabulary (pty process groups, font groups, kitty graphics, etc.) deliberately untouched; AGENTS.md deliberately excluded (high-risk path, T-043)."
+        },
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "src/Surface.zig",
+            "src/apprt/surface.zig",
+            "src/apprt/embedded.zig",
+            "include/xghostty.h",
+            "macos/Sources/Features/Projects/",
+            "macos/Tests/Projects/",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "Full group-to-project rename (pure rename; S-066/S-067/S-073). Zig/C: all 15 fork action names and their C ABI tags renamed in place (XGHOSTTY_ACTION_NEW_PROJECT_SPLIT..SORT_PROJECTS_BY_DEADLINE, XGHOSTTY_GOTO_PROJECT_*, xghostty_action_goto_project_e, XGHOSTTY_SURFACE_CONTEXT_PROJECT, NewSurfaceContext.project), enum order preserved for the checkXGhosttyHEnum sync guard; upstream core vocabulary (pty/font/kitty groups) untouched. Swift: Features/Groups/ -> Features/Projects/ and Tests/Groups/ -> Tests/Projects/ via git mv with per-file renames (GroupState.swift -> ProjectState.swift, HiddenGroupShelf.swift -> HiddenProjectShelf.swift, GroupNoteTests.swift -> ProjectNoteTests.swift, etc.); all Group-family identifiers, user-visible strings (Close Project dialog, New/Hide/Show/Move Project undo names, hidden shelf), notification names, and comments renamed; SwiftUI's own Group view (3 sites), WindowGroup, and compositingGroup preserved. pbxproj needed no edit (PBXFileSystemSynchronizedRootGroup folders; no Groups-file membership exceptions). Persistence: ProjectState coding keys never contained the old vocabulary; WorkspaceStateOf's three renamed keys gained a LegacyCodingKeys decode fallback (canonicalGroupTree/groups/focusedGroup) so pre-rename saves restore losslessly (Essence mandatory item 31), pinned by the new decodesLegacyGroupVocabularyKeys test; new saves write the project keys (recorded as R-010). Docs: SPEC.md and README.md fully re-worded (English and Japanese vocabulary). TODO.md (historical phase log) left as history; AGENTS.md excluded for T-043."
+        }
+      ]
+    },
+    {
+      "id": "T-034",
+      "title": "Hide-selection model layer: selection session over visible projects (multi-toggle, batch hide on confirm, cancel hides nothing, confirm rejected while all visible projects are selected so at least one stays visible), judgment logic in the model layer with XGhosttyTests covering the S-069 criteria; hidden-shelf return path unchanged",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-056",
+        "S-057",
+        "S-065",
+        "S-069"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "hide-select",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Tests/Projects/ProjectHideSelectionTests.swift"
+          ],
+          "summary": "Hide-selection model layer (SPEC section 25, to be written in T-038, continuing the pre-cited-section pattern of sections 22-24). WorkspaceModelOf gains the transient session state hideSelection (@Published private(set) Set<ProjectID>?, nil = no screen up; never persisted) plus the judgment API: canBeginHideSelection (>= 2 visible projects - with one, nothing could ever be hidden since at least one must stay visible - and neither the note editor nor the note overview up; also the keybind performability answer), beginHideSelection (releases any zoom first, per the Essence's implementation-defined zoomed-invocation clause), hideSelectionProjectIDs (visible projects in canonical/ordinal order), toggleHideSelection (visible projects only - hidden projects are not listed and can never join the selection), canConfirmHideSelection (select-all rejected: selection.count < visibleProjectCount, so at least one project always stays visible; an empty selection is confirmable as close-hiding-nothing), confirmHideSelection(savingOutgoingPaneTree:) (batch commit in one state write: every selected leaf removed so the survivors reclaim the space, ids join hiddenProjectIDs - the shelf's source of truth, its return path unchanged; focus resolved on the pre-removal tree exactly like hideFocusedProject's neighbor rule - a still-visible focused project keeps focus, a selected one hands it to the nearest surviving leaf; a zoom backstop covers a mid-session menu-bar zoom; snapFocusToPrimaryInOverallView applied), and cancelHideSelection (the Escape path - hides nothing). While a session is up the screen owns the interaction: the existing viewing-only guards (switchFocusedProject, gotoProjectTarget, gotoProjectIndexTarget, beginNoteEditing, canSortVisibleProjects, toggleNoteOverview) now also check the session, and restoreState (undo/redo) / removeAllProjects end it. The single-project hideFocusedProject model primitive remains (used by show/undo flows and existing tests); only its keybind entry point was repurposed (T-035)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/ProjectHideSelectionTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 14 new ProjectHideSelectionTests named passing in the log, covering every S-069 criterion: confirmHidesSelectedProjectsInOneBatch (two selected projects hidden in one commit, leaves removed, alive in projects behind the shelf, session closed), cancelHideSelectionHidesNothing (session closed, workspace exactly as before the screen opened), selectAllCannotConfirmAndAtLeastOneProjectStaysVisible (select-all rejected with the screen staying up and nothing hidden; after deselecting one project the confirm succeeds, hides the rest, and the deselected project stays visible). Session mechanics also covered: begin lists visible projects in ordinal order, releases zoom, declines for a single visible project and while the note editor or the note overview is up; toggle toggles multiple projects and rejects hidden/unknown ids; an empty-selection confirm closes hiding nothing; focus moves to the nearest survivor when the focused project is among the hidden; focus moves / note editing / note overview / sorts are no-ops while the screen is up and work again after it closes; restoreState and removeAllProjects end the session; batch-hidden projects return through the existing show_project shelf path unchanged (S-057)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete prior project/note/primary/terminated/priority-deadline suite passes unchanged with the hide-selection layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the hide-selection layer) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (the only Zig-side change is the hide_project doc comment; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-035",
+      "title": "Hide-selection UI: repurpose Cmd+Opt+H (the renamed hide_project action) to open the selection screen listing visible projects, multi-toggle selection, Enter batch-hides into the hidden shelf, Esc closes hiding nothing; overlay only while invoked, terminal returns to full view on exit",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-056",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "hide-select",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectHideSelector.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Terminal/TerminalView.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "src/input/Binding.zig"
+          ],
+          "summary": "Cmd+Opt+H repurposed to the hide-selection screen (SPEC section 25, to be written in T-038; the immediate-hide replacement is S-010's sanctioned exception). The hide_project action keeps its name, default cmd+opt+h binding, and dispatch path; only its meaning changes: XGhostty.App.hideProject's performability now answers workspace.canBeginHideSelection instead of canHideFocusedProject, and BaseTerminalController.ghosttyDidHideProject calls workspace.beginHideSelection() instead of the immediate hide. The old controller-level hideFocusedProject() was replaced by confirmHideSelection() (Enter): the model batch-hides and resolves the next focus, the controller swaps surfaceTree, moves keyboard focus, and registers ONE project-aware 'Hide Projects' undo for the whole batch; toggle and cancel are model-only, wired in TerminalWorkspaceView. New overlay view ProjectHideSelector, rendered only while the session is up (no permanent terminal area; the terminal returns to full view on exit with keyboard focus handed back like the note editor/overview): lists visible projects in ordinal order (checkbox glyph + ordinal + name, cursor row highlighted, ProjectNoteEditor-family styling), footer shows the pending count or why Enter is blocked ('at least one project must stay visible'). Keyboard follows the proven CommandPaletteView mechanics - an invisible focused TextField owns the keyboard: Escape via onExitCommand cancels, Enter via onSubmit confirms (the model re-judges canConfirm, so a rejected confirm keeps the screen up), arrows via onMoveCommand move the cursor, Space arrives as sink text and toggles the cursor row; rows toggle on click, backdrop click cancels (only Enter ever hides). TerminalViewDelegate gains confirmHideSelection, threaded TerminalView -> TerminalWorkspaceView. Binding.zig's hide_project doc comment updated to the selection-screen behavior (doc-only; no action surface change, C header untouched)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the selection screen and rewired action) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 with the hide_project doc-comment change (no action surface change; the header enum-sync check is unaffected)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) with the UI rewiring in the tree - the pre-existing hide/show/undo suite passes unchanged against the repurposed action (the hideFocusedProject model primitive they cover is untouched). The screen's own model semantics are covered by the 14 ProjectHideSelectionTests (T-034 evidence)."
+        }
+      ]
+    },
+    {
+      "id": "T-036",
+      "title": "Registered-layout model layer: the 11 built-in layouts (equal-split 4-9, X+1 for X=4-8), slot computation per the sqrt-n row rule, assignment of visible projects in ordinal order (top row first, left to right, +1 slot last), count matching (shortfall = new projects at the ordinal tail; excess = exact-count hide-pick with confirm gating), no persistent applied-layout state, unselected hidden projects unaffected, ordinals following the result; XGhosttyTests covering the S-071 criteria",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-058",
+        "S-059",
+        "S-061",
+        "S-062",
+        "S-063",
+        "S-064",
+        "S-065",
+        "S-071"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "layout",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectLayout.swift",
+            "macos/Sources/Features/Splits/SplitTree.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Tests/Projects/ProjectLayoutTests.swift"
+          ],
+          "summary": "Registered-layout model layer (SPEC section 26, to be written in T-038). New ProjectLayout value type: the closed set of 11 layouts as data (ProjectLayout.registered: equal-split projectCount 4-9, X+1 projectCount 5-9), the equal-split row rule as a pure function (equalSplitRowCounts: rows = integer nearest sqrt(n), leftovers dealt one each to the top rows - pins 4=2+2, 5=3+2, 6=3+3, 7=3+2+2, 8=3+3+2, 9=3+3+3), rowCounts (X+1 = the X part's rows + a final [1] row), slotFrames (unit-square rects in assignment order - row-major, so the +1 bottom slot is naturally last; all rows equal height including the +1 row, in-row widths equal), and a selector label. SplitTree gains the element-agnostic init(gridRows:) building the grid as nested equal-ratio splits (rows vertical, cells horizontal; equalChain gives the first node ratio 1/n, then 1/(n-1) of the remainder, so every slot is equal), traversal order row-major. WorkspaceModelOf gains the layout sessions and judgment: layoutSelectionActive + canBeginLayoutSelection (>= 1 visible, no other overlay; also the keybind performability answer), beginLayoutSelection (releases zoom), cancelLayoutSelection, chooseLayout (the count-matching judgment: equal count applies immediately in one state write; shortfall returns .needsNewProjects(n) for the controller; excess opens layoutHidePick), applyLayout(appending:) (validates exact shortfall count and id-collision-free, registers the new projects at the ordinal tail, applies), the hide-pick session (layoutHidePick struct WorkspaceLayoutHidePick, toggleLayoutHidePick visible-only, layoutHidePickRequiredCount re-derived live, canConfirmLayoutHidePick == exact excess count, confirmLayoutHidePick hides exactly the selection - never closes - and applies to the remainder in ordinal order with the hide-selection focus rule, cancelLayoutHidePick cancels the whole application), and applyLayoutTree (rebuilds the canonical tree as the grid; one-shot per SPEC 26.4 - no applied-layout state, hidden projects untouched, ordinals follow from traversal order, zoom cleared). The overlay guards were unified into one overlaySessionActive predicate covering note overview / hide selection / both layout sessions."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/ProjectLayoutTests test",
+          "exit_code": 0,
+          "summary": "Targeted run: TEST SUCCEEDED, all 14 new ProjectLayoutTests named passing in the log, covering every S-071 criterion: registeredLayoutsMatchTheDefinition + equalSplitRowRuleMatchesTheEssenceTable + slotFramesFollowTheGridRule (all 11 layouts' slot computation: the Essence row table, equal row heights / in-row widths, X+1 full-width bottom slot, row-major assignment order, concrete pins for the 7-project split) and gridTreeConstructionMatchesHandBuiltShape (the built tree equals a hand-built equal-ratio node tree); equalCountApplyAssignsOrdinalOrderAndOrdinalsFollow (equal count: visible projects to slots in ordinal order, tree == expected grid, ordinals follow); shortfallCreatesNewProjectsAtTheOrdinalTail (+ applyLayoutRejectsAWrongShortfallCount); excessOpensHidePickGatedOnExactCount (confirm rejected at 0/1/3 of 2 with the screen staying up, exactly the selected two hidden - never closed - and the remaining four assigned in ordinal order with ordinals following); hidePickFocusMovesToNearestSurvivorWhenFocusedProjectPicked; unselectedHiddenProjectsAreUnaffected; escCancelsTheWholeApplication (selector cancel and hide-pick cancel both change nothing); beginReleasesZoomAndDeclinesWhileOtherOverlaysUp; layoutSessionsOwnTheInteractionWhileUp; restoreStateAndTeardownEndTheSessions; applicationIsOneShotAndTheArrangementPersistsLikeAnyOther (a later sort reorders freely; a Codable round trip keeps the applied canonical tree)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete prior suite incl. the hide-selection tests passes unchanged against the unified overlay guards, with the layout layer in the tree."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with the layout model layer. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (gate shared with T-037's action addition, run after both were in the tree)."
+        }
+      ]
+    },
+    {
+      "id": "T-037",
+      "title": "Layout-application UI: new Cmd+L action opening the layout-selection overlay (arrow-key list, Enter applies, Esc closes changing nothing), the excess-case hide-pick screen (exact-count confirm gating, Esc cancels the whole application), shortfall creating new projects with fresh shells; overlay only while invoked, terminal returns to full view on exit",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-060",
+        "S-062",
+        "S-063",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "layout",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Terminal/TerminalView.swift",
+            "macos/Sources/Features/Projects/ProjectLayoutSelector.swift",
+            "macos/Sources/Features/Projects/ProjectHideSelector.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift"
+          ],
+          "summary": "New choose_project_layout action following the set_primary end-to-end pattern (SPEC section 26.2): keybind action with doc comment and parse test (Binding.zig incl. the .surface scope list), apprt action + Key enum entry appended last for C ABI (action.zig), Surface.zig dispatch, command.zig palette-exclusion, default keybind cmd+l in Config.zig (grep confirms no 'l' super binding and no menu key equivalent), and XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT appended to xghostty.h (checkXGhosttyHEnum keeps the header in sync). Swift: App.chooseProjectLayout performability declines unless workspace.canBeginLayoutSelection (keybind falls through unconsumed otherwise), posts ghosttyChooseProjectLayout; BaseTerminalController.ghosttyDidChooseProjectLayout opens the model session. New ProjectLayoutSelector overlay (rendered only while the selector is up; terminal returns to full view on exit with keyboard focus handed back): lists the 11 layouts (label, project count, and an effect preview of the model's count-matching judgment - '+N new' / 'pick N to hide' / 'fits'), arrows move the cursor, Enter (or a row click) chooses, Esc (or a backdrop click) cancels; same sink-TextField keyboard mechanics as ProjectHideSelector. Controller.chooseLayout applies the model's outcome: equal count registers one 'Apply Layout' undo; shortfall builds the missing projects exactly like newProjectSplit builds one (fresh SurfaceView = fresh shell, ProjectNameGenerator name, first pane primary) and completes via workspace.applyLayout; excess waits for the hide-pick. The excess screen reuses ProjectHideSelector, parametrized this cycle with title/hint/footer (title 'apply <layout>', footer 'select exactly N to hide (k/N)' or the confirm summary); Controller.confirmLayoutHidePick swaps surfaceTree, moves keyboard focus, and registers one 'Apply Layout' undo for the whole application. TerminalViewDelegate gains chooseLayout(_:)/confirmLayoutHidePick, threaded TerminalView -> TerminalWorkspaceView; focus-handback onChange handlers skip the intermediate selector-to-hide-pick transition so the keyboard lands on the pick screen, not the terminal."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core with the new action, regenerated C header consumption, macOS app with both overlays and the controller wiring) exited 0. Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the appended XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT tag and the new choose_project_layout keybind parse test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) with the UI layer in the tree - the prior suite passes unchanged, and the layout sessions' model semantics the UI forwards to are covered by the 14 ProjectLayoutTests (T-036 evidence). The only intended behavior change is the new cmd+l default assignment, S-010's sanctioned exception."
+        }
+      ]
+    },
+    {
+      "id": "T-038",
+      "title": "Update SPEC.md and README.md to describe the hide-selection and layout-application layers as implemented, in the post-rename vocabulary",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-068"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch4-docs",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: new section 25 hide 選択仕様 (session/model judgment - transient hideSelection set, canBeginHideSelection >= 2 visible + no other overlay shared with keybind performability, begin releases zoom, ordinal-order listing with hidden projects never listed, select-all rejected so at least one project stays visible, empty-selection confirm closes hiding nothing, one-state-write batch commit with the hideFocusedProject nearest-leaf focus rule and mid-session zoom backstop, cancel/Esc hides nothing, overlaySessionActive interaction ownership incl. restoreState/removeAllProjects teardown; UI - ProjectHideSelector rendering, footer messages, CommandPaletteView-style sink-TextField keyboard mechanics with Space toggle and backdrop-click-cancels, ONE batch 'Hide Projects' undo, shared with the layout hide-pick via title/hint/footer parametrization; the 14 ProjectHideSelectionTests inventory) AND new section 26 登録レイアウト仕様 (26.1 ProjectLayout data model - the closed 11-layout set, equalSplitRowCounts sqrt-n rule pinning the Essence table, rowCounts, slotFrames row-major assignment order with ALL rows equal height including the +1 row explicitly flagged as a design interpretation for T-041 review, SplitTree.init(gridRows:) equal-ratio grid construction; 26.2 choose_project_layout / Cmd+L selector overlay with the per-row effect preview; 26.3 count matching - equal/shortfall/excess outcomes, applyLayout validation, exact-count hide-pick confirm gating, Esc-cancels-the-whole-application, one 'Apply Layout' undo per application; 26.4 one-shot semantics - no applied-layout state, unselected hidden projects unaffected, ordinals follow, normal persistence; 26.5 the 14 ProjectLayoutTests inventory). Section 9.1 action list gains choose_project_layout; 10.5 gains the Cmd+L row plus notes that hide_project now opens the section-25 screen and that plain Cmd+L has no existing assignment; 11.7 annotated - the hide_project action opens the selection screen while the single-hide model primitive remains for show/undo flows; 16 file layout gains ProjectHideSelector.swift / ProjectLayout.swift / ProjectLayoutSelector.swift; 24.4's sort guard rewritten to the unified overlaySessionActive predicate; two rename artifacts ('プロジェクト(=プロジェクト)' in the section 22/24 intros) cleaned. README.md About: new 'Hide selection' bullet (Cmd+Opt+H selection screen, batch hide into the shelf, Esc hides nothing, at-least-one-visible rule, SPEC section 25 pointer) and new 'Layouts' bullet (Cmd+L list of the 11 built-in layouts, equal/shortfall/excess behaviors, one-shot application, SPEC section 26 pointer). Verified: zero group-vocabulary occurrences in SPEC.md and README.md (grep -c -i = 0 for both), no stale 'to be written' phrasing, and every pre-existing section-25/26.x doc-comment citation in the implementation (WorkspaceModel, ProjectHideSelector, ProjectLayout, ProjectLayoutSelector, TerminalWorkspaceView, TerminalView, BaseTerminalController, XGhostty.App, XGhosttyPackage, both test files) now resolves to a matching real section - the subsection numbering was written to align with them."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0 after the docs edits (docs-only change; gate shared with T-039, run in cycle R-20260811T171006)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig test suite exited 0 after the docs edits (gate shared with T-039)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: full suite TEST SUCCEEDED (exit 0) after the docs edits (gate shared with T-039)."
+        }
+      ]
+    },
+    {
+      "id": "T-039",
+      "title": "Full verification: zig build / just test / just swift-test all exit 0 with every S-069 / S-071 test present and passing, the rename completion checks (Projects/ exists, no Groups/, project-family action names and identifiers, no 'Group' in fork user-visible strings) verified by command, and no regression beyond the sanctioned exceptions",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-069",
+        "S-071",
+        "S-073",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch4-verify",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the complete batch-4 tree (rename + hide selection + layouts, T-033..T-038 all in). Direct zig build per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the full renamed project-family action tag set incl. XGHOSTTY_ACTION_CHOOSE_PROJECT_LAYOUT, and the renamed keybind parse tests."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: full XGhosttyTests suite TEST SUCCEEDED (exit 0, 0 failures) - the complete project/note/primary/terminated/priority-deadline/hide-selection/layout suite passes with the batch-4 docs in the tree. No regression beyond S-010's sanctioned exceptions (the Cmd+Opt+H selection-screen replacement and the new cmd+l assignment being the batch-4 ones)."
+        },
+        {
+          "type": "command",
+          "command": "xcodebuild -project macos/XGhostty.xcodeproj -scheme XGhostty -configuration Debug -only-testing:XGhosttyTests/ProjectHideSelectionTests -only-testing:XGhosttyTests/ProjectLayoutTests test",
+          "exit_code": 0,
+          "summary": "Success-criteria 13/15 gate: TEST SUCCEEDED with every S-069 and S-071 test named passing in the log. S-069 (all 14 ProjectHideSelectionTests): confirmHidesSelectedProjectsInOneBatch, cancelHideSelectionHidesNothing, selectAllCannotConfirmAndAtLeastOneProjectStaysVisible, beginHideSelectionListsVisibleProjectsInOrdinalOrder, beginHideSelectionReleasesZoom, beginHideSelectionDeclinesForSingleVisibleProject, beginHideSelectionDeclinesWhileAnotherOverlayIsUp, toggleHideSelectionTogglesMultipleProjects, toggleHideSelectionRejectsHiddenAndUnknownProjects, confirmWithEmptySelectionClosesHidingNothing, confirmMovesFocusToNearestSurvivorWhenFocusedProjectIsHidden, focusMovesEditingAndSortsAreNoOpsWhileSelectionIsUp, restoreStateAndTeardownEndTheSession, batchHiddenProjectsReturnThroughTheShelfUnchanged. S-071 (all 14 ProjectLayoutTests): registeredLayoutsMatchTheDefinition, equalSplitRowRuleMatchesTheEssenceTable, slotFramesFollowTheGridRule, gridTreeConstructionMatchesHandBuiltShape, equalCountApplyAssignsOrdinalOrderAndOrdinalsFollow, shortfallCreatesNewProjectsAtTheOrdinalTail, applyLayoutRejectsAWrongShortfallCount, excessOpensHidePickGatedOnExactCount, hidePickFocusMovesToNearestSurvivorWhenFocusedProjectPicked, unselectedHiddenProjectsAreUnaffected, escCancelsTheWholeApplication, beginReleasesZoomAndDeclinesWhileOtherOverlaysUp, layoutSessionsOwnTheInteractionWhileUp, restoreStateAndTeardownEndTheSessions, applicationIsOneShotAndTheArrangementPersistsLikeAnyOther."
+        },
+        {
+          "type": "command",
+          "command": "ls macos/Sources/Features/Projects macos/Tests/Projects; ls macos/Sources/Features/Groups macos/Tests/Groups; grep -rn -E (old fork action names) src/ include/ | wc -l; grep -rnE (Group-family identifiers) macos/Sources macos/Tests --include=*.swift; grep -c -i (group vocabulary) SPEC.md README.md",
+          "exit_code": 0,
+          "summary": "Rename completion checks re-verified by command this cycle (success criterion 17, S-073): macos/Sources/Features/Projects/ and macos/Tests/Projects/ exist; the old Groups/ directories do not (ls: No such file or directory); zero old fork action names (hide_group/close_group/toggle_group_zoom/rename_group/goto_group/new_group_split/resize_group/equalize_groups/edit_group_note/sort_groups_by/set_group_title/show_group) under src/ and include/; the only Group-family matches in Swift sources are the two intentional legacy decode-key string literals ('focusedGroup' in WorkspaceState.swift LegacyCodingKeys and in the decodesLegacyGroupVocabularyKeys test fixture, R-010 - string data, not identifiers, not user-visible); zero group-vocabulary occurrences in SPEC.md and README.md (grep -c -i = 0). The remaining criterion-17 item - no 'Group' in on-device user-visible wording - is the human check T-042."
+        }
+      ]
+    },
+    {
+      "id": "T-040",
+      "title": "Human on-device visual verification of the hide-selection screen (one-time): Cmd+Opt+H opens it, multi-select + Enter hides the selected projects in one batch into the hidden shelf, Esc closes hiding nothing, the screen's appearance fits the terminal",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-070"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch4-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:42:25+09:00",
+          "reference": "R-012 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:42:25+09:00",
+          "summary": "The human performed the on-device re-verification of success criterion 14 after the T-045 fix and confirmed the remaining item: up/down arrow-key cursor movement works in the Cmd+Opt+H hide-selection screen. The other items (multi-select + Enter batch hide into the hidden shelf, Esc hides nothing, appearance fits the terminal) were already confirmed in the R-011 pass. Recorded per the human instruction in the R-012 resolution during the 2026-08-11T23:42:25+09:00 resume (gate release)."
+        }
+      ]
+    },
+    {
+      "id": "T-041",
+      "title": "Human on-device visual verification of layout application (one-time): Cmd+L list + arrows + Enter applies and Esc changes nothing; equal count applies directly, more creates new projects at the tail, fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-072"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch4-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:42:25+09:00",
+          "reference": "R-012 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:42:25+09:00",
+          "summary": "The human performed the on-device re-verification of success criterion 16 after the T-045 fix and confirmed the remaining item: up/down arrow-key cursor movement works in the Cmd+L layout list and in the layout hide-pick screen. The other items (Enter applies / Esc changes nothing, equal-count direct application, more-count new projects at the tail, fewer-count hide-pick confirm, appearance fits the terminal) were already confirmed in the R-011 pass. Recorded per the human instruction in the R-012 resolution during the 2026-08-11T23:42:25+09:00 resume (gate release)."
+        }
+      ]
+    },
+    {
+      "id": "T-042",
+      "title": "Human on-device verification of the rename (one-time): no user-visible wording (menus, dialogs, shelf etc.) shows 'Group'",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-073"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch4-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-11T23:14:17+09:00",
+          "reference": "R-011 resolution / reflection.jsonl human_resume entry at 2026-08-11T23:14:17+09:00",
+          "summary": "The human performed the one-time on-device verification of success criterion 17 rename item and confirmed no user-visible wording (menus, dialogs, hidden shelf etc.) shows Group. The command-side rename completion checks (Projects/ directory, action names, identifiers, fork user-visible strings) were already verified in T-039; this closes the remaining visual item. Recorded per the human instruction in the R-011 resolution during the 2026-08-11T23:14:17+09:00 resume (gate release)."
+        }
+      ]
+    },
+    {
+      "id": "T-043",
+      "title": "Update AGENTS.md (whose CLAUDE.md symlink follows) to the post-rename project vocabulary so the implementation docs do not drift; content-only terminology edit",
+      "status": "done",
+      "priority": "should",
+      "spec": [
+        "S-068"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "agents-doc",
+      "risk_level": "high",
+      "risk_reason": "Documentation file on an agent-runtime configuration path (Agent Runtime High-Risk Zone); any edit requires high-risk tracking with before/after hashes",
+      "target": "AGENTS.md",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "AGENTS.md"
+          ],
+          "summary": "Content-only terminology edit of AGENTS.md (its CLAUDE.md symlink follows automatically): the Directory Structure bullet 'Groups feature (the fork's core feature, see SPEC.md): macos/Sources/Features/Groups/' now reads 'Projects feature ... macos/Sources/Features/Projects/' — the only pre-rename vocabulary in the file (git diff --stat: 1 file changed, 2 insertions, 2 deletions). High-risk hash linkage per the mechanically recorded hook entry in high_risk_changes.jsonl (recorded_at 2026-08-11T23:45:37+09:00, tool Edit): before_sha256 3f61810dc6a590f29be5d683b6ae837edea1bdc502304e85bc56a5755359c643, after_sha256 bd12136d5dea8a385b546d8912db788f2342cbd03a5c83d370fbfb34f3f09220 (after-hash re-verified with shasum -a 256). Executed as its own high-risk batch under the ESSENCE profile: unsandboxed relaxed profile, authorized by the R-012 resolution instruction (2026-08-11T23:42:25+09:00 resume)."
+        },
+        {
+          "type": "command",
+          "command": "sh -c '! grep -q -i group AGENTS.md'",
+          "exit_code": 0,
+          "summary": "No occurrence of the pre-rename 'group' vocabulary remains in AGENTS.md (negated grep -q exits 0 only when there are no matches), confirming the post-rename project vocabulary is complete."
+        },
+        {
+          "type": "command",
+          "command": "shasum -a 256 AGENTS.md",
+          "exit_code": 0,
+          "summary": "After-edit SHA-256 matches the post_tool_audit hook's after_sha256 (bd12136d5dea8a385b546d8912db788f2342cbd03a5c83d370fbfb34f3f09220), tying the observed file to the mechanical high-risk record."
+        }
+      ]
+    },
+    {
+      "id": "T-044",
+      "title": "Fix the note editor dead Cmd+X / Cmd+V editing chords (sent back from the R-011 on-device verification): make cut and paste reach the focused editor reliably while Cmd+A / Cmd+C keep working, so the over-10-line paste truncation becomes verifiable on device",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-036",
+        "S-037"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "sendback-fix",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectOverlayKeys.swift",
+            "macos/Sources/Features/Projects/ProjectNoteEditor.swift",
+            "SPEC.md"
+          ],
+          "summary": "Replaced the note editor editing-chord mechanism, which the R-011 on-device verification found partial (hidden keyboardShortcut buttons + NSApp.sendAction(to: nil) delivered selectAll:/copy: but never cut:/paste:). New shared OverlayKeyDownMonitor (ProjectOverlayKeys.swift): a local NSEvent keyDown monitor scoped to the overlay lifetime via onAppear/onDisappear intercepts plain-Cmd A/C/X/V before any key-equivalent or menu dispatch and performs the standard editing selector directly on the focused NSTextView (the editor, or the deadline field editor), falling back to the responder chain otherwise; matched events are swallowed. This is robust to both failure hypotheses (button never firing, or action dispatch not reaching the text view) since it relies on neither. The four hidden chord buttons were removed; the proven Cmd+Enter save button and Esc onExitCommand paths are untouched. The over-10-line paste truncation logic itself is unchanged model code (already test-covered); Cmd+V delivery was the only missing link. SPEC.md 21.2 updated to describe the monitor mechanism and why it replaced the receiver approach. Overlay sessions are mutually exclusive on the model, so at most one monitor is installed at a time. Keyboard chord behavior itself is GUI-only and remains human-verified (re-verification requested in R-012)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app with the new monitor file, picked up by the file-system-synchronized Xcode groups) exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes; confirms no cross-language breakage)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED — 540 test cases passed, 0 failures, full suite unchanged and green with the view-layer chord rework in the tree."
+        }
+      ]
+    },
+    {
+      "id": "T-045",
+      "title": "Fix the dead up/down arrow-key cursor movement in the hide-selection screen and the layout list (shared key-sink mechanism, sent back from the R-011 on-device verification), keeping click / Space toggle / Enter confirm / Esc cancel behavior unchanged",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-060"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "sendback-fix",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectOverlayKeys.swift",
+            "macos/Sources/Features/Projects/ProjectHideSelector.swift",
+            "macos/Sources/Features/Projects/ProjectLayoutSelector.swift",
+            "SPEC.md"
+          ],
+          "summary": "Fixed the dead up/down arrow keys in both selection screens (hide-selection and layout list, sent back by R-011): the sink TextField onMoveCommand never fired because the focused field editor consumes arrow presses during key-binding interpretation. Both screens now take plain (unmodified) up/down through the shared overlayArrowKeys local keyDown monitor (ProjectOverlayKeys.swift), which sees the event before any dispatch, moves the cursor (-1/+1 with the existing wrap-around moveCursor), and swallows the event so the field editor never sees it. The verified-working paths are untouched: Esc via onExitCommand, Enter via onSubmit, Space via the typed-text sink, row click, backdrop-click cancel. The layout hide-pick screen shares ProjectHideSelector, so all three surfaces are covered by the one mechanism change. SPEC.md 25 / 26.2 updated. Cursor-movement key handling is GUI-only and remains human-verified (re-verification requested in R-012)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with both selector reworks in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED — 540 test cases passed, 0 failures; the model-layer selection/layout judgment tests (ProjectHideSelectionTests, ProjectLayoutTests) are unaffected by the view-layer key rework and stay green."
+        }
+      ]
+    }
+  ]
+}

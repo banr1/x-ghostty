@@ -9,7 +9,7 @@ zig-cache/
 .zig-cache/
 .zig-global-cache/
 /.tmp/
-/.mercator/tmp/
+/.atlas-builder/tmp/
 zig-out/
 # Custom Zig package cache dir (e.g. `zig build --global-cache-dir zig-pkg`)
 zig-pkg/
