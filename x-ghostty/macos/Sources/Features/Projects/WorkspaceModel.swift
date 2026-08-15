@@ -61,14 +61,19 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// screen is up. Transient UI state like `hideSelection`; never persisted.
     @Published private(set) var layoutHidePick: WorkspaceLayoutHidePick?
 
+    /// Whether the project-list overlay (`list_projects`, Cmd+L, `SPEC.md`
+    /// §27) is up. Transient UI state like `hideSelection`; never persisted.
+    @Published private(set) var projectListActive = false
+
     /// Whether any workspace-modal overlay session (note overview,
-    /// hide-selection, layout selection, layout hide-pick) currently owns the
-    /// interaction: while one is up, focus moves, note editing, and sorting
-    /// are no-ops, and no other overlay may open. The note *editor* is not in
-    /// this set — it locks less (see the individual guards).
+    /// hide-selection, layout selection, layout hide-pick, project list)
+    /// currently owns the interaction: while one is up, focus moves, note
+    /// editing, and sorting are no-ops, and no other overlay may open. The note
+    /// *editor* is not in this set — it locks less (see the individual guards).
     private var overlaySessionActive: Bool {
         noteOverviewActive || hideSelectionActive
             || layoutSelectionActive || layoutHidePick != nil
+            || projectListActive
     }
 
     /// An empty workspace with no projects. Used as the controller's initial
@@ -722,6 +727,180 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// `SPEC.md` §25).
     func cancelHideSelection() {
         hideSelection = nil
+    }
+
+    // MARK: Project list (SPEC §27)
+
+    /// Whether `list_projects` can open the project list (`SPEC.md` §27): at
+    /// least one project to list, and neither the note editor nor another
+    /// overlay session is up (each overlay owns the keyboard alone). Callers
+    /// use this both to open the list and to answer the keybind's
+    /// performability check, so the two always agree.
+    var canBeginProjectList: Bool {
+        noteEditingProject == nil
+            && !overlaySessionActive
+            && !state.projects.isEmpty
+    }
+
+    /// Open the project list (`SPEC.md` §27). Any project zoom is released
+    /// first so the list sits over the overall view it describes (the Essence
+    /// leaves the zoomed-invocation behavior to the implementation). No-op
+    /// while it is already up or `canBeginProjectList` is false.
+    func beginProjectList() {
+        guard !projectListActive, canBeginProjectList else { return }
+        state.zoomedProject = nil
+        projectListActive = true
+    }
+
+    /// Close the project list (the Escape path, `SPEC.md` §27.3). Visibility
+    /// toggles made during the session are real mutations and therefore stay.
+    func endProjectList() {
+        projectListActive = false
+    }
+
+    /// The rows the project list shows: every project, hidden ones included,
+    /// visible first in ordinal order (`SPEC.md` §27.1). Empty while no
+    /// session is up, mirroring `hideSelectionProjectIDs`.
+    var projectListRows: [ProjectListRow] {
+        guard projectListActive else { return [] }
+        return state.projectListRows
+    }
+
+    /// Whether Space would change anything for row `id` (`SPEC.md` §27.2).
+    ///
+    /// Hiding is refused when `id` is the last visible project — the
+    /// at-least-one-visible rule of the hide-selection screen applies here too
+    /// — and showing is refused at the visible-project cap, where the project
+    /// would have no number to occupy.
+    func canToggleProjectListVisibility(_ id: ProjectID) -> Bool {
+        guard projectListActive, state.projects[id] != nil else { return false }
+        return state.isProjectHidden(id)
+            ? canAddVisibleProject
+            : state.visibleProjectCount >= 2
+    }
+
+    /// Toggle row `id`'s visibility from the project list (`SPEC.md` §27.2).
+    /// The change applies immediately — the list has no confirm step, and
+    /// closing it with Escape does not undo it.
+    ///
+    /// Showing never moves focus: Space is a visibility control, and Enter
+    /// (`focusProjectListRow`) is the focus control. Hiding moves focus only
+    /// when the hidden project *was* focused, in which case the nearest
+    /// surviving project takes over exactly as in `confirmHideSelection`.
+    ///
+    /// The caller passes the outgoing focused project's live panes so they are
+    /// persisted before any structural change (a hidden project keeps its
+    /// layout and processes alive in `projects`, invariant §14.7).
+    ///
+    /// - Returns: the project to focus next and its stored focused surface when
+    ///   the toggle moved focus, otherwise `nil` (including for a rejected
+    ///   toggle).
+    @discardableResult
+    func toggleProjectListVisibility(
+        _ id: ProjectID,
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> (target: ProjectID, focus: SurfaceID?)? {
+        guard canToggleProjectListVisibility(id) else { return nil }
+        return state.isProjectHidden(id)
+            ? showFromProjectList(id, savingOutgoingPaneTree: outgoing)
+            : hideFromProjectList(id, savingOutgoingPaneTree: outgoing)
+    }
+
+    /// Re-attach `id`'s leaf next to the trailing project, exactly where
+    /// `showProject` puts it (`SPEC.md` §11.8), but without taking focus.
+    private func showFromProjectList(
+        _ id: ProjectID,
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> (target: ProjectID, focus: SurfaceID?)? {
+        var next = state
+        next.saveOutgoingPaneTree(outgoing)
+        next.hiddenProjectIDs.remove(id)
+        next.canonicalProjectTree = next.canonicalProjectTree
+            .appendingAtTrailingLeaf(ProjectRef(id: id))
+        state = next
+        return nil
+    }
+
+    /// Drop `id`'s leaf so the remaining projects reclaim its space, keeping
+    /// its state and live panes in `projects` (`SPEC.md` §11.7).
+    private func hideFromProjectList(
+        _ id: ProjectID,
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> (target: ProjectID, focus: SurfaceID?)? {
+        // Resolved on the pre-removal tree, so "nearest" is measured from where
+        // `id` actually sits. Only needed when `id` holds focus.
+        let target: ProjectID? = state.focusedProject == id
+            ? state.canonicalProjectTree.nearestLeaf(
+                to: ProjectRef(id: id),
+                matching: { $0.id != id })?.id
+            : nil
+
+        var next = state
+        next.saveOutgoingPaneTree(outgoing)
+        next.canonicalProjectTree = next.canonicalProjectTree
+            .removing(.leaf(view: ProjectRef(id: id)))
+        next.hiddenProjectIDs.insert(id)
+        // §18.3 backstop: a hidden project cannot remain zoomed. Begin already
+        // released the zoom; this covers a zoom re-entered mid-session.
+        if next.zoomedProject == id { next.zoomedProject = nil }
+        if let target { next.focusedProject = target }
+        next.snapFocusToPrimaryInOverallView()
+        state = next
+
+        guard let target else { return nil }
+        return (target, state.projects[target]?.focusedSurface)
+    }
+
+    /// Whether Enter on row `id` would focus a project (`SPEC.md` §27.3):
+    /// visible rows only — a hidden project has no place on screen to focus.
+    func canFocusProjectListRow(_ id: ProjectID) -> Bool {
+        guard projectListActive, state.projects[id] != nil else { return false }
+        return !state.isProjectHidden(id)
+    }
+
+    /// Focus row `id`'s project and close the list (`SPEC.md` §27.3). A hidden
+    /// row is inert: nothing happens and the list stays up.
+    ///
+    /// - Returns: the target project's stored focused surface so the caller can
+    ///   swap `surfaceTree` and move keyboard focus, or `nil` when the row is
+    ///   not focusable.
+    @discardableResult
+    func focusProjectListRow(
+        _ id: ProjectID,
+        savingOutgoingPaneTree outgoing: SplitTree<Pane>
+    ) -> SurfaceID? {
+        guard canFocusProjectListRow(id) else { return nil }
+        projectListActive = false
+
+        var next = state
+        next.saveOutgoingPaneTree(outgoing)
+        next.focusedProject = id
+        // Closing the list lands in the overall view, so focus goes to the
+        // project's primary pane (SPEC §22.4).
+        next.snapFocusToPrimaryInOverallView()
+        state = next
+
+        return state.projects[id]?.focusedSurface
+    }
+
+    // MARK: Daily priority reset (SPEC §28)
+
+    /// Run the daily priority reset if the local 06:00 boundary has been
+    /// crossed since it last ran (`SPEC.md` §28.2). Called at app launch and
+    /// whenever the app can have slept through a boundary (wake, reactivation);
+    /// calling it more often is harmless because the stored workday makes it
+    /// idempotent within a day.
+    ///
+    /// Silent by design: no notification, no marker, and no reordering — the
+    /// arrangement is untouched (§28.3).
+    ///
+    /// - Returns: whether the reset actually ran.
+    @discardableResult
+    func applyDailyPriorityReset(now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        var next = state
+        guard next.resetPrioritiesIfNeeded(at: now, calendar: calendar) else { return false }
+        state = next
+        return true
     }
 
     // MARK: Layout application (SPEC §26)

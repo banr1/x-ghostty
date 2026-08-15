@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "3671e5b2d6284981824f43e4f0fe187b42ee9a82d42eb703e76bc0eb6cf62799",
-  "projected_at": "2026-08-14T04:16:21+09:00",
+  "projected_from_essence_sha256": "198e3fdd39a1af3e11ab29a8ac25c65179add3cd99d39274fe4ce9ac90949baf",
+  "projected_at": "2026-08-16T01:46:10+09:00",
   "items": [
     {
       "id": "S-001",
@@ -96,7 +96,7 @@
     },
     {
       "id": "S-010",
-      "title": "No regression of existing project features or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter's fullscreen default, overall-view rendering of primary panes only, no-op pane operations in the overall view, focus snapping to the primary on zoom release, unconditional close confirmation, last-pane shell exit leaving a terminated project, note-editor Cmd+A/C/X/V routed to text editing, the Cmd+S / Cmd+Shift+S sort assignments, replacing Cmd+Opt+H's immediate hide with the hide-selection screen, the new Cmd+L layout-selection assignment, and the full group-to-project rename (wording, action names, identifiers, directory names)",
+      "title": "No regression of existing project features or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter's fullscreen default, overall-view rendering of primary panes only, no-op pane operations in the overall view, focus snapping to the primary on zoom release, unconditional close confirmation, last-pane shell exit leaving a terminated project, note-editor Cmd+A/C/X/V routed to text editing, the Cmd+S / Cmd+Shift+S sort assignments, replacing Cmd+Opt+H's immediate hide with the hide-selection screen, the full group-to-project rename, remote panes splitting to the same remote path, abolishing the hidden shelf in favour of the project list as the single return path, moving layout selection from Cmd+L to Cmd+Opt+L so Cmd+L opens the project list, note-editor Cmd+Z / Cmd+Shift+Z routed to editor undo/redo, and the daily priority reset",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -109,9 +109,13 @@
         "確認を常時化すること、最後のペインのシェル exit でプロジェクトを閉じず終了済み",
         "状態で残すこと、ノート編集オーバーレイ中の Cmd+A / C / X / V をエディタのテキスト",
         "編集に向けること、`Cmd+S` / `Cmd+Shift+S` へのソートアクションの新規割り当て、",
-        "`Cmd+Opt+H` の即時 hide を hide 選択画面に置き換えること、`Cmd+L` へのレイアウト",
-        "選択の新規割り当て、「グループ」→「プロジェクト」への全面改名(文言・action 名・",
-        "識別子・ディレクトリ名)。"
+        "`Cmd+Opt+H` の即時 hide を hide 選択画面に置き換えること、「グループ」→",
+        "「プロジェクト」への全面改名(文言・action 名・識別子・ディレクトリ名)、",
+        "リモートペインの split 先をリモート同パスにすること、hidden シェルフの廃止と",
+        "復帰導線のプロジェクト一覧への一本化、`Cmd+L` のレイアウト選択からプロジェクト",
+        "一覧への付け替えとレイアウト選択の `Cmd+Opt+L` への移動、ノート編集オーバーレイ中の",
+        "Cmd+Z / Cmd+Shift+Z をエディタの取り消し・やり直しに向けること、優先度の毎朝",
+        "リセット。"
       ]
     },
     {
@@ -400,12 +404,14 @@
     },
     {
       "id": "S-036",
-      "title": "Standard text-editing shortcuts (Cmd+A select all, Cmd+C copy, Cmd+X cut, Cmd+V paste) act on the editor while the note edit overlay is shown",
+      "title": "Standard text-editing shortcuts (Cmd+A select all, Cmd+C copy, Cmd+X cut, Cmd+V paste, Cmd+Z undo, Cmd+Shift+Z redo) act on the editor while the note edit overlay is shown; the undo history is scoped to the single open-to-close editing session and covers only the note body",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "ノート編集オーバーレイ表示中は、標準的なテキスト編集ショートカット(Cmd+A 全選択・",
-        "Cmd+C コピー・Cmd+X 切り取り・Cmd+V 貼り付け)がエディタに対して効く。"
+        "Cmd+C コピー・Cmd+X 切り取り・Cmd+V 貼り付け・Cmd+Z 取り消し・Cmd+Shift+Z",
+        "やり直し)がエディタに対して効く。取り消し履歴はそのオーバーレイを開いてから",
+        "閉じるまでの編集セッション内に限り、対象はノート本文のみとする。"
       ]
     },
     {
@@ -572,13 +578,14 @@
     },
     {
       "id": "S-052",
-      "title": "Human performs a one-time on-device verification that Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the note editor as standard and that an over-10-line paste is truncated to the first 10 lines on save",
+      "title": "Human performs a one-time on-device verification that Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the note editor as standard, that Cmd+Z / Cmd+Shift+Z undo and redo the note body, and that an over-10-line paste is truncated to the first 10 lines on save",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "ノート編集オーバーレイの実機確認として、Cmd+A / Cmd+C / Cmd+X / Cmd+V が",
-        "エディタに対して標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ",
-        "切り詰められることを人間が一度だけ目視確認し、確認が取れる。"
+        "エディタに対して標準どおり効き、`Cmd+Z` / `Cmd+Shift+Z` がノート本文の取り消し・",
+        "やり直しとして効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められる",
+        "ことを人間が一度だけ目視確認し、確認が取れる。"
       ]
     },
     {
@@ -638,11 +645,12 @@
     },
     {
       "id": "S-057",
-      "title": "The return path for hidden projects stays the existing hidden shelf, unchanged",
+      "title": "The return path for hidden projects is the project list (items 63-65); the former hidden shelf is abolished",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "隠したプロジェクトの復帰導線は従来どおり hidden シェルフとし、変更しない。"
+        "隠したプロジェクトの復帰導線はプロジェクト一覧(63〜65 項)とし、従来の hidden",
+        "シェルフは廃止する。"
       ]
     },
     {
@@ -670,11 +678,11 @@
     },
     {
       "id": "S-060",
-      "title": "Cmd+L opens a layout-selection overlay: arrow keys choose from the registered-layout list, Enter applies, Esc closes changing nothing; the overlay appears only when invoked and the terminal returns to full view on exit (zoomed invocation left to the implementation)",
+      "title": "Cmd+Opt+L opens the layout-selection overlay: arrow keys choose from the registered-layout list, Enter applies, Esc closes changing nothing; the overlay appears only when invoked and the terminal returns to full view on exit (zoomed invocation left to the implementation)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+L` でレイアウト選択オーバーレイが開き、登録レイアウトの一覧から矢印キーで",
+        "`Cmd+Opt+L` でレイアウト選択オーバーレイが開き、登録レイアウトの一覧から矢印キーで",
         "選択して Enter で適用し、Esc で何も変えずに閉じる。オーバーレイは呼び出したとき",
         "だけ表示され、抜ければ端末が全面に戻る(zoom 中に呼び出した場合の挙動は定めず、",
         "実装に任せる)。"
@@ -784,14 +792,14 @@
     },
     {
       "id": "S-070",
-      "title": "Human performs a one-time on-device visual verification of the hide-selection screen after its implementation is in place; not complete until confirmed (Cmd+Opt+H opens the screen, multi-select + Enter hides in one batch into the hidden shelf, Esc closes hiding nothing, appearance fits the terminal)",
+      "title": "Human performs a one-time on-device visual verification of the hide-selection screen after its implementation is in place; not complete until confirmed (Cmd+Opt+H opens the screen, multi-select + Enter hides in one batch and the projects appear as hidden in the Cmd+L list, Esc closes hiding nothing, appearance fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "hide 選択の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
         "確認が取れるまで完了とはしない。",
         "`Cmd+Opt+H` で hide 選択画面が開き、複数選択して Enter で選択したプロジェクト",
-        "が一括で隠れ、hidden シェルフに現れる",
+        "が一括で隠れ、`Cmd+L` の一覧に hidden として現れる",
         "Esc で何も隠れずに閉じる",
         "選択画面の見た目がターミナルに馴染む"
       ]
@@ -819,13 +827,13 @@
     },
     {
       "id": "S-072",
-      "title": "Human performs a one-time on-device visual verification of layout application after its implementation is in place; not complete until confirmed (Cmd+L list opens, arrows + Enter apply, Esc changes nothing; equal count applies directly; more creates new projects at the tail; fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal)",
+      "title": "Human performs a one-time on-device visual verification of layout application after its implementation is in place; not complete until confirmed (Cmd+Opt+L list opens, arrows + Enter apply, Esc changes nothing; equal count applies directly; more creates new projects at the tail; fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "レイアウト適用の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
         "取れる。確認が取れるまで完了とはしない。",
-        "`Cmd+L` でレイアウト一覧が開き、矢印キーで選んで Enter で適用され、Esc で",
+        "`Cmd+Opt+L` でレイアウト一覧が開き、矢印キーで選んで Enter で適用され、Esc で",
         "何も変わらずに閉じる",
         "レイアウト数が現表示数と等しいとき、そのまま適用される",
         "多いとき、新プロジェクトが後ろに作られて適用される",
@@ -846,6 +854,216 @@
         "成功条件 1〜3 のビルド・テストが exit 0 で終わる",
         "メニュー・ダイアログ・シェルフ等のユーザー可視文言に「Group」が現れないことを",
         "人間が実機で一度だけ目視確認し、確認が取れる"
+      ]
+    },
+    {
+      "id": "S-074",
+      "title": "Splitting a pane that is on a remote host (shell integration's OSC 7 reports a non-local host) opens the new pane over ssh to the same host at the same path; only splits are affected - new projects, including those created by layout application, open locally",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "リモートホストにいるペイン(シェル統合が OSC 7 で報告するホストがローカルでない)",
+        "を split したとき、新ペインは同じホストへ ssh で接続し、同じパスで開く。対象は",
+        "split のみとし、新規プロジェクト作成・レイアウト適用で作られる新プロジェクトは",
+        "ローカルで開く。"
+      ]
+    },
+    {
+      "id": "S-075",
+      "title": "When remoteness cannot be determined, or the connection fails, the new pane opens locally as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "リモートにいると判定できない場合、または接続に失敗した場合は、従来どおりローカルで",
+        "開く。"
+      ]
+    },
+    {
+      "id": "S-076",
+      "title": "Remote determination (remote or not, host and path extraction, launch-command decision) lives in the model layer, verifiable from XGhosttyTests; if it turns out to be impossible without modifying the upstream terminal core, do not start - consult the human",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "リモート判定(リモートか否か・ホスト・パスの抽出・起動コマンドの決定)はモデル層に",
+        "置き、`XGhosttyTests` から検証可能にする。上流のターミナルコアの改変なしに実現",
+        "できないと判明した場合は、着手せず人間に相談する。"
+      ]
+    },
+    {
+      "id": "S-077",
+      "title": "Success gates (remote split): XGhosttyTests contains passing tests deriving a local launch from a local pwd report, an ssh launch to that host and path from a remote pwd report, and a local launch from a pwd report carrying no host information",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "ローカルの pwd 報告からはローカル起動が導かれる",
+        "リモートホストの pwd 報告からは、そのホスト・パスへの ssh 起動が導かれる",
+        "ホスト情報の無い pwd 報告はローカル扱いになる"
+      ]
+    },
+    {
+      "id": "S-078",
+      "title": "Human performs a one-time on-device visual verification of remote split after its implementation is in place; not complete until confirmed (splitting a pane ssh'd to a remote directory opens the new pane on the same host and path; splitting a local pane still opens locally)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "リモート split の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
+        "取れる。確認が取れるまで完了とはしない。",
+        "リモートに ssh してディレクトリ移動したペインを split すると、新ペインが同じ",
+        "ホスト・同じパスで開く",
+        "ローカルのペインを split すると、従来どおりローカルで開く"
+      ]
+    },
+    {
+      "id": "S-079",
+      "title": "Cmd+L opens a project-list overlay tabulating every project including hidden ones (title, priority, deadline, first note line), visible rows in ordinal order followed by hidden rows marked as such, unset fields blank; the overlay appears only when invoked and the terminal returns to full view on close (zoomed invocation left to the implementation)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+L` でプロジェクト一覧オーバーレイが開き、hidden を含む全プロジェクトを表形式",
+        "(タイトル・優先度・締切・ノート 1 行目)で列挙する。行の並びは visible を序数順、",
+        "hidden をその後ろとし、hidden の行にはそれと分かる印を付け、未設定の項目は空欄と",
+        "する。オーバーレイは呼び出したときだけ表示され、閉じれば端末が全面に戻る(zoom 中に",
+        "呼び出した場合の挙動は定めず、実装に任せる)。"
+      ]
+    },
+    {
+      "id": "S-080",
+      "title": "In the project list, arrow keys move the row selection and Space immediately toggles that row's hide/show (the change survives closing with Esc); item 47's at-least-one-visible constraint applies to this toggle too",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧では矢印キーで行を選択し、Space でその行の hide/show を即時にトグルする",
+        "(Esc で閉じても反映は残る)。47 項の「最低 1 つは visible に残す」制約はこの",
+        "トグルにも適用する。"
+      ]
+    },
+    {
+      "id": "S-081",
+      "title": "Enter on a visible row focuses that project and closes the list; Enter on a hidden row does nothing; Esc closes the list",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧で visible な行に Enter するとそのプロジェクトへ focus して一覧を閉じる。",
+        "hidden な行では Enter は無効(何も起きない)。Esc で閉じる。"
+      ]
+    },
+    {
+      "id": "S-082",
+      "title": "Judgment logic for the project list's row content, ordering, toggle eligibility, and Enter eligibility lives in the model layer, verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧の行の内容・並び・トグル可否・Enter 可否の判断ロジックはモデル層に置き、",
+        "`XGhosttyTests` から検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-083",
+      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects including hidden with visible in ordinal order first, row content being title/priority/deadline/first note line, Space toggling hide/show immediately, the last visible project's hide toggle being refused, Enter on a hidden row doing nothing, and Enter on a visible row focusing that project",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "プロジェクト一覧の行が hidden を含む全プロジェクトと一致し、visible が序数順、",
+        "hidden がその後ろに並ぶ",
+        "各行の内容がタイトル・優先度・締切・ノート 1 行目である",
+        "Space のトグルが即時に hide/show を反映する",
+        "最後の visible なプロジェクトを hidden にするトグルは拒否される",
+        "hidden な行への Enter は何もしない",
+        "visible な行への Enter でそのプロジェクトが focus される"
+      ]
+    },
+    {
+      "id": "S-084",
+      "title": "Human performs a one-time on-device visual verification of the project list after its implementation is in place; not complete until confirmed (Cmd+L opens the table with hidden projects included, Space toggles in place and survives Esc, Enter on a visible row focuses and closes, Enter on a hidden row does nothing, no hidden shelf appears at the top right, appearance fits the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクト一覧の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
+        "取れる。確認が取れるまで完了とはしない。",
+        "`Cmd+L` で一覧が開き、表形式で hidden を含む全プロジェクトが見える",
+        "Space で hidden ↔ visible がその場で切り替わり、Esc で閉じても反映が残る",
+        "visible な行で Enter するとそのプロジェクトに focus して一覧が閉じる",
+        "hidden な行で Enter しても何も起きない",
+        "画面右上に hidden シェルフが表示されない",
+        "一覧の見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-085",
+      "title": "Every day at local 06:00 as the boundary, all projects including hidden ones have their priority reset to unset; deadlines and notes are untouched",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "毎日ローカル時刻 6:00 を境界として、全プロジェクト(hidden を含む)の優先度を",
+        "未設定に戻す。締切・ノートは変更しない。"
+      ]
+    },
+    {
+      "id": "S-086",
+      "title": "The reset persists the last-reset date and runs exactly once when that date differs from the current workday; it fires at app launch and when the boundary is crossed while running (including wake from sleep and reactivation), with no notification or marker",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "リセットは「最後にリセットした日付」を永続化し、それが現在の作業日と異なるときに",
+        "1 回だけ実行する。実行タイミングは、アプリ起動時、および稼働中に境界を跨いだとき",
+        "(スリープ復帰・再アクティブ化を含む)とする。通知や印は出さない。"
+      ]
+    },
+    {
+      "id": "S-087",
+      "title": "The automatic reset never reorders projects (sorting stays explicit-action-only)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "自動リセットによって並び替えは行わない(ソートは従来どおり明示アクション時のみ)。"
+      ]
+    },
+    {
+      "id": "S-088",
+      "title": "Reset judgment logic (boundary, target set, once per day) lives in the model layer, verifiable from XGhosttyTests",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "リセットの判定ロジック(境界・対象・1 日 1 回)はモデル層に置き、`XGhosttyTests`",
+        "から検証可能にする。"
+      ]
+    },
+    {
+      "id": "S-089",
+      "title": "Success gates (priority reset): XGhosttyTests contains passing tests for deciding from the last-reset date and the current time whether the local 06:00 boundary was crossed, the reset clearing priority on all projects including hidden while leaving deadlines and notes, no second reset within the same workday, and the reset not changing the ordering",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "最終リセット日付と現在時刻から「ローカル 6:00 の境界を跨いだか」が判定される",
+        "リセットで hidden を含む全プロジェクトの優先度が未設定になり、締切・ノートは",
+        "変わらない",
+        "同じ作業日内では 2 回目のリセットが起きない",
+        "リセットによって並び順は変わらない"
+      ]
+    },
+    {
+      "id": "S-090",
+      "title": "Human performs a one-time on-device visual verification of the priority reset after its implementation is in place; not complete until confirmed (a project prioritized yesterday is back to unset when looked at after 06:00 the next morning, whether the app was restarted or kept running)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "優先度リセットの実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
+        "取れる。確認が取れるまで完了とはしない。",
+        "前日に優先度を設定したプロジェクトが、翌朝 6:00 以降にアプリを見ると",
+        "(起動し直しても、稼働したままでも)未設定に戻っている"
+      ]
+    },
+    {
+      "id": "S-091",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, project list, note-editor undo/redo, and priority reset specs",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧・Undo/Redo・",
+        "優先度リセットの仕様に合わせて更新する。"
       ]
     }
   ]

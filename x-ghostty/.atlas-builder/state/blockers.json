@@ -14,6 +14,19 @@
       "created_at": "2026-08-07T23:05:00+09:00",
       "resolved_at": "2026-08-08T17:35:00+09:00",
       "resolution": "Human resolved R-001 with option (c): ESSENCE.md now declares `profile: unsandboxed` and the deployment was re-initialized without the OS sandbox (META.md §11.5). Verified this cycle: `just test` exit 0, `just swift-test` exit 0 (TEST SUCCEEDED, 410 tests incl. 14 GroupNoteTests), `zig build` (body of `just build-app`) exit 0."
+    },
+    {
+      "id": "B-002",
+      "type": "external",
+      "status": "active",
+      "title": "Remote split needs the OSC 7 host, which the upstream terminal core discards",
+      "description": "src/termio/stream_handler.zig reportPwd validates the OSC 7 host with internal_os.hostname.isLocal and returns early for a non-local host, so a remote pane's pwd report never reaches the app layer at all; even a local report is forwarded to Swift as a bare path string (apprt .pwd action -> SurfaceView.pwd: String?), with no host component. The macOS app and action layers therefore cannot observe that a pane is remote, which is exactly the case the Essence's must-62 and 思想 3 reserve for the human: do not enter the core, consult instead. Blocks S-074/S-075/S-076/S-077 (must items 60-62) and their human verification S-078.",
+      "affects": [
+        "T-049",
+        "T-050",
+        "T-055"
+      ],
+      "created_at": "2026-08-16T02:07:01+09:00"
     }
   ]
 }

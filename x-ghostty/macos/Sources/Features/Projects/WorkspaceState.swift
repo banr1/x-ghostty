@@ -34,6 +34,13 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// covered by a leaf are exactly `hiddenProjectIDs` (§14.2).
     var projects: [ProjectID: ProjectStateOf<Pane>]
 
+    /// The workday the daily priority reset last ran for, or `nil` when it never
+    /// has (`SPEC.md` §28.2). Persisted — unlike the display state below — so
+    /// the "once per workday" rule survives a quit and relaunch, which is the
+    /// whole point: an app restarted after the boundary must still reset once,
+    /// and one restarted before it must not reset again.
+    var lastPriorityResetWorkday: Workday?
+
     // MARK: Runtime-only (never persisted; cleared on decode)
 
     var hiddenProjectIDs: Set<ProjectID> = []
@@ -46,6 +53,7 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         hiddenProjectIDs: Set<ProjectID> = [],
         focusedProject: ProjectID? = nil,
         zoomedProject: ProjectID? = nil,
+        lastPriorityResetWorkday: Workday? = nil,
         version: Int = Self.currentVersion
     ) {
         self.version = version
@@ -54,6 +62,7 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         self.hiddenProjectIDs = hiddenProjectIDs
         self.focusedProject = focusedProject
         self.zoomedProject = zoomedProject
+        self.lastPriorityResetWorkday = lastPriorityResetWorkday
     }
 
     /// The tree used for rendering / focus / hit-testing. Derived from
@@ -391,6 +400,7 @@ extension WorkspaceStateOf: Codable {
         case canonicalProjectTree
         case projects
         case focusedProject
+        case lastPriorityResetWorkday
     }
 
     /// Pre-rename key spellings ("group" vocabulary). Workspaces saved before
@@ -422,6 +432,12 @@ extension WorkspaceStateOf: Codable {
         self.focusedProject = try c.decodeIfPresent(ProjectID.self, forKey: .focusedProject)
             ?? legacy.decodeIfPresent(ProjectID.self, forKey: .focusedProject)
 
+        // A save written before the reset existed has no key, and a corrupt one
+        // decodes as `nil`: both mean "never reset", so the reset runs once at
+        // the next check (`SPEC.md` §28.2).
+        self.lastPriorityResetWorkday =
+            (try? c.decodeIfPresent(Workday.self, forKey: .lastPriorityResetWorkday)) ?? nil
+
         // Runtime-only state is always reset on decode (`SPEC.md` §12.2), and
         // projects that were hidden when this was encoded (so absent from the
         // persisted tree) are re-attached — up to the visible cap — so nothing
@@ -441,5 +457,6 @@ extension WorkspaceStateOf: Codable {
         try c.encode(keyed, forKey: .projects)
 
         try c.encodeIfPresent(focusedProject, forKey: .focusedProject)
+        try c.encodeIfPresent(lastPriorityResetWorkday, forKey: .lastPriorityResetWorkday)
     }
 }

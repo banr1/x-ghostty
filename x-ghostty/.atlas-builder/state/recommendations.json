@@ -276,6 +276,23 @@
       "resolved_at": "2026-08-11T23:42:25+09:00",
       "resolved_by": "human",
       "resolution": "R-012 の実機再確認を実施し、差し戻し 2 件の修正がいずれも直っていることを確認した: ノート編集オーバーレイで Cmd+A / Cmd+C / Cmd+X / Cmd+V が標準どおり効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められること(成功条件 10)、および hide 選択画面・レイアウト一覧・レイアウトの hide-pick 画面のいずれでも ↑↓ の矢印キーによるカーソル移動が効くこと(成功条件 14 / 16)。\nよって R-012 を解除し、T-031 / T-040 / T-041 を human 承認の証跡付き(type: human、本 resume の日時と本ノートを reference)で done として記録すること。これで must は全件完了となる。ESSENCE.md の変更は不要。\nphase は既に extended_approved なので、次サイクルは残る唯一の should である T-043(AGENTS.md の語彙更新)を high-risk 単独バッチとして before/after ハッシュ証跡付きで実行し、完了させること。"
+    },
+    {
+      "id": "R-013",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "source": [
+        "T-049",
+        "S-076",
+        "B-002"
+      ],
+      "raised_by": "atlas-builder",
+      "created_at": "2026-08-16T02:07:01+09:00",
+      "reason": "必須対応事項 60〜62(リモート split)は、上流由来のターミナルコアを改変しないと実装できないことが調査で判明したため。ESSENCE.md の必須 62 と思想 3 が「その場合は着手せず人間に相談する」と定めている。",
+      "title": "リモート split は上流コアの改変が必要です — 方針のご判断をお願いします(必須 60〜62 / T-049)",
+      "description": "調査結果:上流の VT 層 src/termio/stream_handler.zig の reportPwd が、OSC 7 で報告されたホスト名を internal_os.hostname.isLocal で検証し、ローカルでない場合はその報告を丸ごと破棄しています(`if (!host_valid) { log.warn(\"OSC 7 host ... must be local\"); return; }`)。さらにローカルの場合でも、apprt の .pwd アクションに載せて Swift 側へ渡すのは path 文字列だけで(SurfaceView.pwd: String?)、ホスト名はどこにも残りません。\n\nつまり「リモートホストにいるペイン」という判定に必要なホスト情報は、macOS アプリ層・action 層からは原理的に観測できません。必須 62 の但し書き(「上流のターミナルコアの改変なしに実現できないと判明した場合は、着手せず人間に相談する」)と思想 3 に従い、コアには一切手を触れずに停止しました。\n\nモデル層の判定ロジック自体(pwd 報告 → ローカル起動 / ssh 起動の決定)は純関数として書けるため、入力さえ得られれば実装・テストとも可能です。問題は入力の入手経路だけです。\n\n選択肢:\n(a) 上流コアの最小改変を許可する — stream_handler.zig の reportPwd で、非ローカルホストの OSC 7 を破棄せずホスト付きで surface へ伝える経路を足し、apprt の pwd アクションを host + path に拡張する。変更は 2〜3 ファイルに収まり、ローカル報告の既存挙動は据え置けます。ただし思想 3 が守ってきた「コア無改変」の一線を越える判断であり、上流追従は非対応事項なので恒久的に fork 側の負債になります。\n(b) 別経路でホストを得る — fork 独自のシェル統合シーケンス(独自 OSC など)を定義して host を報告させる案。ただしシーケンスの受理も結局 VT 層(コア)の改変を要するため、(a) と本質的に同じ判断になります。\n(c) 必須 60〜62 を取り下げる/延期する — 人間が ESSENCE.md を改訂し、リモート split を非対応事項ないし将来の昇格候補へ移す。\n\n推奨は (a) です:必須 60〜62 は「リモートで作業中に split するとローカルに戻る」という日々の摩擦を直すためのもので、(c) はその摩擦を残します。(a) の改変は VT のセマンティクスを変えるものではなく「これまで捨てていた情報を fork 側へ渡す」だけなので、上流追従を行わない本 fork では影響範囲が限定的です。\n\nresume の resolution でご指示ください。(a) を選ぶ場合、対象ファイル(src/termio/stream_handler.zig / src/apprt/action.zig / include/xghostty.h など)の改変を明示的にご承認ください。(c) の場合は ESSENCE.md をご自身で改訂してください(Atlas Builder は ESSENCE.md を編集できません)。\n\nなお本サイクルで、リモート split と独立な T-047(プロジェクト一覧のモデル層)と T-051(優先度の毎朝リセットのモデル層)は完了・検証済みです。残りの Todo(T-046 / T-048 / T-050 / T-052 / T-053 / T-054 と実機確認 6 件)は本ゲートとは独立に進められます。"
     }
   ]
 }

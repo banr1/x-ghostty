@@ -1924,6 +1924,316 @@
           "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED — 540 test cases passed, 0 failures; the model-layer selection/layout judgment tests (ProjectHideSelectionTests, ProjectLayoutTests) are unaffected by the view-layer key rework and stay green."
         }
       ]
+    },
+    {
+      "id": "T-046",
+      "title": "Note editor undo/redo: Cmd+Z / Cmd+Shift+Z act on the note edit overlay's editor, with the undo history scoped to a single open-to-close editing session and covering only the note body",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-036",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "editor-undo",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-047",
+      "title": "Model layer: project-list rows - every project including hidden ones, visible in ordinal order followed by hidden rows flagged as hidden, each row carrying title / priority / deadline / first note line with unset fields blank; Space-toggle eligibility honouring the at-least-one-visible rule and Enter eligibility (visible only); covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-079",
+        "S-080",
+        "S-081",
+        "S-082",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch5-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectList.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Tests/Projects/ProjectListTests.swift"
+          ],
+          "summary": "Project-list model layer. New ProjectListRow value type (id, title, ordinal, isHidden, priority, deadline, noteFirstLine) plus WorkspaceStateOf.projectListRows: visible projects in ordinal order, then hidden ones ordered by (createdAt, id) - the same deterministic order reconcileOrphanedProjects re-attaches them in. 'Hidden' is derived from the absence of a canonical leaf (invariant 14.3) via the new isProjectHidden(_:), not read out of the runtime hiddenProjectIDs set, so a stale set cannot corrupt the list. WorkspaceStateOf.firstNoteLine yields the note's first line ('' for an empty note). WorkspaceModel gains the session: projectListActive (added to overlaySessionActive so the list locks the keyboard like the other overlays), canBeginProjectList / beginProjectList (releases zoom) / endProjectList, the session-scoped projectListRows accessor, canToggleProjectListVisibility + toggleProjectListVisibility (Space: hide refused for the last visible project, show refused at the visible cap; showing never moves focus, hiding moves focus only when the hidden project held it, resolved on the pre-removal tree exactly like confirmHideSelection), and canFocusProjectListRow + focusProjectListRow (Enter: visible rows only, closes the list, snaps focus to the target's primary pane)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 560 test cases passed, 0 failures - the full prior suite plus 14 new ProjectListTests and 7 new ProjectPriorityResetTests, each named in the run log."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with both new model layers in the tree. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (Swift-only changes this cycle; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-048",
+      "title": "Project-list overlay UI and keybind rearrangement: new list_projects action on Cmd+L opening the table overlay (arrow selection, Space toggles hide/show in place, Enter focuses a visible row and closes, Esc closes), choose_project_layout moved from Cmd+L to Cmd+Opt+L, and the HiddenProjectShelf removed as the return path",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-079",
+        "S-080",
+        "S-081",
+        "S-057",
+        "S-060",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "projectlist-ui",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-049",
+      "title": "Model layer: remote-split determination - from a pane's OSC 7 pwd report decide local launch vs ssh launch to the reported host at the reported path, treating a host-less or unparseable report as local; covered by XGhosttyTests. If this cannot be done without modifying the upstream terminal core, stop and raise a Human-input Recommendation instead of touching the core",
+      "status": "blocked",
+      "priority": "must",
+      "spec": [
+        "S-074",
+        "S-075",
+        "S-076",
+        "S-077"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch5-model",
+      "risk_level": "normal",
+      "evidence": [],
+      "blocked_reason": "The upstream terminal core discards every non-local OSC 7 report before it reaches the app layer: src/termio/stream_handler.zig reportPwd validates the reported host with internal_os.hostname.isLocal and returns early when it is not local, and even for a local host it forwards only the path (apprt .pwd action / SurfaceView.pwd is a String). A remote pane's host and path are therefore unobservable from Swift, so S-076's escape clause applies - the feature cannot be built without modifying the upstream terminal core. Awaiting the human decision recorded as R-013 / B-002; the core stays untouched meanwhile.",
+      "blocker": "B-002"
+    },
+    {
+      "id": "T-050",
+      "title": "Wire remote split into the split path: a split of a remote pane opens the new pane over ssh at the same path, splits of local panes and all newly created projects (including layout-application ones) stay local, and any failure falls back to a local launch",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-074",
+        "S-075",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "remote-ui",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-051",
+      "title": "Model layer: daily priority reset - workday boundary at local 06:00, a persisted last-reset date, a once-per-workday reset clearing priority on every project including hidden ones while leaving deadlines, notes and the ordering untouched; covered by XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-085",
+        "S-086",
+        "S-087",
+        "S-088",
+        "S-089"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch5-model",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectWorkday.swift",
+            "macos/Sources/Features/Projects/ProjectList.swift",
+            "macos/Sources/Features/Projects/WorkspaceState.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Tests/Projects/ProjectPriorityResetTests.swift"
+          ],
+          "summary": "Daily priority reset model layer. New Workday value type: the local 06:00-to-06:00 span, stored as the calendar date of its start, so 'same workday' is a single equality check; the rollback before 06:00 uses calendar day arithmetic (not a six-hour wall-time subtraction) so a DST transition cannot shift it. Codable as the canonical YYYY-MM-DD text form. WorkspaceStateOf gains the persisted lastPriorityResetWorkday (added to CodingKeys, the memberwise init, encode, and a lenient decode where a missing or corrupt value reads as 'never reset'; deliberately NOT cleared by clearRuntimeState, unlike the display state), plus needsPriorityReset(at:calendar:) and resetPrioritiesIfNeeded(at:calendar:) which clears priority on every project including hidden ones, stamps the current workday, and touches neither deadlines, notes, nor canonicalProjectTree - so the reset can never reorder. WorkspaceModel.applyDailyPriorityReset(now:calendar:) is the entry point the trigger wiring (T-052) will call; it is idempotent within a workday."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 560 test cases passed, 0 failures - the full prior suite plus 14 new ProjectListTests and 7 new ProjectPriorityResetTests, each named in the run log."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with both new model layers in the tree. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (Swift-only changes this cycle; confirms no cross-language breakage)."
+        }
+      ]
+    },
+    {
+      "id": "T-052",
+      "title": "Wire the daily priority reset triggers: run the reset check at app launch and whenever the boundary is crossed while running (including wake from sleep and reactivation), with no notification or marker",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-085",
+        "S-086",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "reset-app",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-053",
+      "title": "Update SPEC.md and README.md for the implemented remote split, project list, note-editor undo/redo, and daily priority reset, and for the Cmd+L / Cmd+Opt+L rearrangement and the removal of the hidden shelf",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-091"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch5-docs",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-054",
+      "title": "Full verification of the new layer: zig build / just test / just swift-test all exit 0 with every S-077 / S-083 / S-089 test present and passing, and no regression beyond S-010's sanctioned exceptions",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-077",
+        "S-083",
+        "S-089",
+        "S-010",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch5-verify",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-055",
+      "title": "Human on-device visual verification of remote split (one-time): splitting a pane ssh'd into a remote directory opens the new pane on the same host and path; splitting a local pane still opens locally",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-078"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch5-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-056",
+      "title": "Human on-device visual verification of the project list (one-time): Cmd+L opens the table with hidden projects included, Space toggles in place and survives Esc, Enter focuses a visible row and closes, Enter on a hidden row does nothing, no hidden shelf at the top right, appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-084"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch5-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-057",
+      "title": "Human on-device visual verification of the daily priority reset (one-time): a project prioritized yesterday is back to unset when looked at after 06:00 the next morning, both after a restart and while the app kept running",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-090"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch5-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-058",
+      "title": "Human on-device re-verification of the note editor under the amended success criterion 10 (supersedes T-031): Cmd+Z / Cmd+Shift+Z undo and redo the note body, alongside the already-confirmed Cmd+A / C / X / V and the 10-line paste truncation",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-052"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch5-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-059",
+      "title": "Human on-device re-verification of the hide-selection screen under the amended success criterion 14 (supersedes T-040): projects hidden from the Cmd+Opt+H screen now appear as hidden in the Cmd+L project list rather than in a shelf",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-070"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch5-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-060",
+      "title": "Human on-device re-verification of layout application under the amended success criterion 16 (supersedes T-041): the layout list now opens with Cmd+Opt+L",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-072"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch5-human",
+      "risk_level": "normal",
+      "evidence": []
     }
   ]
 }
