@@ -461,6 +461,10 @@ extension XGhostty.Notification {
     /// that had focus; the layout-selection overlay opens (`SPEC.md` §26.2).
     static let ghosttyChooseProjectLayout = Notification.Name("com.mitchellh.xghostty.chooseProjectLayout")
 
+    /// Posted when `list_projects` is requested. The sending object is the surface
+    /// that had focus; the project-list overlay opens (`SPEC.md` §27.1).
+    static let ghosttyListProjects = Notification.Name("com.mitchellh.xghostty.listProjects")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 

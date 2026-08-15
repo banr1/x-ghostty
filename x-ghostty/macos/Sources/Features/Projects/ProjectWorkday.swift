@@ -35,6 +35,22 @@ struct Workday: Codable, Equatable, Hashable {
         self.day = components.day ?? 0
     }
 
+    /// The first moment after `date` at which the workday flips over — the next
+    /// local 06:00 (`SPEC.md` §28.3).
+    ///
+    /// This is what a running app schedules its reset check against, so the
+    /// "when" of the boundary stays in the model with the "which day" of it.
+    /// Resolved through the calendar rather than by adding a fixed number of
+    /// seconds, so a DST transition moves the boundary with the wall clock
+    /// instead of landing an hour off. `nil` only if the calendar cannot
+    /// produce the match at all, which callers treat as "do not schedule".
+    static func nextBoundary(after date: Date, calendar: Calendar = .current) -> Date? {
+        calendar.nextDate(
+            after: date,
+            matching: DateComponents(hour: boundaryHour, minute: 0, second: 0),
+            matchingPolicy: .nextTime)
+    }
+
     /// The canonical `YYYY-MM-DD` text form, which is also the persisted form.
     var displayText: String {
         String(format: "%04d-%02d-%02d", year, month, day)

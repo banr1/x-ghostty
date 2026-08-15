@@ -329,6 +329,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidListProjects(_:)),
+            name: XGhostty.Notification.ghosttyListProjects,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidSetProjectTitle(_:)),
             name: XGhostty.Notification.ghosttySetProjectTitle,
             object: nil)
@@ -407,14 +412,86 @@ class BaseTerminalController: NSWindowController,
         self.eventMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.flagsChanged]
         ) { [weak self] event in self?.localEventHandler(event) }
+
+        // Daily priority reset (`SPEC.md` §28.3). Runs here for the launch
+        // case — with the restored workspace already installed above, so a
+        // reset that is due lands on the restored priorities.
+        startDailyPriorityResetTriggers()
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+        priorityResetTimer?.invalidate()
         undoManager?.removeAllActions(withTarget: self)
         if let eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
         }
+    }
+
+    // MARK: Daily priority reset (SPEC §28.3)
+
+    /// Fires at the next local 06:00 so a workspace nobody touches across the
+    /// boundary still resets. Rescheduled after every firing.
+    private var priorityResetTimer: Timer?
+
+    /// Install every trigger the reset needs (`SPEC.md` §28.3): now (app
+    /// launch), at the next boundary while the app keeps running, on
+    /// reactivation, and on wake from sleep.
+    ///
+    /// The last two exist because a timer is not enough on its own: a sleeping
+    /// or backgrounded Mac can pass 06:00 with the timer suspended or coalesced
+    /// far past its fire date. The reset itself is idempotent within a workday
+    /// (the model stamps the workday it ran for), so overlapping triggers are
+    /// harmless — running once too often is impossible by construction.
+    private func startDailyPriorityResetTriggers() {
+        applyDailyPriorityResetIfNeeded()
+        scheduleNextDailyPriorityReset()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActiveForPriorityReset(_:)),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(machineDidWakeForPriorityReset(_:)),
+            name: NSWorkspace.didWakeNotification,
+            object: nil)
+    }
+
+    /// Run the reset if the boundary has been crossed since it last ran. The
+    /// model owns the whole judgment; a reset that is not due is a no-op, and
+    /// one that runs changes only priorities — never the order, the deadlines,
+    /// or the notes — so it needs no undo entry and shows no notification.
+    private func applyDailyPriorityResetIfNeeded() {
+        workspace.applyDailyPriorityReset()
+    }
+
+    /// Arm the timer for the next local 06:00.
+    private func scheduleNextDailyPriorityReset() {
+        priorityResetTimer?.invalidate()
+        guard let next = Workday.nextBoundary(after: Date()) else { return }
+
+        let timer = Timer(fire: next, interval: 0, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.applyDailyPriorityResetIfNeeded()
+            self.scheduleNextDailyPriorityReset()
+        }
+        // Common modes so a menu tracking or resize loop cannot delay it.
+        RunLoop.main.add(timer, forMode: .common)
+        priorityResetTimer = timer
+    }
+
+    @objc private func applicationDidBecomeActiveForPriorityReset(_ notification: Notification) {
+        applyDailyPriorityResetIfNeeded()
+        // The clock may have moved a long way while we were inactive.
+        scheduleNextDailyPriorityReset()
+    }
+
+    @objc private func machineDidWakeForPriorityReset(_ notification: Notification) {
+        applyDailyPriorityResetIfNeeded()
+        scheduleNextDailyPriorityReset()
     }
 
     // MARK: Methods
@@ -1183,6 +1260,18 @@ class BaseTerminalController: NSWindowController,
         workspace.beginLayoutSelection()
     }
 
+    @objc private func ghosttyDidListProjects(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused project's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // `list_projects` opens the project list (`SPEC.md` §27); everything
+        // it can do happens on its own keys (`toggleProjectListVisibility`,
+        // `focusProjectListRow`, `closeProjectList`).
+        workspace.beginProjectList()
+    }
+
     @objc private func ghosttyDidSetProjectTitle(_ notification: Notification) {
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(view) else { return }
@@ -1792,6 +1881,56 @@ class BaseTerminalController: NSWindowController,
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toProjectSurface: targetFocus)
         registerWorkspaceUndo("Show Project", undo: before, redo: workspace.state)
+    }
+
+    /// Toggle a project-list row between hidden and visible (Space, `SPEC.md`
+    /// §27.2). The change is immediate and needs no confirm, so each toggle
+    /// registers its own project-aware undo, exactly like the shelf-era
+    /// `showProject` did.
+    ///
+    /// Keyboard focus deliberately stays with the list: the overlay owns the
+    /// keyboard for the whole session, so even a toggle that moved the focused
+    /// project only swaps `surfaceTree` here — the focus move lands when the
+    /// list closes (`closeProjectList`).
+    func toggleProjectListVisibility(_ id: ProjectID) {
+        let before = workspace.state
+        let wasHidden = workspace.state.isProjectHidden(id)
+        guard workspace.canToggleProjectListVisibility(id) else { return }
+        workspace.toggleProjectListVisibility(id, savingOutgoingPaneTree: surfaceTree)
+
+        surfaceTree = workspace.focusedPaneTree
+        registerWorkspaceUndo(
+            wasHidden ? "Show Project" : "Hide Project",
+            undo: before,
+            redo: workspace.state)
+    }
+
+    /// Focus a project-list row and close the list (Enter, `SPEC.md` §27.3).
+    /// Mirrors `focusProject`: the model closes the session and resolves the
+    /// target's focused surface, and here we swap `surfaceTree` and move
+    /// keyboard focus into it. A hidden row is inert (the model refuses), so
+    /// the list stays up. Registers no undo — this is a focus change.
+    func focusProjectListRow(_ id: ProjectID) {
+        guard let targetFocus = workspace.focusProjectListRow(
+            id, savingOutgoingPaneTree: surfaceTree) else { return }
+
+        surfaceTree = workspace.focusedPaneTree
+        moveKeyboardFocus(toProjectSurface: targetFocus)
+    }
+
+    /// Close the project list (Escape, `SPEC.md` §27.3). Toggles made during
+    /// the session are real mutations and stay.
+    ///
+    /// Focus returns to the project focused *now*, not to the surface that had
+    /// focus when the list opened: hiding the focused project mid-session
+    /// already moved the focus, and that surface is no longer on screen.
+    func closeProjectList() {
+        guard workspace.projectListActive else { return }
+        workspace.endProjectList()
+
+        let focused = workspace.state.focusedProject
+        moveKeyboardFocus(
+            toProjectSurface: focused.flatMap { workspace.state.projects[$0]?.focusedSurface })
     }
 
     /// Close the focused project in response to `close_project` or a last-pane

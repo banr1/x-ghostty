@@ -697,6 +697,14 @@ pub const Action = union(enum) {
     /// with fewer, a screen picks exactly the excess to hide first.
     choose_project_layout,
 
+    /// Open the project-list overlay: every project including hidden ones,
+    /// tabulated as title, priority, deadline and the note's first line, with
+    /// the visible ones in ordinal order and the hidden ones after them.
+    /// Arrow keys move the cursor, Space toggles a row between hidden and
+    /// visible in place, Enter focuses a visible row's project and closes,
+    /// Escape closes. This is the only way back from hidden.
+    list_projects,
+
     /// Close the current project, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_project,
@@ -1369,6 +1377,7 @@ pub const Action = union(enum) {
             .sort_projects_by_priority,
             .sort_projects_by_deadline,
             .choose_project_layout,
+            .list_projects,
             .close_project,
             .inspector,
             => .surface,

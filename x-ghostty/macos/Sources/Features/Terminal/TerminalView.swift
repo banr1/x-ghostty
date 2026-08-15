@@ -24,8 +24,17 @@ protocol TerminalViewDelegate: AnyObject {
     /// Switch the focused project (a project-label single-click, `SPEC.md` §7.1).
     func focusProject(_ id: ProjectID)
 
-    /// Show a hidden project (a shelf pill click, `SPEC.md` §11.8, §7.2).
-    func showProject(_ id: ProjectID)
+    /// Toggle a project-list row between hidden and visible (Space, `SPEC.md`
+    /// §27.2). Hiding the focused project moves focus and swaps `surfaceTree`,
+    /// so the controller handles it.
+    func toggleProjectListVisibility(_ id: ProjectID)
+
+    /// Focus a project-list row and close the list (Enter, `SPEC.md` §27.3).
+    func focusProjectListRow(_ id: ProjectID)
+
+    /// Close the project list (Escape, `SPEC.md` §27.3), returning keyboard
+    /// focus to the project that is focused after the session's toggles.
+    func closeProjectList()
 
     /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
     func equalizeProjects()
@@ -114,7 +123,9 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         workspace: viewModel.workspace,
                         paneAction: { delegate?.performSplitAction($0) },
                         onFocusProject: { delegate?.focusProject($0) },
-                        onShowProject: { delegate?.showProject($0) },
+                        onToggleProjectListVisibility: { delegate?.toggleProjectListVisibility($0) },
+                        onFocusProjectListRow: { delegate?.focusProjectListRow($0) },
+                        onCloseProjectList: { delegate?.closeProjectList() },
                         onEqualizeProjects: { delegate?.equalizeProjects() },
                         onConfirmHideSelection: { delegate?.confirmHideSelection() },
                         onChooseLayout: { delegate?.chooseLayout($0) },

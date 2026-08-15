@@ -9,8 +9,9 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-049",
-    "T-050"
+    "T-048",
+    "T-052",
+    "T-046"
   ],
   "items": [
     {
@@ -1931,7 +1932,7 @@
     {
       "id": "T-046",
       "title": "Note editor undo/redo: Cmd+Z / Cmd+Shift+Z act on the note edit overlay's editor, with the undo history scoped to a single open-to-close editing session and covering only the note body",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-036",
@@ -1942,7 +1943,29 @@
       },
       "batch_group": "editor-undo",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/NoteEditHistory.swift",
+            "macos/Sources/Features/Projects/ProjectNoteEditor.swift",
+            "macos/Tests/Projects/ProjectNoteUndoTests.swift"
+          ],
+          "summary": "Note-editor undo/redo. New UI-free NoteEditHistory value type: a session-scoped undo/redo stack over the note body alone. It is deliberately NOT the text view's NSUndoManager - that one is the window's, which holds the project layer's own undo entries (Hide/Show Project, Apply Layout), so routing Cmd+Z there would let a note edit undo a workspace change. Typing coalesces (single-character edits within 0.75 s collapse into one step) while any larger change - paste, cut, selection replacement - always starts its own step, so a >10-line paste is taken back by one press; an undo closes the current run so the next keystroke cannot fold into the step just left; recording an unchanged value is a no-op, which is what makes writing an undone value back into the draft safe. ProjectNoteEditor creates the history from the note at open (so the first Cmd+Z returns to the text the editor opened with and no further), records every draft change, and takes Cmd+Z / Cmd+Shift+Z in the existing overlay keyDown monitor before any dispatch - the same path that made Cmd+A/C/X/V reliable. Priority and deadline are outside the history, as must-32 specifies. 7 new tests."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + C header + macOS app) exited 0 with the new list_projects action, the Cmd+L / Cmd+Opt+L rearrangement, the project-list overlay, the shelf removal, the reset triggers and the note undo history all in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests reported TEST SUCCEEDED with 578 test cases passed, 0 failures - 569 before this cycle plus 7 new ProjectNoteUndoTests and 2 new ProjectPriorityResetTests, each named in the run log. The pre-existing ProjectListTests (T-047, success criterion 20) still pass against the UI that now drives them."
+        }
+      ]
     },
     {
       "id": "T-047",
@@ -1994,7 +2017,7 @@
     {
       "id": "T-048",
       "title": "Project-list overlay UI and keybind rearrangement: new list_projects action on Cmd+L opening the table overlay (arrow selection, Space toggles hide/show in place, Enter focuses a visible row and closes, Esc closes), choose_project_layout moved from Cmd+L to Cmd+Opt+L, and the HiddenProjectShelf removed as the return path",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-079",
@@ -2009,7 +2032,45 @@
       },
       "batch_group": "projectlist-ui",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/Features/Terminal/TerminalView.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Projects/ProjectListOverlay.swift",
+            "macos/Sources/Features/Projects/HiddenProjectShelf.swift"
+          ],
+          "summary": "Project-list overlay end to end. New list_projects action added the same way every fork action is: Binding.zig enum variant + .surface scope entry, command.zig no-palette entry, Surface.zig performAction dispatch, apprt.action.Action variant and its C Key entry, XGHOSTTY_ACTION_LIST_PROJECTS in include/xghostty.h (appended last, preserving the C ABI order), and on the Swift side the action switch case, a listProjects handler gated on WorkspaceModel.canBeginProjectList, the new ghosttyListProjects notification, and the controller observer that calls beginProjectList(). Keybinds rearranged per must-14/63: plain Cmd+L now opens the project list (the only way back from hidden, so it takes the cheap chord) and choose_project_layout moves to Cmd+Opt+L. New view ProjectListOverlay.swift renders WorkspaceModel.projectListRows as a table (ordinal or a hidden marker, title, the shared ProjectPriorityDeadlineMeta for priority/deadline incl. the overdue emphasis, and the note's first line), dimming hidden rows; it reuses ProjectHideSelector's exact keyboard mechanics (invisible focused sink field, onExitCommand for Escape, onSubmit for Enter, Space via the sink, arrows via the shared overlayArrowKeys keyDown monitor) and its footer explains a refused Space instead of looking broken. Controller: toggleProjectListVisibility (Space; registers a Show/Hide Project undo per toggle and deliberately does NOT move keyboard focus, so the overlay keeps the keyboard for the whole session), focusProjectListRow (Enter; swaps surfaceTree and moves focus like focusProject), and closeProjectList (Escape; returns focus to the project focused AFTER the session's toggles rather than to the surface that had focus when the list opened - the older overlays' onChange-based restore would have handed focus to a now-hidden project's pane). HiddenProjectShelf.swift deleted with its render block, its hiddenProjects accessor and the onShowProject/showProject delegate plumbing; BaseTerminalController.showProject stays, since the show_project:<name> action still uses it."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + C header + macOS app) exited 0 with the new list_projects action, the Cmd+L / Cmd+Opt+L rearrangement, the project-list overlay, the shelf removal, the reset triggers and the note undo history all in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 with list_projects added to the Binding action enum, its scope table, the command-palette exclusion list and the default keybind set."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests reported TEST SUCCEEDED with 578 test cases passed, 0 failures - 569 before this cycle plus 7 new ProjectNoteUndoTests and 2 new ProjectPriorityResetTests, each named in the run log. The pre-existing ProjectListTests (T-047, success criterion 20) still pass against the UI that now drives them."
+        }
+      ]
     },
     {
       "id": "T-049",
@@ -2158,7 +2219,7 @@
     {
       "id": "T-052",
       "title": "Wire the daily priority reset triggers: run the reset check at app launch and whenever the boundary is crossed while running (including wake from sleep and reactivation), with no notification or marker",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-085",
@@ -2170,7 +2231,29 @@
       },
       "batch_group": "reset-app",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectWorkday.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Tests/Projects/ProjectPriorityResetTests.swift"
+          ],
+          "summary": "Daily priority reset triggers. Workday gains nextBoundary(after:calendar:) - the next local 06:00, resolved through Calendar.nextDate rather than by adding seconds so a DST transition moves it with the wall clock - keeping the 'when' of the boundary in the model beside the 'which day' (must-70). BaseTerminalController now installs the triggers at the end of init, after the restored workspace is in place, so a reset that is due at launch lands on the restored priorities: an immediate check, a Timer armed at the next boundary (added to RunLoop .common so a tracking loop cannot delay it, and rescheduled after every firing), NSApplication.didBecomeActiveNotification, and NSWorkspace.didWakeNotification. The last two exist because a sleeping or backgrounded Mac can pass 06:00 with the timer suspended; overlapping triggers are harmless because the model stamps the workday it ran for, making the reset idempotent within a workday. deinit invalidates the timer and detaches the NSWorkspace observer. No notification and no marker, and the reset never reorders (must-69). Two new tests pin the scheduled boundary and the once-per-workday behaviour of a running app."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + C header + macOS app) exited 0 with the new list_projects action, the Cmd+L / Cmd+Opt+L rearrangement, the project-list overlay, the shelf removal, the reset triggers and the note undo history all in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests reported TEST SUCCEEDED with 578 test cases passed, 0 failures - 569 before this cycle plus 7 new ProjectNoteUndoTests and 2 new ProjectPriorityResetTests, each named in the run log. The pre-existing ProjectListTests (T-047, success criterion 20) still pass against the UI that now drives them."
+        }
+      ]
     },
     {
       "id": "T-053",

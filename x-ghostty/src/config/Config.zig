@@ -6006,11 +6006,18 @@ pub const Keybinds = struct {
                 .{ .sort_projects_by_deadline = {} },
             );
             // Plain Cmd+L has no other default binding (grep confirms no
-            // 'l' super binding and no menu key equivalent), so the layout
-            // selector takes it.
+            // 'l' super binding and no menu key equivalent). It goes to the
+            // project list, which is the only way back from hidden and so
+            // earns the cheaper chord; the layout selector, which is used
+            // when rebuilding the whole screen, moves to Cmd+Opt+L.
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'l' }, .mods = .{ .super = true } },
+                .{ .list_projects = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'l' }, .mods = .{ .super = true, .alt = true } },
                 .{ .choose_project_layout = {} },
             );
             try self.set.put(

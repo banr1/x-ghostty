@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "30ff70aa3237dd5fbbd89533c9ffe7268a9e5c4513509453881ebb11ab2aaece",
+    "last_signature": "4a009e9354dcc60bb202344ee8abfa92495b6acf45ec034a8fa4311ec39e486d",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-16T02:39:57+09:00",
-    "last_checked_at": "2026-08-16T02:39:57+09:00"
+    "last_progress_at": "2026-08-16T02:59:17+09:00",
+    "last_checked_at": "2026-08-16T02:59:17+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,22 +20,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.65,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 9,
-    "completed_todos_since_reset": 2,
-    "important_decisions_since_reset": 1,
+    "changed_files_since_reset": 26,
+    "completed_todos_since_reset": 5,
+    "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-16T02:41:00+09:00",
-    "summary": "Cycle R-20260816T021912. Executed batch [T-049, T-050] (remote split) and both are done with evidence; B-002 closed as resolved. The upstream terminal core was modified ONLY within the human's R-013 (a) approval: stream_handler.reportPwd now forwards a non-local OSC 7 report (path + host) to the apprt instead of dropping it, while still never calling terminal.setPwd or touching the title for such a report; pwd_change carries PwdChange {path, host}; apprt.action.Pwd and xghostty_action_pwd_s gained `host`; Swift keeps it in the new SurfaceView.pwdReport and assigns SurfaceView.pwd only for local reports. New model file macos/Sources/Features/Projects/ProjectRemoteSplit.swift (PaneLocationReport / PaneSplitLaunch / RemoteSplit.launch) with 7 tests in macos/Tests/Projects/ProjectRemoteSplitTests.swift. XGhostty.App.newSplit sets the new pane's initialInput to the ssh reconnect line when the source pane is remote; new projects stay local. Gates all green: zig build 0, just test 0, just swift-test 0 (TEST SUCCEEDED, 569 cases, 560 before). R-014 (non-blocking) records three design interpretations for the human to check together with T-055.\nRemaining must Todos, all executor atlas-builder except the six human checks: T-046 (note-editor undo/redo, Cmd+Z / Cmd+Shift+Z scoped to one open-to-close editing session, S-036), T-048 (Cmd+L project-list overlay UI + choose_project_layout moved to Cmd+Opt+L + HiddenProjectShelf removal; the model layer T-047 is already done and exposes projectListRows / canToggleProjectListVisibility / focusProjectListRow), T-052 (wire the daily reset triggers to app launch and boundary crossings incl. wake/reactivation; the model entry point WorkspaceModel.applyDailyPriorityReset(now:calendar:) already exists from T-051), T-053 (SPEC.md + README.md for remote split, project list, undo/redo, daily reset, and the Cmd+L / Cmd+Opt+L rearrangement), T-054 (full verification), then the six human on-device checks T-055..T-060.",
+    "written_at": "2026-08-16T02:58:30+09:00",
+    "summary": "Cycle R-20260816T023958. Executed batch [T-048, T-052, T-046]; all three done with evidence, gates green (zig build 0, just test 0, just swift-test 0, 578 cases — 569 before, +7 ProjectNoteUndoTests, +2 ProjectPriorityResetTests). Every implementation Todo of the current layer is now done except the docs (T-053) and the final verification (T-054).\nT-048: new list_projects action wired through Binding.zig (enum + .surface scope), command.zig (no palette), Surface.zig dispatch, apprt/action.zig (variant + C Key), include/xghostty.h (XGHOSTTY_ACTION_LIST_PROJECTS appended last for C ABI order), XGhostty.App.swift (case + listProjects gated on canBeginProjectList), ghosttyListProjects notification, BaseTerminalController observer. Cmd+L now opens the project list and choose_project_layout moved to Cmd+Opt+L. New macos/Sources/Features/Projects/ProjectListOverlay.swift reuses ProjectHideSelector's keyboard mechanics. HiddenProjectShelf.swift deleted along with onShowProject/showProject delegate plumbing (BaseTerminalController.showProject stays for the show_project action). Controller owns Space (toggleProjectListVisibility, per-toggle undo, no focus move), Enter (focusProjectListRow) and Escape (closeProjectList, which returns focus to the project focused AFTER the session's toggles).\nT-052: Workday.nextBoundary(after:calendar:) added to the model; BaseTerminalController installs the triggers at the end of init (immediate check + boundary Timer on RunLoop .common, rescheduled per firing + NSApplication.didBecomeActive + NSWorkspace.didWake), deinit invalidates and detaches.\nT-046: new macos/Sources/Features/Projects/NoteEditHistory.swift (session-scoped, note-body-only undo/redo, 0.75 s typing coalescing, any larger change its own step) driven from ProjectNoteEditor's existing overlay keyDown monitor; deliberately not the window's NSUndoManager, which holds the project layer's undo entries.\nR-015 (non-blocking) records this batch's four Essence-silent interpretations for confirmation at the on-device checks. R-014 (previous cycle) does the same for remote split.",
     "next_actions": [
-      "Next batch: T-046 and/or T-048 (both UI-layer, executor atlas-builder, normal risk). T-052 is a small wiring Todo that pairs well with either.",
-      "T-053 must write SPEC.md §29 for remote split: the code and tests already reference §29, continuing the previous cycle's §27 (project list) / §28 (priority reset) numbering. SPEC.md currently stops at §26. Document there: the OSC 7 host now reaching the app layer, the local-only meaning of SurfaceView.pwd, RemoteSplit's remote/local rule, and the initialInput delivery with its must-61 fallback rationale.",
-      "T-054 re-runs all three gates once every implementation Todo is done; verification commands are `/opt/homebrew/opt/zig@0.15/bin/zig build`, `just test`, `just swift-test` (never `just build-app`, which the control-plane guard misclassifies - see R-002).",
-      "When only the human on-device checks remain, raise ONE Human-input Recommendation bundling T-055..T-060 (R-013's resolution explicitly allows bundling T-055 with the rest) and include R-014's three design interpretations for confirmation."
+      "Next batch: T-053 (docs) then T-054 (final verification) — the last two atlas-builder Todos of this layer.",
+      "T-053 must add SPEC.md §27 (project list: rows/order/Space/Enter/Escape, the Cmd+L ⇄ Cmd+Opt+L swap, the hidden shelf's removal — SPEC.md still shows the shelf in its diagram at ~line 197, its pseudocode at ~216 and its file list at ~1159, all now stale), §28 (daily reset incl. §28.3's trigger set), §29 (remote split), and §21.3 (the note undo history); the code already references all four numbers. README.md needs the same feature set plus the Building section's three verification commands.",
+      "T-054 re-runs `/opt/homebrew/opt/zig@0.15/bin/zig build`, `just test`, `just swift-test` (never `just build-app`, which the control-plane guard misclassifies — R-002) and checks S-077/S-083/S-089's tests are present and passing.",
+      "After T-054, only the six human on-device checks remain (T-055..T-060): raise ONE Human-input Recommendation bundling them (R-013's resolution allows bundling T-055 with the rest) and ask the human to confirm R-014's and R-015's design interpretations at the same time."
     ],
     "open_questions": [],
     "pending_cycle": false

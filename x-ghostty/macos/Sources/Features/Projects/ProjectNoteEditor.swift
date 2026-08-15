@@ -54,6 +54,11 @@ struct ProjectNoteEditor: View {
     @State private var deadlineDraft: String = ""
     @FocusState private var editorFocused: Bool
 
+    /// The session's undo history for the note body (`SPEC.md` §21.3). Created
+    /// with the editor and dropped with it, so Cmd+Z can never reach past the
+    /// open into the project layer's own undo entries.
+    @State private var history = NoteEditHistory("")
+
     /// Commit the full draft set (every save path funnels here).
     private func commit() {
         onEnd(draft, priorityDraft, deadlineDraft)
@@ -93,10 +98,25 @@ struct ProjectNoteEditor: View {
         // chords are taken before any dispatch and performed on the focused
         // text view directly.
         .overlayKeyDownMonitor { event in
-            guard event.modifierFlags
-                .intersection([.command, .shift, .option, .control]) == [.command],
-                let chord = event.charactersIgnoringModifiers?.lowercased(),
-                let selector = Self.editingSelectors[chord]
+            let modifiers = event.modifierFlags
+                .intersection([.command, .shift, .option, .control])
+            guard let chord = event.charactersIgnoringModifiers?.lowercased()
+            else { return event }
+
+            // Undo/redo run on the session history rather than the responder
+            // chain's undo manager (`SPEC.md` §21.3): that one belongs to the
+            // window and holds the project layer's entries.
+            if chord == "z", modifiers == [.command] {
+                if let text = history.undo() { draft = text }
+                return nil
+            }
+            if chord == "z", modifiers == [.command, .shift] {
+                if let text = history.redo() { draft = text }
+                return nil
+            }
+
+            guard modifiers == [.command],
+                  let selector = Self.editingSelectors[chord]
             else { return event }
             Self.performOnEditor(selector)
             return nil
@@ -137,6 +157,13 @@ struct ProjectNoteEditor: View {
                 .padding(8)
                 .focused($editorFocused)
                 .onExitCommand { onCancel() }
+                .onChange(of: draft) { text in
+                    // Every edit — typed, pasted, cut, or applied by an undo
+                    // — passes through here; the history ignores the ones it
+                    // caused itself. `systemUptime` is monotonic, so a clock
+                    // change cannot make a typing run coalesce oddly.
+                    history.record(text, at: ProcessInfo.processInfo.systemUptime)
+                }
 
             metaRow
         }
@@ -153,6 +180,9 @@ struct ProjectNoteEditor: View {
             draft = note
             priorityDraft = priority
             deadlineDraft = deadline?.displayText ?? ""
+            // The session's history starts at the text the editor opened with,
+            // so the first Cmd+Z returns to it and no further.
+            history = NoteEditHistory(note)
             // Grab focus on appearance. Dispatching to the next runloop turn
             // is required for the initial focus to stick (same workaround as
             // the command palette, ghostty#8497).

@@ -640,6 +640,7 @@ fn actionCommands(action: Action.Key) []const Command {
         .sort_projects_by_priority,
         .sort_projects_by_deadline,
         .choose_project_layout,
+        .list_projects,
         .close_project,
         => comptime &.{},
 

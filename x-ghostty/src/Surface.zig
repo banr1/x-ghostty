@@ -5398,6 +5398,12 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .list_projects => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .list_projects,
+            {},
+        ),
+
         .close_project => return try self.rt_app.performAction(
             .{ .surface = self },
             .close_project,

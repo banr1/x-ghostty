@@ -371,6 +371,11 @@ pub const Action = union(Key) {
     /// C ABI compatibility; see the note above.
     choose_project_layout,
 
+    /// Open the project-list overlay listing every project including hidden
+    /// ones. It is up to the apprt to show it. Appended last to preserve
+    /// C ABI compatibility; see the note above.
+    list_projects,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -446,6 +451,7 @@ pub const Action = union(Key) {
         sort_projects_by_priority,
         sort_projects_by_deadline,
         choose_project_layout,
+        list_projects,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

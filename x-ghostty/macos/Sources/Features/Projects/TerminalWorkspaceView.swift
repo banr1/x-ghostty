@@ -26,9 +26,20 @@ struct TerminalWorkspaceView: View {
     /// in the model. Rename callbacks are model-only and built below.
     let onFocusProject: (ProjectID) -> Void
 
-    /// Show a hidden project (a shelf pill click, `SPEC.md` §11.8). Like
-    /// `onFocusProject` this swaps `surfaceTree`, so the controller handles it.
-    let onShowProject: (ProjectID) -> Void
+    /// Toggle a project-list row between hidden and visible (Space, `SPEC.md`
+    /// §27.2). Hiding the focused project moves focus, which swaps
+    /// `surfaceTree`, so the controller handles it.
+    let onToggleProjectListVisibility: (ProjectID) -> Void
+
+    /// Focus a project-list row and close the list (Enter, `SPEC.md` §27.3).
+    /// Swaps `surfaceTree` like `onFocusProject`, so the controller handles it.
+    let onFocusProjectListRow: (ProjectID) -> Void
+
+    /// Close the project list (Escape / backdrop click, `SPEC.md` §27.3). The
+    /// controller handles it so keyboard focus returns to whichever project is
+    /// focused *after* the session's toggles, not to the surface that was
+    /// focused when the list opened.
+    let onCloseProjectList: () -> Void
 
     /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
     /// The pane-level equivalent routes through `XGhostty.App` because the pane
@@ -38,7 +49,7 @@ struct TerminalWorkspaceView: View {
 
     /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). Batch-hiding
     /// can move focus to another project, which swaps `surfaceTree`, so the
-    /// controller handles it like `onShowProject`; toggle and cancel are
+    /// controller handles it like `onFocusProject`; toggle and cancel are
     /// model-only and wired below.
     let onConfirmHideSelection: () -> Void
 
@@ -51,14 +62,6 @@ struct TerminalWorkspaceView: View {
     /// focus and swap `surfaceTree`, so the controller handles it like
     /// `onConfirmHideSelection`.
     let onConfirmLayoutHidePick: () -> Void
-
-    /// Hidden projects in a stable display order for the shelf. Sorted by creation
-    /// time (then id) so the pill order does not jump as visibility changes.
-    private var hiddenProjects: [ProjectState] {
-        workspace.state.hiddenProjectIDs
-            .compactMap { workspace.state.projects[$0] }
-            .sorted { ($0.createdAt, $0.id.rawValue.uuidString) < ($1.createdAt, $1.id.rawValue.uuidString) }
-    }
 
     /// The hide-selection footer: the pending count, or why Enter is blocked
     /// (the model rejects hiding every visible project, `SPEC.md` §25).
@@ -122,14 +125,6 @@ struct TerminalWorkspaceView: View {
                     onEqualize: onEqualizeProjects)
             }
 
-            // Hidden-project shelf overlay (`SPEC.md` §7.2). Only rendered when
-            // projects are hidden; `HiddenProjectShelf` itself draws nothing for an
-            // empty list, but skipping it entirely keeps the overlay absent.
-            if !hiddenProjects.isEmpty {
-                HiddenProjectShelf(projects: hiddenProjects, onShow: onShowProject)
-                    .padding(6)
-            }
-
             // Note editor overlay: presented while a note is being edited,
             // absent otherwise so the terminal keeps the full area. The project
             // is resolved through live state, so the overlay vanishes if the
@@ -183,6 +178,23 @@ struct TerminalWorkspaceView: View {
                     visibleCount: workspace.state.visibleProjectCount,
                     onChoose: onChooseLayout,
                     onCancel: { workspace.cancelLayoutSelection() })
+            }
+
+            // Project list (`SPEC.md` §27): every project including hidden
+            // ones, and the only way back from hidden now that the shelf is
+            // gone. Rows resolve through live state, so a toggle re-renders
+            // the list in place.
+            if workspace.projectListActive {
+                ProjectListOverlay(
+                    rows: workspace.projectListRows,
+                    canToggle: { workspace.canToggleProjectListVisibility($0) },
+                    canFocus: { workspace.canFocusProjectListRow($0) },
+                    isOverdue: {
+                        workspace.isProjectOverdue($0, today: ProjectDeadline(from: Date()))
+                    },
+                    onToggle: onToggleProjectListVisibility,
+                    onFocus: onFocusProjectListRow,
+                    onClose: onCloseProjectList)
             }
 
             // Layout excess hide-pick (`SPEC.md` §26.3): the same multi-pick

@@ -224,4 +224,44 @@ struct ProjectPriorityResetTests {
         #expect(decoded.needsPriorityReset(
             at: try Self.date(2026, 8, 16, 9), calendar: calendar) == true)
     }
+
+    // MARK: The scheduled boundary (SPEC §28.3)
+
+    @Test func theNextBoundaryIsTheComingLocalSixAM() throws {
+        let calendar = Self.calendar
+
+        // Mid-morning: the boundary is tomorrow's 06:00.
+        #expect(
+            Workday.nextBoundary(after: try Self.date(2026, 8, 16, 9), calendar: calendar)
+                == (try Self.date(2026, 8, 17, 6)))
+
+        // Before the boundary: it is today's, still ahead.
+        #expect(
+            Workday.nextBoundary(after: try Self.date(2026, 8, 16, 3), calendar: calendar)
+                == (try Self.date(2026, 8, 16, 6)))
+
+        // Exactly on it: the next one is a day away, so a timer armed at the
+        // boundary cannot re-fire immediately in a loop.
+        #expect(
+            Workday.nextBoundary(after: try Self.date(2026, 8, 16, 6), calendar: calendar)
+                == (try Self.date(2026, 8, 17, 6)))
+    }
+
+    @Test func aRunningAppCrossingTheBoundaryResetsOnce() throws {
+        // What the scheduled check does when it fires: the first call at the
+        // boundary resets, later calls in the same workday do not — the timer
+        // and the reactivation/wake triggers can therefore overlap freely.
+        let calendar = Self.calendar
+        let a = Self.makeProject(name: "a", priority: .high)
+        let model = try Self.makeModel(
+            visible: [a],
+            lastReset: Workday(containing: try Self.date(2026, 8, 16, 9), calendar: calendar))
+
+        let boundary = try #require(
+            Workday.nextBoundary(after: try Self.date(2026, 8, 16, 9), calendar: calendar))
+        #expect(model.applyDailyPriorityReset(now: boundary, calendar: calendar) == true)
+        #expect(model.state.projects[a.id]?.priority == nil)
+        #expect(model.applyDailyPriorityReset(
+            now: boundary.addingTimeInterval(3600), calendar: calendar) == false)
+    }
 }
