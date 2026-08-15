@@ -9,9 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-048",
-    "T-052",
-    "T-046"
+    "T-053",
+    "T-054"
   ],
   "items": [
     {
@@ -2258,7 +2257,7 @@
     {
       "id": "T-053",
       "title": "Update SPEC.md and README.md for the implemented remote split, project list, note-editor undo/redo, and daily priority reset, and for the Cmd+L / Cmd+Opt+L rearrangement and the removal of the hidden shelf",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-091"
@@ -2268,12 +2267,34 @@
       },
       "batch_group": "batch5-docs",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "at": "2026-08-16T03:20:00+09:00",
+          "summary": "SPEC.md +414/-82 lines net over 8 files touched this batch; README.md 33 lines changed. SPEC.md: new §27 (project list: 27.1 row derivation ProjectListRow/projectListRows, 27.2 Space toggle incl. the min-one-visible and 9-cap gates, 27.3 Enter/Escape focus rules, 27.4 ProjectListOverlay UI, 27.5 ProjectListTests 14 cases), new §28 (daily priority reset: 28.1 Workday/06:00 boundary + nextBoundary, 28.2 once-per-workday judgement and lastPriorityResetWorkday, 28.3 the four triggers incl. RunLoop .common timer + didBecomeActive + didWake, 28.4 ProjectPriorityResetTests 9 cases), new §29 (remote split: 29.1 RemoteSplit.launch decision, 29.2 the ssh -t initialInput delivery and its failure-path rationale, 29.3 ProjectRemoteSplitTests 8 cases); §21.2 gained the note undo/redo history (scope, session lifetime, why not NSUndoManager, 0.75 s coalescing, idempotent record) and §21.4 gained the ProjectNoteUndoTests block."
+        },
+        {
+          "type": "diff",
+          "at": "2026-08-16T03:20:00+09:00",
+          "summary": "Staleness sweep of SPEC.md for the hidden-shelf removal and the Cmd+L/Cmd+Opt+L swap: §6.1 view hierarchy and §6.2 sample code no longer instantiate HiddenProjectShelf; §7.2 retitled from 'Hidden Project Shelf' to 'hidden プロジェクトの扱い（常設 shelf は持たない）' and rewritten to point at §27 as the sole return path; §7.3, §11.7, §12.4, §14.14, §15 Phase 5, §18.1, §19.3, §20, §25, §26.3/§26.4 shelf wording replaced; §16 file list drops HiddenProjectShelf.swift and adds the five current files (NoteEditHistory, ProjectList, ProjectListOverlay, ProjectWorkday, ProjectRemoteSplit); §9.1 gained list_projects; §10.5 now maps Cmd+L -> list_projects and Cmd+Opt+L -> choose_project_layout; §26.2 heading and action note follow. `grep -n 'シェルフ|shelf|Shelf' SPEC.md` now returns only the four intentional mentions inside §7.2 and §10.5 that explain the removal."
+        },
+        {
+          "type": "diff",
+          "at": "2026-08-16T03:20:00+09:00",
+          "summary": "README.md: the note bullet now covers Cmd+Z/Cmd+Shift+Z and the session-scoped history; the priorities bullet covers the 06:00 daily reset (all projects incl. hidden, once a day, silent, no reordering); a new 'Project list' bullet documents Cmd+L (all projects incl. hidden, columns, Space/Enter/Esc, and that there is no always-on shelf); a new 'Remote splits' bullet documents the OSC 7 -> ssh reconnect and its local fallback; the hide-selection bullet no longer mentions a shelf; the layouts bullet now says Cmd+Opt+L. The Building section already carried all three verification commands (zig build / just test / just swift-test) and is unchanged."
+        },
+        {
+          "type": "diff",
+          "at": "2026-08-16T03:20:00+09:00",
+          "summary": "Doc-consistency repair in implementation comments: NoteEditHistory.swift:3, ProjectNoteEditor.swift:57 and :107 referenced 'SPEC.md §21.3' for the undo history, but §21.3 is the note-overview mode (referenced as such by ProjectNoteOverview.swift and WorkspaceModel.swift). The undo history is documented inside §21.2 (the edit session it belongs to), so the three comments were corrected to §21.2 rather than renumbering the overview section. Comment-only change; no behavior."
+        }
+      ],
+      "completed_at": "2026-08-16T03:20:00+09:00"
     },
     {
       "id": "T-054",
       "title": "Full verification of the new layer: zig build / just test / just swift-test all exit 0 with every S-077 / S-083 / S-089 test present and passing, and no regression beyond S-010's sanctioned exceptions",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-077",
@@ -2287,7 +2308,49 @@
       },
       "batch_group": "batch5-verify",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "at": "2026-08-16T03:20:00+09:00",
+          "command": "PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build",
+          "cwd": "../x-ghostty",
+          "exit_code": 0,
+          "summary": "Full build incl. the macOS app bundle. exit 0. (S-010 gate 1.)"
+        },
+        {
+          "type": "command",
+          "at": "2026-08-16T03:20:00+09:00",
+          "command": "just test",
+          "cwd": "../x-ghostty",
+          "exit_code": 0,
+          "summary": "Zig core test suite. exit 0. Only pre-existing upstream warnings in the log (cache-entry timestamp, ssh -G hostname/user), no failures. (S-010 gate 2.)"
+        },
+        {
+          "type": "command",
+          "at": "2026-08-16T03:20:00+09:00",
+          "command": "just swift-test",
+          "cwd": "../x-ghostty",
+          "exit_code": 0,
+          "summary": "XGhosttyTests. exit 0. 578 test cases passed, 0 failed (grep -c \"Test case '...' passed\" = 578; grep -ic 'failed|error:' = 0). Unchanged from the previous cycle's 578, as expected for a docs-only batch. (S-010 gate 3, S-012.)"
+        },
+        {
+          "type": "command",
+          "at": "2026-08-16T03:20:00+09:00",
+          "command": "grep -c \"Test case '<suite>/.*' passed\" on the swift-test log, per suite",
+          "cwd": "../x-ghostty",
+          "exit_code": 0,
+          "summary": "The layer's required tests are present and passing: ProjectRemoteSplitTests 8 passed / 0 failed (S-077), ProjectListTests 14 passed / 0 failed (S-083), ProjectPriorityResetTests 9 passed / 0 failed (S-089), ProjectNoteUndoTests 8 passed / 0 failed (note undo). Project-layer suites in total: WorkspaceModelTests 86, WorkspaceStateTests 24, ProjectNoteTests 41, ProjectPrimaryPaneTests 35, ProjectPriorityDeadlineTests 21, ProjectTerminatedTests 16, ProjectLayoutTests 15, ProjectHideSelectionTests 14, ProjectNameGeneratorTests 4."
+        },
+        {
+          "type": "command",
+          "at": "2026-08-16T03:20:00+09:00",
+          "command": "git status --porcelain && git diff --stat",
+          "cwd": "../x-ghostty",
+          "exit_code": 0,
+          "summary": "Working tree carries only this batch's intended changes: README.md, SPEC.md, and the two comment-only Swift files (NoteEditHistory.swift, ProjectNoteEditor.swift), plus the loop's own state files. No unintended implementation drift; no regression beyond S-010's sanctioned exceptions."
+        }
+      ],
+      "completed_at": "2026-08-16T03:20:00+09:00"
     },
     {
       "id": "T-055",

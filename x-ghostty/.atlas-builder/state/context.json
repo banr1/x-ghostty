@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "4a009e9354dcc60bb202344ee8abfa92495b6acf45ec034a8fa4311ec39e486d",
+    "last_signature": "413b2aabacdf886af0cd7e42d4c94738499cbedf61cc820d8bed0bd797b86458",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-16T02:59:17+09:00",
-    "last_checked_at": "2026-08-16T02:59:17+09:00"
+    "last_progress_at": "2026-08-16T03:15:28+09:00",
+    "last_checked_at": "2026-08-16T03:15:28+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,24 +20,27 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.65,
+    "context_usage_estimate": 0.45,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 26,
-    "completed_todos_since_reset": 5,
+    "changed_files_since_reset": 4,
+    "completed_todos_since_reset": 2,
     "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-16T02:58:30+09:00",
-    "summary": "Cycle R-20260816T023958. Executed batch [T-048, T-052, T-046]; all three done with evidence, gates green (zig build 0, just test 0, just swift-test 0, 578 cases — 569 before, +7 ProjectNoteUndoTests, +2 ProjectPriorityResetTests). Every implementation Todo of the current layer is now done except the docs (T-053) and the final verification (T-054).\nT-048: new list_projects action wired through Binding.zig (enum + .surface scope), command.zig (no palette), Surface.zig dispatch, apprt/action.zig (variant + C Key), include/xghostty.h (XGHOSTTY_ACTION_LIST_PROJECTS appended last for C ABI order), XGhostty.App.swift (case + listProjects gated on canBeginProjectList), ghosttyListProjects notification, BaseTerminalController observer. Cmd+L now opens the project list and choose_project_layout moved to Cmd+Opt+L. New macos/Sources/Features/Projects/ProjectListOverlay.swift reuses ProjectHideSelector's keyboard mechanics. HiddenProjectShelf.swift deleted along with onShowProject/showProject delegate plumbing (BaseTerminalController.showProject stays for the show_project action). Controller owns Space (toggleProjectListVisibility, per-toggle undo, no focus move), Enter (focusProjectListRow) and Escape (closeProjectList, which returns focus to the project focused AFTER the session's toggles).\nT-052: Workday.nextBoundary(after:calendar:) added to the model; BaseTerminalController installs the triggers at the end of init (immediate check + boundary Timer on RunLoop .common, rescheduled per firing + NSApplication.didBecomeActive + NSWorkspace.didWake), deinit invalidates and detaches.\nT-046: new macos/Sources/Features/Projects/NoteEditHistory.swift (session-scoped, note-body-only undo/redo, 0.75 s typing coalescing, any larger change its own step) driven from ProjectNoteEditor's existing overlay keyDown monitor; deliberately not the window's NSUndoManager, which holds the project layer's undo entries.\nR-015 (non-blocking) records this batch's four Essence-silent interpretations for confirmation at the on-device checks. R-014 (previous cycle) does the same for remote split.",
+    "written_at": "2026-08-16T03:14:00+09:00",
+    "summary": "Cycle R-20260816T025918. Executed batch [T-053, T-054]; both done with evidence. EVERY atlas-builder-executor Todo of this layer is now done (T-001..T-054). The cycle ends on a human gate: R-016.\n\nT-053 (docs): SPEC.md gained §27 (project list), §28 (daily priority reset) and §29 (remote split) at exactly the section numbers the implementation comments already cite, plus the note undo/redo history inside §21.2 and its test block in §21.4. It also got a full staleness sweep for the hidden-shelf removal and the Cmd+L / Cmd+Opt+L swap: §6.1, §6.2, the whole §7.2 (retitled to 'hidden プロジェクトの扱い' and rewritten to record why the shelf died and to route the reader to §27), §7.3, §11.7, §12.4, §14.14, §15 Phase 5, §18.1, §19.3, §20, §25, §26.2/§26.3/§26.4, and the §16 file list (HiddenProjectShelf.swift out; NoteEditHistory / ProjectList / ProjectListOverlay / ProjectWorkday / ProjectRemoteSplit in). §9.1 gained list_projects. §26.5's stale test count was corrected 14 -> 15. README.md gained the project-list and remote-split bullets, the note undo/redo, and the daily reset, dropped the shelf wording, and now says Cmd+Opt+L for layouts; its Building section already carried the three verification commands.\n\nDecision recorded (conflict resolution): NoteEditHistory.swift:3 and ProjectNoteEditor.swift:57/:107 cited '§21.3' for the undo history, but §21.3 is the note-overview mode (so cited by ProjectNoteOverview.swift and WorkspaceModel.swift). The undo history was documented inside §21.2 — the edit session it belongs to — and those three comments were corrected to §21.2 instead of renumbering the overview. Comment-only, no behavior. The previous handoff had repeated the §21.3 claim uncritically.\n\nT-054 (verification): zig build exit 0, just test exit 0, just swift-test exit 0 with 578/578 cases passing and 0 failures (identical to the previous cycle, which is what a docs-only batch should produce). Required suites green: ProjectRemoteSplitTests 8 (S-077), ProjectListTests 14 (S-083), ProjectPriorityResetTests 9 (S-089), ProjectNoteUndoTests 8. The working tree carries only README.md, SPEC.md and the two comment-only Swift files.",
     "next_actions": [
-      "Next batch: T-053 (docs) then T-054 (final verification) — the last two atlas-builder Todos of this layer.",
-      "T-053 must add SPEC.md §27 (project list: rows/order/Space/Enter/Escape, the Cmd+L ⇄ Cmd+Opt+L swap, the hidden shelf's removal — SPEC.md still shows the shelf in its diagram at ~line 197, its pseudocode at ~216 and its file list at ~1159, all now stale), §28 (daily reset incl. §28.3's trigger set), §29 (remote split), and §21.3 (the note undo history); the code already references all four numbers. README.md needs the same feature set plus the Building section's three verification commands.",
-      "T-054 re-runs `/opt/homebrew/opt/zig@0.15/bin/zig build`, `just test`, `just swift-test` (never `just build-app`, which the control-plane guard misclassifies — R-002) and checks S-077/S-083/S-089's tests are present and passing.",
-      "After T-054, only the six human on-device checks remain (T-055..T-060): raise ONE Human-input Recommendation bundling them (R-013's resolution allows bundling T-055 with the rest) and ask the human to confirm R-014's and R-015's design interpretations at the same time."
+      "DO NOT start implementation work. R-016 is a Human-input Recommendation with agent_action=stop_until_human_review; the loop stays stopped until the human clears it through the human-only gate-clearing transition.",
+      "R-016 asks the human to perform the six on-device checks T-055..T-060 in one session (remote split / project list / daily priority reset / note-editor shortcuts and undo / hide-selection under the new return path / layout list on Cmd+Opt+L), and to confirm R-014's and R-015's design interpretations at the same time. T-057 is the one that needs a date rollover.",
+      "After the human clears the gate: read the human's note first. For each check the human confirmed, mark the matching Todo done with that confirmation as evidence (T-055=S-078, T-056=S-084, T-057=S-090, T-058=S-055, T-059=S-070, T-060=S-072). For each point the human rejected, add a NEW Todo for the fix rather than widening an existing one's scope, and supersede the affected part of R-014 / R-015.",
+      "Once every must Todo is done, the loop stops at the must boundary (must_complete_awaiting_phase_approval) for the human's phase decision. Note that the phase is ALREADY extended_approved and the four should Todos are done, so the only remaining should-priority work is T-008 (visual refinement), which R-007 parked pending the human's choice between giving concrete refinement instructions and closing it.",
+      "Verification commands for any future cycle, run from ../x-ghostty: '/opt/homebrew/opt/zig@0.15/bin/zig build', 'just test', 'just swift-test'. Never 'just build-app' (the control-plane guard misclassifies it — R-002). XGhosttyUITests stays out of automated verification (前提事項)."
     ],
-    "open_questions": [],
+    "open_questions": [
+      "R-016: which of the six on-device checks pass, and are R-014's and R-015's design interpretations acceptable as implemented?"
+    ],
     "pending_cycle": false
   }
 }

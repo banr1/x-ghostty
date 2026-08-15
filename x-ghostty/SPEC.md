@@ -194,8 +194,12 @@ TerminalWorkspaceView
   │   └─ ProjectView (VStack)
   │       ├─ ProjectLabel header band
   │       └─ TerminalSplitTreeView
-  └─ HiddenProjectShelf overlay
+  └─ overlay 群(呼び出し中のみ:ノート編集 §21.2 / 一望モード §21.3 /
+     hide 選択 §25 / レイアウト選択 §26.2 / プロジェクト一覧 §27)
 ```
+
+常時表示の overlay は無い(思想 2)。hidden プロジェクトを常時映す帯も持たない
+(§7.2)。
 
 ### 6.2 TerminalWorkspaceView
 
@@ -213,10 +217,8 @@ struct TerminalWorkspaceView: View {
                 )
             }
 
-            HiddenProjectShelf(
-                hiddenProjects: workspace.hiddenProjectsInDisplayOrder,
-                onShow: { workspace.showProject($0) }
-            )
+            // 呼び出し中のオーバーレイだけがここに載る(§21.2, §21.3,
+            // §25, §26.2, §27)。常設の overlay は無い。
         }
     }
 }
@@ -299,43 +301,30 @@ rename_project action:
   focused project の名前を prompt で変更
 ```
 
-### 7.2 Hidden Project Shelf
+### 7.2 hidden プロジェクトの扱い（常設 shelf は持たない）
 
-非表示projectは右上固定の shelf に表示する。
+hidden プロジェクトは canonical tree に葉を持たないだけで、`projects` エントリ・
+ペイン・プロセス・ノート・優先度・締切はすべて生存している(§14.7)。
 
-```text
-┌─ 1. main ────┬─ 2. server ─── hidden: [logs] [agent] ┐
-│              │                                        │
-└──────────────┴────────────────────────────────────────┘
-```
+**画面上に常設の hidden 表示は持たない。** 初期設計では右上固定の
+「hidden shelf」(名前 pill の帯)を置いていたが、これは端末領域を恒久的に食う
+常時表示 UI であり、思想 2 に反していた。加えて、抱えているプロジェクトの
+全体像は visible / hidden を分けずに一箇所で読めるべきである。したがって
+shelf は廃止し、**hidden プロジェクトの唯一の復帰導線を `Cmd+L` の
+プロジェクト一覧(§27)へ一本化**した。`HiddenProjectShelf` view は存在しない。
 
-仕様:
-
-```text
-hidden 0個:
-  shelf 非表示
-
-hidden 1〜4個:
-  hidden: [name] [name] ...
-
-hidden 5個以上:
-  hidden: [a] [b] [c] [+N]
-```
-
-hidden shelf の pill は裸の名前を表示する（序数なし）。
-
-操作:
+一覧側の対応:
 
 ```text
-pill click:
-  即 show_project（ただし visible が既に 9 個の場合は no-op・toast/beep なし）
-
-+N click:
-  hidden project menu を開く
+- 一覧は hidden を含む全プロジェクトを 1 つの表に並べる(§27.1)
+- hidden 行は序数欄が空(序数は visible にしか付かない、§7.3)
+- Space で hide/show を即時トグル(§27.2)
+- hidden 行の Enter は無効(画面上に focus 先が無いため、§27.3)
 ```
 
-Hidden shelf は `TerminalWorkspaceView` の overlay。
-個別 `ProjectView` の責務ではない。
+`show_project:<project-id-or-name>` action(§11.8)はモデルプリミティブとして
+そのまま残る。一覧の Space トグルの show 経路も同じ再接続規則
+(trailing leaf の隣へ再アタッチ)を使う。
 
 ### 7.3 プロジェクト番号（1～9）と表示上限
 
@@ -374,7 +363,7 @@ zoom: project-B
 visible project が既に 9 個のとき:
 
 - `new_project_split` ... quietly no-op（モデル・UI 変化なし）
-- `show_project`（shelf pill click と `show_project:<name>` action 両方） ... quietly no-op（pill は表示されたまま）
+- `show_project`（`show_project:<name>` action、およびプロジェクト一覧の Space トグル §27.2） ... quietly no-op（行は hidden のまま残る）
 - `goto_project` index form（`goto_project:1`～`goto_project:9`）... 無効な index は no-op、performability gate あり
 - `goto_project` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
 
@@ -474,6 +463,8 @@ sort_projects_by_deadline
 
 choose_project_layout
 
+list_projects
+
 close_project
 ```
 
@@ -555,7 +546,8 @@ Cmd+Opt+N             -> toggle_note_overview
 Cmd+P                 -> set_primary
 Cmd+S                 -> sort_projects_by_priority
 Cmd+Shift+S           -> sort_projects_by_deadline
-Cmd+L                 -> choose_project_layout
+Cmd+L                 -> list_projects
+Cmd+Opt+L             -> choose_project_layout
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
@@ -566,10 +558,14 @@ Cmd+L                 -> choose_project_layout
 ソート 2 action の仕様は §24.4。素の `Cmd+S` / `Cmd+Shift+S` にも既存割り当てが
 ないことを確認済み(上流はどちらの chord も未使用)。
 `hide_project` は §25 の hide 選択画面を開く(即時 hide ではない。単一 hide の
-モデルプリミティブは §11.7 のまま残る)。`choose_project_layout`(§26.2)は
+モデルプリミティブは §11.7 のまま残る)。`list_projects`(§27)は hidden を含む
+全プロジェクトのプロジェクト一覧オーバーレイを開き、hidden プロジェクトの唯一の
+復帰導線となる(hidden シェルフは廃止、§7.2)。`choose_project_layout`(§26.2)は
 レイアウト選択オーバーレイを開く。素の `Cmd+L` に既存割り当てはない(config
 デフォルトにもメニュー key equivalent にも `l` の super chord は無いことを
-確認済み)。
+確認済み)。`Cmd+L` は日々使うプロジェクト一覧に与え、レイアウト選択は
+オーバーレイ系の修飾に揃えて `Cmd+Opt+L` へ移した(`Cmd+Opt+H` / `Cmd+Opt+N` と
+同じ族)。`Cmd+Opt+L` にも既存割り当てはない。
 また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
 ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
 `Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる。
@@ -794,11 +790,11 @@ project zoom と inner split zoom は共存可能。
 1. focus の移動先を hide 前の canonical tree 上で解決(nearest leaf)
 2. focusedProject の leaf を canonicalProjectTree から削除
    → 残りの visible project がスペースを回収する
-3. focusedProject を hiddenProjectIDs に追加(shelf の source of truth)
+3. focusedProject を hiddenProjectIDs に追加(runtime hidden 集合)
 4. process / PTY / surface は生存(ProjectState は projects に残る)
 5. zoomedProject == hidden target なら zoom解除
 6. focus を 1 で解決した neighbor へ移す
-7. hidden shelf に pill 表示
+7. 画面上の常設表示は無い — 復帰導線はプロジェクト一覧(§7.2, §27)
 ```
 
 ```swift
@@ -942,7 +938,7 @@ live process / scrollback / PTY状態は復元しない。
 ### 12.4 表示上限による pruning
 
 保存時の canonical tree に 9 個を超える leaf がある場合は、復元時に **先頭 9 個のみを visible のまま、
-超過分を hiddenProjectIDs に移す**（alive・shelf に表示されるが leaf なし）。
+超過分を hiddenProjectIDs に移す**（alive・プロジェクト一覧には出るが leaf なし）。
 
 保存時に hidden だった project は canonical tree に leaf を持たないまま
 `projects` に残っている(§11.7)。復元時はまず canonical 上限 9 個の枠に収めてから、
@@ -1015,7 +1011,9 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
 11. new_project_split 後は新projectの初期paneにfocusする
 12. goto_project 後は対象projectの last focused pane にfocusする
 13. project label はヘッダー帯であり、terminal layout を自身の高さぶん押し下げる
-14. hidden shelf は workspace overlay であり、project overlay ではない
+14. オーバーレイ(ノート編集・一望モード・hide 選択・レイアウト選択・
+    プロジェクト一覧)は workspace 層のものであり、project overlay ではない。
+    常設の overlay は存在しない(§6.1, §7.2)
 15. project zoom と pane zoom は外側から内側へ適用する
 16. hidden project は focus / resize / equalize の直接対象にならない
 17. 最後の visible project は hide できない
@@ -1118,7 +1116,7 @@ Cmd+Opt+Shift+D
 - project境界double-clickまたはactionでequalizeできる
 ```
 
-### Phase 5: zoom / hide / shelf
+### Phase 5: zoom / hide
 
 成功条件:
 
@@ -1127,8 +1125,8 @@ Cmd+Opt+Shift+D
 - zoom中 Cmd+D は project内splitになる
 - zoom中 new_project_split は zoom解除して隣にproject作成
 - hide_project は process を殺さない
-- hidden shelf が右上に出る
-- pill click で即visibleに戻る
+- hidden になったプロジェクトが復帰導線から visible に戻せる
+  (当初は右上の hidden shelf。現在はプロジェクト一覧の Space トグル、§7.2/§27)
 ```
 
 ### Phase 6: restore
@@ -1156,16 +1154,22 @@ macos/Sources/Features/Projects/
   ProjectSplitTreeView.swift
   ProjectView.swift
   ProjectLabel.swift            (ProjectPriorityDeadlineMeta を含む、§24.2)
-  HiddenProjectShelf.swift
   TerminalWorkspaceView.swift
   ProjectNoteEditor.swift
   ProjectNoteOverview.swift
+  NoteEditHistory.swift            (ノート編集セッションの取り消し履歴、§21.2)
   ProjectTerminatedPaneView.swift  (§23.3)
   ProjectHideSelector.swift        (hide 選択画面とレイアウト hide-pick が共用、§25/§26.3)
   ProjectLayout.swift              (登録レイアウト 11 種とスロット計算、§26.1)
   ProjectLayoutSelector.swift      (レイアウト選択オーバーレイ、§26.2)
+  ProjectList.swift                (一覧行の導出と日次優先度リセット、§27.1/§28.2)
+  ProjectListOverlay.swift         (プロジェクト一覧オーバーレイ、§27)
+  ProjectWorkday.swift             (作業日と 06:00 境界、§28.1)
+  ProjectRemoteSplit.swift         (リモート split の起動判断、§29)
   ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2/§25)
 ```
+
+`HiddenProjectShelf.swift` は hidden シェルフの廃止に伴い削除済み(§7.2)。
 
 (close 確認ダイアログは専用ファイルではなく `BaseTerminalController` の既存
 確認経路を流用する。§23.1)
@@ -1215,8 +1219,9 @@ keybind = cmd+opt+r=rename_project
 
 ### 18.1 hidden project がある状態で close_project
 
-hidden中の project を shelf menu から close する機能はMVPでは不要。
-MVPでは visible focused project のみ close 対象。
+hidden な project を一覧から直接 close する機能は持たない。
+close 対象は visible focused project のみ(一覧で Space により visible に
+戻してから close する)。
 
 ### 18.2 focused project を hide
 
@@ -1298,8 +1303,7 @@ MVPでは visible focused project のみ close 対象。
 - focused label emphasized
 - unfocused label dimmed
 - label double-click starts rename
-- shelf appears only with hidden projects
-- shelf pill click immediately shows project
+- the project list (Cmd+L) lists hidden projects too, and Space shows them again
 - close_project dialog has only Cancel / Close Project
 ```
 
@@ -1326,9 +1330,9 @@ project UI:
   command prompt rename
 
 hidden UI:
-  右上 fixed shelf
-  hidden: [name] [name] （bare name、序数なし）
-  pill clickで即show（ただし visible が 9 個では no-op）
+  常設表示なし（§7.2）
+  プロジェクト一覧（Cmd+L、§27）が hidden を含む全プロジェクトを列挙
+  一覧の Space で即show（ただし visible が 9 個では no-op）
 
 表示上限:
   visible project 最大 9 個
@@ -1421,6 +1425,26 @@ static let maxNoteLines = 10
   key-equivalent 経路にも action dispatch にも依存しない方式に置き換えた。
   モニタはオーバーレイと同寿命なので、端末側のコピー/ペースト挙動は
   変わらない。
+- **取り消し・やり直しはセッション内の自前履歴**(`NoteEditHistory`):
+  オーバーレイ表示中の `Cmd+Z` が取り消し、`Cmd+Shift+Z` がやり直しで、
+  上の標準ショートカットと同じ `OverlayKeyDownMonitor` が chord を捕まえる。
+  - **スコープはノート本文のみ**。優先度・締切のドラフトは履歴に入らない。
+  - **寿命は 1 編集セッション**:履歴はエディタを開いた時点の本文から始まり
+    (`NoteEditHistory(note)`)、保存・破棄いずれの経路でも閉じると同時に
+    捨てられる。前回セッションの編集は取り消せない。
+  - responder chain の `NSUndoManager` を使わない理由:それは**ウィンドウの**
+    undo manager であり、プロジェクトレイヤー自身の undo エントリ
+    (hide / show / apply layout)を保持している。そこへ `Cmd+Z` を流すと
+    ノート編集の取り消しがワークスペース操作の取り消しに化ける。
+  - **連続入力は 1 ステップに畳む**:直前の記録から `coalescingWindow`
+    (0.75 秒)以内、かつ文字数差が 1 以内の変更は同じタイピング run の
+    継続とみなしてステップ境界を積まない。ペースト・カット・選択置換などの
+    大きい変更は常に自前のステップになるため、10 行ペーストは 1 回の
+    `Cmd+Z` で戻る。undo / redo 自体は run を打ち切る
+    (`lastRecordedAt = nil`)。
+  - 記録は**値の変化がある場合のみ**(`record` は同値を無視)。undo の結果を
+    エディタへ書き戻したときの変更通知が履歴を汚さないのは、この冪等性による。
+    新しい編集を記録した時点で redo スタックは捨てられる。
 - **貼り付けで 10 行を超えた場合も保存時に先頭 10 行へ切り詰める**(手入力と
   同じ §21.1 の正規化経路。CRLF / CR の行末は正規化で `\n` に統一されるため、
   ペースト由来の行末でもキャップは回避されない)。
@@ -1458,7 +1482,7 @@ static let maxNoteLines = 10
 - undo 復元(`restoreState`)・全プロジェクト削除はモードを終了させる
   (復元された zoom が「zoom 解除済み」不変条件と矛盾しないように)。
 
-### 21.4 テスト(ProjectNoteTests)
+### 21.4 テスト(ProjectNoteTests 41 件 / ProjectNoteUndoTests 8 件)
 
 ```text
 - 正規化: 10 行上限(init / setNote / decode)、改行統一、レガシー decode
@@ -1474,6 +1498,18 @@ static let maxNoteLines = 10
   モード中はノート編集・focus 移動 3 経路とも no-op /
   編集オーバーレイ表示中のトグルは no-op /
   restoreState・removeAllProjects で終了
+```
+
+取り消し履歴(ProjectNoteUndoTests):
+
+```text
+- 初期状態: 開いた直後は canUndo/canRedo とも false
+- 取り消し: undo が開いた時点の本文へ戻る
+- 畳み込み: 連続入力は 1 ステップ / 0.75 秒を超える間があくと新ステップ /
+  ペーストは常に自前ステップ(1 回の undo で戻る)
+- redo: undo の後に効き、次の編集で捨てられる
+- run の打ち切り: undo 直後の入力は前ステップに畳まれない
+- 冪等性: 同値の再記録は履歴を変えない(undo 結果の書き戻しが汚さない)
 ```
 
 ## 22. プライマリーペイン仕様
@@ -1859,15 +1895,15 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
 - `beginHideSelection` は zoom を先に解除する(zoom 中呼び出しの挙動は Essence が
   実装に委ねた部分)。列挙対象 `hideSelectionProjectIDs` は visible な
   プロジェクトを序数順で返す。hidden なプロジェクトは列挙されず選択にも
-  入れない — 復帰導線は従来どおり hidden シェルフで、変更しない(§7.2)。
+  入れない — 復帰導線はプロジェクト一覧が担う(§7.2, §27)。
 - `toggleHideSelection` は visible なプロジェクトのみトグルする。
 - `canConfirmHideSelection`:**select-all は拒否**(selection.count <
   visibleProjectCount。最低 1 つは visible に残る)。空選択は確定可能 —
   「何も隠さず閉じる」として扱う。
 - `confirmHideSelection(savingOutgoingPaneTree:)`:選択された全プロジェクトを
   **1 回の state 書き込みで一括 hide** — 各 leaf が canonical tree から抜けて
-  残存プロジェクトがスペースを回収し、id が `hiddenProjectIDs`(シェルフの
-  source of truth)へ入る。focused プロジェクトが選択に含まれる場合、除去前の
+  残存プロジェクトがスペースを回収し、id が `hiddenProjectIDs`(runtime hidden
+  集合)へ入る。focused プロジェクトが選択に含まれる場合、除去前の
   ツリー上で `hideFocusedProject` と同じ nearest-leaf 規則により生存者へ focus を
   渡す。ミッドセッションの menu-bar zoom に備えた zoom 解除バックストップと
   `snapFocusToPrimaryInOverallView` を適用する。
@@ -1904,7 +1940,7 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
 
 ```text
 - 確定: 選択した複数プロジェクトが一括で hidden(1 コミット、leaf 除去、
-  projects には生存、シェルフ復帰導線不変)
+  projects には生存、プロジェクト一覧から復帰可能)
 - キャンセル: 何も hidden にならず、画面を開く前と完全に同一
 - select-all: 確定できず画面が残る / 1 つ外せば確定でき、外した 1 つが
   visible に残る
@@ -1941,10 +1977,11 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
   先頭ノード比 1/n、以降は残りの 1/(n-1) で全スロット等分)。走査順は
   row-major で、`slotFrames` の割り当て順と一致する。
 
-### 26.2 レイアウト選択オーバーレイ(choose_project_layout / Cmd+L)
+### 26.2 レイアウト選択オーバーレイ(choose_project_layout / Cmd+Opt+L)
 
-- 新規 action `choose_project_layout`(§9.1、既定 `Cmd+L`。§10.5 のとおり
-  既存割り当てなし)。performability は `canBeginLayoutSelection`(visible
+- 新規 action `choose_project_layout`(§9.1、既定 `Cmd+Opt+L`。§10.5 のとおり
+  既存割り当てなし。当初は `Cmd+L` だったが、日々使うプロジェクト一覧に
+  `Cmd+L` を譲り、オーバーレイ系の `Cmd+Opt+` 族へ移した)。performability は `canBeginLayoutSelection`(visible
   プロジェクト 1 つ以上 + 他のオーバーレイなし)で、不成立時はキー未消費で
   fall through する。
 - `beginLayoutSelection` は zoom を先に解除する(zoom 中呼び出しの挙動は
@@ -1978,7 +2015,7 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
   - `canConfirmLayoutHidePick`:**選択数が超過分ちょうど**のときのみ確定可
     (多くても少なくても不可。画面は残る)。
   - `confirmLayoutHidePick`:選択されたプロジェクトを hide(**close はしない**
-     — ペイン・プロセス・情報はシェルフの背後に生存)し、残りへレイアウトを
+     — ペイン・プロセス・情報は hidden のまま生存)し、残りへレイアウトを
     序数順で適用 — **1 回の state 書き込み**。focus 規則は §25 の確定と同一。
   - `cancelLayoutHidePick`(Esc)は**レイアウト適用ごと**キャンセルする —
     何も隠れず、何も並び替わらない。
@@ -1992,12 +2029,12 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
 - 適用は `applyLayoutTree` による canonical tree の再構築のみ:**「適用中の
   レイアウト」という状態は持たない**(one-shot)。適用後の手動 resize・分割・
   ソートは従来どおり可能で、配置は従来の経路でそのまま保存・復元される。
-- 選択されなかった hidden プロジェクトは `projects` エントリもシェルフ位置も
-  一切影響を受けない。
+- 選択されなかった hidden プロジェクトは `projects` エントリも hidden のままの
+  状態も一切影響を受けない。
 - 序数(Cmd+1〜9)は走査順由来なので適用後の配置に自動追従する。zoom は
   クリアされる(適用は全体ビューの配置替え)。
 
-### 26.5 テスト(ProjectLayoutTests、14 件)
+### 26.5 テスト(ProjectLayoutTests、15 件)
 
 ```text
 - 定義とスロット計算: 11 種の registered 定義 / 等分割行配分の Essence 表 /
@@ -2015,6 +2052,251 @@ visible なプロジェクトから隠すものを複数選ぶ選択画面を開
   画面が対話を占有 / restoreState・teardown で終了
 - 一回性: 適用後のソートは自由 / Codable round trip で適用後の canonical
   tree が保存・復元される
+```
+
+## 27. プロジェクト一覧仕様
+
+hidden を含む**全プロジェクト**を 1 つの表で読む層。抱えているプロジェクトの
+全体像はここで一望でき、hidden プロジェクトの**唯一の復帰導線**でもある
+(hidden シェルフは廃止、§7.2)。行の内容・並び・トグル可否・Enter 可否の判断は
+すべてモデル層に置き、`XGhosttyTests` から検証する(§27.4)。
+
+### 27.1 行の導出(ProjectListRow / projectListRows)
+
+```swift
+struct ProjectListRow: Equatable, Identifiable {
+    let id: ProjectID
+    let title: String
+    let ordinal: Int?          // hidden のとき nil
+    let isHidden: Bool
+    let priority: ProjectPriority?
+    let deadline: ProjectDeadline?
+    let noteFirstLine: String
+}
+```
+
+- `WorkspaceStateOf.projectListRows` が純粋導出する:**visible を序数順**
+  (canonical tree の葉走査順 = Cmd+1〜9 の順)に並べ、**hidden をその後ろ**に
+  置く。
+- hidden の並びは `(createdAt, id.uuidString)` 昇順。これは
+  `reconcileOrphanedProjects` が復元時に再アタッチする順と同一なので、
+  一覧の見え方と「復元したら戻ってくる順」が一致する。
+- 「hidden か」は `hiddenProjectIDs` ではなく **canonical tree に葉を持つか**
+  から導く(不変条件 §14.3)。runtime の hidden 集合が仮に古くても一覧は正しい。
+- `ordinal == nil` と `isHidden` は同値だが両方を持つ。view が「番号が無い」から
+  意味を推論しなくてよいようにするため。
+- 未設定は未設定のまま運ぶ(`nil` 優先度・`nil` 締切・空の `noteFirstLine`)。
+  空欄に描くのは view の仕事。
+- `noteFirstLine` は `firstNoteLine(_:)` — ノート本文の 1 行目のみ。空ノートは
+  空文字。
+
+### 27.2 表示/非表示の即時トグル(Space)
+
+- `canToggleProjectListVisibility(id)`:
+  - hidden → visible は `canAddVisibleProject`(表示上限 9、§7.3)で判定。
+  - visible → hidden は `visibleProjectCount >= 2` — **最低 1 つは visible に
+    残す**(§25 の hide 選択と同じ規則をこのトグルにも適用)。
+- `toggleProjectListVisibility(id, savingOutgoingPaneTree:)` は**確定ステップ
+  無しで即座に**適用する。Esc で一覧を閉じてもトグルは残る(実際の変更であって
+  ドラフトではない)。
+- show 経路は `showProject`(§11.8)と同じく trailing leaf の隣へ再アタッチする
+  が、**focus は動かさない**。focus 移動は Enter の役割。
+- hide 経路は除去前のツリー上で nearest leaf を解決し、**隠した対象が focused
+  だったときだけ**生存者へ focus を渡す(`confirmHideSelection` と同一規則)。
+  zoom バックストップと `snapFocusToPrimaryInOverallView` も同じ。
+- controller はトグル 1 回につき 1 つの undo("Show Project" / "Hide Project")を
+  登録する。キーボードフォーカスはセッション中ずっと一覧が保持し、focus の実移動は
+  一覧を閉じた時点で着地する。
+
+### 27.3 Enter / Escape
+
+- `canFocusProjectListRow(id)`:**visible な行のみ** true。hidden な行には
+  画面上の focus 先が無いので Enter は完全な no-op で、一覧も開いたまま残る。
+- `focusProjectListRow(id, savingOutgoingPaneTree:)`:セッションを閉じ、対象を
+  `focusedProject` にし、全体ビューに着地するので focus はそのプロジェクトの
+  **プライマリーペイン**へ寄る(§22.4)。undo は登録しない(focus 変更のため)。
+- Escape(`closeProjectList`)はトグルを残したまま閉じる。**focus は「いま
+  focused なプロジェクト」へ戻す** — 開いた時点の surface ではない。セッション中に
+  focused プロジェクトを隠した場合、その surface はもう画面上に無いため。
+- セッション状態 `projectListActive` は transient(永続化しない)。
+  `canBeginProjectList` は「プロジェクトが 1 つ以上あり、ノートエディタも他の
+  オーバーレイも出ていない」— 各オーバーレイはキーボードを単独で占有する。
+- `beginProjectList` は**先に zoom を解除**する(一覧は全体ビューを説明する
+  ものなので。zoom 中呼び出しの挙動は Essence が実装に委ねた部分)。
+
+### 27.4 UI(ProjectListOverlay)
+
+- 1 行 = 序数(hidden は `·`)/ タイトル / 優先度・締切
+  (`ProjectPriorityDeadlineMeta` を共用、§24.2)/ ノート 1 行目(末尾切り詰め)。
+  hidden 行は全体を減光する。
+- ↑/↓ でカーソル移動(端で巻き戻る)、Space でカーソル行をトグル、Enter で
+  focus、Esc で閉じる。キーボード機構は ProjectHideSelector と同じ
+  sink-TextField + `overlayArrowKeys` 方式(§25)。
+- フッターはカーソル行に対して**そのキーが今何をするか**を表示する。拒否された
+  Space(最後の visible / 表示上限)が理由を自分で説明できるようにするため。
+- 呼び出し中のみ描画され、抜ければ端末が全面に戻る。
+
+### 27.5 テスト(ProjectListTests、14 件)
+
+```text
+- 行の導出: hidden を含む全プロジェクトを網羅 / visible が序数順・hidden が
+  その後ろ / 行内容 = タイトル・優先度・締切・ノート 1 行目 / 未設定は空
+- Space: 即時に hide/show を反映 / 最後の visible を隠すトグルは拒否 /
+  表示上限では show を拒否 / show は focus を動かさない /
+  focused を隠すと最近傍へ focus が移る
+- Enter: visible 行で focus して閉じる / hidden 行は何も起きず一覧が残る
+- セッション: begin は zoom 解除・他オーバーレイ中は拒否 /
+  Esc で閉じてもトグルは残る
+```
+
+## 28. 優先度の毎朝リセット仕様
+
+優先度は恒久属性ではなく「今日のフォーカス」である。したがって毎朝ローカル
+6:00 を境界に未設定へ戻す。判定ロジック(境界・対象・1 日 1 回)はモデル層に
+置き、`XGhosttyTests` から検証する(§28.4)。
+
+### 28.1 作業日(Workday)
+
+```swift
+struct Workday: Codable, Equatable, Hashable {
+    static var boundaryHour: Int { 6 }
+    let year: Int, month: Int, day: Int
+
+    init(containing date: Date, calendar: Calendar = .current)
+    static func nextBoundary(after date: Date, calendar: Calendar = .current) -> Date?
+}
+```
+
+- **作業日 = ローカル 6:00 から翌 6:00 まで**。値は作業日の**開始日**の暦日
+  なので、「同じ作業日か」が単純な等値比較になる。
+- 6:00 より前の時刻は前日の作業日に属する。境界が深夜 0:00 ではなく 6:00 なのは、
+  日付をまたいで続けた作業を始めた日の側に置くため。
+- 巻き戻しは「6 時間引く」ではなく**カレンダー演算**(`byAdding: .day, -1`)。
+  DST 遷移が結果を 1 日ずらさないようにするため。
+- `nextBoundary(after:)` も固定秒数の加算ではなくカレンダーの
+  `nextDate(matching: hour 6)`。DST でも壁時計どおりの 6:00 に着地する。
+  `nil` は「スケジュールしない」を意味する。
+- 永続形式は正準テキスト `YYYY-MM-DD`(保存が読めるように)。壊れた値は
+  decode エラーになり、workspace 側の寛容な decode が「未リセット」に落とす —
+  リセットは優先度を消すだけなので、安全側に倒れる。
+
+### 28.2 リセット判定(1 日 1 回)
+
+- 永続フィールドは `WorkspaceStateOf.lastPriorityResetWorkday: Workday?`
+  (workspace state の Codable 経路。キー名も同じ)。
+- `needsPriorityReset(at:calendar:)` は
+  `lastPriorityResetWorkday != Workday(containing: now)` の 1 行。未リセット
+  (新規ワークスペース、リセット導入前の保存)は常に due — 規則を文字どおり
+  読んだ結果で、実害も無い。
+- `resetPrioritiesIfNeeded(at:calendar:)` は due のときだけ、**hidden を含む
+  全プロジェクト**の `priority` を `nil` にし、現在の作業日を刻む。実行したかを
+  返す。
+- **意図的に狭い**:締切とノートは触らず、`canonicalProjectTree` を書かないので
+  **並び替えは構造的に起こり得ない**。
+
+### 28.3 トリガ(BaseTerminalController)
+
+`startDailyPriorityResetTriggers()` が 4 つを設置する:
+
+```text
+1. 起動時       … init 末尾で 1 回チェック
+2. 境界タイマ   … Workday.nextBoundary(after: now) に 1 発の Timer。
+                  RunLoop.main へ .common モードで追加(メニュー追跡や
+                  リサイズループが遅らせないように)。発火ごとに再武装する
+3. 再アクティブ … NSApplication.didBecomeActiveNotification
+4. スリープ復帰 … NSWorkspace.didWakeNotification
+```
+
+- 3・4 が要るのは、タイマだけでは足りないから:スリープ中や背面のまま 6:00 を
+  跨ぐと、タイマは停止・合体されて発火時刻を大きく過ぎうる。3・4 はチェック後に
+  タイマを**再武装**もする(時計が大きく進んでいる可能性があるため)。
+- 重複トリガが無害なのは §28.2 の冪等性による(作業日を刻むので 2 回目は
+  no-op)。「多く走りすぎる」は構造的に起こらない。
+- **通知も印も出さない。並び替えもしない** — ソートは明示アクション時のみ
+  (§24.4)。優先度しか変わらないので undo エントリも登録しない。
+- `deinit` でタイマを invalidate し、両 observer を外す。
+
+### 28.4 テスト(ProjectPriorityResetTests、9 件)
+
+```text
+- 作業日: ローカル 6:00 から翌 6:00 まで / 最終リセット日付と現在時刻から
+  境界跨ぎを判定 / 次の境界は来たるローカル 6:00
+- リセット: hidden を含む全プロジェクトの優先度が未設定になる /
+  並び順は変わらない / 同じ作業日内では 2 回目が起きない /
+  稼働中の跨ぎでも 1 回だけ
+- 永続化: lastPriorityResetWorkday が保存・復元される /
+  当該キーの無い保存は「未リセット」として decode される
+```
+
+## 29. リモート split 仕様
+
+リモートホストで作業中のペインを split したとき、新ペインを**同じホスト・
+同じパス**で開く層。判定はモデル層に閉じ、`XGhosttyTests` から検証する
+(§29.3、必須対応事項 62)。上流ターミナルコアの改変は不要だった — 判断材料の
+OSC 7 レポートは既存のシェル統合経路がそのまま供給する。
+
+### 29.1 判断(RemoteSplit.launch)
+
+```swift
+struct PaneLocationReport: Equatable { var host: String?; var path: String? }
+
+enum PaneSplitLaunch: Equatable {
+    case local
+    case ssh(host: String, path: String)
+    var initialInput: String? { ... }
+}
+
+enum RemoteSplit {
+    static func launch(for report: PaneLocationReport?) -> PaneSplitLaunch
+}
+```
+
+- `PaneLocationReport` はシェル統合(OSC 7)が報告したペインの居場所。
+  `host` はローカルなら空、リモートなら報告されたホスト名。
+  `OSSurfaceView.pwdReport` が保持する。
+- `.ssh` になるのは**すべて**満たすときだけ:
+  1. レポートが存在し、
+  2. `host` が空白除去後に非空で、かつ loopback 集合
+     (`localhost` / `localhost.localdomain` / `127.0.0.1` / `::1`、
+     大小文字無視)に含まれず、
+  3. `path` が**絶対パス**(`/` 始まり)である。
+- それ以外はすべて `.local`:レポート無し・ホスト情報無し・loopback・
+  パス無し・相対パス。**再接続先を確定できない場合はローカル**という
+  必須対応事項 61 の規則をそのまま形にしたもの。
+- loopback チェックはコアが既にローカル性を解決した後の**二重の柵**である。
+
+### 29.2 届け方(initialInput)
+
+```text
+ssh -t <quoted-host> 'cd <quoted-path> && exec ${SHELL:-/bin/sh} -l'\n
+```
+
+- この行は**新ペインのコマンドを置き換えるのではなく、通常どおり起動した
+  ローカルシェルへ初期入力として流し込む**(`XGhostty.App.swift` の split 経路が
+  `RemoteSplit.launch(for: surfaceView.pwdReport).initialInput` を
+  `config.initialInput` に載せる)。
+- そうする理由は失敗経路にある:ホストが到達不能でも、ssh が無くても、リモートの
+  パスが消えていても、**ペインは継承ディレクトリで動くローカルシェルのまま残る** —
+  特別扱いのコードなしに「従来どおりローカルで開く」(必須対応事項 61)が
+  構造的に満たされる。
+- 引用は二重:ローカルシェルがスクリプトを素通しするため(同時に `${SHELL}` を
+  リモートに届くまで展開させないため)と、リモートシェルがパスを 1 語として
+  見るため。`-t` は tty を強制し、リモートシェルを対話的にする。
+- ユーザー名・鍵・ポートは**意図的に**リモート側の ssh 設定に委ねる
+  (前提事項)。使うのは報告されたホスト名だけで、元ペインの ssh コマンドラインは
+  再現しない。
+- 対象は **split のみ**。新規プロジェクト作成とレイアウト適用で作られる新
+  プロジェクトはローカルで開く(必須対応事項 60)。
+
+### 29.3 テスト(ProjectRemoteSplitTests、8 件)
+
+```text
+- ローカルの pwd 報告 → .local
+- リモートホストの pwd 報告 → そのホスト・パスへの .ssh
+- ホスト情報なし / 空白ホスト / loopback ホスト → .local
+- リモートホストでも絶対パスが無ければ .local
+- ホストとパスは両シェル向けに引用される
+- 再接続は新ペインのシェル内で走る(失敗してもローカルシェルが残る)
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

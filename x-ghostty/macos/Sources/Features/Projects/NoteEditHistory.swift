@@ -1,6 +1,6 @@
 import Foundation
 
-/// Undo/redo history for one note-editing session (`SPEC.md` §21.3).
+/// Undo/redo history for one note-editing session (`SPEC.md` §21.2).
 ///
 /// Scope is the Essence's, exactly: the history opens with the editor and dies
 /// with it, and it covers the note body alone — priority and deadline are not

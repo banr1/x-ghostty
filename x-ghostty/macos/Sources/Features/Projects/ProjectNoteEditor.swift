@@ -54,7 +54,7 @@ struct ProjectNoteEditor: View {
     @State private var deadlineDraft: String = ""
     @FocusState private var editorFocused: Bool
 
-    /// The session's undo history for the note body (`SPEC.md` §21.3). Created
+    /// The session's undo history for the note body (`SPEC.md` §21.2). Created
     /// with the editor and dropped with it, so Cmd+Z can never reach past the
     /// open into the project layer's own undo entries.
     @State private var history = NoteEditHistory("")
@@ -104,7 +104,7 @@ struct ProjectNoteEditor: View {
             else { return event }
 
             // Undo/redo run on the session history rather than the responder
-            // chain's undo manager (`SPEC.md` §21.3): that one belongs to the
+            // chain's undo manager (`SPEC.md` §21.2): that one belongs to the
             // window and holds the project layer's entries.
             if chord == "z", modifiers == [.command] {
                 if let text = history.undo() { draft = text }
