@@ -8,7 +8,10 @@
     "avoid_mixing_high_risk_items": true,
     "avoid_mixing_executors": true
   },
-  "active_batch": [],
+  "active_batch": [
+    "T-049",
+    "T-050"
+  ],
   "items": [
     {
       "id": "T-001",
@@ -2011,7 +2014,7 @@
     {
       "id": "T-049",
       "title": "Model layer: remote-split determination - from a pane's OSC 7 pwd report decide local launch vs ssh launch to the reported host at the reported path, treating a host-less or unparseable report as local; covered by XGhosttyTests. If this cannot be done without modifying the upstream terminal core, stop and raise a Human-input Recommendation instead of touching the core",
-      "status": "blocked",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-074",
@@ -2024,14 +2027,52 @@
       },
       "batch_group": "batch5-model",
       "risk_level": "normal",
-      "evidence": [],
-      "blocked_reason": "The upstream terminal core discards every non-local OSC 7 report before it reaches the app layer: src/termio/stream_handler.zig reportPwd validates the reported host with internal_os.hostname.isLocal and returns early when it is not local, and even for a local host it forwards only the path (apprt .pwd action / SurfaceView.pwd is a String). A remote pane's host and path are therefore unobservable from Swift, so S-076's escape clause applies - the feature cannot be built without modifying the upstream terminal core. Awaiting the human decision recorded as R-013 / B-002; the core stays untouched meanwhile.",
-      "blocker": "B-002"
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/termio/stream_handler.zig",
+            "src/apprt/surface.zig",
+            "src/Surface.zig",
+            "src/apprt/action.zig",
+            "include/xghostty.h",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/Surface View/OSSurfaceView.swift",
+            "macos/Sources/Features/Projects/ProjectRemoteSplit.swift",
+            "macos/Tests/Projects/ProjectRemoteSplitTests.swift"
+          ],
+          "summary": "Remote-split model layer plus the upstream-core path the human approved in R-013 (a). Core, scope-limited to carrying the report with no VT semantics change: apprt.surface.Message.pwd_change becomes PwdChange {path, host} instead of a bare WriteReq; stream_handler.reportPwd no longer drops a non-local OSC 7 report - it extracts the path first and, when internal_os.hostname.isLocal says the host is not ours, forwards path + host to the apprt and returns WITHOUT calling terminal.setPwd or touching the window title, so the terminal's own pwd (and everything that inherits it, e.g. a new project's working directory) stays exactly as it was when the report was discarded outright; a local report travels the old path with an empty host. Surface.zig null-terminates both and passes them through apprt.action.Pwd, which gains a host field mirrored into xghostty_action_pwd_s (include/xghostty.h). Swift: SurfaceView keeps the new pwdReport (PaneLocationReport) alongside pwd, and pwdChanged assigns pwd only for a local report, so no local consumer (proxy icon, command palette, restorable state) can ever receive a path that is not on this machine. Model layer (macos/Sources/Features/Projects/ProjectRemoteSplit.swift, UI-free and pure): PaneLocationReport (host, path), PaneSplitLaunch (.local / .ssh(host:path:)) with the reconnect line as a computed property, and RemoteSplit.launch(for:) - remote only when the host is non-empty and not a loopback alias AND the path is absolute; every other shape is .local per must-61. The reconnect line is: ssh -t <host> '<cd <path> && exec ${SHELL:-/bin/sh} -l>', both levels shell-quoted through XGhostty.Shell.quote."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + C header + macOS app) exited 0 with the pwd_change/Pwd ABI change and the new Swift model in the tree. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 after the core change to reportPwd, the pwd_change message shape and the Pwd action struct - no regression in the terminal core."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests reported TEST SUCCEEDED, 569 test cases passed, 0 failures - the full prior suite (560) plus 7 new ProjectRemoteSplitTests, each named in the run log. The three success-criterion-18 cases are localReportLaunchesLocally, remoteReportLaunchesSshToThatHostAndPath and reportWithoutHostInformationIsLocal."
+        },
+        {
+          "type": "command",
+          "command": "/bin/sh -c <generated reconnect line>, with a stub ssh on PATH that prints its argv",
+          "exit_code": 0,
+          "summary": "Quoting verified against a real POSIX shell rather than only against the implementation: for host 'work bench' and path /srv/it's here/app dir, the local shell hands ssh exactly [-t], [work bench] and the whole remote script as ONE argument, and re-parsing that script with /bin/sh yields [cd] and [/srv/it's here/app dir] intact. The literal this produced is pinned in ProjectRemoteSplitTests.pathsAndHostsAreQuotedForBothShells."
+        }
+      ]
     },
     {
       "id": "T-050",
       "title": "Wire remote split into the split path: a split of a remote pane opens the new pane over ssh at the same path, splits of local panes and all newly created projects (including layout-application ones) stay local, and any failure falls back to a local launch",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-074",
@@ -2043,7 +2084,27 @@
       },
       "batch_group": "remote-ui",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/XGhostty/XGhostty.App.swift"
+          ],
+          "summary": "Split wiring: XGhostty.App.newSplit now builds the inherited SurfaceConfiguration into a var and, when RemoteSplit.launch(for: surfaceView.pwdReport) says .ssh, sets config.initialInput to the reconnect line (a nil decision leaves any inherited value untouched). The reconnect is TYPED INTO an ordinary local shell rather than replacing the pane's command, which makes must-61's fallback structural: an unreachable host, a missing ssh, or a vanished remote path leaves a working local pane in the inherited directory with no special-case code - and it avoids embedded.zig's command path, which would force wait-after-command = true and defeat the fork's terminated-pane behaviour (must-29/30). newProjectSplit and layout-created projects are untouched, so new projects still start locally (must-60)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + C header + macOS app) exited 0 with the pwd_change/Pwd ABI change and the new Swift model in the tree. Run as the exact recipe body of the build-app wrapper per R-002."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests reported TEST SUCCEEDED, 569 test cases passed, 0 failures - the full prior suite (560) plus 7 new ProjectRemoteSplitTests, each named in the run log. The three success-criterion-18 cases are localReportLaunchesLocally, remoteReportLaunchesSshToThatHostAndPath and reportWithoutHostInformationIsLocal."
+        }
+      ]
     },
     {
       "id": "T-051",

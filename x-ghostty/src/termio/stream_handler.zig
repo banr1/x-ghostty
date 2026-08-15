@@ -1143,7 +1143,10 @@ pub const StreamHandler = struct {
             }
 
             // Report the change.
-            self.surfaceMessageWriter(.{ .pwd_change = .{ .stable = "" } });
+            self.surfaceMessageWriter(.{ .pwd_change = .{
+                .path = .{ .stable = "" },
+                .host = .{ .stable = "" },
+            } });
             return;
         }
 
@@ -1193,11 +1196,6 @@ pub const StreamHandler = struct {
                 return;
             },
         };
-        if (!host_valid) {
-            log.warn("OSC 7 host ({s}) must be local", .{host});
-            return;
-        }
-
         // We need the raw path, which might require unescaping. We try to
         // avoid making any heap allocations by using the stack first.
         var arena_alloc: std.heap.ArenaAllocator = .init(self.alloc);
@@ -1205,13 +1203,42 @@ pub const StreamHandler = struct {
         defer arena_alloc.deinit();
         const path = try uri.path.toRawMaybeAlloc(stack_alloc.get());
 
+        // A non-local host is never our own working directory: the terminal
+        // pwd, the window title, and every consumer of them stay untouched,
+        // exactly as when we dropped the report entirely. XGhostty does
+        // forward it to the apprt, which needs the host to reconnect a split
+        // of this pane to the same machine (SPEC "remote split"). This is a
+        // report of where a shell says it is, not a claim we trust for any
+        // local operation.
+        if (!host_valid) {
+            log.debug("terminal pwd on remote host: {s}:{s}", .{ host, path });
+            if (apprt.surface.Message.WriteReq.init(self.alloc, path)) |path_req| {
+                if (apprt.surface.Message.WriteReq.init(self.alloc, host)) |host_req| {
+                    self.surfaceMessageWriter(.{ .pwd_change = .{
+                        .path = path_req,
+                        .host = host_req,
+                    } });
+                } else |err| {
+                    path_req.deinit();
+                    log.warn("error notifying surface of remote pwd change err={}", .{err});
+                }
+            } else |err| {
+                log.warn("error notifying surface of remote pwd change err={}", .{err});
+            }
+
+            return;
+        }
+
         log.debug("terminal pwd: {s}", .{path});
         try self.terminal.setPwd(path);
 
         // Report it to the surface. If creating our write request fails
         // then we just ignore it.
         if (apprt.surface.Message.WriteReq.init(self.alloc, path)) |req| {
-            self.surfaceMessageWriter(.{ .pwd_change = req });
+            self.surfaceMessageWriter(.{ .pwd_change = .{
+                .path = req,
+                .host = .{ .stable = "" },
+            } });
         } else |err| {
             log.warn("error notifying surface of pwd change err={}", .{err});
         }

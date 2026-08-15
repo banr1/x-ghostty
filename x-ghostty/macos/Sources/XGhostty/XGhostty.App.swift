@@ -814,12 +814,22 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController,
                       controller.workspace.paneOperationsEnabled else { return }
 
+                var config = SurfaceConfiguration(
+                    from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_SPLIT))
+
+                // Remote split (SPEC §29): when the pane being split is on
+                // another host, the new pane reconnects to it at the same path.
+                // Only splits do this - a new project always starts here.
+                if let reconnect = RemoteSplit.launch(for: surfaceView.pwdReport).initialInput {
+                    config.initialInput = reconnect
+                }
+
                 NotificationCenter.default.post(
                     name: Notification.ghosttyNewSplit,
                     object: surfaceView,
                     userInfo: [
                         "direction": direction,
-                        Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_SPLIT)),
+                        Notification.NewSurfaceConfigKey: config,
                     ]
                 )
 
@@ -1976,7 +1986,13 @@ extension XGhostty {
                 guard let surface = target.target.surface else { return }
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
                 guard let pwd = String(cString: v.pwd!, encoding: .utf8) else { return }
-                surfaceView.pwd = pwd
+
+                // A non-empty host means another machine reported this path, so
+                // it is not a path here: only the report is kept, `pwd` stays
+                // on the last local one (SPEC §29).
+                let host = v.host.flatMap { String(cString: $0, encoding: .utf8) } ?? ""
+                surfaceView.pwdReport = .init(host: host, path: pwd)
+                if host.isEmpty { surfaceView.pwd = pwd }
 
             default:
                 assertionFailure()

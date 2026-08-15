@@ -1039,16 +1039,21 @@ pub fn handleMessage(self: *Surface, msg: Message) !void {
         },
 
         .pwd_change => |w| {
-            defer w.deinit();
+            defer w.path.deinit();
+            defer w.host.deinit();
 
             // We always allocate for this because we need to null-terminate.
-            const str = try self.alloc.dupeZ(u8, w.slice());
+            const str = try self.alloc.dupeZ(u8, w.path.slice());
             defer self.alloc.free(str);
+
+            // Empty for a local report, which is the common case.
+            const host = try self.alloc.dupeZ(u8, w.host.slice());
+            defer self.alloc.free(host);
 
             _ = try self.rt_app.performAction(
                 .{ .surface = self },
                 .pwd,
-                .{ .pwd = str },
+                .{ .pwd = str, .host = host },
             );
         },
 

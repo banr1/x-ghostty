@@ -637,6 +637,9 @@ typedef struct {
 // apprt.action.Pwd.C
 typedef struct {
   const char* pwd;
+  // The host `pwd` is on. Empty when the shell that reported it runs on this
+  // machine, which is the only case upstream Ghostty reports at all.
+  const char* host;
 } xghostty_action_pwd_s;
 
 // terminal.MouseShape

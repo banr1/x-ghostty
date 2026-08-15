@@ -719,14 +719,21 @@ pub const SetTitle = struct {
 pub const Pwd = struct {
     pwd: [:0]const u8,
 
+    /// The host the pwd was reported from, empty when it is this machine.
+    /// A non-empty host means the shell that reported it runs elsewhere, so
+    /// the path is not a path in our own filesystem.
+    host: [:0]const u8 = "",
+
     // Sync with: xghostty_action_set_pwd_s
     pub const C = extern struct {
         pwd: [*:0]const u8,
+        host: [*:0]const u8,
     };
 
     pub fn cval(self: Pwd) C {
         return .{
             .pwd = self.pwd.ptr,
+            .host = self.host.ptr,
         };
     }
 
@@ -736,7 +743,11 @@ pub const Pwd = struct {
         _: std.fmt.FormatOptions,
         writer: *std.Io.Writer,
     ) !void {
-        try writer.print("{s}{{ {s} }}", .{ @typeName(@This()), value.pwd });
+        try writer.print("{s}{{ {s}:{s} }}", .{
+            @typeName(@This()),
+            value.host,
+            value.pwd,
+        });
     }
 };
 

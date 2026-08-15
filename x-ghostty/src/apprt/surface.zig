@@ -82,7 +82,7 @@ pub const Message = union(enum) {
     selection_scroll_tick: bool,
 
     /// The terminal has reported a change in the working directory.
-    pwd_change: WriteReq,
+    pwd_change: PwdChange,
 
     /// The terminal encountered a bell character.
     ring_bell,
@@ -116,6 +116,22 @@ pub const Message = union(enum) {
     pub const ChildExited = extern struct {
         exit_code: u32,
         runtime_ms: u64,
+    };
+
+    /// A working directory reported by the terminal (OSC 7).
+    ///
+    /// XGhostty carries the reported host alongside the path so the apprt
+    /// can tell a local report from one made by a shell on another machine.
+    /// A non-local report never becomes the terminal's own pwd; it only
+    /// travels to the apprt, which uses it to reconnect a split to the
+    /// same host (SPEC "remote split").
+    pub const PwdChange = struct {
+        /// The reported path.
+        path: WriteReq,
+
+        /// The host the path lives on. Empty when the report is local,
+        /// which is the only case upstream Ghostty accepts at all.
+        host: WriteReq,
     };
 };
 

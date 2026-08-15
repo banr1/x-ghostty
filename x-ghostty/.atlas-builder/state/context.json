@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "6628f0192157fc36e9faa86a68afca625e37d82b7de117f8bc1fc84add2fe313",
+    "last_signature": "30ff70aa3237dd5fbbd89533c9ffe7268a9e5c4513509453881ebb11ab2aaece",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-16T02:09:29+09:00",
-    "last_checked_at": "2026-08-16T02:09:29+09:00"
+    "last_progress_at": "2026-08-16T02:39:57+09:00",
+    "last_checked_at": "2026-08-16T02:39:57+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,24 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.45,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 7,
+    "changed_files_since_reset": 9,
     "completed_todos_since_reset": 2,
-    "important_decisions_since_reset": 6,
-    "major_spec_rewrite_since_reset": true,
+    "important_decisions_since_reset": 1,
+    "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-16T02:19:06+09:00",
-    "summary": "Human resume: R-013 は選択肢 (a) で解除する: 必須対応事項 60〜62(リモート split)のために、上流ターミナルコアの最小改変を人間が明示的に承認する。承認範囲は「OSC 7 で報告された非ローカルホストを破棄せず、host + path を app 層へ渡す」経路の追加に限定し、対象は src/termio/stream_handler.zig(reportPwd)/ src/apprt/surface.zig(pwd_change メッセージ)/ src/Surface.zig / src/apprt/action.zig(Pwd に host 追加)/ include/xghostty.h(xghostty_action_pwd_s)と Swift の受け口(XGhostty.App.swift pwdChanged / OSSurfaceView.swift)とする。ローカル報告の既存挙動と VT セマンティクスは変えない。思想 3 の「人間に相談する」義務はこの承認で果たされたものとし、ESSENCE.md の変更は不要。\n次サイクルは B-002 を解決として close し、T-049(モデル層のリモート判定)を blocked から戻して上記改変とともに実装・テスト(成功条件 18)し、T-050 で split 経路へ接続すること。実機確認 T-055 は他の実機確認(T-056〜T-060)とまとめて依頼してよい。",
-    "next_actions": [],
+    "written_at": "2026-08-16T02:41:00+09:00",
+    "summary": "Cycle R-20260816T021912. Executed batch [T-049, T-050] (remote split) and both are done with evidence; B-002 closed as resolved. The upstream terminal core was modified ONLY within the human's R-013 (a) approval: stream_handler.reportPwd now forwards a non-local OSC 7 report (path + host) to the apprt instead of dropping it, while still never calling terminal.setPwd or touching the title for such a report; pwd_change carries PwdChange {path, host}; apprt.action.Pwd and xghostty_action_pwd_s gained `host`; Swift keeps it in the new SurfaceView.pwdReport and assigns SurfaceView.pwd only for local reports. New model file macos/Sources/Features/Projects/ProjectRemoteSplit.swift (PaneLocationReport / PaneSplitLaunch / RemoteSplit.launch) with 7 tests in macos/Tests/Projects/ProjectRemoteSplitTests.swift. XGhostty.App.newSplit sets the new pane's initialInput to the ssh reconnect line when the source pane is remote; new projects stay local. Gates all green: zig build 0, just test 0, just swift-test 0 (TEST SUCCEEDED, 569 cases, 560 before). R-014 (non-blocking) records three design interpretations for the human to check together with T-055.\nRemaining must Todos, all executor atlas-builder except the six human checks: T-046 (note-editor undo/redo, Cmd+Z / Cmd+Shift+Z scoped to one open-to-close editing session, S-036), T-048 (Cmd+L project-list overlay UI + choose_project_layout moved to Cmd+Opt+L + HiddenProjectShelf removal; the model layer T-047 is already done and exposes projectListRows / canToggleProjectListVisibility / focusProjectListRow), T-052 (wire the daily reset triggers to app launch and boundary crossings incl. wake/reactivation; the model entry point WorkspaceModel.applyDailyPriorityReset(now:calendar:) already exists from T-051), T-053 (SPEC.md + README.md for remote split, project list, undo/redo, daily reset, and the Cmd+L / Cmd+Opt+L rearrangement), T-054 (full verification), then the six human on-device checks T-055..T-060.",
+    "next_actions": [
+      "Next batch: T-046 and/or T-048 (both UI-layer, executor atlas-builder, normal risk). T-052 is a small wiring Todo that pairs well with either.",
+      "T-053 must write SPEC.md §29 for remote split: the code and tests already reference §29, continuing the previous cycle's §27 (project list) / §28 (priority reset) numbering. SPEC.md currently stops at §26. Document there: the OSC 7 host now reaching the app layer, the local-only meaning of SurfaceView.pwd, RemoteSplit's remote/local rule, and the initialInput delivery with its must-61 fallback rationale.",
+      "T-054 re-runs all three gates once every implementation Todo is done; verification commands are `/opt/homebrew/opt/zig@0.15/bin/zig build`, `just test`, `just swift-test` (never `just build-app`, which the control-plane guard misclassifies - see R-002).",
+      "When only the human on-device checks remain, raise ONE Human-input Recommendation bundling T-055..T-060 (R-013's resolution explicitly allows bundling T-055 with the rest) and include R-014's three design interpretations for confirmation."
+    ],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }

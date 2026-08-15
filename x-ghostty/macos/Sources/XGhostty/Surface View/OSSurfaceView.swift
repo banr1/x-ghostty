@@ -10,8 +10,15 @@ extension XGhostty {
         let id: UUID
 
         // The current pwd of the surface as defined by the pty. This can be
-        // changed with escape codes.
+        // changed with escape codes. This is always a path on this machine:
+        // a report from a shell on another host never lands here, exactly as
+        // before remote split existed.
         @Published var pwd: String?
+
+        // The most recent working-directory report, including the host it came
+        // from. Unlike `pwd` this also holds reports from a shell on another
+        // machine, which is what a split needs to reconnect there (SPEC §29).
+        @Published var pwdReport: PaneLocationReport?
 
         // The cell size of this surface. This is set by the core when the
         // surface is first created and any time the cell size changes (i.e.
