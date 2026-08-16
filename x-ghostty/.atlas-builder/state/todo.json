@@ -9,8 +9,8 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-053",
-    "T-054"
+    "T-061",
+    "T-062"
   ],
   "items": [
     {
@@ -2355,7 +2355,7 @@
     {
       "id": "T-055",
       "title": "Human on-device visual verification of remote split (one-time): splitting a pane ssh'd into a remote directory opens the new pane on the same host and path; splitting a local pane still opens locally",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-078"
@@ -2365,12 +2365,20 @@
       },
       "batch_group": "batch5-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-16T19:45:49+09:00",
+          "reference": "R-016 resolution / human resume note recorded in context.json handoff at 2026-08-16T19:45:49+09:00",
+          "summary": "人間が実機で成功条件 19 を一度だけ確認した。素の split ではローカルのまま開いた(ssh 行が出なかった)が、原因は実装ではなく前提事項の不成立であることを人間が切り分けた: 接続先(別名 gohanserver / 実ホスト名 nixos-dev)に Ghostty のシェル統合が入っておらず OSC 7 が発信されていない。リモートペインで OSC 7 を手動送出(printf で file://gohanserver/tmp を報告)した直後に同じペインを split すると、新ペインに ssh -t gohanserver 'cd /tmp && exec ${SHELL:-/bin/sh} -l' が流し込まれ、同じホスト・同じパス(/tmp)で開くことを実機で確認した。ローカルのペインの split が従来どおりローカルで開くことも確認済み。Zig コアの host 受け渡しから Swift の判定・split 配線までの連鎖は健全であり、未達なのは前提事項(リモート側のシェル統合)であって実装の責任範囲外と人間が判断した。"
+        }
+      ]
     },
     {
       "id": "T-056",
       "title": "Human on-device visual verification of the project list (one-time): Cmd+L opens the table with hidden projects included, Space toggles in place and survives Esc, Enter focuses a visible row and closes, Enter on a hidden row does nothing, no hidden shelf at the top right, appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-084"
@@ -2380,7 +2388,15 @@
       },
       "batch_group": "batch5-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-16T19:45:49+09:00",
+          "reference": "R-016 resolution / human resume note recorded in context.json handoff at 2026-08-16T19:45:49+09:00",
+          "summary": "人間が実機で成功条件 21 の 6 項目を一度だけ確認し、全項目が期待どおり動作した(Cmd+L で hidden を含む全プロジェクトが表形式で見える / Space でその場トグルし Esc 後も反映が残る / visible 行の Enter で focus して閉じる / hidden 行の Enter は無反応 / 右上の hidden シェルフが無い / 見た目がターミナルに馴染む)。"
+        }
+      ]
     },
     {
       "id": "T-057",
@@ -2400,7 +2416,7 @@
     {
       "id": "T-058",
       "title": "Human on-device re-verification of the note editor under the amended success criterion 10 (supersedes T-031): Cmd+Z / Cmd+Shift+Z undo and redo the note body, alongside the already-confirmed Cmd+A / C / X / V and the 10-line paste truncation",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-052"
@@ -2410,12 +2426,20 @@
       },
       "batch_group": "batch5-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-16T19:45:49+09:00",
+          "reference": "R-016 resolution / human resume note recorded in context.json handoff at 2026-08-16T19:45:49+09:00",
+          "summary": "人間が実機で成功条件 10 を一度だけ確認し、全項目が期待どおり動作した(ノート編集オーバーレイで Cmd+A / Cmd+C / Cmd+X / Cmd+V が標準どおり効き、Cmd+Z / Cmd+Shift+Z がノート本文の取り消し・やり直しとして効き、10 行超の貼り付けが保存時に先頭 10 行へ切り詰められる)。"
+        }
+      ]
     },
     {
       "id": "T-059",
       "title": "Human on-device re-verification of the hide-selection screen under the amended success criterion 14 (supersedes T-040): projects hidden from the Cmd+Opt+H screen now appear as hidden in the Cmd+L project list rather than in a shelf",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-070"
@@ -2425,12 +2449,20 @@
       },
       "batch_group": "batch5-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-16T19:45:49+09:00",
+          "reference": "R-016 resolution / human resume note recorded in context.json handoff at 2026-08-16T19:45:49+09:00",
+          "summary": "人間が実機で成功条件 14 を一度だけ確認し、全項目が期待どおり動作した(Cmd+Opt+H で hide 選択画面が開き複数選択 Enter で一括 hidden、Cmd+L の一覧に hidden として現れる / Esc で何も隠れない / 見た目がターミナルに馴染む)。hidden プロジェクトの復帰導線がプロジェクト一覧に一本化されていることも併せて確認した。"
+        }
+      ]
     },
     {
       "id": "T-060",
       "title": "Human on-device re-verification of layout application under the amended success criterion 16 (supersedes T-041): the layout list now opens with Cmd+Opt+L",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-072"
@@ -2440,6 +2472,119 @@
       },
       "batch_group": "batch5-human",
       "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-16T19:45:49+09:00",
+          "reference": "R-016 resolution / human resume note recorded in context.json handoff at 2026-08-16T19:45:49+09:00",
+          "summary": "人間が実機で成功条件 16 を一度だけ確認し、全項目が期待どおり動作した(Cmd+Opt+L でレイアウト一覧が開き矢印 + Enter で適用・Esc で無変更 / 数が等しいときそのまま適用 / 多いとき新プロジェクトが後ろに作られて適用 / 少ないとき隠す選択画面を経て適用 / 見た目がターミナルに馴染む)。"
+        }
+      ]
+    },
+    {
+      "id": "T-061",
+      "title": "Fix the stale pane location report: a pane that came back from ssh to its local shell must split locally again. Fence/clear the OSC 7 report in the macOS app layer (never in the upstream shell-integration scripts) and cover the judgment in XGhosttyTests",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-074",
+        "S-075",
+        "S-076",
+        "S-077"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch6-remote-fix",
+      "risk_level": "normal",
+      "notes": "Human-diagnosed defect (2026-08-16 resume): OSSurfaceView.pwdReport is only ever written by pwdChanged and never cleared, while the bash shell integration suppresses a repeated OSC 7 for an unchanged PWD. Leaving ssh and returning to the same local PWD therefore leaves a remote report in place, and splitting that pane wrongly ssh's out. zsh recovers because it re-reports every precmd; bash does not. This breaks the second half of success criterion 19. Shell-integration scripts are upstream assets and must not be touched.",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectRemoteSplit.swift",
+            "macos/Sources/Features/Projects/PaneForegroundProbe.swift",
+            "macos/Sources/XGhostty/Surface View/OSSurfaceView.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Tests/Projects/ProjectRemoteSplitTests.swift",
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "レポート陳腐化の修正。原因は「OSC 7 は変わったときしか報告されない」ことで、bash 統合は同一 PWD の再報告を抑止するため、ssh を抜けて同じディレクトリのローカルシェルに戻っても新しい報告が来ず、最後のリモート報告が残り続けていた。上流のシェル統合スクリプトは継承資産なので触らず、macOS アプリ層だけで解決した。\n\nモデル層(ProjectRemoteSplit.swift、UI 非依存): (a) PaneForegroundProcess { shell / other / unknown } と classify(executablePath:) — 実行ファイル名を既知のシェル名集合(sh/bash/zsh/fish/dash/ash/ksh 系/csh 系/nu/elvish/xonsh、login shell の先頭 '-' を許容、大小文字無視)と照合する。取得不能は必ず .unknown で、決して .shell にしない。(b) PaneLocationTracker { report; record / reset / commandFinished(foreground:) / splitLaunch(foreground:) }。(c) RemoteSplit.launch(for:foreground:) — 前景がペイン自身のシェルなら、報告がどれだけリモートを主張していても .local。\n\n根拠は pty の前景プロセスである: ペインが本当にリモートにいる間、前景にいるのは(ローカルの)ssh 等であり、手元のプロンプトに戻っていれば前景はペイン自身のシェルになる。取得は xghostty_surface_foreground_pid(pty の tcgetpgrp)+ proc_pidpath(PaneForegroundProbe.swift、失敗は全経路 .unknown)。\n\n破棄規則は 2 つ: (1) command finished(OSC 133 D)時に前景がシェルなら報告を捨てる = ssh からの復帰。前景がシェル以外なら捨てない — リモートシェル自身のコマンド終了報告が同じストリームを流れてくるだけなので、リモート側が bash で再報告を抑止していてもリモート判定が維持される(既存機能の退行回避)。この処理は notifyOnCommandFinish の設定判定より前に置いた。(2) child exit 時に reset — 報告した当のシェルが消えたのだから報告も消え、終了済みペインを Enter で再開した新しいシェルは手元で始まる。\n\n配線: OSSurfaceView.pwdReport を paneLocation(PaneLocationTracker)へ置き換え、recordPaneLocation / paneCommandFinished / resetPaneLocation / paneSplitLaunch を生やした。App.swift の split 経路は surfaceView.paneSplitLaunch() を使う。SPEC.md §29 に 29.3(レポートの鮮度)を追加し、§29.4 のテスト一覧を 15 件へ更新、README の Remote splits 節にも復帰時の挙動を明記。あわせて §29 冒頭の「上流ターミナルコアの改変は不要だった」という記述が実装(T-049 で人間承認 R-013(a) のもとコアに host 転送を入れている)と食い違っていたので実態に合わせて訂正した。"
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "成功条件 1 のゲート: Zig コア + C ヘッダ + macOS アプリのフルビルドが exit 0。前提事項どおり Zig 0.15.x で実行(justfile が pin している同じ toolchain。素の zig は環境更新で 0.16.0 になっており、その場合はバージョンゲートで失敗する)。"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "成功条件 2 のゲート: Zig コアのテストが exit 0。今回の変更は Swift 層のみだが退行が無いことを確認した。"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "成功条件 3 / 18 のゲート: XGhosttyTests が exit 0。ProjectRemoteSplitTests は 15 件すべて passed(新規 8 件を含む: 前景プロセスの分類、前景がシェルならリモート報告があってもローカル、前景がシェル以外/取得不能なら報告どおり ssh、生きたリモートセッション中のコマンド終了では報告を捨てない、手元のシェルに戻ってのコマンド終了では捨てる、破棄後の新報告で復活、reset で忘却、ローカル報告は柵の影響を受けない)。"
+        }
+      ]
+    },
+    {
+      "id": "T-062",
+      "title": "Observability of the pwd report path: log the received host and path (and the resulting split decision) so a remote-split misbehaviour can be diagnosed on device without tracing the whole chain",
+      "status": "done",
+      "priority": "should",
+      "spec": [
+        "S-074",
+        "S-076"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "batch6-remote-fix",
+      "risk_level": "normal",
+      "notes": "Requested by the human in the 2026-08-16 resume note: the Swift receive side logs nothing today, so isolating the remote-split behaviour required reading the whole Zig-to-Swift chain.",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "SPEC.md"
+          ],
+          "summary": "pwd 受信経路の観測性。pwdChanged が受信した host + path を debug ログに出し(privacy: .public、実機でそのまま読めるように)、split 経路が決定した PaneSplitLaunch も debug ログに出す。これで「報告が来ていない」のか「来たうえでローカルと判定した」のかがログだけで切り分けられ、今回のような切り分けに Zig コアから Swift までの全連鎖を読む必要がなくなる。SPEC.md §29.3 の末尾に観測性として明記。"
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "成功条件 1 のゲート: Zig コア + C ヘッダ + macOS アプリのフルビルドが exit 0。前提事項どおり Zig 0.15.x で実行(justfile が pin している同じ toolchain。素の zig は環境更新で 0.16.0 になっており、その場合はバージョンゲートで失敗する)。"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "成功条件 3 / 18 のゲート: XGhosttyTests が exit 0。ProjectRemoteSplitTests は 15 件すべて passed(新規 8 件を含む: 前景プロセスの分類、前景がシェルならリモート報告があってもローカル、前景がシェル以外/取得不能なら報告どおり ssh、生きたリモートセッション中のコマンド終了では報告を捨てない、手元のシェルに戻ってのコマンド終了では捨てる、破棄後の新報告で復活、reset で忘却、ローカル報告は柵の影響を受けない)。"
+        }
+      ]
+    },
+    {
+      "id": "T-063",
+      "title": "Human on-device re-verification of remote split after the staleness fix (one-time): a pane that returns from ssh to its local shell splits locally again, while a pane still inside a remote session splits to that host and path",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-078"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch6-human",
+      "risk_level": "normal",
+      "notes": "成功条件 19 の再確認。T-055 の確認時には ssh から戻った直後の split が試されておらず、その経路に実欠陥(古いリモート報告が残って誤って ssh する)があったため T-061 で修正した。修正後の挙動は実機でしか確認できない。",
       "evidence": []
     }
   ]

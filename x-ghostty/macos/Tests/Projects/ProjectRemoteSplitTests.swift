@@ -74,4 +74,92 @@ struct ProjectRemoteSplitTests {
         #expect(input.hasSuffix("\n"))
         #expect(input.hasPrefix("ssh -t "))
     }
+
+    // MARK: - A report that has gone stale
+
+    @Test func foregroundShellClassification() {
+        for path in ["/bin/zsh", "/bin/bash", "/usr/local/bin/fish", "/bin/-zsh", "/BIN/ZSH"] {
+            #expect(
+                PaneForegroundProcess.classify(executablePath: path) == .shell,
+                "\(path) is the pane's own shell")
+        }
+
+        for path in ["/usr/bin/ssh", "/usr/bin/vim", "/opt/homebrew/bin/mosh-client"] {
+            #expect(
+                PaneForegroundProcess.classify(executablePath: path) == .other,
+                "\(path) is something the pane is running")
+        }
+
+        // A failed lookup must never read as "the pane is at its own prompt".
+        #expect(PaneForegroundProcess.classify(executablePath: nil) == .unknown)
+        #expect(PaneForegroundProcess.classify(executablePath: "") == .unknown)
+    }
+
+    @Test func paneSittingAtItsOwnShellSplitsLocallyDespiteARemoteReport() {
+        // The defect this fences: the shell integration only re-reports a
+        // changed PWD, so returning from ssh into the same local directory
+        // leaves the remote report standing. The pane is plainly here - its own
+        // shell is in the foreground - so the split is local (成功条件 19).
+        let report = PaneLocationReport(host: "workbench", path: "/srv/app")
+        #expect(RemoteSplit.launch(for: report, foreground: .shell) == .local)
+        #expect(RemoteSplit.launch(for: report, foreground: .other) == .ssh(host: "workbench", path: "/srv/app"))
+        #expect(RemoteSplit.launch(for: report, foreground: .unknown) == .ssh(host: "workbench", path: "/srv/app"))
+    }
+
+    @Test func reportSurvivesACommandThatEndedInsideALiveRemoteSession() {
+        // A remote shell's own command marks travel the same stream. While the
+        // session process is still in the foreground, they say nothing about
+        // this pane's location and must not drop the remote report.
+        var tracker = PaneLocationTracker()
+        tracker.record(PaneLocationReport(host: "workbench", path: "/srv/app"))
+
+        tracker.commandFinished(foreground: .other)
+        #expect(tracker.report == PaneLocationReport(host: "workbench", path: "/srv/app"))
+        #expect(tracker.splitLaunch(foreground: .other) == .ssh(host: "workbench", path: "/srv/app"))
+
+        tracker.commandFinished(foreground: .unknown)
+        #expect(tracker.report == PaneLocationReport(host: "workbench", path: "/srv/app"))
+    }
+
+    @Test func remoteReportIsDroppedWhenACommandEndsBackAtTheLocalShell() {
+        var tracker = PaneLocationTracker()
+        tracker.record(PaneLocationReport(host: "workbench", path: "/srv/app"))
+
+        // ssh exits: the command ends with the pane's own shell in front of it.
+        tracker.commandFinished(foreground: .shell)
+        #expect(tracker.report == nil)
+
+        // And it stays local even once the pane is busy again with no new
+        // report - the stale claim is gone for good, not just fenced.
+        #expect(tracker.splitLaunch(foreground: .other) == .local)
+    }
+
+    @Test func aFreshReportRevivesTheRemoteDecision() {
+        var tracker = PaneLocationTracker()
+        tracker.record(PaneLocationReport(host: "workbench", path: "/srv/app"))
+        tracker.commandFinished(foreground: .shell)
+
+        // Going out again reports again, and the pane is remote once more.
+        tracker.record(PaneLocationReport(host: "workbench", path: "/srv/other"))
+        #expect(tracker.splitLaunch(foreground: .other) == .ssh(host: "workbench", path: "/srv/other"))
+    }
+
+    @Test func resetForgetsWhereThePaneWas() {
+        // The child exited (and an Enter may start a new shell in the pane):
+        // whatever runs next runs here.
+        var tracker = PaneLocationTracker()
+        tracker.record(PaneLocationReport(host: "workbench", path: "/srv/app"))
+        tracker.reset()
+
+        #expect(tracker.report == nil)
+        #expect(tracker.splitLaunch(foreground: .other) == .local)
+    }
+
+    @Test func aLocalReportIsUnaffectedByTheFence() {
+        var tracker = PaneLocationTracker()
+        tracker.record(PaneLocationReport(host: "", path: "/Users/banri/src"))
+
+        #expect(tracker.splitLaunch(foreground: .shell) == .local)
+        #expect(tracker.splitLaunch(foreground: .other) == .local)
+    }
 }

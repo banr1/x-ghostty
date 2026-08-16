@@ -823,7 +823,9 @@ extension XGhostty {
                 // Remote split (SPEC §29): when the pane being split is on
                 // another host, the new pane reconnects to it at the same path.
                 // Only splits do this - a new project always starts here.
-                if let reconnect = RemoteSplit.launch(for: surfaceView.pwdReport).initialInput {
+                let launch = surfaceView.paneSplitLaunch()
+                XGhostty.logger.debug("split launch decision=\(String(describing: launch), privacy: .public)")
+                if let reconnect = launch.initialInput {
                     config.initialInput = reconnect
                 }
 
@@ -1758,6 +1760,12 @@ extension XGhostty {
                 guard let surface = target.target.surface else { return }
                 guard let surfaceView = self.surfaceView(from: surface) else { return }
 
+                // A finished command can mean the pane just came back from a
+                // remote session (SPEC §29). This is deliberately ahead of the
+                // notification config below: whether the human wants to be
+                // notified says nothing about where the pane now is.
+                surfaceView.paneCommandFinished()
+
                 // Determine if we even care about command finish notifications
                 guard let config = (NSApplication.shared.delegate as? AppDelegate)?.ghostty.config else { return }
                 switch config.notifyOnCommandFinish {
@@ -1942,6 +1950,12 @@ extension XGhostty {
             case XGHOSTTY_TARGET_SURFACE:
                 guard let surface = target.target.surface else { return false }
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                // The shell that reported a location is gone, so the report is
+                // gone with it: whatever runs in this pane next starts here
+                // (SPEC §29). This covers the terminated pane an Enter restarts,
+                // and is ahead of every config-dependent guard below.
+                surfaceView.resetPaneLocation()
+
                 guard let config = (NSApplication.shared.delegate as? AppDelegate)?.ghostty.config else { return false }
 
                 // The project layer owns what a child exit means for the pane
@@ -2024,8 +2038,15 @@ extension XGhostty {
                 // it is not a path here: only the report is kept, `pwd` stays
                 // on the last local one (SPEC §29).
                 let host = v.host.flatMap { String(cString: $0, encoding: .utf8) } ?? ""
-                surfaceView.pwdReport = .init(host: host, path: pwd)
+                surfaceView.recordPaneLocation(.init(host: host, path: pwd))
                 if host.isEmpty { surfaceView.pwd = pwd }
+
+                // The one place the whole OSC 7 chain becomes visible on
+                // device: without it, telling "the report never arrived" from
+                // "the report arrived and was judged local" means reading the
+                // Zig core, the C API and this layer (SPEC §29).
+                XGhostty.logger.debug(
+                    "pwd report received host=\(host, privacy: .public) path=\(pwd, privacy: .public)")
 
             default:
                 assertionFailure()

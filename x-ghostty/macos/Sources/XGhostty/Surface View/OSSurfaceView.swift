@@ -15,10 +15,11 @@ extension XGhostty {
         // before remote split existed.
         @Published var pwd: String?
 
-        // The most recent working-directory report, including the host it came
-        // from. Unlike `pwd` this also holds reports from a shell on another
-        // machine, which is what a split needs to reconnect there (SPEC §29).
-        @Published var pwdReport: PaneLocationReport?
+        // Where this pane says it is: the most recent working-directory report
+        // including the host it came from, kept honest by the tracker's rules.
+        // Unlike `pwd` this also holds reports from a shell on another machine,
+        // which is what a split needs to reconnect there (SPEC §29).
+        @Published private(set) var paneLocation: PaneLocationTracker = .init()
 
         // The cell size of this surface. This is set by the core when the
         // surface is first created and any time the cell size changes (i.e.
@@ -105,6 +106,36 @@ extension XGhostty {
 
         func setChildExitedMessage(_ message: ChildExitedMessage) {
             self.childExitedMessage = message
+        }
+
+        // MARK: - Pane location (SPEC §29)
+
+        /// Record an OSC 7 working-directory report for this pane.
+        func recordPaneLocation(_ report: PaneLocationReport) {
+            paneLocation.record(report)
+        }
+
+        /// A command finished in this pane. The pane's own foreground process
+        /// decides whether that ended a session somewhere else.
+        func paneCommandFinished() {
+            paneLocation.commandFinished(foreground: foregroundProcess)
+        }
+
+        /// Forget where this pane is, for the paths where it provably starts
+        /// over on this machine (child exit, and the new shell of a restarted
+        /// terminated pane).
+        func resetPaneLocation() {
+            paneLocation.reset()
+        }
+
+        /// How a split of this pane must be launched right now.
+        func paneSplitLaunch() -> PaneSplitLaunch {
+            paneLocation.splitLaunch(foreground: foregroundProcess)
+        }
+
+        /// What this pane's pty is running in the foreground.
+        var foregroundProcess: PaneForegroundProcess {
+            PaneForegroundProbe.foregroundProcess(of: surface)
         }
 
         @MainActor

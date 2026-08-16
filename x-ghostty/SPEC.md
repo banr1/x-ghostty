@@ -1165,7 +1165,8 @@ macos/Sources/Features/Projects/
   ProjectList.swift                (一覧行の導出と日次優先度リセット、§27.1/§28.2)
   ProjectListOverlay.swift         (プロジェクト一覧オーバーレイ、§27)
   ProjectWorkday.swift             (作業日と 06:00 境界、§28.1)
-  ProjectRemoteSplit.swift         (リモート split の起動判断、§29)
+  ProjectRemoteSplit.swift         (リモート split の起動判断とレポート鮮度、§29)
+  PaneForegroundProbe.swift        (pty の前景プロセス取得、§29.3)
   ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2/§25)
 ```
 
@@ -2232,8 +2233,10 @@ struct Workday: Codable, Equatable, Hashable {
 
 リモートホストで作業中のペインを split したとき、新ペインを**同じホスト・
 同じパス**で開く層。判定はモデル層に閉じ、`XGhosttyTests` から検証する
-(§29.3、必須対応事項 62)。上流ターミナルコアの改変は不要だった — 判断材料の
-OSC 7 レポートは既存のシェル統合経路がそのまま供給する。
+(§29.4、必須対応事項 62)。判断材料の OSC 7 レポートを apprt まで運ぶために、
+上流ターミナルコアには最小限の改変を入れてある(`stream_handler.reportPwd` が
+非ローカル報告を捨てずに path + host を apprt へ転送し、`apprt.action.Pwd` と
+`xghostty_action_pwd_s` が `host` を持つ)。VT の意味論は変えていない。
 
 ### 29.1 判断(RemoteSplit.launch)
 
@@ -2248,12 +2251,15 @@ enum PaneSplitLaunch: Equatable {
 
 enum RemoteSplit {
     static func launch(for report: PaneLocationReport?) -> PaneSplitLaunch
+    static func launch(
+        for report: PaneLocationReport?,
+        foreground: PaneForegroundProcess) -> PaneSplitLaunch
 }
 ```
 
 - `PaneLocationReport` はシェル統合(OSC 7)が報告したペインの居場所。
   `host` はローカルなら空、リモートなら報告されたホスト名。
-  `OSSurfaceView.pwdReport` が保持する。
+  `OSSurfaceView.paneLocation`(`PaneLocationTracker`)が保持する(§29.3)。
 - `.ssh` になるのは**すべて**満たすときだけ:
   1. レポートが存在し、
   2. `host` が空白除去後に非空で、かつ loopback 集合
@@ -2273,8 +2279,8 @@ ssh -t <quoted-host> 'cd <quoted-path> && exec ${SHELL:-/bin/sh} -l'\n
 
 - この行は**新ペインのコマンドを置き換えるのではなく、通常どおり起動した
   ローカルシェルへ初期入力として流し込む**(`XGhostty.App.swift` の split 経路が
-  `RemoteSplit.launch(for: surfaceView.pwdReport).initialInput` を
-  `config.initialInput` に載せる)。
+  `surfaceView.paneSplitLaunch().initialInput` を `config.initialInput` に
+  載せる)。
 - そうする理由は失敗経路にある:ホストが到達不能でも、ssh が無くても、リモートの
   パスが消えていても、**ペインは継承ディレクトリで動くローカルシェルのまま残る** —
   特別扱いのコードなしに「従来どおりローカルで開く」(必須対応事項 61)が
@@ -2288,7 +2294,51 @@ ssh -t <quoted-host> 'cd <quoted-path> && exec ${SHELL:-/bin/sh} -l'\n
 - 対象は **split のみ**。新規プロジェクト作成とレイアウト適用で作られる新
   プロジェクトはローカルで開く(必須対応事項 60)。
 
-### 29.3 テスト(ProjectRemoteSplitTests、8 件)
+### 29.3 レポートの鮮度(PaneLocationTracker)
+
+OSC 7 は**変わったときにしか報告されない**。bash 統合は同一 PWD の再報告を
+抑止する(`_ghostty_last_reported_cwd`)ため、ssh を抜けて同じディレクトリの
+ローカルシェルに戻っても新しい報告は来ない。レポートを最後に受けたまま持ち
+続けると、**手元にいるペインの split が誤ってリモートへ ssh してしまう**
+(成功条件 19 後半の違反)。zsh 統合は precmd ごとに無条件再報告するため自然
+回復するが、bash では回復しない。上流のシェル統合スクリプトは継承資産であり
+触らないので、鮮度は macOS アプリ層で担保する。
+
+```swift
+enum PaneForegroundProcess { case shell, other, unknown
+    static func classify(executablePath: String?) -> PaneForegroundProcess }
+
+struct PaneLocationTracker {
+    private(set) var report: PaneLocationReport?
+    mutating func record(_ report: PaneLocationReport)
+    mutating func reset()
+    mutating func commandFinished(foreground: PaneForegroundProcess)
+    func splitLaunch(foreground: PaneForegroundProcess) -> PaneSplitLaunch
+}
+```
+
+- **前景プロセス**が根拠である。ペインが本当にリモートにいる間、pty の前景に
+  いるのは(ローカルの)`ssh` 等であり、手元のプロンプトに戻っていれば前景は
+  ペイン自身のシェルである。前景 pid は `xghostty_surface_foreground_pid`
+  (pty の `tcgetpgrp`)で得て、`proc_pidpath` で実行ファイル名を引き、
+  `PaneForegroundProcess.classify` が既知のシェル名集合と照合する
+  (`PaneForegroundProbe`)。取得できなければ `.unknown`。
+- **split 時の柵**:前景がペイン自身のシェルなら、レポートがどれだけリモートを
+  主張していても `.local`。`.unknown` は柵にしない — 前景を読めないことは
+  「戻ってきた証拠」ではないので、従来どおりレポートに従う。
+- **command finished(OSC 133 D)での破棄**:コマンド終了時に前景がシェルなら、
+  いま終わったのは**手元で**走っていたコマンド(= ssh からの復帰)なので
+  レポートを捨てる。前景がシェル以外なら、それはリモートシェル自身の
+  コマンド終了報告が同じストリームを流れてきただけなので**捨てない**
+  (リモート側が bash で再報告を抑止していても、リモート判定が維持される)。
+  この処理は通知設定(`notifyOnCommandFinish`)の判定より**前**に行う。
+- **child exit での破棄**:報告した当のシェルが消えたのだからレポートも消す。
+  終了済みペインを Enter で再開した新しいシェルは手元で始まる(§23.3)。
+- 観測性:pwd 報告の受信(host + path)と split の起動判断は debug ログに
+  出る。実機で「報告が来ていない」のか「来たうえでローカルと判定した」のかを
+  ログだけで切り分けられる。
+
+### 29.4 テスト(ProjectRemoteSplitTests、15 件)
 
 ```text
 - ローカルの pwd 報告 → .local
@@ -2297,6 +2347,14 @@ ssh -t <quoted-host> 'cd <quoted-path> && exec ${SHELL:-/bin/sh} -l'\n
 - リモートホストでも絶対パスが無ければ .local
 - ホストとパスは両シェル向けに引用される
 - 再接続は新ペインのシェル内で走る(失敗してもローカルシェルが残る)
+- 前景プロセスの分類(シェル / それ以外 / 取得不能)
+- 前景がシェルなら、リモートのレポートがあっても .local
+- 前景がシェル以外 / 取得不能なら、レポートどおり .ssh
+- 生きたリモートセッション中のコマンド終了ではレポートを捨てない
+- 手元のシェルに戻ってのコマンド終了ではレポートを捨てる
+- 破棄後に新しい報告が来ればリモート判定が復活する
+- reset(child exit)でレポートを忘れる
+- ローカルのレポートは柵の影響を受けない
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

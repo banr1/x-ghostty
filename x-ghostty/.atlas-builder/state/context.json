@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "413b2aabacdf886af0cd7e42d4c94738499cbedf61cc820d8bed0bd797b86458",
+    "last_signature": "43585dae7b6c4adb04603089d0c3c8ed5a4b545d6acf85964b666bdb04b9bbf3",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-16T03:15:28+09:00",
-    "last_checked_at": "2026-08-16T03:15:28+09:00"
+    "last_progress_at": "2026-08-16T20:09:59+09:00",
+    "last_checked_at": "2026-08-16T20:09:59+09:00"
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
@@ -20,19 +20,25 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.62,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 4,
-    "completed_todos_since_reset": 2,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 10,
+    "completed_todos_since_reset": 9,
+    "important_decisions_since_reset": 4,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-16T19:45:49+09:00",
-    "summary": "Human resume: R-016 の実機目視確認 6 件を実施した。T-056(プロジェクト一覧)/ T-058(ノート編集・Cmd+Z/Cmd+Shift+Z)/ T-059(hide 選択の戻り経路)/ T-060(Cmd+Opt+L のレイアウト一覧)は全項目が期待どおり動作したので、human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。\n\nT-055(リモート split)も done とする。素の split ではローカルのまま開いた(ssh 行が一切出なかった)が、原因は実装ではなく前提事項の不成立である: ssh 先(別名 gohanserver / 実ホスト名 nixos-dev)に Ghostty のシェル統合が入っておらず、OSC 7 がそもそも発信されていない。リモートペインで OSC 7 を手動送出(printf '\\033]7;file://gohanserver/tmp\\007')した直後に同じペインを split したところ、新ペインに ssh -t gohanserver 'cd /tmp && exec ${SHELL:-/bin/sh} -l' が流し込まれ、同じホスト・同じパス(/tmp)で開くことを実機で確認した。ローカルのペインの split が従来どおりローカルで開くことも確認済み。よって Zig コアの host 受け渡しから Swift の判定・split 配線までの連鎖は健全であり、未達なのは前提事項(リモート側のシェル統合)であって実装の責任範囲外と判断する。リモートへのシェル統合導入は人間の環境作業として別途行う。\n\nT-057(優先度の毎朝 6:00 リセット)は日付跨ぎが必要なため今回は未確認。pending のまま据え置き、実際に日を跨いだ朝に改めて確認する。\n\nR-014(リモート split の設計解釈 3 点)は承認する。ssh を初期入力として流し込む方式は現行のまま維持する — ssh 失敗時に手元のローカルシェルが残り必須 61 が構造的に満たされる利点を取り、ssh のコマンドラインが一度表示されローカル履歴に残る副作用は許容する。パス不明時のローカル扱い、リモート側ログインシェルの扱いも承認。R-015(プロジェクト一覧の Space はフォーカスを動かさない / Space は 1 回ごとに undo 登録 / hidden 行は淡色 + 「·」/ 取り消し単位は 0.75 秒の連続入力を 1 ステップ)も指摘なしで承認。R-014 / R-015 はいずれも非ブロッキングなので、次サイクルでこの結論を resolution として記録し close すること。\n\n次サイクルで新規 Todo を 2 件立てて実行すること。\n\n(1) [must] pwdReport の陳腐化修正: OSSurfaceView.pwdReport は XGhostty.App.swift の pwdChanged でしか書かれず、一度書かれるとクリアされない。bash 統合は同一 PWD での OSC 7 再送を抑止する(src/shell-integration/bash/xghostty.bash の _ghostty_last_reported_cwd ガード)ため、ssh を抜けて同じ PWD のローカルシェルに戻っても新しい報告が来ず、リモート報告が残ったままのローカルペインを split すると誤って ssh してしまう。zsh 統合(src/shell-integration/zsh/xghostty-integration)は precmd ごとに無条件再送するのでこの経路では自然回復するが、bash では回復しない。成功条件 19 後半「ローカルのペインを split すると、従来どおりローカルで開く」に対する実欠陥である。子プロセス終了・サーフェス再初期化などの適切な地点で報告をクリアし、判定が絡む部分は XGhosttyTests に検証を追加すること。シェル統合スクリプト側は上流由来の資産なので触らず、macOS アプリ層で解決すること(思想 3)。\n\n(2) [should] pwd 受信経路の観測性: Swift の受信側(XGhostty.App.swift の pwdChanged)は現状まったくログを出さないため、今回の切り分けに全連鎖のコード追跡を要した。受信した host + path を debug ログに出し、次回以降は実機で即座に判別できるようにすること。\n\n既知の注意点(実装変更は不要、Non-blocking Recommendation として記録してよい): リモート側にシェル統合を導入した場合、OSC 7 が報告するのは ssh の別名 gohanserver ではなくリモート機自身のホスト名 nixos-dev である。Essence の定めどおり「報告されたホスト名への ssh」を行うため、~/.ssh/config に Host nixos-dev の記述が必要になり得る。ユーザー名・鍵・ポートを ssh 設定に委ねるのは前提事項どおりの設計であり、ESSENCE.md の変更は不要。",
-    "next_actions": [],
-    "open_questions": [],
-    "pending_cycle": true
+    "written_at": "2026-08-16T20:25:00+09:00",
+    "summary": "実装側の作業は完了しており、R-019(Human-input Recommendation)で人間の実機確認待ちの停止条件が立っている。\n\n今サイクルでやったこと: (1) 人間の確認記録にある実機確認結果を反映し T-055 / T-056 / T-058 / T-059 / T-060 を human evidence 付きで done にした(T-057 は日付跨ぎが必要なため pending 据え置き)。(2) R-014 / R-015 を人間の承認内容を resolution として close。(3) T-061(must、リモート報告の陳腐化修正)と T-062(should、pwd 受信経路の観測性)を実装・検証して done。検証は Zig 0.15.x でのビルドと 2 つのテストコマンドがすべて exit 0、ProjectRemoteSplitTests 15 件 pass。\n\nT-061 の設計の要点(次セッションがコードを読み直す前提で): 修正の根拠は pty の前景プロセス。xghostty_surface_foreground_pid(tcgetpgrp)+ proc_pidpath で実行ファイル名を取り、既知のシェル名なら『ペインは手元のプロンプトにいる』と判断する(PaneForegroundProbe.swift + PaneForegroundProcess)。split 時は前景がシェルなら常にローカル。コマンド終了(OSC 133 D)時は前景がシェルのときだけ報告を破棄する — ここを無条件破棄にすると、リモート側が bash のとき(同一 PWD の再報告が抑止される)最初のリモートコマンド後にリモート判定が消えて既存機能が退行するので、条件付きであることが重要。前景不明(.unknown)は決してローカル扱いにしない。child exit では reset する。詳細は SPEC.md の 29.3 節。\n\n次に起きること: 人間が T-063(リモート split の再確認: ssh 中は同じホスト・同じパス / ssh を抜けた後はローカル / 素のローカルは従来どおり)と T-057(翌朝 6:00 以降に優先度が未設定へ戻る)を実機で確認し、その結果を人間専用の再開手続きで記録する。確認が取れた Todo は human evidence 付きで done にすること。差し戻しがあれば、リモート判定は macos/Sources/Features/Projects/ProjectRemoteSplit.swift と PaneForegroundProbe.swift に閉じているので、そこだけを直せばよい。\n\n未 close の非ブロッキング Recommendation: R-017(リモート側にシェル統合を入れると報告されるホスト名は別名 gohanserver ではなく nixos-dev。人間の ssh 設定に Host エントリが要る場合がある)、R-018(前景プロセスを見る設計解釈と残る取りこぼし)。どちらも人間のコメントを resolution にして close すればよい。\n\n環境メモ: PATH 上の zig は 0.16.0 に更新されており、素の zig ではバージョンゲートで落ちる。検証は justfile が pin している zig@0.15 のバイナリを使うこと(過去サイクルの evidence と同じコマンド)。",
+    "next_actions": [
+      "人間の実機確認(T-063 / T-057)を待つ。R-019 が解消されるまで自律実行できる Todo は無い。",
+      "確認結果が記録されたら、それを human evidence として T-063 / T-057 に反映し、差し戻しがあれば ProjectRemoteSplit.swift / PaneForegroundProbe.swift を修正する。",
+      "R-017 / R-018 に人間のコメントが付いたら resolution を書いて close する。"
+    ],
+    "open_questions": [
+      "T-061 の前景プロセスによる柵(R-018)が人間の意図どおりか — 特に前景が読めないときに『報告に従う』側へ倒した判断。"
+    ],
+    "pending_cycle": false
   }
 }

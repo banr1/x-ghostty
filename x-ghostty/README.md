@@ -86,9 +86,12 @@ its window management with a single model:
 - **Remote splits.** Splitting a pane whose shell is on a remote host (as
   reported by shell integration over OSC 7) opens the new pane on that same
   host and in the same directory, reconnecting with `ssh` and leaving user,
-  key, and port to your `~/.ssh/config`. If the location cannot be determined
-  or the connection fails, you simply get a local pane as before. Only splits
-  do this — new projects always start locally. See SPEC.md §29.
+  key, and port to your `~/.ssh/config`. A pane that is back at its own shell
+  prompt counts as local again even if its last report came from elsewhere, so
+  returning from `ssh` and splitting gives you a local pane. If the location
+  cannot be determined or the connection fails, you simply get a local pane as
+  before. Only splits do this — new projects always start locally. See
+  SPEC.md §29.
 - **Layouts.** `Cmd+Opt+L` opens a list of 11 built-in layouts — equal splits for
   4–9 projects and X+1 (X = 4–8: X projects on top, one full-width across the
   bottom). Arrow keys + Enter apply one, Esc closes without changing
