@@ -380,7 +380,7 @@
     {
       "id": "R-019",
       "type": "Human-input Recommendation",
-      "status": "proposed",
+      "status": "resolved",
       "source": [
         "T-057",
         "T-063"
@@ -391,7 +391,10 @@
       "agent_action": "stop_until_human_review",
       "title": "自律実装は再び完了 — 残りは実機確認 2 件(T-063 リモート split 再確認 / T-057 優先度の毎朝リセット)",
       "description": "今サイクルで人間確認済みの 5 件(T-055 / T-056 / T-058 / T-059 / T-060)を done として記録し、指示のあった 2 件(T-061 リモート報告の陳腐化修正・must / T-062 pwd 受信経路の観測性・should)を実装・検証して done にしました。検証は 3 コマンドすべて exit 0(Zig 0.15.x での zig build / just test / just swift-test。ProjectRemoteSplitTests は 15 件すべて passed)。R-014 / R-015 は resume の結論を resolution として記録し close しました。\n\n私が自律で実行できる Todo は残っていません。残る 2 件はいずれも人間の実機確認です。\n\n(1) T-063(新規・must): リモート split の再確認。今回の修正が対象です。(a) リモートに ssh したペイン(OSC 7 の報告があるか、前回同様に手動送出した状態)を split すると、同じホスト・同じパスで開く。(b) その ssh を exit して手元のシェルに戻ってから同じペインを split すると、ローカルで開く — 修正前はここで誤って ssh していました。(c) 素のローカルペインの split が従来どおりローカルで開く。切り分け用に、pwd 報告の受信(host + path)と split の判断は debug ログへ出るようにしてあります(Console.app で subsystem を絞ってください)。\n\n(2) T-057(据え置き・must): 優先度の毎朝 6:00 リセット。日付跨ぎが必要なため、前日に優先度を設定したプロジェクトが翌朝 6:00 以降に未設定へ戻っていることをご確認ください(アプリを起動し直した場合・稼働したままの場合の両方)。\n\nあわせて R-018(前景プロセスを見る設計解釈)と R-017(リモート側にシェル統合を入れた後、報告されるホスト名は別名 gohanserver ではなく nixos-dev になる件)もご確認ください。いずれも非ブロッキングです。",
-      "reason": "自律実装は再び完了した(T-061 must / T-062 should を実装・検証して done、検証は Zig 0.15.x の zig build / just test / just swift-test すべて exit 0、ProjectRemoteSplitTests 15 件 pass)。残る Todo は T-063 と T-057 の 2 件だけで、いずれも executor=human の実機確認である。ESSENCE の成功条件が「人間が実機で一度だけ確認し、確認が取れるまで完了としない」と定めているため、Atlas Builder に実行できる Todo は無い。とくに T-063 は今サイクルの修正(ssh から戻ったペインの split がローカルで開くこと)の妥当性そのものを問うもので、人間の確認結果が次の作業を決める。"
+      "reason": "自律実装は再び完了した(T-061 must / T-062 should を実装・検証して done、検証は Zig 0.15.x の zig build / just test / just swift-test すべて exit 0、ProjectRemoteSplitTests 15 件 pass)。残る Todo は T-063 と T-057 の 2 件だけで、いずれも executor=human の実機確認である。ESSENCE の成功条件が「人間が実機で一度だけ確認し、確認が取れるまで完了としない」と定めているため、Atlas Builder に実行できる Todo は無い。とくに T-063 は今サイクルの修正(ssh から戻ったペインの split がローカルで開くこと)の妥当性そのものを問うもので、人間の確認結果が次の作業を決める。",
+      "resolved_at": "2026-08-16T20:29:17+09:00",
+      "resolved_by": "human",
+      "resolution": "T-063(リモート split の再確認)を実機で確認し、3 項目すべてが期待どおり動作した: (a) ssh 中のペインの split が同じホスト・同じパスで開く、(b) ssh を exit して手元のシェルに戻った後の split がローカルで開く(T-061 の修正が効いている)、(c) 素のローカルペインの split が従来どおりローカルで開く。よって R-019 を解除し、T-063 を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。ESSENCE.md の変更は不要。\n\nT-057(優先度の毎朝 6:00 リセット)は日付跨ぎがまだ済んでいないため今回も未確認。pending のまま据え置き、実際に日を跨いだ朝に改めて確認する。したがって次サイクルは T-063 の記録と下記の勧告 close を行った時点で人間確認待ちになる — その停止は想定どおりの着地であり、差し戻しでも異常でもない。\n\n非ブロッキング勧告 2 件はいずれも人間が承認したので、次サイクルでこの結論を resolution として記録し close すること。R-018(リモート判定に pty の前景プロセスを見る設計解釈)は現行のまま承認する — 前景がシェルならローカル、前景を読めないときは「戻ってきた証拠ではない」として報告に従う倒し方を含めて維持し、実装変更は不要。R-017(リモート側にシェル統合を入れると OSC 7 が報告するのは ssh の別名 gohanserver ではなくリモート機自身のホスト名 nixos-dev になる件)も了解した — 製品側で別名を推測する処理は入れず、必要な対応はリモートへのシェル統合導入と ~/.ssh/config への Host エントリ追加という人間側の環境作業のみ。実装・ESSENCE.md の変更は不要。"
     }
   ]
 }
