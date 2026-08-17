@@ -4,7 +4,7 @@ open Lake DSL
 /-!
 agentic-state-loop の同梱エンジン(ゼロ依存の Lean 4 パッケージ)。
 
-`AtlasBuilder/` 配下は Atlas Builder runtime パッケージの共通判定コアの忠実複製
+`Looper/` 配下は Over-Project ループの runtime パッケージが持つ共通判定コアの忠実複製
 (バイト同一の vendored subset)であり、この instance では `asl-loop`
 マルチコールバイナリ(state エンジン + hooks)だけをビルドする。
 
@@ -16,8 +16,8 @@ build レシピが行う)。ネットワークは elan のツールチェーン�
 
 package «asl-loop»
 
-lean_lib AtlasBuilder
+lean_lib Looper
 
 @[default_target]
 lean_exe «asl-loop» where
-  root := `AtlasBuilder.Cli.AslMain
+  root := `Looper.Cli.AslMain

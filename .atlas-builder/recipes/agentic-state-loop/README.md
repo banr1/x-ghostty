@@ -1,12 +1,18 @@
 # agentic-state-loop — ハーネス付き自律エージェントループ(レシピ第一号)
 
-Atlas Builder が自分自身の運用に使っている状態管理法の汎用コアを、対象プロダクトが内包できる形に
+Over-Project ループが自分自身の運用に使っている状態管理法の汎用コアを、対象プロダクトが内包できる形に
 切り出したレシピである。次の 4 点セットを提供する。
 
 1. **エージェント執行ループ** — 各 cycle を Claude Code の非対話セッション(`claude -p`)が実行する
    (`scripts/loop.sh` / `once.sh`。single-flight lock、セッション継続と fresh 再開のバックストップ付き)。
 2. **アトミック commit 規律** — 1 cycle = 最大 1 checkpoint commit。cycle はクリーンな worktree
    からしか始まらず、禁止パス(秘密・tmp débris)と保護パスは commit guard が機械的に弾く。
+   さらに commit 直前に **staged blob そのもの**を高確度の credential 署名で走査し(秘密の値も
+   その行も出力しない)、対象の外に staged されたパスを拒否する — パス隔離だけでは、
+   うるさいツールが credential を通常のソースやログへ書き写す形を防げない。**抑止マーカーは
+   意図的に用意していない**(staged 内容を編集できる agent が自分で迂回を許可できてしまう):
+   検出されたら人間が除去/秘匿する。`resume.sh` は同じ条件を**状態を変異させる前**に見て、
+   通らなければ何も書かずに拒否する(半適用の resume を残さない)。
 3. **JSON SSOT** — 正本は `state/` の JSON 文書 + 追記専用 JSONL。全変異は同梱 Lean エンジン
    `<loop_dir>/bin/asl-loop state` を通り(ドメイン文書の置換は `write-doc`(スキーマ検証付き・
    原子的)、宣言済みログへの追記は `append-log`)、文書は `schema.json` に宣言されたスキーマで
@@ -37,11 +43,12 @@ gate の解放は human-only の `resume.sh --note "..."`(意図 note 必須、r
 └── justfile                   # 人間向けショートカット(既存があればマージ)
 ```
 
-instance は自己完結である: 対象リポジトリ単体を clone すれば動き、Atlas Builder を知らないし
-参照もしない。唯一の例外は `<loop_dir>/lean/` の同梱エンジンソース — live runtime と
-共通判定コアを共有する忠実複製(バイト同一)であり、モジュール名前空間 `AtlasBuilder.*` を
-保持する(META.md §29.3 の規範整理)。参照はコード内の名前だけで、CONTROL_ROOT への
-ビルド・実行時参照は無い。運用面(scripts / prompts / schema / settings)に Atlas Builder の
+instance は自己完結である: 対象リポジトリ単体を clone すれば動き、Over-Project 側(CONTROL_ROOT)を
+知らないし参照もしない。唯一の例外は `<loop_dir>/lean/` の同梱エンジンソース — live runtime と
+共通判定コアを共有する忠実複製(バイト同一)であり、設計文書参照(`META.md §…`)を
+保持する(META.md §29.3 の規範整理)。その名前空間 `Looper.*` は Over-Project ループ
+共通の綴りであって製品固有の語彙ではない。参照はコード内の名前だけで、CONTROL_ROOT への
+ビルド・実行時参照は無い。運用面(scripts / prompts / schema / settings)に Over-Project 側の
 語彙は現れない。
 
 ## instantiation 手順(Over-Project Agent / 人間 共通)
@@ -59,7 +66,8 @@ instance は自己完結である: 対象リポジトリ単体を clone すれ�
    (`verify_allows` — 無いと非対話 cycle は検証コマンドを auto-deny する)。
    `ASL-PARAMETER-UNFILLED` マーカーを 1 つも残さない(残る限り loop は起動を拒否する)。
 5. `recipe.lock.json` を `<loop_dir>/` 直下に置く(`recipe.json` の `lock_format`。
-   `source_sha256` は `bin/atlas-builder recipe hash agentic-state-loop` の出力)。
+   `source_sha256` は Over-Project 側で `bin/<tool> recipe hash agentic-state-loop` を実行した出力。
+   `<tool>` は制御プレーンのバイナリ名 = CONTROL_ROOT の basename から先頭の `.` を落としたもの)。
 6. `recipe.json` の `post_install_checks` を全て実行して確認する。
 
 ## 運用
@@ -105,9 +113,9 @@ META.md §29.6、判定核は同梱エンジンの `Core/Glob.lean`)。要素は
 
 ## 注意
 
-- **cycle commit は対象が属する git リポジトリに積まれる。** Atlas Builder ワークスペース内で
+- **cycle commit は対象が属する git リポジトリに積まれる。** Over-Project ワークスペース内で
   開発中の対象で本ループを回すと、その commit はワークスペースのリポジトリ履歴に入る。
-  Atlas Builder の cycle 内から挙動確認するときは通常 `once.sh` を使い、Atlas Builder の single-flight
+  Over-Project の cycle 内から挙動確認するときは通常 `once.sh` を使い、Over-Project の single-flight
   (I-018)の下で行うこと。本番運用は対象を独立リポジトリとして clone した先で行う。
 - ハーネスは Claude Code の trust が前提である(未 trust なら loop.sh が起動を拒否する)。
 - `schema.json` は instance の enforcement surface の一部であり、agent の編集は ask で守られる。

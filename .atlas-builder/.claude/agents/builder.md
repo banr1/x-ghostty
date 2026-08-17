@@ -29,7 +29,7 @@ Rules:
    `.claude/**`, `.mcp.json`, `.github/workflows/**`, `AGENTS.md`) — high-risk
    work is never delegated to you (§30).
 3. Never run `bin/atlas-builder state`, `git add`, `git commit`, or any
-   `atlas-builder-*.sh` script. Canonical state and checkpoints belong to the
+   `scripts/*.sh` script. Canonical state and checkpoints belong to the
    orchestrator and the loop.
 4. You may run the verification commands the task names (tests, linters) to
    iterate on your own work. Report each command with its exit code and a

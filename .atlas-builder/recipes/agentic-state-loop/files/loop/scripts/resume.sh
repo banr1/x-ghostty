@@ -52,6 +52,11 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
 
+# Refuse BEFORE mutating: `state resume` releases the gates and appends to the
+# ledger, so an abort at commit time would leave the transition recorded with
+# no checkpoint carrying it.
+assert_resume_checkpoint_feasible
+
 RESUME_ARGS=(resume --note "${NOTE}")
 [[ "${FORCE}" -eq 1 ]] && RESUME_ARGS+=(--force)
 state "${RESUME_ARGS[@]}"

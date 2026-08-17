@@ -29,7 +29,7 @@
     "lock_format": {
       "recipe": "agentic-state-loop",
       "version": "<this recipe.json version>",
-      "source_sha256": "<output of: bin/atlas-builder recipe hash agentic-state-loop>",
+      "source_sha256": "<output of: bin/<tool> recipe hash agentic-state-loop, run in the control plane>",
       "installed_at": "<ISO 8601 with offset>",
       "parameters": {
         "loop_dir": "<chosen directory name>"

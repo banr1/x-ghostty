@@ -30,7 +30,7 @@ cd ./.atlas-builder && just trust ../my-project && just new-essence ../my-projec
 
 # 4. 制御プレーンへ移り、対象へ束縛 + bootstrap を一括実行
 cd ./.atlas-builder
-just init ../my-project     # = bash scripts/atlas-builder-init.sh --project ../my-project
+just init ../my-project     # = bash scripts/init.sh --project ../my-project
 
 # 5. Claude Code trust → 健全性検査 → 初期状態を commit → 実行
 just trust                  # ~/.claude.json にこのワークスペースの trust を明示設定(3-(b) で済みなら no-op)
@@ -43,7 +43,7 @@ just loop
 # 6. 人間がレビュー/修正したら(停止中でも、ループの合間でも): just resume → just loop(META.md §13.3)
 ```
 
-`just init` は `templates/control/*.tmpl` から `.claude/settings.json` / `CLAUDE.md` / `justfile` を対象名で生成(束縛)し、続けて `atlas-builder-bootstrap.sh`(seed + state ensure + validate)まで実行します。bootstrap は既存の `ESSENCE.md` を上書きしないため、新規プロジェクトでは `just init` の前に人間が実際の `ESSENCE.md` を置くのが標準です(`just new-essence` での対話起草を含む — META.md §2.1.4)。`ESSENCE.md` が未作成の場合だけ bootstrap が placeholder 雛形を seed しますが、その場合は人間が置換してから `doctor` / `loop` に進みます。init 前に書かれた `ESSENCE.md` は bootstrap がその hash を人間確認済み baseline(anchor)として記録しますが、init **後**に書いた/置換した `ESSENCE.md` は、初回ループの前に `just resume` で人間確認(attestation)を記録してください — 記録が無いと初回ループは `essence_unreviewed_change` で停止します(META.md §13.1-10)。Claude Code は trust 済みでないワークスペースの `.claude/settings.json` permissions/hooks を無視するため、初回は `just trust` を実行します。`just trust` は人間用の明示操作として `~/.claude.json` の `projects[...].hasTrustDialogAccepted` を設定します。これを避けたい場合は、`just trust-check` が表示する全パスを Claude Code の trust dialog または `~/.claude.json` の手動編集で信頼済みにしてください。`just loop` は clean worktree からしか開始しないため、`ESSENCE.md` と生成された初期状態をレビューして commit してから実行します。`ESSENCE.md` が placeholder のまま、または Claude Code trust が未設定なら `doctor` と `loop` は hard gate として停止します。1 つの制御プレーンは 1 つの対象に束縛されます(別対象へ束縛し直すには `just init ../other --force`)。
+`just init` は `templates/control/*.tmpl` から `.claude/settings.json` / `CLAUDE.md` / `justfile` を対象名で生成(束縛)し、続けて `bootstrap.sh`(seed + state ensure + validate)まで実行します。bootstrap は既存の `ESSENCE.md` を上書きしないため、新規プロジェクトでは `just init` の前に人間が実際の `ESSENCE.md` を置くのが標準です(`just new-essence` での対話起草を含む — META.md §2.1.4)。`ESSENCE.md` が未作成の場合だけ bootstrap が placeholder 雛形を seed しますが、その場合は人間が置換してから `doctor` / `loop` に進みます。init 前に書かれた `ESSENCE.md` は bootstrap がその hash を人間確認済み baseline(anchor)として記録しますが、init **後**に書いた/置換した `ESSENCE.md` は、初回ループの前に `just resume` で人間確認(attestation)を記録してください — 記録が無いと初回ループは `essence_unreviewed_change` で停止します(META.md §13.1-10)。Claude Code は trust 済みでないワークスペースの `.claude/settings.json` permissions/hooks を無視するため、初回は `just trust` を実行します。`just trust` は人間用の明示操作として `~/.claude.json` の `projects[...].hasTrustDialogAccepted` を設定します。これを避けたい場合は、`just trust-check` が表示する全パスを Claude Code の trust dialog または `~/.claude.json` の手動編集で信頼済みにしてください。`just loop` は clean worktree からしか開始しないため、`ESSENCE.md` と生成された初期状態をレビューして commit してから実行します。`ESSENCE.md` が placeholder のまま、または Claude Code trust が未設定なら `doctor` と `loop` は hard gate として停止します。1 つの制御プレーンは 1 つの対象に束縛されます(別対象へ束縛し直すには `just init ../other --force`)。
 
 ## 起動境界(絶対規則)
 
@@ -63,7 +63,7 @@ just loop
 
 ```text
 .atlas-builder/
-├── META.md              # フレームワーク設計書(正本)
+├── META.md              # フレームワーク設計書(正本)。§0–§31 の共通章と本ドメインの章の**合成物**であり、素材と合成器はフレームワークリポジトリ側にある(META.md §18.4)
 ├── CLAUDE.md            # Over-Project Agent 実行憲章
 ├── .claude/
 │   ├── settings.json    # permissions + hooks 配線(全 5 イベントを bin/atlas-builder hook <event> へ。境界の機械的強制)。マシン非依存の base — パス系ルールと sandbox は launcher が起動毎に生成する --settings overlay が担う(META.md §16.1)
@@ -81,7 +81,7 @@ just loop
 │   ├── workspace/       # init がワークスペース root README を seed する雛形(既存は保持)
 │   └── project/         # bootstrap が対象プロジェクトへ seeding する雛形(ESSENCE.md / README / .gitignore のみ。対象側 CLAUDE.md / .claude は seed しない — META.md §5.0)
 ├── recipes/             # レシピ原本: ESSENCE.md のポインタ(recipe: <name>@<major>)で採用できる具体的実装の型(META.md §29。justfile の「レシピ」= just recipe とは別物)
-├── scripts/             # 運用スクリプト一式(atlas-builder-init.sh を含む)
+├── scripts/             # 運用スクリプト一式(init.sh を含む)
 ├── lean/                # Lean ランタイムのソース(ソースが正本 — META.md §31.1 R-1)
 ├── bin/                 # ビルド済み atlas-builder バイナリの配置先(just build。gitignore 対象)
 └── justfile             # 人間向け標準運用コマンド(配布時は未束縛)
@@ -138,7 +138,7 @@ just resume --resolve R-... --note "承認済み High-Risk 変更をレビュー
 just loop
 ```
 
-状態遷移の人間向け入口は `just state <command>` です。内部では束縛済み対象に対して `bin/atlas-builder state <command> --project ../{project-title}` を実行します(`ensure` / `validate` / `apply-projection` / `should-stop` / `should-complete` / `should-reset` / `supervise-check` / `record-progress` / `raise-loop-gates` / `start-run` / `end-run` / `reset-context` / `resume` / `status`)。Spec / Todo / Recommendation / Blocker の更新は、一時 bundle を `apply-projection --file <bundle.json>` に渡して全体を事前検証してから適用し、個別 JSON を直接編集しません。ただし複数ファイルの置換は filesystem transaction ではないため、プロセス停止等による途中失敗は次回 `validate` / checkpoint guard が検出します。`supervise-check` は High-Risk scope の read-only preflight です。`resume` は commit まで含む `just resume` から実行するのが標準です。
+状態遷移の人間向け入口は `just state <command>` です。内部では束縛済み対象に対して `bin/atlas-builder state <command> --project ../{project-title}` を実行します(`ensure` / `validate` / `apply-projection` / `stage-projection` / `append-reflection` / `append-lesson` / `should-stop` / `should-complete` / `should-reset` / `supervise-check` / `record-progress` / `raise-loop-gates` / `start-run` / `end-run` / `reset-context` / `resume` / `status`)。Spec / Todo / Recommendation / Blocker の更新は、一時 bundle を `apply-projection --file <bundle.json>` に渡して全体を事前検証してから適用し、個別 JSON を直接編集しません。bundle の雛形は `stage-projection` が現在の正本 4 面をそのまま `{project}/.atlas-builder/tmp/projection_bundle.json`(gitignore 済み)へ吐きます。追記専用台帳(`reflection.jsonl` / 知見台帳 `lessons.jsonl` — META.md §14.3)への追記は `append-reflection` / `append-lesson --file <entry.json>` を通り、スキーマ検証のうえ `at` / `cycle` / `run_id` を canonical state から engine が刻みます。ただし複数ファイルの置換は filesystem transaction ではないため、プロセス停止等による途中失敗は次回 `validate` / checkpoint guard が検出します。`supervise-check` は High-Risk scope の read-only preflight です。`resume` は commit まで含む `just resume` から実行するのが標準です。
 
 ループが停止するときは、`STOP:` 行と再開手順を表示して**正常終了**します(exit 0)— 停止は人間へ手番を渡す仕様どおりの終端であり、エラーではありません(META.md §13.4、§19.1)。停止理由と再開手順は `just status` にも必ず表示されます(I-017)。loop 検出の停止(実行可能 Todo なし / 意味的進捗なし / infra 起因の `claude` 連続失敗 / must フェーズ完了のフェーズ境界 — `must_complete_awaiting_phase_approval`)は canonical state(`recommendations.json`)に Human-input Recommendation(`raised_by: "atlas-builder-loop"`)として実体化されます。停止ゲートが latch されている間の `just loop` 再実行は副作用ゼロで同じ案内を表示するだけです(I-019)— 通常 gate は ID を指定した `just resume --resolve ...`、Must 境界は `--approve-should` / `--close-at-must` の明示判断だけが進めます。
 

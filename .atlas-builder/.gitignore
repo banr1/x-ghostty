@@ -18,7 +18,7 @@ CLAUDE.local.md
 .agent/state/tool_audit.jsonl
 .agent/state/control_runs.jsonl
 # Loop runtime signals: graceful-drain flag (§19.1-7) and display-only
-# heartbeat (§19.1-8) — never canonical, so a lingering file must not dirty
+# heartbeat (§19.1-9) — never canonical, so a lingering file must not dirty
 # the I-014 clean-worktree check. The heartbeat glob also covers its
 # atomic-write remnant (loop.status.json.<pid>.tmp).
 .agent/state/loop.drain

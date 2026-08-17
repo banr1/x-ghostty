@@ -149,13 +149,15 @@ lock_pid_is_alive() {
 acquire_loop_lock() {
   local lock_dir="${LOOP_ROOT}/tmp/loop.lock"
   mkdir -p "${LOOP_ROOT}/tmp"
-  local attempt owner_pid
+  local attempt owner_pid moved_pid
   # shellcheck disable=SC2034  # `attempt` only bounds the retry count.
   for attempt in 1 2 3; do
     if mkdir "${lock_dir}" 2>/dev/null; then
       LOOP_LOCK_DIR="${lock_dir}"
-      printf '%s\n' "$$" >"${lock_dir}/pid"
+      # Arm the release trap BEFORE writing the pid so a crash in the tiny
+      # mkdir->pid-write window still cleans up on exit.
       trap 'release_loop_lock' EXIT
+      printf '%s\n' "$$" >"${lock_dir}/pid"
       return 0
     fi
     owner_pid="$(cat "${lock_dir}/pid" 2>/dev/null || true)"
@@ -163,9 +165,24 @@ acquire_loop_lock() {
       err "another loop/resume is already running (pid ${owner_pid}); only one may run per instance."
       exit 5
     fi
+    if [[ -z "${owner_pid}" ]] && [[ -z "$(find "${lock_dir}" -maxdepth 0 -mmin +1 2>/dev/null)" ]]; then
+      # A pid-less lock younger than a minute is almost certainly a holder
+      # caught between its mkdir and its pid write, not debris. Reclaiming it
+      # would erase the winner's lock and let two transitions run — refuse.
+      err "another loop/resume appears to be acquiring the lock right now (${lock_dir}); retry in a few seconds."
+      exit 5
+    fi
     warn "reclaiming stale loop lock (owner pid ${owner_pid:-unknown} is not running)"
-    # Reclaim by atomic rename so two racers cannot delete each other's fresh lock.
+    # Reclaim by atomic rename, and verify identity: if a racer already
+    # recreated a fresh lock, our mv would grab and destroy it and both of us
+    # would hold. On mismatch, restore it and refuse.
     if mv "${lock_dir}" "${lock_dir}.reclaim.$$" 2>/dev/null; then
+      moved_pid="$(cat "${lock_dir}.reclaim.$$/pid" 2>/dev/null || true)"
+      if [[ "${moved_pid}" != "${owner_pid}" ]]; then
+        mv "${lock_dir}.reclaim.$$" "${lock_dir}" 2>/dev/null || true
+        err "the loop lock changed hands during reclamation; retry in a few seconds."
+        exit 5
+      fi
       rm -rf "${lock_dir}.reclaim.$$"
     fi
   done
@@ -175,7 +192,15 @@ acquire_loop_lock() {
 
 release_loop_lock() {
   if [[ -n "${LOOP_LOCK_DIR}" && -d "${LOOP_LOCK_DIR}" ]]; then
-    rm -rf "${LOOP_LOCK_DIR}"
+    # Only remove the lock if it is still ours (its pid is this process); a
+    # reclamation race may have moved ours out from under us.
+    local on_disk_pid
+    on_disk_pid="$(cat "${LOOP_LOCK_DIR}/pid" 2>/dev/null || true)"
+    if [[ -n "${on_disk_pid}" && "${on_disk_pid}" != "$$" ]]; then
+      warn "the loop lock is no longer ours; leaving it in place."
+    else
+      rm -rf "${LOOP_LOCK_DIR}"
+    fi
     LOOP_LOCK_DIR=""
   fi
 }
@@ -267,6 +292,140 @@ is_protected_leftover_path() {
   "${ASL_BIN}" util protected-match --loop-root "${LOOP_ROOT}" "${rel}"
 }
 
+# --- checkpoint scope and the credential guard ------------------------------
+# A checkpoint may only carry the target. When the target is a subdirectory of
+# a larger repository, anything the human staged elsewhere is theirs: a cycle
+# cannot reach it (each cycle starts from a clean worktree) but a resume can,
+# because a resume deliberately records a dirty worktree.
+path_in_checkpoint_scope() {
+  [[ "${TARGET_REL}" == "." ]] && return 0
+  case "$1" in
+    "${TARGET_REL}" | "${TARGET_REL}"/*) return 0 ;;
+  esac
+  return 1
+}
+
+guard_no_staged_outside_checkpoint_scope() {
+  [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
+
+  local found=0
+  local path
+  while IFS= read -r -d '' path; do
+    if ! path_in_checkpoint_scope "${path}"; then
+      err "Staged change remains outside the checkpoint scope: ${path}"
+      found=1
+    fi
+  done < <(git -C "${GIT_ROOT}" diff --cached --no-renames --name-only -z)
+
+  [[ "${found}" -eq 0 ]]
+}
+
+# Last line of defense before a durable checkpoint: scan the exact staged blob
+# for high-confidence credential shapes without ever printing the matched
+# secret. Path isolation (is_forbidden_checkpoint_path, and the harness deny
+# rules) cannot prevent a noisy tool from copying a credential into ordinary
+# source or a log the cycle produced. There is deliberately no in-band
+# suppression marker: an agent that can edit staged content could otherwise
+# authorize its own bypass.
+# One definition shared by the authoritative staged-blob scan (index bytes at
+# commit time) and the resume feasibility pre-scan (worktree bytes before any
+# state mutation).
+SECRET_SCAN_PATTERN='-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{50,}|xox[baprs]-[A-Za-z0-9-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}'
+
+staged_path_has_secret() {
+  local path="$1"
+  local pattern="${SECRET_SCAN_PATTERN}"
+
+  # `git grep --cached` reads the exact index blob, not the worktree. `-I`
+  # skips binary blobs; `-q` ensures neither the credential nor its line is
+  # emitted. Exit >1 remains distinguishable from the clean/no-match exit 1.
+  # `-e` is mandatory, not stylistic: the pattern starts with `-----BEGIN`,
+  # which a positional argument position would parse as an unknown option and
+  # turn every scan into exit 129 (i.e. the guard would fail closed on every
+  # checkpoint, never actually scanning).
+  git -C "${GIT_ROOT}" grep --cached -I -q -E -e "${pattern}" -- "${path}"
+}
+
+guard_no_staged_secrets() {
+  [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
+
+  local found=0
+  local path
+  local paths_file=""
+  # Captured to a file, not read from a pipeline: an enumeration that failed
+  # must not read as "nothing staged" — that is a scan reporting clean because
+  # it never ran.
+  paths_file="$(mktemp "${TMPDIR:-/tmp}/asl-loop-staged-paths.XXXXXX")" || {
+    err "Unable to allocate the staged-secret scan input."
+    return 1
+  }
+  if ! git -C "${GIT_ROOT}" diff --cached --name-only -z --diff-filter=ACMR >"${paths_file}"; then
+    rm -f "${paths_file}"
+    err "Unable to enumerate staged content for the secret scan."
+    return 1
+  fi
+  while IFS= read -r -d '' path; do
+    local scan_rc=0
+    staged_path_has_secret "${path}" || scan_rc=$?
+    if [[ "${scan_rc}" -eq 0 ]]; then
+      err "Potential secret detected in staged content: ${path}"
+      found=1
+    elif [[ "${scan_rc}" -ne 1 ]]; then
+      err "Unable to inspect staged content for potential secrets: ${path}"
+      found=1
+    fi
+  done <"${paths_file}"
+  rm -f "${paths_file}"
+  if [[ "${found}" -ne 0 ]]; then
+    err "Checkpoint refused before commit; remove/redact the credential."
+    return 1
+  fi
+}
+
+# Emit every uncommitted path (unstaged, staged, untracked) in GIT_ROOT,
+# NUL-terminated, respecting .gitignore — the same set the checkpoint guards
+# will later judge.
+list_uncommitted_paths() {
+  [[ -n "${GIT_ROOT:-}" ]] || resolve_git_context
+
+  git -C "${GIT_ROOT}" diff --no-renames --name-only -z
+  git -C "${GIT_ROOT}" diff --cached --no-renames --name-only -z
+  git -C "${GIT_ROOT}" ls-files --others --exclude-standard -z
+}
+
+# Refuse before any state mutation if the eventual review checkpoint would be
+# rejected by the commit guards. A resume releases gates and appends to the
+# state ledger BEFORE it commits, so an abort at commit time would leave a
+# half-applied resume on disk — the transition would be recorded as done while
+# no checkpoint carries it.
+assert_resume_checkpoint_feasible() {
+  assert_git_commit_ready
+
+  local ok=1
+  local path
+  while IFS= read -r -d '' path; do
+    if ! path_in_checkpoint_scope "${path}"; then
+      err "Uncommitted change outside the checkpoint scope: ${path}"
+      ok=0
+    elif is_forbidden_checkpoint_path "${path}"; then
+      err "Uncommitted change on a forbidden checkpoint path: ${path}"
+      ok=0
+    elif [[ -f "${GIT_ROOT}/${path}" ]] &&
+      LC_ALL=C grep -I -q -E -e "${SECRET_SCAN_PATTERN}" "${GIT_ROOT}/${path}" 2>/dev/null; then
+      # The authoritative scan stays the index-blob scan at commit
+      # (guard_no_staged_secrets); this is the worktree-side pre-check that
+      # keeps the mutation from starting at all.
+      err "Potential secret in an uncommitted file the checkpoint would carry: ${path}"
+      ok=0
+    fi
+  done < <(list_uncommitted_paths)
+
+  if [[ "${ok}" -ne 1 ]]; then
+    err "Resume refused before touching state: commit, stash, or remove the paths above first."
+    exit 4
+  fi
+}
+
 # Stage every TARGET_ROOT change, enforce the guards, and create exactly one
 # commit. on_empty: "fail" (cycle commits must never be empty) or "skip"
 # (a resume may find nothing left to record).
@@ -281,6 +440,10 @@ create_guarded_checkpoint() {
 
   git -C "${GIT_ROOT}" add -A -- "${TARGET_REL}"
 
+  # --no-renames is mandatory: with rename detection a human's mid-cycle move
+  # of a protected file reports only the destination, hiding the source-side
+  # deletion, which would then ride the cycle commit. Splitting the rename into
+  # two records lets the reset below unstage both sides.
   local staged aborted=0
   while IFS= read -r -d '' staged; do
     if is_forbidden_checkpoint_path "${staged}"; then
@@ -289,10 +452,33 @@ create_guarded_checkpoint() {
     elif [[ "${honor_protected}" == "yes" ]] && is_protected_leftover_path "${staged}"; then
       git -C "${GIT_ROOT}" reset -q -- "${staged}" >/dev/null 2>&1 || true
     fi
-  done < <(git -C "${GIT_ROOT}" diff --cached --name-only -z)
+  done < <(git -C "${GIT_ROOT}" diff --cached --no-renames --name-only -z)
   if [[ "${aborted}" -eq 1 ]]; then
     git -C "${GIT_ROOT}" reset -q -- "${TARGET_REL}"
     err "checkpoint aborted; remove or ignore the forbidden paths first."
+    exit 4
+  fi
+  # Fail-closed: no protected path may survive the reset still staged.
+  if [[ "${honor_protected}" == "yes" ]]; then
+    while IFS= read -r -d '' staged; do
+      if is_protected_leftover_path "${staged}"; then
+        git -C "${GIT_ROOT}" reset -q -- "${TARGET_REL}"
+        err "protected path still staged after the reset: ${staged}"
+        exit 4
+      fi
+    done < <(git -C "${GIT_ROOT}" diff --cached --no-renames --name-only -z)
+  fi
+
+  # A cycle cannot reach either of the next two (it starts from a clean
+  # worktree), but a resume records a dirty one — and that is exactly where a
+  # foreign staged path or a credential would ride into history.
+  if ! guard_no_staged_outside_checkpoint_scope; then
+    git -C "${GIT_ROOT}" reset -q -- "${TARGET_REL}"
+    err "checkpoint aborted; staged changes outside the target require human review."
+    exit 4
+  fi
+  if ! guard_no_staged_secrets; then
+    git -C "${GIT_ROOT}" reset -q -- "${TARGET_REL}"
     exit 4
   fi
 

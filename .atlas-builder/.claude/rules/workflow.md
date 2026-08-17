@@ -13,10 +13,10 @@ Each cycle follows this order. Do not skip steps.
 9. Verify with real commands; capture exit codes.
 10. Recover implementation errors autonomously where possible; otherwise mark the Todo `blocked` and continue with other Todos.
 11. Update canonical JSON state only through `atlas-builder state`. For spec/todo/recommendations/blockers, build a temporary bundle and use `state apply-projection`; never edit a projection in place or rely on after-the-fact validation (see the state rule).
-12. Append a reflection entry to `reflection.jsonl`.
+12. Append a reflection entry with `bin/atlas-builder state append-reflection --file <entry.json>` (never by Edit — see the state rule). If the cycle produced knowledge worth carrying to the next project — a build tactic that actually worked, a harness pattern, a tool limit and its workaround — append it to `lessons.jsonl` with `append-lesson` instead of retyping it into the handoff every cycle.
 13. Decide whether a context reset is due (`atlas-builder state should-reset`).
 
-After the cycle returns to `atlas-builder-loop.sh`, the loop script records
+After the cycle returns to `loop.sh`, the loop script records
 semantic progress, materializes any loop-detected stop gate as a
 Recommendation (`atlas-builder state raise-loop-gates`, §13.4), validates again,
 and creates exactly one Git checkpoint commit for the

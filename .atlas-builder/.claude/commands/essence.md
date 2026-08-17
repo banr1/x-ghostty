@@ -418,7 +418,7 @@ The wrapper refuses drafts failing 1–2; the rest are your protocol:
 2. Print a short summary: per section, what was decided (and what was
    deliberately left out and why).
 3. Tell the human to end the session (/exit or Ctrl+D). The wrapper
-   (`atlas-builder-essence.sh`) shows the full draft (and the diff when replacing
+   (`essence.sh`) shows the full draft (and the diff when replacing
    an existing Essence), asks for an explicit y/N, installs only on y, and
    prints the next command (`just init` before binding; `just resume` →
    `just loop` after).

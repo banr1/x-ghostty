@@ -11,7 +11,8 @@
     "validation": "validation.json",
     "reflection": "reflection.jsonl",
     "runs": "runs.jsonl",
-    "high_risk_changes": "high_risk_changes.jsonl"
+    "high_risk_changes": "high_risk_changes.jsonl",
+    "lessons": "lessons.jsonl"
   },
   "priority_order": [
     "ESSENCE.md",

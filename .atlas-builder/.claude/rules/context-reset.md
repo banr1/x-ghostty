@@ -11,8 +11,14 @@ Reset triggers (tracked in `context.json.counters` vs `reset_policy`):
 Before any reset (and before you expect compaction), write a handoff:
 
 1. `PROJECT_ROOT/.atlas-builder/state/context.json` — `handoff.summary`, `handoff.next_actions`, `handoff.open_questions`, counters updated.
-2. Append the decision to `reflection.jsonl`.
+2. Append the decision to `reflection.jsonl` (`bin/atlas-builder state append-reflection --file <entry.json>`).
 3. `CONTROL_ROOT/.agent/state/control_context.json` — control-plane-level note if relevant (about Atlas Builder itself, not the target's projection).
+
+`next_actions` holds the next actions — nothing else. Cross-cycle knowledge (build
+tactics that worked, harness patterns, tool limits) belongs in `lessons.jsonl` via
+`state append-lesson` (META.md §14.3). A handoff that re-transcribes the same
+"Ops reminders / Lean lessons / Harness patterns" block every cycle is not a
+thorough handoff; it is a missing ledger, and it costs context on every reset.
 
 A fresh session must be able to resume from disk alone: assume the next Atlas Builder session read nothing but the state files.
 

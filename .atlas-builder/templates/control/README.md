@@ -1,6 +1,6 @@
 # Control-plane bind templates
 
-These `*.tmpl` files are the canonical sources that `atlas-builder-init.sh`
+These `*.tmpl` files are the canonical sources that `init.sh`
 (`just init <path>`) renders into the live control-plane files when binding this
 `.atlas-builder` control plane to a single target project:
 

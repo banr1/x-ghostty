@@ -75,6 +75,6 @@ just loop
 
 このワークスペースは `just init ../x-ghostty` で束縛・初期化済みです。別プロジェクトへ束縛し直すには `.atlas-builder/` 内で `just init ../<other> --force` を実行します。
 
-`just` が入っていない場合、人間は `.atlas-builder/` 内で対応する `bash scripts/atlas-builder-*.sh --project ../x-ghostty` を直接実行できます。ただし loop / once / stop / watch / init / resume / triage / supervise / essence / trust / trust-check / doctor は入口の綴りによらず人間専用で、Agent session からの直接実行も hook が拒否します。Agent が実行できるのは settings と hook が明示許可する status/validation/state 操作だけです(META.md §18.2)。
+`just` が入っていない場合、人間は `.atlas-builder/` 内で対応する `bash scripts/*.sh --project ../x-ghostty` を直接実行できます。ただし loop / once / stop / watch / init / resume / triage / supervise / essence / trust / trust-check / doctor は入口の綴りによらず人間専用で、Agent session からの直接実行も hook が拒否します。Agent が実行できるのは settings と hook が明示許可する status/validation/state 操作だけです(META.md §18.2)。
 
 詳細な運用手順は [.atlas-builder/README.md](.atlas-builder/README.md) を参照してください。

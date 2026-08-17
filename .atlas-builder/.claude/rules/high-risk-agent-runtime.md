@@ -42,7 +42,7 @@ reflection summary, and the isolated-runner-only verification boundary
 
 Relative to CONTROL_ROOT, these are immutable (deny) for you, because they
 decide what the framework enforces: `CLAUDE.md`, `.claude/**`, `scripts/**` (_lib.sh,
-atlas-builder-*.sh), `templates/**` (bind sources for settings/CLAUDE.md/justfile),
+scripts/*.sh), `templates/**` (bind sources for settings/CLAUDE.md/justfile),
 `recipes/**` (recipe originals, META.md §29), `justfile`, `META.md`,
 `README.md` (the control plane's own human-facing document),
 `.agent/prompts/**`, `.agent/state/workspace.json`, `.agent/state/project_index.json`,

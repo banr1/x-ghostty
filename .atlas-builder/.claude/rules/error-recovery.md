@@ -97,7 +97,7 @@ human would see the loop refuse to progress with no explanation. Therefore:
 These gates are released only by the human via targeted `just resume` (META.md §13.3),
 which resolves only the exact `--resolve` IDs (or records one explicit Must-boundary
 decision) and commits the review checkpoint; unselected gates stay open. Never run
-`atlas-builder state resume` / `atlas-builder-resume.sh` yourself, and
+`atlas-builder state resume` / `resume.sh` yourself, and
 never edit blockers or recommendations to clear a human gate (I-011). After
 resume, re-read `ESSENCE.md` and re-raise the stop condition if it still holds.
 

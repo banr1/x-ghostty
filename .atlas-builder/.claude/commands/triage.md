@@ -242,7 +242,7 @@ When every gate item is either dispatched or has an agreed action plan:
    entry, and the review checkpoint commit body. If open questions remain, do
    NOT write either file.
 3. Tell the human to end the session (/exit or Ctrl+D). The wrapper
-   (`atlas-builder-triage.sh`) shows the note and asks for an explicit y/N before
+   (`triage.sh`) shows the note and asks for an explicit y/N before
    running the human-only resume; it never runs `just loop`.
 
 User-facing responses must be Japanese.

@@ -1806,7 +1806,7 @@
       "id": "T-043",
       "title": "Update AGENTS.md (whose CLAUDE.md symlink follows) to the post-rename project vocabulary so the implementation docs do not drift; content-only terminology edit",
       "status": "done",
-      "priority": "should",
+      "priority": "must",
       "spec": [
         "S-068"
       ],
@@ -2537,7 +2537,7 @@
       "id": "T-062",
       "title": "Observability of the pwd report path: log the received host and path (and the resulting split decision) so a remote-split misbehaviour can be diagnosed on device without tracing the whole chain",
       "status": "done",
-      "priority": "should",
+      "priority": "must",
       "spec": [
         "S-074",
         "S-076"
