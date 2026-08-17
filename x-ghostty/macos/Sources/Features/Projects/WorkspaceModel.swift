@@ -202,18 +202,18 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// 1. Clear any zoom (`SPEC.md` §18.4: zoomed projects un-zoom first).
     /// 2. Persist the outgoing focused project's live pane tree, captured by the
     ///    caller from `surfaceTree` *before* the switch.
-    /// 3. Register `newProject` and insert its ref next to the focused project in
-    ///    the canonical tree.
+    /// 3. Insert `newProject`'s row right below the focused project's in the
+    ///    ledger; the arrangement re-derives from the ledger (`SPEC.md` §26.3),
+    ///    so `direction` no longer chooses a position.
     /// 4. Switch `focusedProject` to `newProject`.
     ///
     /// The caller is then responsible for swapping `surfaceTree` to
     /// `newProject.paneTree` and moving keyboard focus into its initial pane.
     ///
-    /// - Throws: `WorkspaceError.noFocusedProject` if nothing is focused,
+    /// - Throws: `WorkspaceError.noFocusedProject` if nothing is focused, or
     ///   `WorkspaceError.visibleProjectLimitReached` when
-    ///   `WorkspaceState.maxVisibleProjects` are already visible, or a
-    ///   `SplitTree.SplitError` if the canonical insert fails. The model is left
-    ///   unchanged on throw.
+    ///   `WorkspaceState.maxVisibleProjects` are already visible. The model is
+    ///   left unchanged on throw.
     func openNewProject(
         _ newProject: ProjectStateOf<Pane>,
         direction: SplitTree<ProjectRef>.NewDirection,
@@ -228,8 +228,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             throw WorkspaceError.visibleProjectLimitReached
         }
 
-        // Build the next state in a local copy so a failed insert leaves the
-        // model untouched.
         var next = state
 
         // §18.4: a new project split un-zooms first.
@@ -238,15 +236,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // Persist the outgoing focused project's panes before switching away.
         next.saveOutgoingPaneTree(outgoing)
 
-        // Insert the new project next to the focused one. Done before mutating
-        // `projects`/`focusedProject` for real so a throw here is a no-op.
-        let newTree = try next.canonicalProjectTree.inserting(
-            view: ProjectRef(id: newProject.id),
-            at: ProjectRef(id: anchorID),
-            direction: direction)
-
-        next.canonicalProjectTree = newTree
-        next.projects[newProject.id] = newProject
+        // The new row lands right below the focused one; `canAddVisibleProject`
+        // above guarantees it comes in visible.
+        next.insertProject(newProject, after: anchorID)
         next.focusedProject = newProject.id
 
         state = next
@@ -366,40 +358,16 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return (target, state.projects[target]?.focusedSurface)
     }
 
-    /// Resize the canonical split nearest to the focused project along the axis
-    /// matching `direction`, by `ratioDelta` (`SPEC.md` §11.4).
-    ///
-    /// Mirrors `SplitTree.resizing(node:by:in:with:)`: walks up the canonical
-    /// tree from the focused project's leaf and finds the nearest ancestor split
-    /// whose axis matches the resize direction (horizontal for left/right,
-    /// vertical for up/down), then adjusts its ratio. This works regardless of
-    /// whether the focused project has a spatial neighbor in `direction`, fixing
-    /// the bug where pressing the "shrink" direction was a no-op because the
-    /// outermost project has no neighbor on the wall side.
-    ///
-    /// No-op when zoomed, when there is no focused project, when there is only one
-    /// visible project, or when no ancestor split matches the axis.
+    /// Project-boundary resize is abolished (`SPEC.md` §26.3): the arrangement
+    /// is a projection re-derived from the ledger and the remembered layout
+    /// type, whose slot shares are fixed by the type's rule, so there is no
+    /// ratio to adjust. Always a no-op; pane resize inside a zoomed project is
+    /// untouched (it lives on the pane tree, not here).
     func resizeFocusedProject(
         _ direction: SplitTree<ProjectRef>.Spatial.Direction,
         ratioDelta: Double
     ) {
-        guard state.zoomedProject == nil else { return }
-        guard let focusedID = state.focusedProject else { return }
-        guard state.effectiveVisibleProjectTree?.isSplit ?? false else { return }
-
-        let targetAxis: SplitTree<ProjectRef>.Direction = switch direction {
-        case .left, .right: .horizontal
-        case .up, .down: .vertical
-        }
-
-        guard let splitPath = state.canonicalProjectTree.nearestAncestorSplitPath(
-            from: ProjectRef(id: focusedID),
-            matchingAxis: targetAxis) else { return }
-
-        state.canonicalProjectTree = state.canonicalProjectTree.adjustRatio(
-            at: splitPath,
-            direction: direction,
-            amount: ratioDelta)
+        XGhostty.logger.debug("resize_project skipped: the arrangement is a ledger projection")
     }
 
     /// Whether `move_project` in `direction` would swap anything. Shares
@@ -413,10 +381,11 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///
     /// The neighbor is resolved exactly like `goto_project` (spatial for
     /// up/down/left/right, in-order traversal for previous/next), then the two
-    /// leaves exchange payloads in the canonical tree. The tree's shape and every
-    /// split ratio stay put, so the layout does not reflow — the two projects
-    /// simply trade slots. Focus follows the moved project to its new slot, so
-    /// `focusedProject` is unchanged.
+    /// projects' *ledger rows* trade places: the arrangement is a projection of
+    /// the row order (`SPEC.md` §26.3), and a swap of two visible rows swaps
+    /// exactly their slots, so the layout does not reflow — the two projects
+    /// simply trade places (and ordinals). Focus follows the moved project to
+    /// its new slot, so `focusedProject` is unchanged.
     ///
     /// - Returns: `true` if the projects were swapped, `false` when the move is a
     ///   no-op (zoomed, no focused project, or no neighbor in that direction), so
@@ -425,32 +394,22 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     func moveFocusedProject(_ direction: SplitTree<ProjectRef>.FocusDirection) -> Bool {
         guard let focusedID = state.focusedProject else { return false }
         guard let targetID = gotoProjectTarget(direction) else { return false }
-        guard let swapped = state.canonicalProjectTree.swappingLeaves(
-            ProjectRef(id: focusedID),
-            ProjectRef(id: targetID)) else { return false }
+        var order = state.projectOrder
+        guard let a = order.firstIndex(of: focusedID),
+              let b = order.firstIndex(of: targetID) else { return false }
 
-        state.canonicalProjectTree = swapped
-        return true
+        order.swapAt(a, b)
+        return state.applyProjectOrder(order)
     }
 
-    /// Equalize the project layout (`SPEC.md` §11.5).
-    ///
-    /// Hidden projects are not in `canonicalProjectTree` at all — hiding removes the
-    /// leaf (§11.7) — so equalizing the canonical tree only ever rebalances
-    /// splits between visible projects. Zoom is a pure display state and does not
-    /// affect the canonical ratios being equalized.
-    ///
-    /// - Returns: `true` if the layout was equalized, `false` when there is
-    ///   nothing to equalize (a single project, or no projects at all).
+    /// Project-level equalize is abolished with resize (`SPEC.md` §26.3): the
+    /// layout-type rules already deal equal shares by construction, so there
+    /// is never anything to rebalance. Always `false`; pane equalize inside a
+    /// zoomed project is untouched.
     @discardableResult
     func equalizeProjects() -> Bool {
-        guard state.canonicalProjectTree.isSplit else {
-            XGhostty.logger.debug("equalize_projects skipped: no project split to equalize")
-            return false
-        }
-
-        state.canonicalProjectTree = state.canonicalProjectTree.equalized()
-        return true
+        XGhostty.logger.debug("equalize_projects skipped: the arrangement is a ledger projection")
+        return false
     }
 
     // MARK: Zoom / hide / show (Phase 5)
@@ -501,15 +460,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return neighborAfterHiding(id) != nil
     }
 
-    /// Hide the focused project (`SPEC.md` §11.7, §18.2–3). The project's leaf is
-    /// removed from `canonicalProjectTree` so the remaining projects reclaim its
-    /// space, its id joins `hiddenProjectIDs` (the shelf's source of truth), and
-    /// focus moves to the nearest remaining project. Its `ProjectState` — including
-    /// its pane tree and live surfaces — stays in `projects`, so the processes stay
-    /// alive (invariant §14.7).
-    ///
-    /// Hiding is therefore not positional: `show_project` re-attaches the project
-    /// next to the trailing project rather than where it used to be.
+    /// Hide the focused project (`SPEC.md` §11.7, §18.2–3). Its ledger row's
+    /// visibility flips, the arrangement re-derives without it so the remaining
+    /// projects reclaim its space, and focus moves to the nearest remaining
+    /// project. Its `ProjectState` — including its pane tree and live surfaces —
+    /// stays in `projects`, so the processes stay alive (invariant §14.7), and
+    /// its row keeps its position: showing it later brings it back in place.
     ///
     /// The caller passes the outgoing focused project's live panes; they are
     /// persisted into `projects` (the hidden project keeps its layout) before focus
@@ -532,12 +488,10 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // The hidden project keeps its current layout alive in `projects`.
         next.saveOutgoingPaneTree(outgoing)
 
-        // Drop the leaf so the visible projects reclaim its space; `projects` keeps
-        // the state (and the running panes) behind the shelf entry.
-        next.canonicalProjectTree = next.canonicalProjectTree.removing(.leaf(view: ProjectRef(id: hideID)))
-        next.hiddenProjectIDs.insert(hideID)
-        // §18.3: a hidden project cannot remain zoomed.
-        if next.zoomedProject == hideID { next.zoomedProject = nil }
+        // The row keeps its ledger position; only its visibility flips, and the
+        // arrangement re-derives without it (a zoom on it is released by the
+        // relayout, §18.3).
+        next.setProjectHidden(hideID, true)
         next.focusedProject = neighbor.id
         // Outside zoom the neighbor's focus lands on its primary (SPEC §22.4).
         next.snapFocusToPrimaryInOverallView()
@@ -565,13 +519,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return canAddVisibleProject
     }
 
-    /// Show the hidden project `id` (`SPEC.md` §11.8): re-attach its leaf, remove
-    /// it from the hidden set, clear any zoom, and focus it.
+    /// Show the hidden project `id` (`SPEC.md` §11.8): flip its visibility,
+    /// clear any zoom, and focus it.
     ///
-    /// The project does *not* return to where it was before it was hidden — hiding
-    /// removed its leaf entirely. The trailing project (the last leaf in traversal
-    /// order) is split in half horizontally and the shown project takes the right
-    /// half, so every other visible project keeps its current size.
+    /// The project returns to its *own ledger row* — the row never moved while
+    /// hidden — so the arrangement re-derives with it back in place and every
+    /// ordinal follows the row order (`SPEC.md` §27.1).
     ///
     /// Like `switchFocusedProject`, the caller passes the outgoing focused project's
     /// live panes so they are persisted before focus moves away.
@@ -588,9 +541,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
-        next.hiddenProjectIDs.remove(id)
-        next.canonicalProjectTree = next.canonicalProjectTree
-            .appendingAtTrailingLeaf(ProjectRef(id: id))
+        next.setProjectHidden(id, false)
         next.zoomedProject = nil
         next.focusedProject = id
         // The reveal lands in the overall view, so the shown project's focus
@@ -704,16 +655,10 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
+        // Rows keep their ledger positions; only visibility flips, and the
+        // relayout releases any zoom on a newly hidden project (§18.3).
         for id in selection {
-            next.canonicalProjectTree = next.canonicalProjectTree
-                .removing(.leaf(view: ProjectRef(id: id)))
-            next.hiddenProjectIDs.insert(id)
-        }
-        // §18.3 backstop: a hidden project cannot remain zoomed. Begin already
-        // released the zoom; this covers a zoom re-entered mid-session (e.g.
-        // via the menu bar, which the overlay cannot block).
-        if let zoomed = next.zoomedProject, selection.contains(zoomed) {
-            next.zoomedProject = nil
+            next.setProjectHidden(id, true)
         }
         if let target { next.focusedProject = target }
         next.snapFocusToPrimaryInOverallView()
@@ -806,17 +751,15 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             : hideFromProjectList(id, savingOutgoingPaneTree: outgoing)
     }
 
-    /// Re-attach `id`'s leaf next to the trailing project, exactly where
-    /// `showProject` puts it (`SPEC.md` §11.8), but without taking focus.
+    /// Show `id` back at its own ledger row, exactly like `showProject`
+    /// (`SPEC.md` §11.8), but without taking focus.
     private func showFromProjectList(
         _ id: ProjectID,
         savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> (target: ProjectID, focus: SurfaceID?)? {
         var next = state
         next.saveOutgoingPaneTree(outgoing)
-        next.hiddenProjectIDs.remove(id)
-        next.canonicalProjectTree = next.canonicalProjectTree
-            .appendingAtTrailingLeaf(ProjectRef(id: id))
+        next.setProjectHidden(id, false)
         state = next
         return nil
     }
@@ -837,12 +780,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
-        next.canonicalProjectTree = next.canonicalProjectTree
-            .removing(.leaf(view: ProjectRef(id: id)))
-        next.hiddenProjectIDs.insert(id)
-        // §18.3 backstop: a hidden project cannot remain zoomed. Begin already
-        // released the zoom; this covers a zoom re-entered mid-session.
-        if next.zoomedProject == id { next.zoomedProject = nil }
+        // The row keeps its ledger position; the relayout releases any zoom
+        // re-entered mid-session (§18.3 backstop).
+        next.setProjectHidden(id, true)
         if let target { next.focusedProject = target }
         next.snapFocusToPrimaryInOverallView()
         state = next
@@ -993,11 +933,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
+        // The new rows land at the ledger tail, visible (the shortfall math
+        // guarantees room under the cap), so they fill the trailing slots.
         for project in newProjects {
-            next.projects[project.id] = project
+            next.insertProject(project, after: nil)
         }
-        let ordered = next.visibleProjectIDs + newProjects.map(\.id)
-        applyLayoutTree(layout, ordered: ordered, on: &next)
+        applyLayoutTree(layout, ordered: next.visibleProjectIDs, on: &next)
         state = next
         return true
     }
@@ -1076,10 +1017,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
+        // Rows keep their ledger positions; only visibility flips.
         for id in selection {
-            next.canonicalProjectTree = next.canonicalProjectTree
-                .removing(.leaf(view: ProjectRef(id: id)))
-            next.hiddenProjectIDs.insert(id)
+            next.setProjectHidden(id, true)
         }
         if let target { next.focusedProject = target }
         applyLayoutTree(pick.layout, ordered: next.visibleProjectIDs, on: &next)
@@ -1096,28 +1036,26 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         layoutHidePick = nil
     }
 
-    /// Rebuild the canonical tree as `layout`'s grid over `ordered` (the
-    /// assignment order: current ordinals first, top row first, left to
-    /// right, the +1 slot last — `SPEC.md` §26.1). The application is a
-    /// one-shot arrangement change (§26.4): only the canonical tree is
-    /// rewritten — no applied-layout state exists, hidden projects keep
-    /// their `projects` entries and shelf spots untouched, and ordinals
-    /// follow because they derive from traversal order. A zoom (possible
-    /// mid-session via the menu bar) is cleared: applying arranges the
-    /// overall view.
+    /// Transitional shim of the registered-layout application (ledger
+    /// inversion, `SPEC.md` §26.3): the arrangement is a projection re-derived
+    /// from the ledger and the remembered layout type, so a registered
+    /// layout's own grid no longer applies — only the visible rows' *order*
+    /// does. `ordered` is written into the visible rows (hidden rows keep
+    /// their ledger positions) and the projection relayouts; the layout-type
+    /// selector replaces this whole path. A zoom (possible mid-session via
+    /// the menu bar) is cleared: applying arranges the overall view.
     private func applyLayoutTree(
         _ layout: ProjectLayout,
         ordered ids: [ProjectID],
         on next: inout WorkspaceStateOf<Pane>
     ) {
         assert(ids.count == layout.projectCount)
-        var rows: [[ProjectRef]] = []
-        var index = 0
-        for count in layout.rowCounts {
-            rows.append(ids[index..<(index + count)].map { ProjectRef(id: $0) })
-            index += count
+        var order = next.projectOrder
+        let positions = order.indices.filter { !next.hiddenProjectIDs.contains(order[$0]) }
+        if positions.count == ids.count {
+            for (position, id) in zip(positions, ids) { order[position] = id }
+            next.applyProjectOrder(order)
         }
-        next.canonicalProjectTree = SplitTree(gridRows: rows)
         next.zoomedProject = nil
         next.snapFocusToPrimaryInOverallView()
     }
@@ -1156,15 +1094,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         guard let targetID else { return .closedLast }
 
         var next = state
-        next.canonicalProjectTree = state.canonicalProjectTree.removing(.leaf(view: closeRef))
-        next.projects.removeValue(forKey: closeID)
-        next.hiddenProjectIDs.remove(closeID)
-        if next.zoomedProject == closeID { next.zoomedProject = nil }
-        // Reveal the target if it was hidden (no visible project remained). It has
-        // no leaf while hidden, so it is re-attached like `show_project` does.
-        if next.hiddenProjectIDs.remove(targetID) != nil {
-            next.canonicalProjectTree = next.canonicalProjectTree
-                .appendingAtTrailingLeaf(ProjectRef(id: targetID))
+        // Drops the row from the ledger; the relayout releases a zoom on it.
+        next.removeProject(closeID)
+        // Reveal the target if it was hidden (no visible project remained); it
+        // comes back at its own ledger row like `show_project`.
+        if next.hiddenProjectIDs.contains(targetID) {
+            next.setProjectHidden(targetID, false)
         }
         next.focusedProject = targetID
         // Outside zoom the surviving project's focus lands on its primary
@@ -1432,16 +1367,18 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.projects[id]?.deadline
     }
 
-    /// The visible projects in priority order (SPEC §24.3). Forwarded from the
-    /// state so the sort actions, render paths, and tests share one judgment.
-    func priorityOrderedVisibleProjectIDs() -> [ProjectID] {
-        state.priorityOrderedVisibleProjectIDs()
+    /// Every row — hidden ones included — in priority order (SPEC §24.3).
+    /// Forwarded from the state so the sort actions, render paths, and tests
+    /// share one judgment.
+    func priorityOrderedProjectIDs() -> [ProjectID] {
+        state.priorityOrderedProjectIDs()
     }
 
-    /// The visible projects in deadline order (SPEC §24.3). Forwarded from the
-    /// state so the sort actions, render paths, and tests share one judgment.
-    func deadlineOrderedVisibleProjectIDs() -> [ProjectID] {
-        state.deadlineOrderedVisibleProjectIDs()
+    /// Every row — hidden ones included — in deadline order (SPEC §24.3).
+    /// Forwarded from the state so the sort actions, render paths, and tests
+    /// share one judgment.
+    func deadlineOrderedProjectIDs() -> [ProjectID] {
+        state.deadlineOrderedProjectIDs()
     }
 
     /// Every project whose deadline is past `today` (SPEC §24.2). Forwarded
@@ -1521,40 +1458,42 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     // MARK: Sort actions (SPEC §24.4)
 
     /// Whether a sort action (`sort_projects_by_priority` /
-    /// `sort_projects_by_deadline`) can reorder anything: at least two visible
-    /// projects, and not while an overlay session (note overview,
-    /// hide-selection, layout screens) is up — the overview is viewing-only,
-    /// and a selection screen must not have its listed order reshuffled under
-    /// it. Callers use this both to perform the action and to answer the
-    /// keybind's performability check, so the two always agree.
+    /// `sort_projects_by_deadline`) can reorder anything: at least two ledger
+    /// rows, and not while an overlay session (note overview, hide-selection,
+    /// layout screens) is up — the overview is viewing-only, and a selection
+    /// screen must not have its listed order reshuffled under it. Callers use
+    /// this both to perform the action and to answer the keybind's
+    /// performability check, so the two always agree.
     var canSortVisibleProjects: Bool {
-        !overlaySessionActive && state.visibleProjectIDs.count >= 2
+        !overlaySessionActive && state.projectOrder.count >= 2
     }
 
-    /// Reorder the visible projects' layout by priority (`sort_projects_by_priority`,
-    /// SPEC §24.4): high → medium → low → unset, equal priorities keeping
-    /// their current relative order. The ordering judgment and the stable-tie
-    /// rule live in `priorityOrderedVisibleProjectIDs`; this applies it to the
-    /// real layout. Hidden projects are unaffected, and the order persists
-    /// until the next sort — priority changes never reorder by themselves.
+    /// Reorder the ledger by priority (`sort_projects_by_priority`, SPEC
+    /// §24.4): high → medium → low → unset over *every* row, hidden ones
+    /// included, equal priorities keeping their current relative order. The
+    /// ordering judgment and the stable-tie rule live in
+    /// `priorityOrderedProjectIDs`; this applies it to the row order, and the
+    /// arrangement plus ordinals follow (the visible rows counted from the
+    /// top). The order persists until the next sort or manual reorder —
+    /// priority changes never reorder by themselves.
     ///
-    /// - Returns: whether the layout was reordered.
+    /// - Returns: whether the order changed.
     @discardableResult
     func sortVisibleProjectsByPriority() -> Bool {
         guard canSortVisibleProjects else { return false }
-        return state.applyVisibleProjectOrder(state.priorityOrderedVisibleProjectIDs())
+        return state.applyProjectOrder(state.priorityOrderedProjectIDs())
     }
 
-    /// Reorder the visible projects' layout by deadline (`sort_projects_by_deadline`,
-    /// SPEC §24.4): nearest date first, unset last, same-date projects keeping
-    /// their current relative order. Same contract as
-    /// `sortVisibleProjectsByPriority`, consuming `deadlineOrderedVisibleProjectIDs`.
+    /// Reorder the ledger by deadline (`sort_projects_by_deadline`, SPEC
+    /// §24.4): nearest date first, unset last, same-date rows keeping their
+    /// current relative order. Same contract as
+    /// `sortVisibleProjectsByPriority`, consuming `deadlineOrderedProjectIDs`.
     ///
-    /// - Returns: whether the layout was reordered.
+    /// - Returns: whether the order changed.
     @discardableResult
     func sortVisibleProjectsByDeadline() -> Bool {
         guard canSortVisibleProjects else { return false }
-        return state.applyVisibleProjectOrder(state.deadlineOrderedVisibleProjectIDs())
+        return state.applyProjectOrder(state.deadlineOrderedProjectIDs())
     }
 
     /// The pane-count badge per project — the total pane count, only in the

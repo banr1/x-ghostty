@@ -78,10 +78,10 @@ struct WorkspaceStateTests {
 
     // MARK: Codable (SPEC §12)
 
-    @Test func codableRoundTripsPersistentFieldsAndClearsRuntimeState() throws {
+    @Test func codableRoundTripsLedgerAndClearsZoom() throws {
         var (state, ids) = try Self.makeTwoProjectState()
-        // Runtime-only fields must not survive a round trip (§12.2).
-        state.hiddenProjectIDs = [ids.1]
+        // Visibility is a persisted ledger fact (§27.2); zoom is runtime-only.
+        state.setProjectHidden(ids.1, true)
         state.zoomedProject = ids.0
 
         let data = try JSONEncoder().encode(state)
@@ -89,11 +89,14 @@ struct WorkspaceStateTests {
 
         #expect(decoded.version == WorkspaceState.currentVersion)
         #expect(Set(decoded.projects.keys) == Set(state.projects.keys))
-        #expect(decoded.canonicalProjectTree.structuralIdentity == state.canonicalProjectTree.structuralIdentity)
+        #expect(decoded.projectOrder == state.projectOrder)
+        // The hidden project comes back hidden, and the arrangement is
+        // re-derived from the ledger: only the visible row holds a leaf.
+        #expect(decoded.hiddenProjectIDs == [ids.1])
+        #expect(decoded.canonicalProjectTree.map(\.id) == [ids.0])
         #expect(decoded.focusedProject == ids.0)
 
         // Runtime-only state cleared on decode.
-        #expect(decoded.hiddenProjectIDs.isEmpty)
         #expect(decoded.zoomedProject == nil)
     }
 
@@ -129,19 +132,22 @@ struct WorkspaceStateTests {
 
     // MARK: restoring (SPEC §12.3)
 
-    @Test func restoringClearsHiddenAndZoom() throws {
+    @Test func restoringKeepsHiddenRowsAndClearsZoom() throws {
         var (state, ids) = try Self.makeTwoProjectState()
-        state.hiddenProjectIDs = [ids.1]
+        state.setProjectHidden(ids.1, true)
         state.zoomedProject = ids.0
 
         let restored = WorkspaceState.restoring(state)
 
-        // Everything comes back visible and non-zoomed.
-        #expect(restored.hiddenProjectIDs.isEmpty)
+        // Visibility is a persisted ledger fact (§27.2): the hidden row stays
+        // hidden. Zoom is runtime-only and cleared.
+        #expect(restored.hiddenProjectIDs == [ids.1])
         #expect(restored.zoomedProject == nil)
-        // Canonical layout, projects and names are preserved.
+        // Projects and the ledger are preserved; the arrangement re-derives
+        // over the visible rows only.
         #expect(Set(restored.projects.keys) == Set(state.projects.keys))
-        #expect(restored.canonicalProjectTree.structuralIdentity == state.canonicalProjectTree.structuralIdentity)
+        #expect(restored.projectOrder == state.projectOrder)
+        #expect(restored.canonicalProjectTree.map(\.id) == [ids.0])
     }
 
     @Test func restoringKeepsValidFocusedProject() throws {
@@ -169,45 +175,44 @@ struct WorkspaceStateTests {
         #expect(restored.focusedProject == state.canonicalProjectTree.firstLeaf?.id)
     }
 
-    // MARK: Orphan reconciliation (SPEC §12.3)
+    // MARK: Ledger repair (SPEC §12.3, §27.1)
 
-    /// Removes `id`'s leaf from the canonical tree, reproducing what `hide_project`
-    /// leaves behind: the `ProjectState` survives in `projects` with no leaf.
+    /// Hides `id` through the ledger: the row keeps its position, only its
+    /// visibility flips, and the projection re-derives without it.
     private static func hiding(_ id: ProjectID, in state: WorkspaceState) -> WorkspaceState {
         var next = state
-        next.canonicalProjectTree = next.canonicalProjectTree.removing(.leaf(view: ProjectRef(id: id)))
-        next.hiddenProjectIDs.insert(id)
+        next.setProjectHidden(id, true)
         return next
     }
 
-    @Test func restoringReattachesProjectsMissingFromTree() throws {
-        // Saved while g2 was hidden: `hiddenProjectIDs` is not persisted, so
-        // without reconciliation g2 would come back alive but unreachable.
+    @Test func restoringAppendsProjectsMissingFromTheRowOrder() throws {
+        // A corrupt/legacy save can carry a project that the row order does
+        // not name: `normalizeLedger` appends it (creation order) so nothing
+        // leaks, and it comes back visible when there is room.
         let (base, ids) = try Self.makeTwoProjectState()
-        let state = Self.hiding(ids.1, in: base)
-        #expect(state.canonicalProjectTree.map(\.id) == [ids.0])
+        var state = base
+        state.projectOrder = [ids.0]
 
         let restored = WorkspaceState.restoring(state)
 
-        // Re-attached by splitting the trailing leaf, everything visible again
-        // (§12.3).
-        #expect(restored.canonicalProjectTree.map(\.id) == [ids.0, ids.1])
+        #expect(restored.projectOrder == [ids.0, ids.1])
         #expect(restored.hiddenProjectIDs.isEmpty)
+        #expect(restored.canonicalProjectTree.map(\.id) == [ids.0, ids.1])
         #expect(Set(restored.projects.keys) == Set([ids.0, ids.1]))
-        #expect(restored.effectiveVisibleProjectTree?.map(\.id) == [ids.0, ids.1])
     }
 
-    @Test func restoringKeepsFocusValidAfterReattaching() throws {
-        // The focused project is the one that was hidden: reconciliation runs
-        // before the focus check, so it stays focused rather than being reset.
+    @Test func restoringMovesFocusOffAHiddenRow() throws {
+        // The focused project was hidden at save time: visibility persists, so
+        // focus falls back to the first visible row (§14.6: the focused
+        // project is always visible).
         let (base, ids) = try Self.makeTwoProjectState()
         var state = Self.hiding(ids.1, in: base)
         state.focusedProject = ids.1
 
         let restored = WorkspaceState.restoring(state)
 
-        #expect(restored.focusedProject == ids.1)
-        #expect(restored.canonicalProjectTree.find(id: ids.1) != nil)
+        #expect(restored.hiddenProjectIDs == [ids.1])
+        #expect(restored.focusedProject == ids.0)
     }
 
     @Test func restoringLeavesAConsistentTreeUntouched() throws {
@@ -216,17 +221,19 @@ struct WorkspaceStateTests {
         #expect(restored.canonicalProjectTree.structuralIdentity == state.canonicalProjectTree.structuralIdentity)
     }
 
-    @Test func decodingReattachesProjectsMissingFromTree() throws {
+    @Test func decodingKeepsHiddenRowsHiddenAtTheirPositions() throws {
         let (base, ids) = try Self.makeTwoProjectState()
         let state = Self.hiding(ids.1, in: base)
 
         let data = try JSONEncoder().encode(state)
         let decoded = try JSONDecoder().decode(WorkspaceState.self, from: data)
 
-        // Both projects persist; the orphan is re-attached so nothing leaks.
+        // Both projects persist; the hidden one keeps its ledger row and its
+        // hidden state, and the projection re-derives without it.
         #expect(Set(decoded.projects.keys) == Set([ids.0, ids.1]))
-        #expect(Set(decoded.canonicalProjectTree.map(\.id)) == Set([ids.0, ids.1]))
-        #expect(decoded.hiddenProjectIDs.isEmpty)
+        #expect(decoded.projectOrder == state.projectOrder)
+        #expect(decoded.hiddenProjectIDs == [ids.1])
+        #expect(decoded.canonicalProjectTree.map(\.id) == [ids.0])
     }
 
     // MARK: Project numbering (SPEC §4.1)
@@ -274,7 +281,10 @@ struct WorkspaceStateTests {
         }
 
         let state = WorkspaceState(canonicalProjectTree: tree, projects: projects, focusedProject: ids[0])
-        #expect(state.canonicalProjectTree.map(\.id) == ids)
+        // The ledger caps the visible rows at construction already: rows past
+        // the ninth visible one start hidden.
+        #expect(state.canonicalProjectTree.map(\.id)
+            == Array(ids.prefix(WorkspaceState.maxVisibleProjects)))
         return (state, ids)
     }
 
@@ -305,9 +315,8 @@ struct WorkspaceStateTests {
     }
 
     @Test func restoringPrunesALegacyTreeWithMoreThanNineLeaves() throws {
-        // A save written before the cap existed can carry >9 canonical leaves.
-        // The first 9 in traversal order keep their slots; the rest move to the
-        // shelf, still alive in `projects`.
+        // A save with more than 9 rows visible keeps the first 9 rows visible;
+        // the rest are hidden, still alive in `projects`.
         let (state, ids) = try Self.makeRowState(12)
 
         let restored = WorkspaceState.restoring(state)
@@ -319,9 +328,11 @@ struct WorkspaceStateTests {
         Self.expectInvariants(restored)
     }
 
-    @Test func restoringReattachesOrphansOnlyUpToTheCap() throws {
-        // 12 projects of which 8 were hidden at save time: 4 stay placed, 5 of the
-        // orphans fit under the cap (in creation order), the last 3 stay hidden.
+    @Test func restoringKeepsHiddenRowsHiddenUnderTheCap() throws {
+        // 12 projects of which 8 were hidden at save time (rows 5..12, of
+        // which 10..12 started hidden by the cap): visibility is a persisted
+        // ledger fact, so exactly the 4 visible rows come back visible — no
+        // re-attachment happens.
         let (base, ids) = try Self.makeRowState(12)
         var state = base
         for id in ids.dropFirst(4) {
@@ -331,11 +342,9 @@ struct WorkspaceStateTests {
 
         let restored = WorkspaceState.restoring(state)
 
-        #expect(restored.visibleProjectCount == WorkspaceState.maxVisibleProjects)
-        // Orphans are re-attached at the trailing leaf in creation order, so the
-        // visible set is simply the first 9 projects.
-        #expect(restored.canonicalProjectTree.map(\.id) == Array(ids.prefix(9)))
-        #expect(restored.hiddenProjectIDs == Set(ids.dropFirst(9)))
+        #expect(restored.visibleProjectCount == 4)
+        #expect(restored.canonicalProjectTree.map(\.id) == Array(ids.prefix(4)))
+        #expect(restored.hiddenProjectIDs == Set(ids.dropFirst(4)))
         #expect(Set(restored.projects.keys) == Set(ids))
         Self.expectInvariants(restored)
     }

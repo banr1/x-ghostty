@@ -192,7 +192,7 @@ struct ProjectPriorityDeadlineTests {
 
         // high → medium → low → unset; the two mediums keep their current
         // relative order (medium1 before medium2).
-        #expect(model.priorityOrderedVisibleProjectIDs()
+        #expect(model.priorityOrderedProjectIDs()
                 == [high.id, medium1.id, medium2.id, low.id, unset1.id])
     }
 
@@ -212,11 +212,11 @@ struct ProjectPriorityDeadlineTests {
 
         // Nearest first, unset last; the two same-day projects keep their
         // current relative order (september1 before september2).
-        #expect(model.deadlineOrderedVisibleProjectIDs()
+        #expect(model.deadlineOrderedProjectIDs()
                 == [august.id, september1.id, september2.id, december.id, unset.id])
     }
 
-    @Test func sortOrderingsCoverVisibleProjectsOnlyAndMutateNothing() throws {
+    @Test func sortOrderingsCoverAllRowsAndMutateNothing() throws {
         let visibleLow = Self.makeProject(name: "visible-low")
         let visibleHigh = Self.makeProject(name: "visible-high")
         let hiddenHigh = Self.makeProject(name: "hidden-high")
@@ -227,13 +227,15 @@ struct ProjectPriorityDeadlineTests {
         model.setProjectPriority(visibleHigh.id, to: .high)
         model.setProjectPriority(hiddenHigh.id, to: .high)
         model.setProjectDeadline(hiddenHigh.id, to: Self.deadline(2026, 1, 1))
-        let layoutBefore = model.state.visibleProjectIDs
+        let orderBefore = model.state.projectOrder
 
-        // Hidden projects appear in neither ordering, and the orderings are
-        // pure judgments: the real layout and the hidden shelf are untouched.
-        #expect(model.priorityOrderedVisibleProjectIDs() == [visibleHigh.id, visibleLow.id])
-        #expect(model.deadlineOrderedVisibleProjectIDs() == [visibleLow.id, visibleHigh.id])
-        #expect(model.state.visibleProjectIDs == layoutBefore)
+        // The orderings cover every row — hidden ones included (SPEC §24.3) —
+        // and are pure judgments: the ledger and the hidden set are untouched.
+        #expect(model.priorityOrderedProjectIDs()
+                == [visibleHigh.id, hiddenHigh.id, visibleLow.id])
+        #expect(model.deadlineOrderedProjectIDs()
+                == [hiddenHigh.id, visibleLow.id, visibleHigh.id])
+        #expect(model.state.projectOrder == orderBefore)
         #expect(model.state.hiddenProjectIDs == [hiddenHigh.id])
         #expect(model.projectPriority(of: hiddenHigh.id) == .high)
     }

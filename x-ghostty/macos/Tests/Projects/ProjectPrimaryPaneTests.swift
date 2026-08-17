@@ -418,9 +418,7 @@ struct ProjectPrimaryPaneTests {
             id: ProjectID(), name: "other", paneTree: .init(view: TestPane()), createdAt: Date())
 
         var state = model.state
-        state.projects[other.id] = other
-        state.canonicalProjectTree = state.canonicalProjectTree
-            .appendingAtTrailingLeaf(ProjectRef(id: other.id))
+        state.insertProject(other, after: nil)
         state.zoomedProject = other.id
         let diverged = TestWorkspaceModel(state)
 
@@ -465,9 +463,7 @@ struct ProjectPrimaryPaneTests {
         projectB.focusedSurface = SurfaceID(rawValue: b2.id)
 
         var state = model.state
-        state.projects[projectB.id] = projectB
-        state.canonicalProjectTree = state.canonicalProjectTree
-            .appendingAtTrailingLeaf(ProjectRef(id: projectB.id))
+        state.insertProject(projectB, after: nil)
         let workspace = TestWorkspaceModel(state)
 
         let focus = workspace.switchFocusedProject(

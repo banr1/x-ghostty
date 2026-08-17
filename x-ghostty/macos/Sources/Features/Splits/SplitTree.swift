@@ -1353,7 +1353,7 @@ extension SplitTree {
         }
         self.init(root: .split(.init(
             direction: .vertical,
-            ratio: min(max(topRatio, 0.05), 0.95),
+            ratio: Swift.min(Swift.max(topRatio, 0.05), 0.95),
             left: topRoot,
             right: .leaf(view: bottom))), zoomed: nil)
     }

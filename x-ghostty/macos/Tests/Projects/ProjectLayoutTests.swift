@@ -267,8 +267,11 @@ struct ProjectLayoutTests {
         let result = try #require(model.confirmLayoutHidePick(savingOutgoingPaneTree: .init()))
 
         #expect(model.state.hiddenProjectIDs == [ids[4], ids[5]])
-        #expect(result.target == ids[3])
-        #expect(model.state.focusedProject == ids[3])
+        // Nearest survivor measured on the pre-removal projection: 6 visible
+        // projects sit in a wide 3+3 grid, so the leaf nearest to ids[5]
+        // (bottom right) among the survivors is ids[2] right above it.
+        #expect(result.target == ids[2])
+        #expect(model.state.focusedProject == ids[2])
     }
 
     @Test func unselectedHiddenProjectsAreUnaffected() throws {

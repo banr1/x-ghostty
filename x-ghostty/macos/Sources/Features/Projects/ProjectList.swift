@@ -20,42 +20,50 @@ struct ProjectListRow: Equatable, Identifiable {
     let noteFirstLine: String
 }
 
+/// A column of the project list (`SPEC.md` §27.1). The raw value is the
+/// persistence spelling of the column order.
+enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
+    case visibility, title, priority, deadline, nextTrigger, note
+
+    var id: String { rawValue }
+
+    /// The default column order (`SPEC.md` §27.1): visibility, title,
+    /// priority, deadline, next trigger, note.
+    static let defaultOrder: [ProjectListColumn] = [
+        .visibility, .title, .priority, .deadline, .nextTrigger, .note,
+    ]
+
+    /// Repair a decoded column order so it is always a permutation of all
+    /// columns: duplicates collapse to their first occurrence and missing
+    /// columns append in default order.
+    static func normalizedOrder(_ columns: [ProjectListColumn]) -> [ProjectListColumn] {
+        var seen = Set<ProjectListColumn>()
+        var order: [ProjectListColumn] = []
+        for column in columns where !seen.contains(column) {
+            seen.insert(column)
+            order.append(column)
+        }
+        order += defaultOrder.filter { !seen.contains($0) }
+        return order
+    }
+}
+
 // MARK: Row derivation (SPEC §27.1)
 
 extension WorkspaceStateOf {
-    /// Every project — hidden ones included — as list rows: the visible
-    /// projects first, in ordinal order, then the hidden ones (`SPEC.md`
-    /// §27.1).
-    ///
-    /// "Hidden" is derived from the canonical tree rather than read out of
-    /// `hiddenProjectIDs`: a project is visible exactly while it holds a
-    /// canonical leaf (invariant §14.3), so this stays correct even if the
-    /// runtime hidden set were stale.
-    ///
-    /// Hidden rows are ordered by creation (ties broken by id) — the same
-    /// deterministic order `reconcileOrphanedProjects` re-attaches them in, so
-    /// the list reads the same way twice and matches the order a restore would
-    /// bring them back in.
+    /// Every project — hidden ones included — as list rows, in the ledger's
+    /// single row order (`SPEC.md` §27.1): the rows are *not* partitioned by
+    /// visibility, and a row's ordinal is its 1-based position among the
+    /// visible rows counted from the top (`nil` for hidden rows, which the
+    /// numbering skips).
     var projectListRows: [ProjectListRow] {
-        let visible = visibleProjectIDs
-        var rows: [ProjectListRow] = []
-        rows.reserveCapacity(projects.count)
-
-        for (index, id) in visible.enumerated() {
-            guard let project = projects[id] else { continue }
-            rows.append(Self.listRow(id: id, project: project, ordinal: index + 1))
+        var ordinal = 0
+        return projectOrder.compactMap { id in
+            guard let project = projects[id] else { return nil }
+            let hidden = hiddenProjectIDs.contains(id)
+            if !hidden { ordinal += 1 }
+            return Self.listRow(id: id, project: project, ordinal: hidden ? nil : ordinal)
         }
-
-        let placed = Set(visible)
-        let hidden = projects
-            .filter { !placed.contains($0.key) }
-            .sorted { ($0.value.createdAt, $0.key.rawValue.uuidString) <
-                      ($1.value.createdAt, $1.key.rawValue.uuidString) }
-        for (id, project) in hidden {
-            rows.append(Self.listRow(id: id, project: project, ordinal: nil))
-        }
-
-        return rows
     }
 
     private static func listRow(
@@ -79,11 +87,6 @@ extension WorkspaceStateOf {
         note.components(separatedBy: "\n").first ?? ""
     }
 
-    /// Whether `id` is currently hidden: it exists as a project but holds no
-    /// canonical leaf (invariant §14.3).
-    func isProjectHidden(_ id: ProjectID) -> Bool {
-        projects[id] != nil && canonicalProjectTree.find(id: id) == nil
-    }
 }
 
 // MARK: Daily priority reset (SPEC §28.2)

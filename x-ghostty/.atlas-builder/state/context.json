@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "9e79775635354fd87b6192843055bd70aaa89b7dcb585053e53bdf3f6c2fc685",
+    "last_signature": "6398cda9374c2cbf96f5010cccfeeebd5ed0d39faf9d1c6fbe42da3b65c457b7",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T03:32:14+09:00",
-    "last_checked_at": "2026-08-18T03:32:29+09:00",
+    "last_progress_at": "2026-08-18T04:13:18+09:00",
+    "last_checked_at": "2026-08-18T04:13:18+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,19 +21,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.0,
+    "context_usage_estimate": 0.6,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 0,
-    "completed_todos_since_reset": 0,
-    "important_decisions_since_reset": 0,
+    "changed_files_since_reset": 13,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T03:47:16+09:00",
-    "summary": "Human resume: idle_cycles ゲート R-LG-20260818T033229+0900-a3df を解除する。3 サイクル無進捗の原因はプロジェクト側ではなく Claude セッションの起動失敗(使用量上限)であり、03:32 台の 3 本はいずれも 2 秒で claude_exit_1 となり何も実行していない。人間がアカウントを切り替えて上限は解消済みなので、そのまま再開してよい。\nなお 2026-08-18T03:19:53 のサイクルは実作業(新 ESSENCE fad594… からの Spec 99 / Todo 80 再射影、T-057 / T-063 の human evidence 付き done、R-017 / R-018 の close)を終えてコミット f25b0d0 まで作った後に exit 1 したため、reflection.jsonl のサイクル記録だけが欠けている。次サイクルはその作業をやり直さず、active batch の T-064(台帳モデル層)から通常どおり実装を進めること。\nvalidation.json の run ledger divergence 警告(8/9・8/16・8/17 の 3 本が control 側にのみ記録)は中断サイクルの記録差分であり、対応不要。",
-    "next_actions": [],
-    "open_questions": [],
-    "pending_cycle": true
+    "written_at": "2026-08-18T04:13:00+09:00",
+    "summary": "T-064(台帳反転のモデル層)完了、3 ゲート green(zig build / just test / just swift-test = exit 0、Swift 590 件)。中断サイクル R-20260818T031953 が途中まで書いた WorkspaceState 台帳化を完成させた: ProjectListColumn 新設、projectListRows を単一台帳順に、WorkspaceModel の全ミューテーションを台帳操作へ置換(show/close は自分の行位置へ戻る。trailing 再接続は廃止)、resize/equalize はモデル層 no-op 化(must-55 裁可済み。Zig action の除去は T-066)、旧登録レイアウト適用は可視行の並び替えのみの経過シム(T-065/T-066 で置換)、ソートは全行対象へ(T-068 のテストは未着手)。中断サイクル由来の insertProject のバグ(挿入後に cap 判定して 9 個目を誤 hidden)も修正済み。新テスト ProjectLedgerTests が T-064 の 4 要件を担保。",
+    "next_actions": [
+      "T-065(active batch): レイアウト型のテスト整備が主作業 — ProjectLayoutType の slots/choices/tree は実装済みなので、成功条件 15 の全項目(1〜9 の各 visible 数のスロット計算、n=9 の wide/tall 非畳み込みと n=3 台座の畳み込み、行送り/列送りの割り当て順と序数追従、型の永続化と既定、visible 数変化時の自動適用と数不変時の非発火)を XGhosttyTests に書き、不足があれば実装を補う。ProjectLedgerTests に既にある永続化/既定/再導出テストと重複させない。",
+      "T-066: Cmd+Opt+L セレクタを ProjectLayoutType.choices(forVisibleCount:) ベースに作り替え(選択肢 1 つなら『選ぶものが無い』表示、Enter 適用 = state.layoutType 変更 + relayout、Esc 無変更、プロジェクト数不変)、shortfall 作成/hide-pick 経路と WorkspaceLayoutHidePick/ProjectLayout(11 種)を削除、resize_project / equalize_projects の Zig action・既定キーバインドを除去(xghostty.h の enum-sync に注意)。",
+      "T-066 完了時に SPEC.md §26 の旧記述(登録レイアウト 11 種)が残っていれば T-074 を待たず最小限の整合修正を検討(仕様書と実装の乖離防止は前提事項)。"
+    ],
+    "open_questions": []
   }
 }

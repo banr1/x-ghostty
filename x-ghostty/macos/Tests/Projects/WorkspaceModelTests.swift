@@ -215,64 +215,23 @@ struct WorkspaceModelTests {
         #expect(zoomedModel.gotoProjectTarget(.spatial(.left)) == nil)
     }
 
-    // MARK: resizeFocusedProject (SPEC §11.4)
+    // MARK: resizeFocusedProject — abolished (SPEC §26.3)
 
-    @Test func resizeFocusedProjectAdjustsCanonicalSplitRatio() throws {
+    @Test func resizeFocusedProjectIsAlwaysANoOp() throws {
+        // The arrangement is a projection of the ledger: project-boundary
+        // resize is abolished, so the canonical ratios never move.
         let (model, _, _) = try Self.makeTwoProjectHorizontal()
         let before = try #require(Self.rootSplitRatio(model))
 
-        // Focused is the right project; resizing left shrinks the leading (left)
-        // child, decreasing the root horizontal split's ratio by the delta.
         model.resizeFocusedProject(.left, ratioDelta: 0.1)
-
-        let after = try #require(Self.rootSplitRatio(model))
-        #expect(abs(after - (before - 0.1)) < 1e-9)
-    }
-
-    @Test func resizeFocusedProjectShrinkDirectionWorks() throws {
-        // Regression: pressing the "shrink" direction (no spatial neighbor on
-        // that side) was previously a no-op. The ancestor-based approach must
-        // find the root split even when the focused project is at the wall.
-        let (model, left, _) = try Self.makeTwoProjectHorizontal()
-        // Switch focus to the LEFT project so pressing LEFT has no spatial
-        // neighbor to the left.
-        model.switchFocusedProject(to: left, savingOutgoingPaneTree: .init())
-        let before = try #require(Self.rootSplitRatio(model))
-
-        model.resizeFocusedProject(.left, ratioDelta: 0.1)
-
-        let after = try #require(Self.rootSplitRatio(model))
-        #expect(abs(after - (before - 0.1)) < 1e-9)
-    }
-
-    @Test func resizeFocusedProjectNoAxisMatchIsNoOp() throws {
-        let (model, _, _) = try Self.makeTwoProjectHorizontal()
-        let before = try #require(Self.rootSplitRatio(model))
-
-        // No vertical ancestor split in a horizontal-only tree → no change.
+        model.resizeFocusedProject(.right, ratioDelta: 0.1)
         model.resizeFocusedProject(.up, ratioDelta: 0.1)
 
         #expect(Self.rootSplitRatio(model) == before)
-    }
-
-    @Test func resizeFocusedProjectSingleProjectIsNoOp() {
-        let model = WorkspaceModel(wrapping: .init())
-        // No split exists; nothing to resize, and no crash.
-        model.resizeFocusedProject(.left, ratioDelta: 0.1)
-        #expect(model.state.canonicalProjectTree.root != nil)
-    }
-
-    @Test func resizeFocusedProjectIsNoOpWhenZoomed() throws {
-        let (model, _, right) = try Self.makeTwoProjectHorizontal()
-
-        var zoomed = model.state
-        zoomed.zoomedProject = right
-        let zoomedModel = WorkspaceModel(zoomed)
-        let before = try #require(Self.rootSplitRatio(zoomedModel))
-
-        zoomedModel.resizeFocusedProject(.left, ratioDelta: 0.1)
-
-        #expect(Self.rootSplitRatio(zoomedModel) == before)
+        // A single project (no split) does not crash either.
+        let single = WorkspaceModel(wrapping: .init())
+        single.resizeFocusedProject(.left, ratioDelta: 0.1)
+        #expect(single.state.canonicalProjectTree.root != nil)
     }
 
     // MARK: moveFocusedProject (move_project)
@@ -303,15 +262,15 @@ struct WorkspaceModelTests {
 
     @Test func moveFocusedProjectSwapsWithSpatialNeighbor() throws {
         let (model, left, right) = try Self.makeTwoProjectHorizontal()
-        // Skew the split so a structure/ratio-preserving swap is observable.
-        model.resizeFocusedProject(.left, ratioDelta: 0.2)
         let ratios = Self.canonicalRatios(model)
         #expect(model.state.canonicalProjectTree.map(\.id) == [left, right])
 
         #expect(model.moveFocusedProject(.spatial(.left)) == true)
 
-        // The two leaves traded places; ratios (and so the layout) are identical
-        // and focus followed the moved project to its new slot.
+        // The two ledger rows traded places, so the two projects traded slots;
+        // the projected layout's shape (and ratios) are identical and focus
+        // followed the moved project to its new slot.
+        #expect(model.state.projectOrder == [right, left])
         #expect(model.state.canonicalProjectTree.map(\.id) == [right, left])
         #expect(Self.canonicalRatios(model) == ratios)
         #expect(model.state.focusedProject == right)
@@ -369,43 +328,20 @@ struct WorkspaceModelTests {
         #expect(model.moveFocusedProject(.next) == false)
     }
 
-    // MARK: equalizeProjects (SPEC §11.5)
+    // MARK: equalizeProjects — abolished (SPEC §26.3)
 
-    @Test func equalizeProjectsRebalancesWhenNoHidden() throws {
-        let (model, _, _) = try Self.makeTwoProjectHorizontal()
-        // Skew the split, then equalize: two equally-weighted leaves → 0.5.
-        model.resizeFocusedProject(.left, ratioDelta: 0.2)
-        #expect(Self.rootSplitRatio(model) != 0.5)
+    @Test func equalizeProjectsIsAlwaysANoOp() throws {
+        // The layout-type rules deal equal shares by construction, so there is
+        // never anything to rebalance: the action always declines and the
+        // projection is untouched.
+        let (model, left, right) = try Self.makeTwoProjectHorizontal()
+        let ratios = Self.canonicalRatios(model)
 
-        #expect(model.equalizeProjects() == true)
-        let ratio = try #require(Self.rootSplitRatio(model))
-        #expect(abs(ratio - 0.5) < 1e-9)
-    }
-
-    @Test func equalizeProjectsRebalancesVisibleProjectsWithHiddenPresent() throws {
-        // Hidden projects have no leaf in the canonical tree, so equalizing it
-        // inherently ignores them — no guard needed.
-        let (model, ids) = try Self.makeThreeProjectRow()
-        model.switchFocusedProject(to: ids.right, savingOutgoingPaneTree: .init())
-        try #require(model.hideFocusedProject(savingOutgoingPaneTree: .init()))
-        #expect(model.state.hiddenProjectIDs == [ids.right])
-
-        model.resizeFocusedProject(.left, ratioDelta: 0.2)
-        #expect(Self.rootSplitRatio(model) != 0.5)
-
-        #expect(model.equalizeProjects() == true)
-
-        let ratio = try #require(Self.rootSplitRatio(model))
-        #expect(abs(ratio - 0.5) < 1e-9)
-        // The hidden project stays hidden and out of the tree.
-        #expect(model.state.hiddenProjectIDs == [ids.right])
-        #expect(Set(model.state.canonicalProjectTree.map(\.id)) == Set([ids.left, ids.middle]))
-    }
-
-    @Test func equalizeProjectsDeclinesWithNothingToEqualize() {
-        // A single project has no split; the keybind should stay unconsumed.
-        let model = WorkspaceModel(wrapping: .init())
         #expect(model.equalizeProjects() == false)
+
+        #expect(Self.canonicalRatios(model) == ratios)
+        #expect(model.state.canonicalProjectTree.map(\.id) == [left, right])
+        #expect(WorkspaceModel(wrapping: .init()).equalizeProjects() == false)
         #expect(WorkspaceModel().equalizeProjects() == false)
     }
 
@@ -609,29 +545,21 @@ struct WorkspaceModelTests {
         #expect(Set(model.state.canonicalProjectTree.map(\.id)) == Set([left, right]))
     }
 
-    @Test func showProjectSplitsTrailingProjectAndTakesRightHalf() throws {
-        // Hide the *leftmost* of three projects: showing it again does not put it
-        // back on the left, it takes the right half of the trailing project.
+    @Test func showProjectReturnsToItsOwnLedgerRow() throws {
+        // Hide the *leftmost* of three projects: its ledger row never moves, so
+        // showing it again puts it back exactly where it was — leftmost — and
+        // the ordinals follow the row order (SPEC §27.1).
         let (model, ids) = try Self.makeThreeProjectRow()
         model.switchFocusedProject(to: ids.left, savingOutgoingPaneTree: .init())
         try #require(model.hideFocusedProject(savingOutgoingPaneTree: .init()))
         #expect(model.state.canonicalProjectTree.map(\.id) == [ids.middle, ids.right])
 
-        // Skew the surviving split to check the show leaves it untouched.
-        model.resizeFocusedProject(.left, ratioDelta: 0.2)
-
         model.showProject(ids.left, savingOutgoingPaneTree: .init())
 
-        // The trailing project (in-order last) was split; the shown project is the
-        // new in-order last.
-        #expect(model.state.canonicalProjectTree.map(\.id) == [ids.middle, ids.right, ids.left])
+        #expect(model.state.projectOrder == [ids.left, ids.middle, ids.right])
+        #expect(model.state.canonicalProjectTree.map(\.id) == [ids.left, ids.middle, ids.right])
         #expect(model.state.focusedProject == ids.left)
         #expect(model.state.hiddenProjectIDs.isEmpty)
-        // The skewed split survives; the new trailing split is 50/50.
-        let ratios = Self.canonicalRatios(model)
-        #expect(ratios.count == 2)
-        #expect(abs(ratios[0] - 0.3) < 1e-9)
-        #expect(abs(ratios[1] - 0.5) < 1e-9)
     }
 
     @Test func showProjectClearsZoom() throws {
@@ -979,13 +907,13 @@ struct WorkspaceModelTests {
         try #require(model.hideFocusedProject(savingOutgoingPaneTree: .init()))
         #expect(model.ordinal(of: ids[1]) == 1)
 
-        // `show_project` re-attaches at the trailing leaf, so it takes the last
-        // number rather than its old one.
+        // `show_project` brings the row back at its own ledger position, so it
+        // reclaims its old number (SPEC §27.1).
         model.showProject(ids[0], savingOutgoingPaneTree: .init())
 
-        #expect(model.ordinal(of: ids[1]) == 1)
-        #expect(model.ordinal(of: ids[2]) == 2)
-        #expect(model.ordinal(of: ids[0]) == 3)
+        #expect(model.ordinal(of: ids[0]) == 1)
+        #expect(model.ordinal(of: ids[1]) == 2)
+        #expect(model.ordinal(of: ids[2]) == 3)
     }
 
     @Test func zoomedProjectKeepsItsCanonicalOrdinal() throws {

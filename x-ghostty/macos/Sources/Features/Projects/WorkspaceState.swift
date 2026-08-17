@@ -218,10 +218,13 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// `maxVisibleProjects` rows are visible and hidden otherwise
     /// (`SPEC.md` §27.4). Relayouts.
     mutating func insertProject(_ project: ProjectStateOf<Pane>, after anchor: ProjectID?) {
+        // Judged BEFORE the row goes in: a new row is visible while fewer than
+        // `maxVisibleProjects` rows are visible, and hidden only at the cap.
+        let wasAtCap = visibleProjectCount >= Self.maxVisibleProjects
         projects[project.id] = project
         let index = anchor.flatMap { projectOrder.firstIndex(of: $0) }.map { $0 + 1 } ?? projectOrder.count
         projectOrder.insert(project.id, at: min(index, projectOrder.count))
-        if visibleProjectCount >= Self.maxVisibleProjects {
+        if wasAtCap {
             hiddenProjectIDs.insert(project.id)
         }
         relayout()

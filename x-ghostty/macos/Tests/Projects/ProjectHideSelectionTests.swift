@@ -260,11 +260,12 @@ struct ProjectHideSelectionTests {
         try #require(model.confirmHideSelection(savingOutgoingPaneTree: .init()))
 
         // The batch-hidden projects are ordinary hidden projects: the
-        // existing `show_project` path reveals them exactly as before.
+        // existing `show_project` path reveals them exactly as before — back
+        // at their own ledger rows (SPEC §27.1).
         #expect(model.canShowProject(ids[0]) == true)
         model.showProject(ids[0], savingOutgoingPaneTree: .init())
         #expect(model.state.hiddenProjectIDs == [ids[1]])
-        #expect(model.state.visibleProjectIDs == [ids[2], ids[0]])
+        #expect(model.state.visibleProjectIDs == [ids[0], ids[2]])
         #expect(model.state.focusedProject == ids[0])
     }
 }
