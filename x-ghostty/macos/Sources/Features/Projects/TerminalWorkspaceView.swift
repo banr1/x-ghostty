@@ -107,7 +107,7 @@ struct TerminalWorkspaceView: View {
             // Note overview interaction layer: while the viewing-only mode is
             // up it blocks the mouse everywhere (the per-project note panels
             // render inside each `ProjectView`) and owns the keyboard so Escape
-            // and a re-pressed Cmd+Opt+N leave the mode.
+            // and a re-pressed Cmd+Opt+E leave the mode.
             if workspace.noteOverviewActive {
                 ProjectNoteOverviewKeyCatcher(
                     onExit: { workspace.endNoteOverview() },

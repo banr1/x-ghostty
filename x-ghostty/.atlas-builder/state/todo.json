@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-073"
+    "T-074"
   ],
   "items": [
     {
@@ -3031,7 +3031,7 @@
     {
       "id": "T-073",
       "title": "Key changes: edit_project_note default Cmd+E, toggle_note_overview default Cmd+Opt+E, remove the Cmd+E search_selection default (keep the action), Cmd+Opt+N unbound; the overlay key routing (note editor, overview, list) follows; menu titles/shortcuts updated. Verify with zig build / just test / just swift-test",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-003",
@@ -3044,7 +3044,30 @@
       },
       "batch_group": "keys",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "Full build passes with the rebound defaults: cmd+e=edit_project_note, cmd+opt+e=toggle_note_overview, the upstream cmd+e=search_selection default removed (action kept bindable), cmd+opt+n left unbound."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests pass (keybind defaults are data, no parse-test changes needed)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED, 0 failures (the reported passed-count line varies with parallel output interleaving; the failure grep is 0)."
+        },
+        {
+          "type": "diff",
+          "summary": "Config.zig: cmd+opt+n=toggle_note_overview default replaced by cmd+e=edit_project_note + cmd+opt+e=toggle_note_overview in the project section; the upstream cmd+e=search_selection default deleted with a comment noting the fork's reassignment (the action remains for user keybinds); cmd+opt+n now unbound. ProjectNoteOverview.swift: the overview key catcher's re-press chord moved from Cmd+Opt+N to Cmd+Opt+E (keyboardShortcut(\"e\", [.command,.option])) with docs updated. Doc-comment sweeps in ProjectNoteEditor/ProjectLabel/TerminalWorkspaceView (Cmd+N-era references). No menu items reference these actions (MainMenu.xib has none), so no menu changes were needed. The in-list Cmd+Opt+E full-note toggle (T-071) does not conflict: the list overlay's monitor consumes the chord while the list is open, and the overview cannot be active concurrently (overlay sessions are mutually exclusive)."
+        }
+      ]
     },
     {
       "id": "T-074",

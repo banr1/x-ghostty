@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The note editor overlay, opened by the `edit_project_note` action (Cmd+N)
+/// The note editor overlay, opened by the `edit_project_note` action (Cmd+E)
 /// for the focused project (`SPEC.md` §21.2).
 ///
 /// `TerminalWorkspaceView` presents this over the whole project layer while

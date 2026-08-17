@@ -17,7 +17,7 @@ import SwiftUI
 /// - single click  → focus that project
 /// - double click  → begin inline rename
 /// - note glyph click (trailing edge) → open that project's note editor
-///   (`SPEC.md` §21.2 — the mouse counterpart of Cmd+N; the project focus is
+///   (`SPEC.md` §21.2 — the mouse counterpart of Cmd+E; the project focus is
 ///   left unchanged)
 ///
 /// Inline rename is also entered by the `rename_project` action; both paths set

@@ -5973,9 +5973,18 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true } },
                 .{ .new_project = {} },
             );
+            // The note operations live on Cmd+E / Cmd+Opt+E: Cmd+N belongs
+            // to project creation above, and Cmd+Opt+N is deliberately left
+            // unbound. Cmd+E's upstream `search_selection` default is
+            // removed below (the action itself remains bindable).
             try self.set.put(
                 alloc,
-                .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true, .alt = true } },
+                .{ .key = .{ .unicode = 'e' }, .mods = .{ .super = true } },
+                .{ .edit_project_note = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = 'e' }, .mods = .{ .super = true, .alt = true } },
                 .{ .toggle_note_overview = {} },
             );
             // Plain Cmd+P has no other default binding (the command palette
@@ -6137,12 +6146,9 @@ pub const Keybinds = struct {
                 .start_search,
                 .{ .performable = true },
             );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .unicode = 'e' }, .mods = .{ .super = true } },
-                .search_selection,
-                .{ .performable = true },
-            );
+            // Upstream binds Cmd+E to `search_selection`; this fork gives
+            // Cmd+E to the project-note editor (above). The action stays
+            // available for user keybinds.
             try self.set.putFlags(
                 alloc,
                 .{ .key = .{ .unicode = 'f' }, .mods = .{ .super = true, .shift = true } },

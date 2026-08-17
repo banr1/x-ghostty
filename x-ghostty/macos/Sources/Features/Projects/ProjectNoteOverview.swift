@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The read-only note panel the note overview (`toggle_note_overview`,
-/// Cmd+Opt+N, `SPEC.md` §21.3) lays over one visible project.
+/// Cmd+Opt+E, `SPEC.md` §21.3) lays over one visible project.
 ///
 /// `ProjectView` renders this over its own content while the overview is
 /// active, so every visible project shows its note at once. The panel never
@@ -102,7 +102,7 @@ struct ProjectNoteOverviewOverlay: View {
 ///
 /// It blocks mouse interaction with everything underneath (the overview is
 /// viewing-only) and owns the keyboard: Escape and the overview's own
-/// Cmd+Opt+N chord both leave the mode. An invisible focused text field holds
+/// Cmd+Opt+E chord both leave the mode. An invisible focused text field holds
 /// first responder — the terminal must not see keystrokes while the mode is
 /// up, and `onExitCommand` needs a focused view to deliver Escape to (the
 /// same mechanics as `ProjectNoteEditor`'s TextEditor).
@@ -110,7 +110,7 @@ struct ProjectNoteOverviewKeyCatcher: View {
     /// Leave the overview (Escape).
     let onExit: () -> Void
 
-    /// Toggle the overview (the re-pressed Cmd+Opt+N chord). The surface's
+    /// Toggle the overview (the re-pressed Cmd+Opt+E chord). The surface's
     /// binding path is inert while it is not first responder, so the default
     /// `toggle_note_overview` chord is re-matched here.
     let onToggle: () -> Void
@@ -134,7 +134,7 @@ struct ProjectNoteOverviewKeyCatcher: View {
 
             Button { onToggle() } label: { Color.clear }
                 .buttonStyle(PlainButtonStyle())
-                .keyboardShortcut("n", modifiers: [.command, .option])
+                .keyboardShortcut("e", modifiers: [.command, .option])
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
