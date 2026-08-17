@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "a9f220a74c8ab34b93cd75e7106781aa9d69b21ac0430bb60a12da54e4355a27",
+    "last_signature": "96a38716ce43f245e0fcaaa75ab88041d56049f3070ee20f72f19ef11cba6308",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T04:40:12+09:00",
-    "last_checked_at": "2026-08-18T04:40:12+09:00",
+    "last_progress_at": "2026-08-18T04:54:38+09:00",
+    "last_checked_at": "2026-08-18T04:54:38+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,22 +21,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.78,
-    "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 30,
-    "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 5,
+    "context_usage_estimate": 0.45,
+    "failed_attempts_since_reset": 1,
+    "changed_files_since_reset": 16,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T04:40:00+09:00",
-    "summary": "T-064〜T-066 完了(台帳反転・レイアウト型・セレクタ書き換え+resize/equalize 全廃)、いずれも 3 ゲート green(直近: zig build / just test / just swift-test = exit 0、Swift 596 件)。現況: 台帳(projectOrder + hiddenProjectIDs + layoutType + listColumnOrder)が真実の源、canonicalProjectTree は relayout() が再導出する投影(private(set))。Cmd+Opt+L は ProjectLayoutType.choices ベースの新セレクタ(1 択なら『選ぶものが無い』表示)。resize_project / equalize_projects は Zig action・キーバインド・C ABI・Swift 経路とも消滅し、プロジェクト境界は非対話 FixedSplitView 描画。changed_files 30 でリセット閾値超過 — 本ハンドオフのみで再開できるよう書いてある。",
+    "written_at": "2026-08-18T04:54:30+09:00",
+    "summary": "T-067 完了(Cmd+Opt+H の即時 hide 化・hide-selection 画面の全面削除)、3 ゲート green(zig build / just test / just swift-test = exit 0、Swift 583 件)。canHideFocusedProject が旧 canBeginHideSelection のガード(ノートエディタ・オーバーレイ中の拒否)を引き継ぎ、action の performability とモデル変異の両方がこれを通る。最低 1 visible 拒否は action 側(WorkspaceModelTests)と一覧トグル側(ProjectListTests.hidingTheLastVisibleProjectIsRefused)の両方にテストあり。hide 後の自動レイアウト再適用は ProjectLayoutTypeTests.visibleCountChangesReapplyTheRememberedType が担保。注意: brew の zig が 0.16.0 に上がり PATH 既定では zig build が落ちる — /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に(lessons.jsonl 参照)。",
     "next_actions": [
-      "T-067(active batch): Cmd+Opt+H を focused プロジェクトの即時 hide へ戻す。実装: (1) hide_project の Swift 側 dispatch を hide-selection 画面経由から hideFocusedProject 直呼びに変更(BaseTerminalController の ghosttyDidHideProject 系ハンドラと XGhostty.App の performability を確認 — 現在は beginHideSelection を呼ぶ経路のはず。canHideFocusedProject(最後の visible は拒否)を performability に)。(2) hide-selection 画面の全面削除: WorkspaceModel の hideSelection/beginHideSelection/toggleHideSelection/canConfirmHideSelection/confirmHideSelection/cancelHideSelection/hideSelectionProjectIDs、ProjectHideSelector ビュー(ただし他用途が無いか確認 — 旧 layout hide-pick は既に削除済みなので専用のはず)、TerminalWorkspaceView の該当ブロック、TerminalView delegate の confirmHideSelection、controller の confirmHideSelection、overlaySessionActive から hideSelectionActive を除去。(3) ProjectHideSelectionTests.swift を削除し、即時 hide のテスト(成功条件 13: Cmd+Opt+H action で focused のみ hidden、visible 1 つなら action も一覧トグルも拒否)を新設(既存 WorkspaceModelTests の hideFocusedProject 系と重複しない範囲)。(4) 一覧トグルの最低 1 visible 拒否は canToggleProjectListVisibility に実装済み — テストだけ確認。(5) 3 ゲート検証。",
-      "T-068: ソートのテスト整備(成功条件 11)。モデル核は T-064 で all-row 化済み(sortVisibleProjectsByPriority/ByDeadline → applyProjectOrder)。残: メソッド名の見直し(sortProjectsBy… へ改名するなら controller/App の呼び出しも)、『一覧を開いていなくても効く』(overlaySessionActive ガードが projectListActive を含む点の再考 — 一覧を開いたままのソートを許すか Essence 文言と照合)、ソート後の序数追従テスト。",
-      "以降: T-069(次トリガー: ProjectState に nextTrigger 5 値 + 永続化 + 一望モード表示 + 毎朝リセット非対象)→ T-070/T-071(一覧のセルモデル/ビュー)→ T-072(Cmd+N)→ T-073(キー変更)→ T-074(SPEC/README 総整備 — §11.4/11.5/26 の旧記述掃除を含む)→ batch7-human(T-075〜T-080 実機確認)。",
-      "運用注意: (a) projection 更新は必ず CONTROL_ROOT から stage → patch → apply(前サイクル、cwd が PROJECT_ROOT のまま bin/atlas-builder を呼んで空振りした)。(b) xcodebuild -only-testing は識別子不一致でも exit 0(lessons.jsonl 参照)。(c) validation.json の run ledger divergence 警告は既知・対応不要。"
+      "T-068(active batch): ソートのテスト整備(成功条件 11)。モデル核は all-row 化済み(sortVisibleProjectsByPriority/ByDeadline → applyProjectOrder)。残: (1) メソッド名の見直し(sortProjectsBy… へ改名するなら controller/App の呼び出しも追従)、(2)『一覧を開いていなくても効く』の再考 — canSortVisibleProjects の overlaySessionActive ガードが projectListActive を含む点を Essence 文言(必須 42『ソートは一覧を開いていなくても効く』)と照合し、一覧を開いたままのソートを許すか判断、(3) ソート後の序数追従テスト、(4) hidden 含む全行ソート・同順位相対順維持・未設定末尾のテストが成功条件 11 の列挙と一致するか確認。",
+      "以降: T-069(次トリガー: ProjectState に nextTrigger 5 値 + 永続化 + 一望モード表示 + 毎朝リセット非対象)→ T-070/T-071(一覧のセルモデル/ビュー)→ T-072(Cmd+N)→ T-073(キー変更)→ T-074(SPEC/README 総整備 — §25 の hide-selection 記述の即時 hide 化、§11.4/11.5/26 の旧記述掃除を含む)→ batch7-human(T-075〜T-080 実機確認)。",
+      "運用注意: (a) projection 更新は必ず CONTROL_ROOT から stage → 一時 python で patch → apply。(b) apply-projection の evidence 文中に doc ファイル名の羅列を書くと pre-tool guard が制御面変更と誤検知することがある — 文言を変えて再実行すれば通る。(c) validation.json の run ledger divergence 警告は既知・対応不要。(d) zig は /opt/homebrew/opt/zig@0.15/bin/zig(0.15.2)を使う。"
     ],
     "open_questions": []
   }

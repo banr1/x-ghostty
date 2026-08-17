@@ -1223,11 +1223,11 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // `hide_project` opens the hide-selection screen (`SPEC.md`
-                // §25). Only performable when the screen can open: at least
-                // two visible projects (at least one always stays visible),
-                // and no other overlay owning the keyboard.
-                guard controller.workspace.canBeginHideSelection else { return false }
+                // `hide_project` hides the focused project immediately
+                // (`SPEC.md` §25). Only performable when the hide would
+                // succeed: at least one other project stays visible, and no
+                // overlay owning the keyboard.
+                guard controller.workspace.canHideFocusedProject else { return false }
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyHideProject,

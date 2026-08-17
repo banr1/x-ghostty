@@ -1355,10 +1355,9 @@ class BaseTerminalController: NSWindowController,
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(view) else { return }
 
-        // `hide_project` opens the hide-selection screen (`SPEC.md` §25);
-        // the actual hiding happens on the screen's confirm
-        // (`confirmHideSelection`).
-        workspace.beginHideSelection()
+        // `hide_project` hides the focused project immediately (`SPEC.md`
+        // §25) — no selection screen is involved.
+        hideFocusedProject()
     }
 
     @objc private func ghosttyDidShowProject(_ notification: Notification) {
@@ -1718,23 +1717,22 @@ class BaseTerminalController: NSWindowController,
         registerWorkspaceUndo("Move Project", undo: before, redo: workspace.state)
     }
 
-    /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). The model
-    /// hides every selected project in one batch and resolves the next focus;
-    /// here we swap `surfaceTree` to the surviving focused project's panes and
-    /// move keyboard focus, mirroring `focusProject`. No-op when the confirm
-    /// is rejected (every visible project selected — the screen stays up) or
-    /// when the selection was empty (the screen just closes). Registers a
-    /// project-aware undo ("Hide Projects") so the batch hide can be
-    /// reversed; the snapshot keeps the hidden projects' panes (their
-    /// processes already stay alive via `projects`, §14.7).
-    func confirmHideSelection() {
+    /// Hide the focused project in response to `hide_project` (Cmd+Opt+H,
+    /// `SPEC.md` §25). The model flips its row's visibility and resolves the
+    /// next focus; here we swap `surfaceTree` to the surviving focused
+    /// project's panes and move keyboard focus, mirroring `focusProject`.
+    /// No-op when the hide is rejected (last visible project, or an overlay
+    /// owns the keyboard). Registers a project-aware undo ("Hide Project")
+    /// so the hide can be reversed; the snapshot keeps the hidden project's
+    /// panes (its processes already stay alive via `projects`, §14.7).
+    func hideFocusedProject() {
         let before = workspace.state
-        guard let result = workspace.confirmHideSelection(
+        guard let result = workspace.hideFocusedProject(
             savingOutgoingPaneTree: surfaceTree) else { return }
 
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toProjectSurface: result.focus)
-        registerWorkspaceUndo("Hide Projects", undo: before, redo: workspace.state)
+        registerWorkspaceUndo("Hide Project", undo: before, redo: workspace.state)
     }
 
     /// Choose a layout type in the open selector (Enter, `SPEC.md`

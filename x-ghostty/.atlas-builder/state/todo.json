@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-067"
+    "T-068"
   ],
   "items": [
     {
@@ -2772,7 +2772,7 @@
     {
       "id": "T-067",
       "title": "Cmd+Opt+H back to immediate hide of the focused project (no selection screen; remove the hide-selection screen and its model), refusing when only one project is visible; the same at-least-one-visible refusal for the list visibility toggle; the remaining projects are re-laid out with the remembered layout type right after hiding; the hidden shelf stays abolished. Tests per success condition 13",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-055",
@@ -2786,7 +2786,30 @@
       },
       "batch_group": "hide",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "note": "full macOS app build, PATH prefixed with /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; brew default zig moved to 0.16.0 which the build refuses)"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "note": "Zig core tests"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "note": "XGhosttyTests: 583 test cases passed, 0 failures (15 hide-selection tests removed with the screen, 1 overlay-guard refusal test added)"
+        },
+        {
+          "type": "diff",
+          "summary": "16 files changed, +94/-757. hide_project is an immediate hide again: XGhostty.App performability -> canHideFocusedProject; BaseTerminalController.ghosttyDidHideProject -> new controller hideFocusedProject() (surfaceTree swap, keyboard focus, 'Hide Project' undo), replacing confirmHideSelection(). WorkspaceModel: hide-selection session (hideSelection/begin/toggle/canConfirm/confirm/cancel, ~120 lines) deleted; canHideFocusedProject now also refuses while the note editor or an overlay session owns the keyboard, and hideFocusedProject guards on it. ProjectHideSelector.swift deleted; TerminalWorkspaceView/TerminalView wiring removed; doc-comment references updated (ProjectLayoutSelector, ProjectListOverlay, ProjectOverlayKeys). Tests: ProjectHideSelectionTests.swift deleted; WorkspaceModelTests gained hideFocusedProjectDeclinesWhileAnOverlayOwnsTheKeyboard; ProjectLayoutSelectionTests references migrated. Success condition 13 covered by hideFocusedProjectHidesAndMovesFocusToNeighbor / RejectsLastVisibleProject / RejectsWhenOnlyOtherProjectAlreadyHidden (action) and ProjectListTests.hidingTheLastVisibleProjectIsRefused (list toggle); auto-relayout after hide by ProjectLayoutTypeTests.visibleCountChangesReapplyTheRememberedType. Doc updates ride T-074."
+        }
+      ]
     },
     {
       "id": "T-068",

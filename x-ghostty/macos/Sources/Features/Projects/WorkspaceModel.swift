@@ -42,30 +42,23 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// the mode is viewing-only.
     @Published private(set) var noteOverviewActive = false
 
-    /// The in-progress hide-selection session (`hide_project`, Cmd+Opt+H,
-    /// `SPEC.md` §25): the set of projects currently toggled for hiding, or
-    /// `nil` while no selection screen is up. Transient UI state like
-    /// `noteEditingProject`; never persisted. While a session is up, focus
-    /// moves and note editing are no-ops — the screen owns the interaction
-    /// until it confirms or cancels.
-    @Published private(set) var hideSelection: Set<ProjectID>?
-
     /// Whether the layout-selection overlay (`choose_project_layout`, Cmd+L,
-    /// `SPEC.md` §26) is up. Transient UI state like `hideSelection`; never
-    /// persisted.
+    /// `SPEC.md` §26) is up. Transient UI state like `noteOverviewActive`;
+    /// never persisted.
     @Published private(set) var layoutSelectionActive = false
 
     /// Whether the project-list overlay (`list_projects`, Cmd+L, `SPEC.md`
-    /// §27) is up. Transient UI state like `hideSelection`; never persisted.
+    /// §27) is up. Transient UI state like `noteOverviewActive`; never
+    /// persisted.
     @Published private(set) var projectListActive = false
 
-    /// Whether any workspace-modal overlay session (note overview,
-    /// hide-selection, layout selection, project list) currently owns the
-    /// interaction: while one is up, focus moves, note editing, and sorting
-    /// are no-ops, and no other overlay may open. The note *editor* is not in
-    /// this set — it locks less (see the individual guards).
+    /// Whether any workspace-modal overlay session (note overview, layout
+    /// selection, project list) currently owns the interaction: while one is
+    /// up, focus moves, note editing, and sorting are no-ops, and no other
+    /// overlay may open. The note *editor* is not in this set — it locks less
+    /// (see the individual guards).
     private var overlaySessionActive: Bool {
-        noteOverviewActive || hideSelectionActive
+        noteOverviewActive
             || layoutSelectionActive
             || projectListActive
     }
@@ -426,13 +419,18 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// Whether `hide_project` would succeed for the focused project (`SPEC.md`
-    /// §18.2): at least one other project must remain visible afterwards.
+    /// §18.2, §25): at least one other project must remain visible afterwards,
+    /// and neither the note editor nor an overlay session may be up (each
+    /// overlay owns the keyboard alone). Callers use this both to hide and to
+    /// answer the keybind's performability check, so the two always agree.
     var canHideFocusedProject: Bool {
+        guard noteEditingProject == nil, !overlaySessionActive else { return false }
         guard let id = state.focusedProject else { return false }
         return neighborAfterHiding(id) != nil
     }
 
-    /// Hide the focused project (`SPEC.md` §11.7, §18.2–3). Its ledger row's
+    /// Hide the focused project immediately (`hide_project`, Cmd+Opt+H,
+    /// `SPEC.md` §11.7, §18.2–3, §25 — no selection screen). Its ledger row's
     /// visibility flips, the arrangement re-derives without it so the remaining
     /// projects reclaim its space, and focus moves to the nearest remaining
     /// project. Its `ProjectState` — including its pane tree and live surfaces —
@@ -446,13 +444,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///
     /// - Returns: the neighbor project to focus next and its last-focused surface
     ///   so the caller can swap `surfaceTree` and move keyboard focus, or `nil`
-    ///   when the hide is rejected (no focused project, or it is the last visible
-    ///   project, §18.2).
+    ///   when the hide is rejected (no focused project, it is the last visible
+    ///   project (§18.2), or an overlay owns the keyboard).
     @discardableResult
     func hideFocusedProject(
         savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> (target: ProjectID, focus: SurfaceID?)? {
-        guard let hideID = state.focusedProject else { return nil }
+        guard canHideFocusedProject, let hideID = state.focusedProject else { return nil }
         guard let neighbor = neighborAfterHiding(hideID) else { return nil }
 
         var next = state
@@ -524,128 +522,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return state.projects[id]?.focusedSurface
     }
 
-    // MARK: Hide selection (SPEC §25)
-
-    /// Whether the hide-selection screen is up.
-    var hideSelectionActive: Bool { hideSelection != nil }
-
-    /// Whether `hide_project` can open the selection screen (`SPEC.md` §25):
-    /// at least two visible projects (with one, nothing could ever be hidden —
-    /// at least one project always stays visible), and neither the note
-    /// editor nor another overlay session is up (each overlay owns the
-    /// keyboard alone). Callers use this both to open the screen and to
-    /// answer the keybind's performability check, so the two always agree.
-    var canBeginHideSelection: Bool {
-        noteEditingProject == nil
-            && !overlaySessionActive
-            && state.visibleProjectCount >= 2
-    }
-
-    /// Open the hide-selection screen with an empty selection (`SPEC.md`
-    /// §25). Any project zoom is released first so the screen sits over the
-    /// overall view it operates on (the Essence leaves the zoomed-invocation
-    /// behavior to the implementation). No-op while a session is already up
-    /// or `canBeginHideSelection` is false.
-    func beginHideSelection() {
-        guard hideSelection == nil, canBeginHideSelection else { return }
-        state.zoomedProject = nil
-        hideSelection = []
-    }
-
-    /// The projects the hide-selection screen lists: every visible project in
-    /// canonical (ordinal) order. Empty while no session is up. Hidden
-    /// projects are never listed — they are already hidden, and their return
-    /// path stays the shelf (`SPEC.md` §25).
-    var hideSelectionProjectIDs: [ProjectID] {
-        guard hideSelectionActive else { return [] }
-        return state.visibleProjectIDs
-    }
-
-    /// Toggle project `id` in the hide selection. No-op while no session is
-    /// up, and for anything but a visible project (hidden projects are not
-    /// listed and can never join the selection).
-    func toggleHideSelection(_ id: ProjectID) {
-        guard var selection = hideSelection else { return }
-        guard state.visibleProjectIDs.contains(id) else { return }
-        if selection.contains(id) {
-            selection.remove(id)
-        } else {
-            selection.insert(id)
-        }
-        hideSelection = selection
-    }
-
-    /// Whether the current selection can be confirmed (`SPEC.md` §25): a
-    /// select-all is rejected — at least one project must stay visible. An
-    /// empty selection is confirmable; it just closes the screen hiding
-    /// nothing.
-    var canConfirmHideSelection: Bool {
-        guard let selection = hideSelection else { return false }
-        return selection.count < state.visibleProjectCount
-    }
-
-    /// Confirm the hide selection (`SPEC.md` §25): every selected project is
-    /// hidden in one batch — each leaf leaves the canonical tree so the
-    /// remaining projects reclaim the space, and each id joins
-    /// `hiddenProjectIDs`, the shelf's source of truth (the return path is
-    /// the shelf, unchanged) — and the screen closes. A select-all is
-    /// rejected and the screen stays up; an empty selection closes the
-    /// screen hiding nothing.
-    ///
-    /// When the focused project is among the hidden, focus moves to the
-    /// nearest surviving project, measured on the pre-removal tree exactly
-    /// like `hideFocusedProject`'s neighbor resolution.
-    ///
-    /// The caller passes the outgoing focused project's live panes so they
-    /// are persisted before any structural change (the hidden projects keep
-    /// their layouts and processes alive in `projects`, invariant §14.7).
-    ///
-    /// - Returns: the project to focus next and its stored focused surface so
-    ///   the caller can swap `surfaceTree` and move keyboard focus, or `nil`
-    ///   when nothing was hidden (a rejected confirm, or an empty selection).
-    @discardableResult
-    func confirmHideSelection(
-        savingOutgoingPaneTree outgoing: SplitTree<Pane>
-    ) -> (target: ProjectID, focus: SurfaceID?)? {
-        guard let selection = hideSelection, canConfirmHideSelection else { return nil }
-        hideSelection = nil
-        guard !selection.isEmpty else { return nil }
-
-        // Resolve the next focus on the pre-removal tree: a still-visible
-        // focused project keeps focus; a selected one hands it to the nearest
-        // surviving leaf (`canConfirmHideSelection` guarantees one exists).
-        let target: ProjectID?
-        if let focusedID = state.focusedProject {
-            target = selection.contains(focusedID)
-                ? state.canonicalProjectTree.nearestLeaf(
-                    to: ProjectRef(id: focusedID),
-                    matching: { !selection.contains($0.id) })?.id
-                : focusedID
-        } else {
-            target = nil
-        }
-
-        var next = state
-        next.saveOutgoingPaneTree(outgoing)
-        // Rows keep their ledger positions; only visibility flips, and the
-        // relayout releases any zoom on a newly hidden project (§18.3).
-        for id in selection {
-            next.setProjectHidden(id, true)
-        }
-        if let target { next.focusedProject = target }
-        next.snapFocusToPrimaryInOverallView()
-        state = next
-
-        guard let target else { return nil }
-        return (target, state.projects[target]?.focusedSurface)
-    }
-
-    /// Close the hide-selection screen hiding nothing (the Escape path,
-    /// `SPEC.md` §25).
-    func cancelHideSelection() {
-        hideSelection = nil
-    }
-
     // MARK: Project list (SPEC §27)
 
     /// Whether `list_projects` can open the project list (`SPEC.md` §27): at
@@ -677,7 +553,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// The rows the project list shows: every project, hidden ones included,
     /// visible first in ordinal order (`SPEC.md` §27.1). Empty while no
-    /// session is up, mirroring `hideSelectionProjectIDs`.
+    /// session is up, mirroring `noteOverviewProjectIDs`.
     var projectListRows: [ProjectListRow] {
         guard projectListActive else { return [] }
         return state.projectListRows
@@ -703,7 +579,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// Showing never moves focus: Space is a visibility control, and Enter
     /// (`focusProjectListRow`) is the focus control. Hiding moves focus only
     /// when the hidden project *was* focused, in which case the nearest
-    /// surviving project takes over exactly as in `confirmHideSelection`.
+    /// surviving project takes over exactly as in `hideFocusedProject`.
     ///
     /// The caller passes the outgoing focused project's live panes so they are
     /// persisted before any structural change (a hidden project keeps its
@@ -1354,9 +1230,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     @discardableResult
     func toggleNoteOverview() -> Bool {
         // The note editor owns the keyboard and its draft must not be
-        // silently dropped; the hide-selection and layout screens own the
-        // interaction until they confirm or cancel.
-        guard noteEditingProject == nil, hideSelection == nil,
+        // silently dropped; the layout screen owns the interaction until it
+        // confirms or cancels.
+        guard noteEditingProject == nil,
               !layoutSelectionActive else { return noteOverviewActive }
 
         if noteOverviewActive {
@@ -1400,10 +1276,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // The overview is a transient viewing session over the *current*
         // layout; a wholesale state swap (undo/redo) ends it rather than
         // letting a restored zoom contradict the mode's zoom-released
-        // invariant. The hide-selection and layout sessions end for the same
-        // reason: their candidate lists belong to the replaced layout.
+        // invariant. The layout session ends for the same reason: its
+        // candidate list belongs to the replaced layout.
         noteOverviewActive = false
-        hideSelection = nil
         layoutSelectionActive = false
     }
 
@@ -1421,7 +1296,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         renamingProject = nil
         noteEditingProject = nil
         noteOverviewActive = false
-        hideSelection = nil
         layoutSelectionActive = false
     }
 }

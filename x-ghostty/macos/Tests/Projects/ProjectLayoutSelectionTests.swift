@@ -150,7 +150,7 @@ struct ProjectLayoutSelectionTests {
         #expect(zoomed.state.zoomedProject == nil)
 
         // Each overlay owns the keyboard alone: no layout selector while the
-        // note editor, the note overview, or the hide selection is up.
+        // note editor or the note overview is up.
         let (editing, _) = Self.makeModel(2)
         editing.beginNoteEditingFocusedProject()
         #expect(!editing.canBeginLayoutSelection)
@@ -160,24 +160,20 @@ struct ProjectLayoutSelectionTests {
         let (overview, _) = Self.makeModel(2)
         overview.toggleNoteOverview()
         #expect(!overview.canBeginLayoutSelection)
-
-        let (hiding, _) = Self.makeModel(2)
-        hiding.beginHideSelection()
-        #expect(!hiding.canBeginLayoutSelection)
     }
 
     @Test func selectorOwnsTheInteractionWhileUp() {
         let (model, ids) = Self.makeModel(4)
         model.beginLayoutSelection()
 
-        // No focus moves, no note editing, no sorting, no other overlay
-        // while the selector is up.
+        // No focus moves, no note editing, no sorting, no hide, no other
+        // overlay while the selector is up.
         #expect(model.switchFocusedProject(to: ids[1], savingOutgoingPaneTree: .init()) == nil)
         #expect(model.gotoProjectIndexTarget(2) == nil)
         model.beginNoteEditing(ids[0])
         #expect(model.noteEditingProject == nil)
         #expect(!model.canSortVisibleProjects)
-        #expect(!model.canBeginHideSelection)
+        #expect(!model.canHideFocusedProject)
         model.toggleNoteOverview()
         #expect(!model.noteOverviewActive)
 

@@ -36,11 +36,6 @@ protocol TerminalViewDelegate: AnyObject {
     /// focus to the project that is focused after the session's toggles.
     func closeProjectList()
 
-    /// Confirm the hide-selection screen (Enter, `SPEC.md` §25): batch-hide
-    /// the selected projects. Hiding can move focus to another project, which
-    /// swaps `surfaceTree`, so the controller handles it like `showProject`.
-    func confirmHideSelection()
-
     /// Choose a layout type in the open selector (Enter, `SPEC.md` §26.2):
     /// the type is remembered and the arrangement re-derives. The controller
     /// registers the project-aware undo.
@@ -118,7 +113,6 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         onToggleProjectListVisibility: { delegate?.toggleProjectListVisibility($0) },
                         onFocusProjectListRow: { delegate?.focusProjectListRow($0) },
                         onCloseProjectList: { delegate?.closeProjectList() },
-                        onConfirmHideSelection: { delegate?.confirmHideSelection() },
                         onChooseLayoutType: { delegate?.chooseLayoutType($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)

@@ -498,6 +498,28 @@ struct WorkspaceModelTests {
         #expect(model.canHideFocusedProject == true)
     }
 
+    @Test func hideFocusedProjectDeclinesWhileAnOverlayOwnsTheKeyboard() throws {
+        // The note editor owns the keyboard alone.
+        let (editing, _, _) = try Self.makeTwoProjectHorizontal()
+        editing.beginNoteEditingFocusedProject()
+        #expect(editing.canHideFocusedProject == false)
+        #expect(editing.hideFocusedProject(savingOutgoingPaneTree: .init()) == nil)
+        #expect(editing.state.hiddenProjectIDs.isEmpty)
+
+        // So do the overlay sessions (note overview, project list).
+        let (overview, _, _) = try Self.makeTwoProjectHorizontal()
+        overview.toggleNoteOverview()
+        #expect(overview.canHideFocusedProject == false)
+        #expect(overview.hideFocusedProject(savingOutgoingPaneTree: .init()) == nil)
+        #expect(overview.state.hiddenProjectIDs.isEmpty)
+
+        let (list, _, _) = try Self.makeTwoProjectHorizontal()
+        list.beginProjectList()
+        #expect(list.canHideFocusedProject == false)
+        #expect(list.hideFocusedProject(savingOutgoingPaneTree: .init()) == nil)
+        #expect(list.state.hiddenProjectIDs.isEmpty)
+    }
+
     // MARK: show_project (SPEC §11.8, §7.2)
 
     @Test func showProjectUnhidesAndFocuses() throws {

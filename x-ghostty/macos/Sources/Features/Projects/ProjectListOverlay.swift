@@ -14,10 +14,10 @@ import SwiftUI
 /// renders rows and forwards events. It is rendered only while the session is
 /// up, so it occupies no permanent terminal area.
 ///
-/// Keyboard mechanics are `ProjectHideSelector`'s: an invisible focused text
-/// field owns first responder so the terminal sees no keystrokes, Escape
-/// arrives via `onExitCommand`, Enter via `onSubmit`, Space as typed text in
-/// the sink, and the arrows through the shared local keyDown monitor
+/// Keyboard mechanics are `ProjectLayoutSelector`'s: an invisible focused
+/// text field owns first responder so the terminal sees no keystrokes,
+/// Escape arrives via `onExitCommand`, Enter via `onSubmit`, Space as typed
+/// text in the sink, and the arrows through the shared local keyDown monitor
 /// (`overlayArrowKeys`) because a focused field editor eats them first.
 struct ProjectListOverlay: View {
     @EnvironmentObject private var ghostty: XGhostty.App

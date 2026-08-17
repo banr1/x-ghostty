@@ -12,13 +12,12 @@ import SwiftUI
 /// says so instead of listing it. Rendered only while the selector is up, so
 /// no permanent terminal area is occupied.
 ///
-/// Keyboard mechanics follow `ProjectHideSelector` / `CommandPaletteView`:
-/// an invisible focused text field holds first responder so the terminal
-/// sees no keystrokes, delivering Escape via `onExitCommand` and Enter via
-/// `onSubmit`; typed text is discarded. The arrows come through the shared
-/// local keyDown monitor (`overlayArrowKeys`) instead of `onMoveCommand`,
-/// which the focused sink field's editor starved on device (see
-/// `ProjectHideSelector`).
+/// Keyboard mechanics follow `CommandPaletteView`: an invisible focused
+/// text field holds first responder so the terminal sees no keystrokes,
+/// delivering Escape via `onExitCommand` and Enter via `onSubmit`; typed
+/// text is discarded. The arrows come through the shared local keyDown
+/// monitor (`overlayArrowKeys`) instead of `onMoveCommand`, which the
+/// focused sink field's editor starved on device.
 struct ProjectLayoutSelector: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
@@ -64,7 +63,7 @@ struct ProjectLayoutSelector: View {
     }
 
     /// The invisible first-responder text field that owns the keyboard while
-    /// the selector is up (the same mechanics as `ProjectHideSelector`).
+    /// the selector is up (the same mechanics as `CommandPaletteView`).
     private var keyCatcher: some View {
         TextField("", text: $keyboardSink)
             .textFieldStyle(.plain)

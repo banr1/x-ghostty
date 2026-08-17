@@ -47,8 +47,8 @@ extension View {
 
     /// Delivers plain (unmodified) ↑/↓ presses to `move` (-1 up, +1 down)
     /// while this view is on screen, consuming them so a focused field
-    /// editor never sees them. Shared by the selection screens
-    /// (`ProjectHideSelector`, `ProjectLayoutSelector`).
+    /// editor never sees them. Shared by the overlay screens
+    /// (`ProjectLayoutSelector`, `ProjectListOverlay`).
     func overlayArrowKeys(_ move: @escaping (Int) -> Void) -> some View {
         overlayKeyDownMonitor { event in
             guard event.modifierFlags

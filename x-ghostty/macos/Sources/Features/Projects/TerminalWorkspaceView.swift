@@ -41,28 +41,10 @@ struct TerminalWorkspaceView: View {
     /// focused when the list opened.
     let onCloseProjectList: () -> Void
 
-    /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). Batch-hiding
-    /// can move focus to another project, which swaps `surfaceTree`, so the
-    /// controller handles it like `onFocusProject`; toggle and cancel are
-    /// model-only and wired below.
-    let onConfirmHideSelection: () -> Void
-
     /// Choose a layout type in the open selector (Enter, `SPEC.md` §26.2).
     /// The controller registers the project-aware undo; cancel is model-only
     /// and wired below.
     let onChooseLayoutType: (ProjectLayoutType) -> Void
-
-    /// The hide-selection footer: the pending count, or why Enter is blocked
-    /// (the model rejects hiding every visible project, `SPEC.md` §25).
-    private func hideSelectionFooter(selection: Set<ProjectID>) -> String {
-        if !workspace.canConfirmHideSelection {
-            return "at least one project must stay visible"
-        }
-        if selection.isEmpty {
-            return "nothing selected — ↩ closes"
-        }
-        return "↩ hides \(selection.count) project\(selection.count == 1 ? "" : "s")"
-    }
 
     private var labelActions: ProjectLabelActions {
         ProjectLabelActions(
@@ -128,26 +110,6 @@ struct TerminalWorkspaceView: View {
                     onToggle: { workspace.toggleNoteOverview() })
             }
 
-            // Hide-selection overlay (`SPEC.md` §25): presented while the
-            // selection session is up, absent otherwise so the terminal keeps
-            // the full area. The listed projects resolve through live state,
-            // in ordinal order.
-            if let selection = workspace.hideSelection {
-                ProjectHideSelector(
-                    title: "hide projects",
-                    hint: "space toggle · ↩ hide · esc cancel",
-                    footer: hideSelectionFooter(selection: selection),
-                    projects: workspace.hideSelectionProjectIDs.compactMap {
-                        workspace.state.projects[$0]
-                    },
-                    ordinals: workspace.state.projectOrdinals,
-                    selection: selection,
-                    canConfirm: workspace.canConfirmHideSelection,
-                    onToggle: { workspace.toggleHideSelection($0) },
-                    onConfirm: onConfirmHideSelection,
-                    onCancel: { workspace.cancelHideSelection() })
-            }
-
             // Layout-type selector (`SPEC.md` §26.2): presented while the
             // selector session is up, listing only the current visible
             // count's collapsed choices.
@@ -191,17 +153,6 @@ struct TerminalWorkspaceView: View {
         .onChange(of: workspace.noteOverviewActive) { active in
             // Leaving the overview hands keyboard focus back to the terminal,
             // exactly like the note editor's dismissal above.
-            if !active {
-                DispatchQueue.main.async {
-                    if let surface = lastFocusedSurface?.value {
-                        surface.window?.makeFirstResponder(surface)
-                    }
-                }
-            }
-        }
-        .onChange(of: workspace.hideSelectionActive) { active in
-            // Closing the hide-selection screen hands keyboard focus back to
-            // the terminal, exactly like the overlays above.
             if !active {
                 DispatchQueue.main.async {
                     if let surface = lastFocusedSurface?.value {
