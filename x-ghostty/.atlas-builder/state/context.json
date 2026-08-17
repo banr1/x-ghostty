@@ -7,7 +7,7 @@
   },
   "progress": {
     "last_signature": "9e79775635354fd87b6192843055bd70aaa89b7dcb585053e53bdf3f6c2fc685",
-    "idle_cycles_since_progress": 3,
+    "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
     "last_progress_at": "2026-08-18T03:32:14+09:00",
     "last_checked_at": "2026-08-18T03:32:29+09:00",
@@ -30,8 +30,8 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T03:19:53+09:00",
-    "summary": "Human resume: T-063(リモート split の再確認)を実機で確認し、3 項目すべてが期待どおり動作した: (a) ssh 中のペインの split が同じホスト・同じパスで開く、(b) ssh を exit して手元のシェルに戻った後の split がローカルで開く(T-061 の修正が効いている)、(c) 素のローカルペインの split が従来どおりローカルで開く。よって R-019 を解除し、T-063 を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。ESSENCE.md の変更は不要。\n\nT-057(優先度の毎朝 6:00 リセット)は日付跨ぎがまだ済んでいないため今回も未確認。pending のまま据え置き、実際に日を跨いだ朝に改めて確認する。したがって次サイクルは T-063 の記録と下記の勧告 close を行った時点で人間確認待ちになる — その停止は想定どおりの着地であり、差し戻しでも異常でもない。\n\n非ブロッキング勧告 2 件はいずれも人間が承認したので、次サイクルでこの結論を resolution として記録し close すること。R-018(リモート判定に pty の前景プロセスを見る設計解釈)は現行のまま承認する — 前景がシェルならローカル、前景を読めないときは「戻ってきた証拠ではない」として報告に従う倒し方を含めて維持し、実装変更は不要。R-017(リモート側にシェル統合を入れると OSC 7 が報告するのは ssh の別名 gohanserver ではなくリモート機自身のホスト名 nixos-dev になる件)も了解した — 製品側で別名を推測する処理は入れず、必要な対応はリモートへのシェル統合導入と ~/.ssh/config への Host エントリ追加という人間側の環境作業のみ。実装・ESSENCE.md の変更は不要。",
+    "written_at": "2026-08-18T03:47:16+09:00",
+    "summary": "Human resume: idle_cycles ゲート R-LG-20260818T033229+0900-a3df を解除する。3 サイクル無進捗の原因はプロジェクト側ではなく Claude セッションの起動失敗(使用量上限)であり、03:32 台の 3 本はいずれも 2 秒で claude_exit_1 となり何も実行していない。人間がアカウントを切り替えて上限は解消済みなので、そのまま再開してよい。\nなお 2026-08-18T03:19:53 のサイクルは実作業(新 ESSENCE fad594… からの Spec 99 / Todo 80 再射影、T-057 / T-063 の human evidence 付き done、R-017 / R-018 の close)を終えてコミット f25b0d0 まで作った後に exit 1 したため、reflection.jsonl のサイクル記録だけが欠けている。次サイクルはその作業をやり直さず、active batch の T-064(台帳モデル層)から通常どおり実装を進めること。\nvalidation.json の run ledger divergence 警告(8/9・8/16・8/17 の 3 本が control 側にのみ記録)は中断サイクルの記録差分であり、対応不要。",
     "next_actions": [],
     "open_questions": [],
     "pending_cycle": true
