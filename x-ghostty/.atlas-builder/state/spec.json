@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "198e3fdd39a1af3e11ab29a8ac25c65179add3cd99d39274fe4ce9ac90949baf",
-  "projected_at": "2026-08-16T01:46:10+09:00",
+  "projected_from_essence_sha256": "fad594402a4f079f788f355716c6532f606108f99c765744621060d3e9c21ca9",
+  "projected_at": "2026-08-18T03:35:00+09:00",
   "items": [
     {
       "id": "S-001",
@@ -28,23 +28,22 @@
     },
     {
       "id": "S-003",
-      "title": "Cmd+N opens a multi-line note edit overlay for the focused project; Cmd+Enter saves and closes; the edit overlay shows the full text",
+      "title": "Cmd+E opens a multi-line note edit overlay for the focused project; Cmd+Enter saves and closes; the edit overlay shows the full text",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+N` で focused プロジェクトのノート編集オーバーレイが開き、複数行を編集でき、",
-        "`Cmd+Enter` で保存して閉じる。",
-        "編集オーバーレイでは全文が見える。"
+        "`Cmd+E` で focused プロジェクトのノート編集オーバーレイが開き、複数行を編集でき、",
+        "`Cmd+Enter` で保存して閉じる。"
       ]
     },
     {
       "id": "S-004",
-      "title": "Cmd+Opt+N toggles overview mode: notes overlay simultaneously on all visible projects; Cmd+Opt+N again or Esc exits",
+      "title": "Cmd+Opt+E toggles overview mode: notes overlay simultaneously on all visible projects; Cmd+Opt+E again or Esc exits",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+Opt+N` で一望モードをトグルし、visible な全プロジェクトの上にそれぞれのノートが",
-        "同時にオーバーレイ表示される。再度 `Cmd+Opt+N` を押すか Esc を押すと抜ける。"
+        "`Cmd+Opt+E` で一望モードをトグルし、visible な全プロジェクトの上にそれぞれのノートが",
+        "同時にオーバーレイ表示される。再度 `Cmd+Opt+E` を押すか Esc を押すと抜ける。"
       ]
     },
     {
@@ -96,26 +95,32 @@
     },
     {
       "id": "S-010",
-      "title": "No regression of existing project features or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter's fullscreen default, overall-view rendering of primary panes only, no-op pane operations in the overall view, focus snapping to the primary on zoom release, unconditional close confirmation, last-pane shell exit leaving a terminated project, note-editor Cmd+A/C/X/V routed to text editing, the Cmd+S / Cmd+Shift+S sort assignments, replacing Cmd+Opt+H's immediate hide with the hide-selection screen, the full group-to-project rename, remote panes splitting to the same remote path, abolishing the hidden shelf in favour of the project list as the single return path, moving layout selection from Cmd+L to Cmd+Opt+L so Cmd+L opens the project list, note-editor Cmd+Z / Cmd+Shift+Z routed to editor undo/redo, and the daily priority reset",
+      "title": "No regression of existing project features (enumeration, zoom, ordinal jump, hide/show, rename, close) or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter fullscreen, primary-only overall view, no-op pane ops in the overall view, focus snapping to primary on zoom release, unconditional close confirmation, terminated-state last pane, note-editor Cmd+A/C/X/V and Cmd+Z/Shift+Z routed to the editor, Cmd+S / Cmd+Shift+S sort assignments, the group-to-project rename, remote-path split, hidden shelf abolished in favour of the project list, Cmd+L project list and Cmd+Opt+L layout selection, daily priority reset, moving note operations from Cmd+N / Cmd+Opt+N to Cmd+E / Cmd+Opt+E, unbinding Cmd+E search_selection (feature kept), Cmd+Opt+H back to immediate hide of the focused project, abolishing Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) with creation only via the list, replacing the 11 registered layouts by layout types (shape x orientation) with auto-apply on visible-count change, abolishing project-level layout resize/equalize (pane resize while zoomed remains), list Enter moving down a cell with focus moved to Cmd+Enter, and moving the priority/deadline entry point from the note overlay to the list",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "既存のプロジェクト機能(列挙・zoom・序数ジャンプ・hide/show・resize/equalize・",
-        "rename・close)および上流由来のターミナル動作を退行させない。ただし以下の意図的",
-        "変更は例外とする:`Cmd+Enter` の fullscreen 既定割り当ての解除(fullscreen は",
-        "`Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる)、全体ビューの",
-        "描画をプライマリーペインのみに変えること、全体ビューでのペイン系操作の no-op 化、",
-        "zoom 解除時に focus をプライマリーペインへ寄せること、プロジェクトを閉じる操作の",
-        "確認を常時化すること、最後のペインのシェル exit でプロジェクトを閉じず終了済み",
-        "状態で残すこと、ノート編集オーバーレイ中の Cmd+A / C / X / V をエディタのテキスト",
-        "編集に向けること、`Cmd+S` / `Cmd+Shift+S` へのソートアクションの新規割り当て、",
-        "`Cmd+Opt+H` の即時 hide を hide 選択画面に置き換えること、「グループ」→",
-        "「プロジェクト」への全面改名(文言・action 名・識別子・ディレクトリ名)、",
-        "リモートペインの split 先をリモート同パスにすること、hidden シェルフの廃止と",
-        "復帰導線のプロジェクト一覧への一本化、`Cmd+L` のレイアウト選択からプロジェクト",
-        "一覧への付け替えとレイアウト選択の `Cmd+Opt+L` への移動、ノート編集オーバーレイ中の",
-        "Cmd+Z / Cmd+Shift+Z をエディタの取り消し・やり直しに向けること、優先度の毎朝",
-        "リセット。"
+        "既存のプロジェクト機能(列挙・zoom・序数ジャンプ・hide/show・rename・close)",
+        "および上流由来のターミナル動作を退行させない。ただし以下の意図的変更は例外とする:",
+        "`Cmd+Enter` の fullscreen 既定割り当ての解除(fullscreen は `Ctrl+Cmd+F`・Window",
+        "メニュー・緑ボタンから引き続き到達できる)、全体ビューの描画をプライマリーペインのみ",
+        "に変えること、全体ビューでのペイン系操作の no-op 化、zoom 解除時に focus を",
+        "プライマリーペインへ寄せること、プロジェクトを閉じる操作の確認を常時化すること、",
+        "最後のペインのシェル exit でプロジェクトを閉じず終了済み状態で残すこと、ノート編集",
+        "オーバーレイ中の Cmd+A / C / X / V をエディタのテキスト編集に向けること、`Cmd+S` /",
+        "`Cmd+Shift+S` へのソートアクションの割り当て、「グループ」→「プロジェクト」への",
+        "全面改名(文言・action 名・識別子・ディレクトリ名)、リモートペインの split 先を",
+        "リモート同パスにすること、hidden シェルフの廃止と復帰導線のプロジェクト一覧への",
+        "一本化、`Cmd+L` のプロジェクト一覧とレイアウト選択の `Cmd+Opt+L`、ノート編集",
+        "オーバーレイ中の Cmd+Z / Cmd+Shift+Z をエディタの取り消し・やり直しに向けること、",
+        "優先度の毎朝リセット、`Cmd+N` / `Cmd+Opt+N` のノート操作を `Cmd+E` / `Cmd+Opt+E` へ",
+        "移すこと、`Cmd+E` の `search_selection` 既定割り当ての解除(機能自体は残す)、",
+        "`Cmd+Opt+H` を hide 選択画面から focused プロジェクトの即時 hide へ戻すこと、",
+        "`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)の廃止と新規作成の",
+        "プロジェクト一覧への一本化、登録レイアウト 11 種のレイアウト型(形 × 向き)への",
+        "置き換えと表示数変化時の自動適用、プロジェクト単位のレイアウト resize/equalize の",
+        "廃止(zoom 中のペイン resize は存続)、一覧の Enter を下セル移動に変え focus を",
+        "`Cmd+Enter` に移すこと、優先度・締切の設定入口をノート編集オーバーレイから一覧へ",
+        "移すこと。"
       ]
     },
     {
@@ -151,12 +156,20 @@
     },
     {
       "id": "S-013",
-      "title": "Human performs a one-time on-device visual verification after all note-layer implementation is in place; not complete until confirmed",
+      "title": "Human performs a one-time on-device visual verification after all note-layer implementation is in place; not complete until confirmed (Cmd+E opens the note overlay and Cmd+Enter saves, Esc discards, Cmd+Enter does not fullscreen, Cmd+Opt+E shows notes over all visible projects and Cmd+Opt+E / Esc dismisses, overlay appearance fits the terminal, overview notes readable incl. truncation)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "すべての実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
-        "確認が取れるまで完了とはしない。"
+        "確認が取れるまで完了とはしない。",
+        "`Cmd+E` で focused プロジェクトのノート編集オーバーレイが開き、入力後",
+        "`Cmd+Enter` で閉じると内容が保存されている",
+        "入力後 Esc で閉じると入力が破棄され、開く前の本文が残っている",
+        "`Cmd+Enter` で fullscreen にならない",
+        "`Cmd+Opt+E` で visible な全プロジェクトの上にノートが同時表示され、",
+        "再度 `Cmd+Opt+E` または Esc で消える",
+        "オーバーレイの見た目(位置・余白・配色)がターミナルに馴染んでいる",
+        "一望モード時のノートが読める(切り詰め表示を含む)"
       ]
     },
     {
@@ -362,11 +375,11 @@
     },
     {
       "id": "S-032",
-      "title": "Project-close confirmation is unconditional: close operations and Cmd+W on the last pane always show the confirmation dialog regardless of running processes, reusing the existing running-process confirmation form (Cancel / Close)",
+      "title": "Project-close confirmation is unconditional: close_project and Cmd+W on the last pane always show the confirmation dialog regardless of running processes, reusing the existing running-process dialog format (Cancel / Close)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "プロジェクトを閉じる操作(`close_group`、および最後のペインでの `Cmd+W`)では、",
+        "プロジェクトを閉じる操作(`close_project`、および最後のペインでの `Cmd+W`)では、",
         "実行中プロセスの有無によらず常に確認ダイアログを表示する。ダイアログは既存の",
         "実行中プロセス確認と同じ形式(Cancel / Close)を流用する。"
       ]
@@ -446,12 +459,13 @@
     },
     {
       "id": "S-040",
-      "title": "Priority and deadline are set and changed inside the Cmd+N note edit overlay, persisted like the note, and restored to the same project after app restart",
+      "title": "Priority and deadline are set and changed in the project list cells (not from the note edit overlay), persisted like the note, and restored to the same project after app restart",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "優先度・締切は `Cmd+N` のノート編集オーバーレイ内で設定・変更でき、ノートと同様に",
-        "永続化され、アプリ再起動後に同じプロジェクトへ復元される。"
+        "優先度・締切はプロジェクト一覧のセルで設定・変更でき(ノート編集オーバーレイからは",
+        "設定しない)、ノートと同様に永続化され、アプリ再起動後に同じプロジェクトへ復元",
+        "される。"
       ]
     },
     {
@@ -466,11 +480,11 @@
     },
     {
       "id": "S-042",
-      "title": "Overview mode shows priority and deadline together with the note",
+      "title": "Overview mode shows priority, deadline, and next trigger together with the note",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一望モードでは、ノートと併せて優先度・締切を表示する。"
+        "一望モードでは、ノートと併せて優先度・締切・次トリガーを表示する。"
       ]
     },
     {
@@ -485,55 +499,53 @@
     },
     {
       "id": "S-044",
-      "title": "New action sorting visible groups by priority (high, medium, low, then unset; stable within ties), reordering the real layout, bound to Cmd+S (plain Cmd+S confirmed unassigned)",
+      "title": "Action sorting all project rows including hidden by priority (high, medium, low, then unset; stable within ties), bound to Cmd+S",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "visible なプロジェクトを優先度順(high → medium → low → 未設定。同順位内は現在の",
-        "相対順を維持)に実レイアウトごと並び替えるアクションを追加し、`Cmd+S` に",
-        "割り当てる(素の `Cmd+S` に既存割り当てが無いことは確認済み)。"
+        "hidden を含む全プロジェクトの行を優先度順(high → medium → low → 未設定。同順位内は",
+        "現在の相対順を維持)に並び替えるアクションを `Cmd+S` に割り当てる。"
       ]
     },
     {
       "id": "S-045",
-      "title": "New action sorting visible groups by deadline (nearest first, unset last, stable within the same day), reordering the real layout, bound to Cmd+Shift+S (confirmed unassigned)",
+      "title": "Action sorting all project rows including hidden by deadline (nearest first, unset last, stable within the same day), bound to Cmd+Shift+S",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "visible なプロジェクトを締切順(近い順。未設定は末尾、同日内は現在の相対順を維持)",
-        "に実レイアウトごと並び替えるアクションを追加し、`Cmd+Shift+S` に割り当てる",
-        "(`Cmd+Shift+S` に既存割り当てが無いことは確認済み)。"
+        "hidden を含む全プロジェクトの行を締切順(近い順。未設定は末尾、同日内は現在の",
+        "相対順を維持)に並び替えるアクションを `Cmd+Shift+S` に割り当てる。"
       ]
     },
     {
       "id": "S-046",
-      "title": "Sorting happens only on explicit action execution, never automatically on priority/deadline changes; the sorted order persists until the next sort and ordinal jumps (Cmd+1-9) follow the new order",
+      "title": "Sorting happens only on explicit action execution, never automatically on priority/deadline change; the sorted order persists until the next sort or manual reorder, ordinals (Cmd+1-9) follow it, and sorting works whether or not the list is open",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "ソートは明示的なアクション実行時のみ行い、優先度・締切の変更によって自動では",
-        "並び替えない。ソート後の並びは次のソート実行まで維持され、序数ジャンプ",
-        "(Cmd+1〜9)はソート後の並びに追従する。"
+        "並び替えない。ソート後の並びは次のソートまたは手動の並べ替えまで維持され、序数",
+        "ジャンプ(Cmd+1〜9)はソート後の並びに追従する。ソートは一覧を開いていなくても効く。"
       ]
     },
     {
       "id": "S-047",
-      "title": "Sorting targets only visible groups; hidden groups are unaffected",
+      "title": "Sorting targets all rows including hidden; the ordinal is the visible rows counted from the top; no next-trigger sort is provided",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "ソートの対象は visible なプロジェクトのみとし、hidden なプロジェクトは影響を",
-        "受けない。"
+        "ソートの対象は hidden を含む全行とし、visible な行を上から数えた順が序数になる。",
+        "次トリガー順のソートは設けない。"
       ]
     },
     {
       "id": "S-048",
-      "title": "Judgment logic for priority/deadline retention and restore, sort orders, overdue determination, and the terminated state lives in the model layer, verifiable from XGhosttyTests",
+      "title": "Judgment logic for priority/deadline/next-trigger retention and restore, sort orders, overdue judgment, and terminated state lives in the model layer, verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "優先度・締切の保持・復元・ソート順・締切超過判定・終了済み状態の判断ロジックは",
-        "モデル層に置き、`XGhosttyTests` から検証可能にする。"
+        "優先度・締切・次トリガーの保持・復元・ソート順・締切超過判定・終了済み状態の判断",
+        "ロジックはモデル層に置き、`XGhosttyTests` から検証可能にする。"
       ]
     },
     {
@@ -590,30 +602,30 @@
     },
     {
       "id": "S-053",
-      "title": "Success gates (priority/deadline): XGhosttyTests contains passing tests for priority/deadline save-restore round trip, invalid deadline input treated as unset, stable priority sort order over visible groups, stable deadline sort order with unset last, sorts not affecting hidden groups, and model-layer overdue determination",
+      "title": "Success gates (priority/deadline): XGhosttyTests contains passing tests for priority/deadline save-restore, invalid deadline treated as unset, priority sort over all rows including hidden (high, medium, low, unset; stable), deadline sort over all rows including hidden (nearest first, unset last, stable), post-sort ordinals equal to visible rows counted from the top, and model-layer overdue judgment",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
         "優先度・締切を保存し復元すると同じ値が復元される",
         "不正な締切入力は未設定として扱われる",
-        "優先度ソートが visible なプロジェクトを high → medium → low → 未設定の順に",
-        "並べ、同順位内は元の相対順を維持する",
-        "締切ソートが visible なプロジェクトを締切の近い順に並べ、未設定を末尾に置き、",
+        "優先度ソートが hidden を含む全行を high → medium → low → 未設定の順に並べ、",
+        "同順位内は元の相対順を維持する",
+        "締切ソートが hidden を含む全行を締切の近い順に並べ、未設定を末尾に置き、",
         "同日内は元の相対順を維持する",
-        "ソートが hidden なプロジェクトに影響しない",
+        "ソート後の序数が visible な行を上から数えた順になる",
         "締切超過の判定がモデル層で行われる"
       ]
     },
     {
       "id": "S-054",
-      "title": "Human performs a one-time on-device visual verification of the priority/deadline layer after its implementation is in place; not complete until confirmed (overlay sets priority/deadline shown in the label band, overview shows them with the note, overdue subtly emphasized, Cmd+S / Cmd+Shift+S reorder with Cmd+1-9 following, appearance fitting the terminal)",
+      "title": "Human performs a one-time on-device visual verification of the priority/deadline layer; not complete until confirmed (priority and deadline set in list cells and shown in the label band after save, overview shows priority/deadline with the note, overdue projects subtly emphasized, Cmd+S / Cmd+Shift+S reorder and Cmd+1-9 follow, appearance fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "優先度・締切の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
         "取れる。確認が取れるまで完了とはしない。",
-        "`Cmd+N` のオーバーレイで優先度と締切を設定でき、保存後ラベル帯に表示される",
+        "一覧のセルで優先度と締切を設定でき、保存後ラベル帯に表示される",
         "一望モードでノートと併せて優先度・締切が表示される",
         "締切超過のプロジェクトが控えめに強調されて見える",
         "`Cmd+S` で優先度順、`Cmd+Shift+S` で締切順に並びが変わり、Cmd+1〜9 が",
@@ -623,138 +635,134 @@
     },
     {
       "id": "S-055",
-      "title": "Cmd+Opt+H no longer hides the focused project immediately; it opens a hide-selection screen listing all visible projects with multi-toggle selection, Enter hides the selected projects in one batch, Esc closes hiding nothing (behavior when invoked while zoomed is left to the implementation)",
+      "title": "Cmd+Opt+H immediately hides the focused project (no selection screen)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+Opt+H` は「focused プロジェクトを即座に隠す」挙動を廃止し、hide 選択画面を",
-        "開く。選択画面には visible な全プロジェクトが列挙され、複数をトグル選択でき、",
-        "Enter で選択したプロジェクトを一括で hidden にし、Esc で何も隠さず閉じる",
-        "(zoom 中に呼び出した場合の挙動は定めず、実装に任せる)。"
+        "`Cmd+Opt+H` は focused プロジェクトを即座に hidden にする(選択画面は開かない)。"
       ]
     },
     {
       "id": "S-056",
-      "title": "Hide selection can never hide all visible projects: at least one stays visible and a select-all state cannot be confirmed",
+      "title": "Neither Cmd+Opt+H nor the list visibility toggle can hide every visible project: at least one stays visible",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "hide 選択では visible な全プロジェクトを隠すことはできず、最低 1 つは visible に",
-        "残る。"
+        "`Cmd+Opt+H`・一覧の表示トグルのいずれでも、visible な全プロジェクトを隠すことは",
+        "できず、最低 1 つは visible に残る。"
       ]
     },
     {
       "id": "S-057",
-      "title": "The return path for hidden projects is the project list (items 63-65); the former hidden shelf is abolished",
+      "title": "The only return path for hidden projects is the project list; the hidden shelf stays abolished",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "隠したプロジェクトの復帰導線はプロジェクト一覧(63〜65 項)とし、従来の hidden",
-        "シェルフは廃止する。"
+        "隠したプロジェクトの復帰導線はプロジェクト一覧のみとし、hidden シェルフは廃止済みの",
+        "ままとする。"
       ]
     },
     {
       "id": "S-058",
-      "title": "Built-in registered layouts: 11 total - equal-split for 4-9 projects (6 kinds) and X+1 for X = 4-8 (5 kinds: X equal-split on top, 1 full-width at the bottom)",
+      "title": "Layout type = shape (wide / tall / pedestal) x orientation (row-major / column-major). Wide: rows = the integer nearest sqrt(n), projects distributed from the top row as evenly as possible, row heights and in-row widths equal. Tall: its transpose. Pedestal: n-1 on top and 1 full-width at the bottom. For wide/tall the orientation changes only the ordinal progression, not the shape; for pedestal, row-major places the top part by the wide rule and column-major by the tall rule",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "組み込みの登録レイアウトとして、等分割(プロジェクト数 4〜9 の 6 種)と X+1",
-        "(X = 4〜8 の 5 種。X 個を等分割し、1 個を最下段に全幅横長で配置)の計 11 種を",
-        "持つ。"
+        "レイアウト型は形(横長型・縦長型・台座型)と向き(行送り・列送り)の組み合わせと",
+        "する。横長型は行数を √n に最も近い整数とするグリッドに、プロジェクトを上の行から",
+        "できるだけ均等に配り、行の高さと行内の幅を等分する。縦長型はその転置とする。",
+        "台座型は n−1 個を上部に配置し、1 個を最下段に全幅横長で置く。横長型・縦長型では",
+        "向きは序数の進み方だけを変え、形は変えない。台座型では、行送りは上部を横長型の",
+        "規則で、列送りは縦長型の規則で配置する。"
       ]
     },
     {
       "id": "S-059",
-      "title": "Equal-split rule: rows = the integer nearest sqrt(n), projects distributed top-down as evenly as possible (4=2+2, 5=3+2, 6=3+3, 7=3+2+2, 8=3+3+2, 9=3+3+3), row heights and in-row widths equal; the X part of X+1 follows the same rule",
+      "title": "For each visible count 1-9, the 3 shapes x 2 orientations whose arrangement and ordinal progression coincide exactly are collapsed into one; the rest are the choices. When only one choice exists, Cmd+Opt+L merely indicates there is nothing to choose",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "等分割は、行数を √n に最も近い整数とするグリッドに、プロジェクトを上の行から",
-        "できるだけ均等に配る(4 = 2+2、5 = 3+2、6 = 3+3、7 = 3+2+2、8 = 3+3+2、",
-        "9 = 3+3+3)。行の高さは等分、行内の各プロジェクトの幅は等分とする。X+1 の X 部分",
-        "も同じ規則で配置する。"
+        "各 visible 数(1〜9)に対して、形 3 種 × 向き 2 種のうち配置も序数の進み方も",
+        "完全に一致するものは 1 つに畳み、残りを選択肢とする。選択肢が 1 つのとき",
+        "`Cmd+Opt+L` は選ぶものが無い旨を示すだけとする。"
       ]
     },
     {
       "id": "S-060",
-      "title": "Cmd+Opt+L opens the layout-selection overlay: arrow keys choose from the registered-layout list, Enter applies, Esc closes changing nothing; the overlay appears only when invoked and the terminal returns to full view on exit (zoomed invocation left to the implementation)",
+      "title": "Cmd+Opt+L opens the layout-type selection overlay for the current visible count: arrow keys choose, Enter applies, Esc closes changing nothing; the project count never changes; the overlay appears only when invoked and the terminal returns to full view on exit (zoomed invocation left to the implementation)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+Opt+L` でレイアウト選択オーバーレイが開き、登録レイアウトの一覧から矢印キーで",
-        "選択して Enter で適用し、Esc で何も変えずに閉じる。オーバーレイは呼び出したとき",
-        "だけ表示され、抜ければ端末が全面に戻る(zoom 中に呼び出した場合の挙動は定めず、",
-        "実装に任せる)。"
+        "`Cmd+Opt+L` でレイアウト型の選択オーバーレイが開き、現在の visible 数に対する",
+        "選択肢を矢印キーで選んで Enter で適用し、Esc で何も変えずに閉じる。プロジェクト数は",
+        "一切変えない。オーバーレイは呼び出したときだけ表示され、抜ければ端末が全面に戻る",
+        "(zoom 中に呼び出した場合の挙動は定めず、実装に任せる)。"
       ]
     },
     {
       "id": "S-061",
-      "title": "Layout application assigns visible projects in current ordinal order to slots top row first, left to right within a row, the +1 slot last; ordinals (Cmd+1-9) follow the applied arrangement",
+      "title": "Layout application assigns visible projects, in list row order, to slots following the chosen type's orientation (row-major: top row first, left to right; column-major: left column first, top to bottom; the pedestal bottom slot last); ordinals (Cmd+1-9) follow the applied arrangement",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "レイアウト適用時、visible なプロジェクトは現在の序数順のまま、スロットへ",
-        "「上の行から、行内は左から右、+1 枠は最後」の順で割り当てる。序数(Cmd+1〜9)は",
-        "適用後の配置に追従する。"
+        "レイアウト適用時、visible なプロジェクトは一覧の行順のまま、選んだ型の向きに従って",
+        "スロットへ割り当てる(行送りは上の行から左→右、列送りは左の列から上→下、台座型の",
+        "最下段は最後)。序数(Cmd+1〜9)は適用後の配置に追従する。"
       ]
     },
     {
       "id": "S-062",
-      "title": "When the layout holds more projects than currently shown, the shortfall is created as new projects appended at the ordinal tail before applying; new projects start a new shell like normal creation",
+      "title": "The chosen layout type is persisted and survives app restart; the default is wide / row-major",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "レイアウトのプロジェクト数が現表示数より多い場合、不足分の新規プロジェクトを",
-        "序数の末尾に作成してから適用する。新規プロジェクトは通常の新規作成と同様に",
-        "新しいシェルを起動する。"
-      ]
-    },
-    {
-      "id": "S-063",
-      "title": "When the layout holds fewer projects than currently shown, a hide-pick screen appears and can be confirmed only with exactly the excess count selected; confirming hides the selected projects (never closes, no information lost) and applies with the rest; Esc cancels the whole layout application",
-      "status": "active",
-      "priority": "must",
-      "essence_refs": [
-        "レイアウトのプロジェクト数が現表示数より少ない場合、隠すプロジェクトを選ぶ",
-        "選択画面を表示し、超過分(現表示数 − レイアウト数)ちょうどを選択したときのみ",
-        "確定できる。確定で選択したプロジェクトが hidden になり(close はされず情報は",
-        "失われない)、残りのプロジェクトで適用する。Esc でレイアウト適用ごとキャンセル",
+        "選んだレイアウト型は永続化され、アプリ再起動後も維持される。既定は横長型・行送りと",
         "する。"
       ]
     },
     {
-      "id": "S-064",
-      "title": "Layout application is a one-shot arrangement change with no persistent applied-layout state; manual resize, splits, and sorts remain possible afterwards and the arrangement saves and restores as before",
+      "id": "S-063",
+      "title": "When the visible count changes (list visibility toggle, Cmd+Opt+H, new project, close), the remembered layout type is auto-applied for the new count, immediately in the background even while the list is open; operations that keep the visible count (e.g. transition to terminated state) do not trigger it",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "レイアウト適用はその時点の配置変更であり、「適用中のレイアウト」という状態は",
-        "持たない。適用後の手動 resize・分割・ソートは従来どおり可能で、配置は従来どおり",
-        "保存・復元される。"
+        "visible なプロジェクトの数が変わったとき(一覧の表示トグル・`Cmd+Opt+H`・新規",
+        "作成・close のいずれでも)、記憶しているレイアウト型で新しい数に対する配置を",
+        "自動適用する。一覧を開いたまま切り替えた場合も背後で即座に組み直す。visible 数が",
+        "変わらない操作(終了済み状態への遷移等)では発火しない。"
+      ]
+    },
+    {
+      "id": "S-064",
+      "title": "Project-level layout resize / equalize is abolished; resize / equalize of panes (splits) inside a project while zoomed remains as before",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクト単位のレイアウト resize / equalize を廃止する。zoom 中のプロジェクト内",
+        "ペイン(split)の resize / equalize は従来どおり有効とする。"
       ]
     },
     {
       "id": "S-065",
-      "title": "Judgment logic for hide selection, layout slot computation, count matching (how many to create / hide), and assignment order lives in the model layer, verifiable from XGhosttyTests",
+      "title": "Judgment logic for layout-type slot computation, exact-match collapsing, orientation assignment order, and auto-apply lives in the model layer, verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "hide 選択・レイアウトのスロット計算・数合わせ(新規作成数・隠す数)・割り当て順の",
-        "判断ロジックはモデル層に置き、`XGhosttyTests` から検証可能にする。"
+        "レイアウト型のスロット計算・完全一致の畳み込み・向きの割り当て順・自動適用の判断",
+        "ロジックはモデル層に置き、`XGhosttyTests` から検証可能にする。"
       ]
     },
     {
       "id": "S-066",
-      "title": "Full group-to-project rename: user-visible wording (menus, dialogs, shelf), fork-specific action names (hide_group to hide_project etc.), internal code identifiers (GroupState to ProjectState etc.), directory and file names (macos/Sources/Features/Groups/ to Projects/ etc.), and SPEC.md / README.md terminology; upstream terminal-core vocabulary and identifiers untouched",
+      "title": "Full group-to-project rename: user-visible wording (menus, dialogs), fork-specific action names (hide_group -> hide_project etc.), internal identifiers (GroupState -> ProjectState etc.), directory/file names (macos/Sources/Features/Groups/ -> Projects/), and SPEC.md / README.md terminology; upstream terminal-core vocabulary untouched",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "「グループ」を「プロジェクト」へ全面改名する:ユーザー可視文言(メニュー・",
-        "ダイアログ・シェルフ等)、fork 固有の action 名(`hide_group` → `hide_project`",
-        "等)、コード内部識別子(`GroupState` → `ProjectState` 等)、ディレクトリ・",
-        "ファイル名(`macos/Sources/Features/Groups/` → `Projects/` 等)、および",
-        "SPEC.md / README.md の用語。上流由来のターミナルコアの語彙・識別子には触れない。"
+        "ダイアログ等)、fork 固有の action 名(`hide_group` → `hide_project` 等)、コード",
+        "内部識別子(`GroupState` → `ProjectState` 等)、ディレクトリ・ファイル名",
+        "(`macos/Sources/Features/Groups/` → `Projects/` 等)、および SPEC.md / README.md の",
+        "用語。上流由来のターミナルコアの語彙・識別子には触れない。"
       ]
     },
     {
@@ -769,81 +777,82 @@
     },
     {
       "id": "S-068",
-      "title": "Update SPEC.md and README.md to match the implemented hide-selection and layout-application specs and the post-rename vocabulary",
+      "title": "Update SPEC.md and README.md to match the implemented layout types, auto-apply, hide behavior, and the renamed vocabulary",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`SPEC.md` と `README.md` を、実装した hide 選択・レイアウト適用の仕様と改名後の",
+        "`SPEC.md` と `README.md` を、実装したレイアウト型・自動適用・hide の仕様と改名後の",
         "語彙に合わせて更新する。"
       ]
     },
     {
       "id": "S-069",
-      "title": "Success gates (hide selection): XGhosttyTests contains passing tests for batch hiding of the selected multiple projects on confirm, cancel hiding nothing, and select-all being unconfirmable so at least one project stays visible",
+      "title": "Success gates (hide): XGhosttyTests contains passing tests that the Cmd+Opt+H action hides only the focused project, and that with a single visible project both Cmd+Opt+H and the list visibility toggle are refused and nothing becomes hidden",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
-        "hide 選択の確定で、選択した複数のプロジェクトが一括で hidden になる",
-        "hide 選択をキャンセルすると、何も hidden にならない",
-        "visible な全プロジェクトを選択した状態では確定できず、最低 1 つは visible に",
-        "残る"
+        "`Cmd+Opt+H` の action で focused プロジェクトだけが hidden になる",
+        "visible が 1 つのとき、`Cmd+Opt+H` も一覧の表示トグルも拒否され、何も hidden に",
+        "ならない"
       ]
     },
     {
       "id": "S-070",
-      "title": "Human performs a one-time on-device visual verification of the hide-selection screen after its implementation is in place; not complete until confirmed (Cmd+Opt+H opens the screen, multi-select + Enter hides in one batch and the projects appear as hidden in the Cmd+L list, Esc closes hiding nothing, appearance fits the terminal)",
+      "title": "Human performs a one-time on-device visual verification of hide; not complete until confirmed (Cmd+Opt+H hides the focused project immediately with no selection screen; right after hiding, the remaining projects are re-laid out with the remembered layout type)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "hide 選択の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "hide の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
         "確認が取れるまで完了とはしない。",
-        "`Cmd+Opt+H` で hide 選択画面が開き、複数選択して Enter で選択したプロジェクト",
-        "が一括で隠れ、`Cmd+L` の一覧に hidden として現れる",
-        "Esc で何も隠れずに閉じる",
-        "選択画面の見た目がターミナルに馴染む"
+        "`Cmd+Opt+H` で focused プロジェクトが即座に隠れ、選択画面は出ない",
+        "隠れた直後に残りのプロジェクトが記憶しているレイアウト型で組み直される"
       ]
     },
     {
       "id": "S-071",
-      "title": "Success gates (registered layouts): XGhosttyTests contains passing tests for all 11 layouts' slot computation matching the definition, equal-count assignment in ordinal order, shortfall creating new projects at the ordinal tail, excess hiding exactly the selected projects (never closing) with the rest assigned in ordinal order, confirm disabled while the hide-pick count mismatches the excess, unselected hidden projects unaffected, and post-apply ordinals following the new arrangement",
+      "title": "Success gates (layout types): XGhosttyTests contains passing tests for slot computation of wide/tall/pedestal x row/column-major for every visible count 1-9, the per-count choice set equal to the exact-match-collapsed set (e.g. n=9 keeps wide and tall separate, n=3 pedestal collapses into wide/row-major), row-major left-to-right per row and column-major top-to-bottom per column assignment of the list's visible rows with ordinals following, persistence and restore of the type selection with wide/row-major as the default when nothing is saved, and auto-apply of the remembered type after visible-count-changing operations (toggle, Cmd+Opt+H, new, close) but no change after count-preserving operations",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
-        "全 11 種の登録レイアウトのスロット計算が定義どおりである(等分割は行数 =",
-        "√n に最も近い整数のグリッドに上の行からできるだけ均等に配り、行高・行内幅は",
-        "等分。X+1 は X 個を同規則で配置し、1 個を最下段に全幅)",
-        "レイアウト数 = 現表示数のとき、visible なプロジェクトが序数順にスロットへ",
-        "割り当てられる",
-        "レイアウト数 > 現表示数のとき、不足分の新規プロジェクトが序数の末尾に作成",
-        "されて割り当てられる",
-        "レイアウト数 < 現表示数のとき、選択された超過分ちょうどのプロジェクトが",
-        "hidden になり(close はされない)、残りが序数順に割り当てられる",
-        "隠す選択の数が超過分と一致しない間は確定できない",
-        "選択されたもの以外の hidden なプロジェクトはレイアウト適用の影響を受けない",
-        "適用後の序数(Cmd+1〜9)が新しい配置に追従する"
+        "visible 数 1〜9 の各々について、横長型・縦長型・台座型 × 行送り・列送りの",
+        "スロット計算が定義どおりである(横長型は行数 = √n に最も近い整数のグリッドに",
+        "上の行からできるだけ均等に配り、行高・行内幅は等分。縦長型はその転置。台座型は",
+        "n−1 個を行送りなら横長型・列送りなら縦長型の規則で上部に配置し、1 個を最下段に",
+        "全幅)",
+        "各 visible 数の選択肢が、配置と序数の進み方が完全一致するものを 1 つに畳んだ",
+        "集合と一致する(例:n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれず、",
+        "n=3 の台座型は横長型・行送りと一致して畳まれる)",
+        "行送りは上の行から左→右、列送りは左の列から上→下に、一覧の行順の visible な行が",
+        "割り当てられ、序数がそれに追従する",
+        "型の選択が永続化され、復元される。保存が無いときは横長型・行送りになる",
+        "visible 数が変わる操作(表示トグル・`Cmd+Opt+H`・新規作成・close)の後、",
+        "記憶している型で新しい数の配置が導かれる。変わらない操作では配置が変わらない"
       ]
     },
     {
       "id": "S-072",
-      "title": "Human performs a one-time on-device visual verification of layout application after its implementation is in place; not complete until confirmed (Cmd+Opt+L list opens, arrows + Enter apply, Esc changes nothing; equal count applies directly; more creates new projects at the tail; fewer shows the hide-pick screen and applies on confirm; list and pick screens fit the terminal)",
+      "title": "Human performs a one-time on-device visual verification of layout types; not complete until confirmed (Cmd+Opt+L lists only the types for the current visible count, arrows + Enter apply, Esc changes nothing, project count unchanged; hiding one of 6 tall-type projects re-lays out 5 in tall type automatically; the type survives restart; with one visible project Cmd+Opt+L shows nothing to choose; project boundaries cannot be resized while pane boundaries while zoomed can; the selection screen fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "レイアウト適用の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
+        "レイアウト型の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
         "取れる。確認が取れるまで完了とはしない。",
-        "`Cmd+Opt+L` でレイアウト一覧が開き、矢印キーで選んで Enter で適用され、Esc で",
-        "何も変わらずに閉じる",
-        "レイアウト数が現表示数と等しいとき、そのまま適用される",
-        "多いとき、新プロジェクトが後ろに作られて適用される",
-        "少ないとき、隠すプロジェクトの選択画面が出て、確定で適用される",
-        "一覧・選択画面の見た目がターミナルに馴染む"
+        "`Cmd+Opt+L` で現在の visible 数に対する型だけが並び、矢印キーで選んで Enter で",
+        "適用され、Esc で何も変わらずに閉じる。プロジェクト数は変わらない",
+        "6 プロジェクトで縦長型を選んだ後に 1 つ隠すと、5 プロジェクトが縦長型で",
+        "自動的に組み直される",
+        "アプリを再起動しても選んだ型が維持されている",
+        "visible が 1 つのとき `Cmd+Opt+L` は選ぶものが無い旨を示す",
+        "プロジェクト境界のリサイズができず、zoom 中のペイン境界のリサイズは従来どおり",
+        "できる",
+        "選択画面の見た目がターミナルに馴染む"
       ]
     },
     {
       "id": "S-073",
-      "title": "Rename completion gates: macos/Sources/Features/Projects/ exists and the old Groups/ does not; fork-specific action names, code identifiers, and SPEC.md / README.md terminology are renamed to the project family; success criteria 1-3 build/test gates exit 0; and a human verifies once on device that no user-visible wording shows 'Group'",
+      "title": "Rename completion gates: macos/Sources/Features/Projects/ exists and Groups/ does not; fork-specific action names, code identifiers, and SPEC.md / README.md terms are project-based; success gates 1-3 exit 0; the human confirms once on device that no user-visible wording (menus, dialogs) shows \"Group\"",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -852,20 +861,19 @@
         "fork 固有の action 名・コード識別子・SPEC.md / README.md の用語が project 系へ",
         "改名されている",
         "成功条件 1〜3 のビルド・テストが exit 0 で終わる",
-        "メニュー・ダイアログ・シェルフ等のユーザー可視文言に「Group」が現れないことを",
-        "人間が実機で一度だけ目視確認し、確認が取れる"
+        "メニュー・ダイアログ等のユーザー可視文言に「Group」が現れないことを人間が実機で",
+        "一度だけ目視確認し、確認が取れる"
       ]
     },
     {
       "id": "S-074",
-      "title": "Splitting a pane that is on a remote host (shell integration's OSC 7 reports a non-local host) opens the new pane over ssh to the same host at the same path; only splits are affected - new projects, including those created by layout application, open locally",
+      "title": "Splitting a pane that is on a remote host (shell integration OSC 7 reports a non-local host) opens the new pane via ssh to the same host at the same path; only split is affected — new projects created via project creation open locally",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "リモートホストにいるペイン(シェル統合が OSC 7 で報告するホストがローカルでない)",
         "を split したとき、新ペインは同じホストへ ssh で接続し、同じパスで開く。対象は",
-        "split のみとし、新規プロジェクト作成・レイアウト適用で作られる新プロジェクトは",
-        "ローカルで開く。"
+        "split のみとし、新規プロジェクト作成で作られる新プロジェクトはローカルで開く。"
       ]
     },
     {
@@ -916,88 +924,105 @@
     },
     {
       "id": "S-079",
-      "title": "Cmd+L opens a project-list overlay tabulating every project including hidden ones (title, priority, deadline, first note line), visible rows in ordinal order followed by hidden rows marked as such, unset fields blank; the overlay appears only when invoked and the terminal returns to full view on close (zoomed invocation left to the implementation)",
+      "title": "Cmd+L opens a project-list overlay tabulating every project including hidden ones; default column order Visibility, Title, Priority, Deadline, Next trigger, Note (first line); unset fields blank; the overlay takes about 80% of the window width and height, appears only when invoked, and the terminal returns to full view on close; when rows do not fit it scrolls and follows the cell cursor (zoomed invocation left to the implementation)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+L` でプロジェクト一覧オーバーレイが開き、hidden を含む全プロジェクトを表形式",
-        "(タイトル・優先度・締切・ノート 1 行目)で列挙する。行の並びは visible を序数順、",
-        "hidden をその後ろとし、hidden の行にはそれと分かる印を付け、未設定の項目は空欄と",
-        "する。オーバーレイは呼び出したときだけ表示され、閉じれば端末が全面に戻る(zoom 中に",
-        "呼び出した場合の挙動は定めず、実装に任せる)。"
+        "`Cmd+L` でプロジェクト一覧オーバーレイが開き、hidden を含む全プロジェクトを表形式で",
+        "列挙する。列は既定順で「表示・タイトル・優先度・締切・次トリガー・ノート」とし、",
+        "ノート列は 1 行目を表示する。未設定の項目は空欄とする。オーバーレイはウィンドウの",
+        "幅・高さそれぞれ 8 割程度を占め、呼び出したときだけ表示され、閉じれば端末が全面に",
+        "戻る。行が収まらないときはスクロールし、セルカーソルに追従する(zoom 中に呼び出した",
+        "場合の挙動は定めず、実装に任せる)。"
       ]
     },
     {
       "id": "S-080",
-      "title": "In the project list, arrow keys move the row selection and Space immediately toggles that row's hide/show (the change survives closing with Esc); item 47's at-least-one-visible constraint applies to this toggle too",
+      "title": "The list rows form a single order not partitioned by visible/hidden; ordinals (Cmd+1-9) are the visible rows counted from the top; row order and column order are persisted",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧では矢印キーで行を選択し、Space でその行の hide/show を即時にトグルする",
-        "(Esc で閉じても反映は残る)。47 項の「最低 1 つは visible に残す」制約はこの",
-        "トグルにも適用する。"
+        "一覧の行の並びは visible / hidden で区画分けせず単一の並びとし、序数(Cmd+1〜9)は",
+        "visible な行を上から数えた順とする。行順・列順は永続化される。"
       ]
     },
     {
       "id": "S-081",
-      "title": "Enter on a visible row focuses that project and closes the list; Enter on a hidden row does nothing; Esc closes the list",
+      "title": "Cmd+Enter in the list focuses the cursor row's project and closes the list; disabled (nothing happens) on a hidden row",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧で visible な行に Enter するとそのプロジェクトへ focus して一覧を閉じる。",
-        "hidden な行では Enter は無効(何も起きない)。Esc で閉じる。"
+        "一覧で `Cmd+Enter` を押すとカーソル行のプロジェクトへ focus して一覧を閉じる。",
+        "hidden な行では無効(何も起きない)。"
       ]
     },
     {
       "id": "S-082",
-      "title": "Judgment logic for the project list's row content, ordering, toggle eligibility, and Enter eligibility lives in the model layer, verifiable from XGhosttyTests",
+      "title": "Judgment logic for the list's row content, order, cell-edit commit and cancel, toggle eligibility, focus eligibility, and the new row's visibility state lives in the model layer, verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧の行の内容・並び・トグル可否・Enter 可否の判断ロジックはモデル層に置き、",
-        "`XGhosttyTests` から検証可能にする。"
+        "一覧の行の内容・並び・セル編集の確定と取り消し・トグル可否・focus 可否・新規行の",
+        "表示状態の判断ロジックはモデル層に置き、`XGhosttyTests` から検証可能にする。"
       ]
     },
     {
       "id": "S-083",
-      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects including hidden with visible in ordinal order first, row content being title/priority/deadline/first note line, Space toggling hide/show immediately, the last visible project's hide toggle being refused, Enter on a hidden row doing nothing, and Enter on a visible row focusing that project",
+      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects incl. hidden in a single unpartitioned order, ordinals = visible rows counted from the top skipping hidden, default column order Visibility/Title/Priority/Deadline/Next trigger/Note, row/column reordering with persistence and restore, cell-cursor movement (Tab / Shift+Tab / Enter / Shift+Enter, wrap at row end, stop at last row), text-column commit applying the value and Esc reverting, note-column edit rewriting only line 1 and keeping the rest, Space cycling of selection columns with the visibility toggle applying hide/show immediately, invalid deadline cell input treated as unset, new-project insertion right below the cursor row visible when the visible count < 9 and hidden at 9, and a focus request on a hidden row doing nothing",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
-        "プロジェクト一覧の行が hidden を含む全プロジェクトと一致し、visible が序数順、",
-        "hidden がその後ろに並ぶ",
-        "各行の内容がタイトル・優先度・締切・ノート 1 行目である",
-        "Space のトグルが即時に hide/show を反映する",
-        "最後の visible なプロジェクトを hidden にするトグルは拒否される",
-        "hidden な行への Enter は何もしない",
-        "visible な行への Enter でそのプロジェクトが focus される"
+        "一覧の行が hidden を含む全プロジェクトと一致し、並びは区画分けされない単一の",
+        "行順である",
+        "序数が visible な行を上から数えた順と一致し、hidden な行を飛ばす",
+        "既定の列順が表示・タイトル・優先度・締切・次トリガー・ノートである",
+        "行順・列順の入れ替えと、その永続化・復元",
+        "セルカーソルの移動(Tab / Shift+Tab / Enter / Shift+Enter、行末の折り返し、",
+        "最終行での停止)が定義どおりである",
+        "テキスト列の編集確定で値が反映され、Esc の取り消しで元の値に戻る",
+        "ノート列の編集が 1 行目だけを書き換え、2 行目以降を保持する",
+        "選択式の列が Space で定義どおり循環し、表示列のトグルが即時に hide/show を",
+        "反映する",
+        "締切セルへの不正な日付入力は未設定として扱われる",
+        "新規作成でカーソル行の直下に行が挿入され、visible 数が 9 未満なら visible、",
+        "9 なら hidden になる",
+        "hidden な行への focus 要求は何もしない"
       ]
     },
     {
       "id": "S-084",
-      "title": "Human performs a one-time on-device visual verification of the project list after its implementation is in place; not complete until confirmed (Cmd+L opens the table with hidden projects included, Space toggles in place and survives Esc, Enter on a visible row focuses and closes, Enter on a hidden row does nothing, no hidden shelf appears at the top right, appearance fits the terminal)",
+      "title": "Human performs a one-time on-device visual verification of the project list; not complete until confirmed (Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside the list inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes while a hidden row does nothing; the list scrolls following the cursor; appearance fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "プロジェクト一覧の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が",
         "取れる。確認が取れるまで完了とはしない。",
-        "`Cmd+L` で一覧が開き、表形式で hidden を含む全プロジェクトが見える",
-        "Space で hidden ↔ visible がその場で切り替わり、Esc で閉じても反映が残る",
-        "visible な行で Enter するとそのプロジェクトに focus して一覧が閉じる",
-        "hidden な行で Enter しても何も起きない",
-        "画面右上に hidden シェルフが表示されない",
+        "`Cmd+L` で一覧が開き、ウィンドウの幅・高さそれぞれ 8 割程度を占め、hidden を",
+        "含む全プロジェクトが 6 列で見える",
+        "Tab / Shift+Tab / Enter / Shift+Enter でセルカーソルが動き、文字を打つと編集が",
+        "始まり、Enter / Tab で確定、Esc で取り消せる",
+        "Space で表示列がその場で切り替わり、背後のレイアウトが即座に組み直される。",
+        "Esc で閉じても反映が残る",
+        "`Cmd+↑↓` で行が、`Cmd+←→` で列が動き、閉じて開き直しても順序が残っている",
+        "`Cmd+Opt+E` で全行のノートが全行表示になり、もう一度押すと 1 行表示に戻る",
+        "一覧の中で `Cmd+N` を押すと新規プロジェクトがカーソル行の直下に作られ、",
+        "そのままタイトルを入力できる。一覧の外で `Cmd+N` を押すと一覧が開き、同じ状態に",
+        "なる",
+        "visible な行で `Cmd+Enter` するとそのプロジェクトに focus して一覧が閉じ、",
+        "hidden な行では何も起きない",
+        "行が収まらない数のときにスクロールし、カーソルに追従する",
         "一覧の見た目がターミナルに馴染む"
       ]
     },
     {
       "id": "S-085",
-      "title": "Every day at local 06:00 as the boundary, all projects including hidden ones have their priority reset to unset; deadlines and notes are untouched",
+      "title": "Every day at local 06:00 as the boundary, all projects including hidden ones have their priority reset to unset; deadlines, notes, and next triggers are untouched",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "毎日ローカル時刻 6:00 を境界として、全プロジェクト(hidden を含む)の優先度を",
-        "未設定に戻す。締切・ノートは変更しない。"
+        "未設定に戻す。締切・ノート・次トリガーは変更しない。"
       ]
     },
     {
@@ -1058,12 +1083,109 @@
     },
     {
       "id": "S-091",
-      "title": "Update SPEC.md and README.md to match the implemented remote split, project list, note-editor undo/redo, and priority reset specs",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, project-list cell editing and reordering, next trigger, note-editor undo/redo, priority reset, and key changes",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧・Undo/Redo・",
-        "優先度リセットの仕様に合わせて更新する。"
+        "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧のセル編集と",
+        "並べ替え・次トリガー・Undo/Redo・優先度リセット・キー変更の仕様に合わせて更新する。"
+      ]
+    },
+    {
+      "id": "S-092",
+      "title": "The list has a cell cursor moved by Tab (right) / Shift+Tab (left) / Enter (down) / Shift+Enter (up) and the arrow keys; Tab at row end wraps to the next row start, Enter on the last row stops; text columns (Title, Deadline, Note) start editing on typing, Enter / Tab commit and move, Esc cancels only that edit; selection columns (Visibility, Priority, Next trigger) cycle with Space (Visibility is a two-value toggle applying hide/show immediately); Esc while not editing closes the list",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧はセルカーソルを持ち、`Tab` 右 / `Shift+Tab` 左 / `Enter` 下 / `Shift+Enter` 上",
+        "(矢印キーも同じ)で移動する。行末の `Tab` は次の行の先頭へ折り返し、最終行の",
+        "`Enter` はそこで止まる。テキスト列(タイトル・締切・ノート)は文字を打つと編集が",
+        "始まり、`Enter` / `Tab` で確定して移動、`Esc` でその編集だけを取り消す。選択式の列",
+        "(表示・優先度・次トリガー)は `Space` で値が循環する(表示は 2 値のトグルで、",
+        "hide/show は即時反映)。編集していないときの `Esc` は一覧を閉じる。"
+      ]
+    },
+    {
+      "id": "S-093",
+      "title": "Editing the Note column rewrites only line 1 of the note and keeps lines 2+; inside the list Cmd+Opt+E toggles full-note display for all rows (view-only, all rows at once, not persisted); multi-line editing is done in the Cmd+E overlay",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧のノート列の編集はノートの 1 行目だけを書き換え、2 行目以降は保持する。",
+        "`Cmd+Opt+E` は一覧の中では全行のノートを全行表示するトグルとし(閲覧のみ・行ごと",
+        "ではなく一括・状態は永続化しない)、複数行の編集は `Cmd+E` のオーバーレイで行う。"
+      ]
+    },
+    {
+      "id": "S-094",
+      "title": "In the list, Cmd+Up / Cmd+Down move the cursor row up/down by one and Cmd+Left / Cmd+Right move the cursor column left/right by one",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧で `Cmd+↑` / `Cmd+↓` はカーソル行を上下に 1 つ動かし、`Cmd+←` / `Cmd+→` は",
+        "カーソル列を左右に 1 つ動かす。"
+      ]
+    },
+    {
+      "id": "S-095",
+      "title": "Cmd+N creates a new project: inside the list it inserts a new project right below the cursor row, starts a new shell like normal creation, and moves the cursor to the new row's Title cell for immediate title entry; outside the list it opens the list in the same state; the new row is visible when the visible count < 9 and hidden at 9; Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) are abolished and the list is the only creation path",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+N` は新規プロジェクト作成とする。一覧の中で押すとカーソル行の直下に新規",
+        "プロジェクトが挿入され、通常の新規作成と同様に新しいシェルが起動し、カーソルは",
+        "新しい行のタイトル列に移りその場でタイトルを入力できる。一覧の外で押すと一覧が",
+        "開いて同じ状態になる。新規行は visible 数が 9 未満なら visible、9 なら hidden と",
+        "する。`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)は廃止し、新規",
+        "プロジェクトの作成導線は一覧のみとする。"
+      ]
+    },
+    {
+      "id": "S-096",
+      "title": "Per-project next trigger (self / team member / external person / event / unset), default unset; set and changed in the list cell, persisted like priority and restored after restart; never shown in the label band",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクトごとに次トリガー(自分 / チームメンバー / 組織外部人 / イベント /",
+        "未設定)を設定できる。既定は未設定。一覧のセルで設定・変更し、優先度と同様に",
+        "永続化され、アプリ再起動後に復元される。プロジェクトのラベル帯には表示しない。"
+      ]
+    },
+    {
+      "id": "S-097",
+      "title": "Success gates (next trigger): XGhosttyTests contains passing tests that the next trigger is saved and restored with unset as the default, and that the overview display content includes the next trigger",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "次トリガーを保存し復元すると同じ値が復元され、既定は未設定である",
+        "一望モードの表示内容に次トリガーが含まれる"
+      ]
+    },
+    {
+      "id": "S-098",
+      "title": "Human performs a one-time on-device visual verification of the next trigger; not complete until confirmed (settable in the list cell and shown in overview mode together with note/priority/deadline; not shown in the label band)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "次トリガーの実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。",
+        "一覧のセルで次トリガーを設定でき、一望モードでノート・優先度・締切と併せて",
+        "表示される",
+        "ラベル帯には次トリガーが表示されない"
+      ]
+    },
+    {
+      "id": "S-099",
+      "title": "Human performs a one-time on-device visual verification of the key changes; not complete until confirmed (Cmd+E opens the note overlay and Cmd+Opt+E enters overview; Cmd+Opt+N, Cmd+Opt+D, Cmd+Opt+Shift+D do nothing; Cmd+E does not start search_selection)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "キー変更の実装が揃った後、人間が実機で一度だけ以下を目視確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。",
+        "`Cmd+E` でノート編集オーバーレイが開き、`Cmd+Opt+E` で一望モードに入る",
+        "`Cmd+Opt+N`、`Cmd+Opt+D`、`Cmd+Opt+Shift+D` を押しても何も起きない",
+        "`Cmd+E` で選択文字列の検索が起動しない"
       ]
     }
   ]

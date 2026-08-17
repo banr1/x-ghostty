@@ -74,3 +74,5 @@
 {"at": "2026-08-16T03:15:25+09:00", "run_id": "R-20260816T025918+0900-9ce8da", "event": "end", "status": "ok", "project": "x-ghostty"}
 {"at": "2026-08-16T19:45:59+09:00", "run_id": "R-20260816T194559+0900-8aafce", "event": "start", "agent": "Over-Project Agent", "cwd": "/Users/banriyanahama/workspace/xghostty/.atlas-builder", "project": "x-ghostty"}
 {"at": "2026-08-16T20:09:56+09:00", "run_id": "R-20260816T194559+0900-8aafce", "event": "end", "status": "ok", "project": "x-ghostty"}
+{"at": "2026-08-18T03:19:53+09:00", "run_id": "R-20260818T031953+0900-0c1fd0", "event": "start", "agent": "Over-Project Agent", "cwd": "/Users/banriyanahama/workspace/xghostty/.atlas-builder", "project": "x-ghostty"}
+{"at": "2026-08-18T03:32:11+09:00", "run_id": "R-20260818T031953+0900-0c1fd0", "event": "end", "status": "claude_exit_1", "project": "x-ghostty"}

@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "43585dae7b6c4adb04603089d0c3c8ed5a4b545d6acf85964b666bdb04b9bbf3",
+    "last_signature": "9e79775635354fd87b6192843055bd70aaa89b7dcb585053e53bdf3f6c2fc685",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-16T20:09:59+09:00",
-    "last_checked_at": "2026-08-16T20:09:59+09:00",
+    "last_progress_at": "2026-08-18T03:32:14+09:00",
+    "last_checked_at": "2026-08-18T03:32:14+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,16 +21,16 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.62,
+    "context_usage_estimate": 0.0,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 10,
-    "completed_todos_since_reset": 9,
-    "important_decisions_since_reset": 4,
+    "changed_files_since_reset": 0,
+    "completed_todos_since_reset": 0,
+    "important_decisions_since_reset": 0,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-16T20:29:17+09:00",
+    "written_at": "2026-08-18T03:19:53+09:00",
     "summary": "Human resume: T-063(リモート split の再確認)を実機で確認し、3 項目すべてが期待どおり動作した: (a) ssh 中のペインの split が同じホスト・同じパスで開く、(b) ssh を exit して手元のシェルに戻った後の split がローカルで開く(T-061 の修正が効いている)、(c) 素のローカルペインの split が従来どおりローカルで開く。よって R-019 を解除し、T-063 を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。ESSENCE.md の変更は不要。\n\nT-057(優先度の毎朝 6:00 リセット)は日付跨ぎがまだ済んでいないため今回も未確認。pending のまま据え置き、実際に日を跨いだ朝に改めて確認する。したがって次サイクルは T-063 の記録と下記の勧告 close を行った時点で人間確認待ちになる — その停止は想定どおりの着地であり、差し戻しでも異常でもない。\n\n非ブロッキング勧告 2 件はいずれも人間が承認したので、次サイクルでこの結論を resolution として記録し close すること。R-018(リモート判定に pty の前景プロセスを見る設計解釈)は現行のまま承認する — 前景がシェルならローカル、前景を読めないときは「戻ってきた証拠ではない」として報告に従う倒し方を含めて維持し、実装変更は不要。R-017(リモート側にシェル統合を入れると OSC 7 が報告するのは ssh の別名 gohanserver ではなくリモート機自身のホスト名 nixos-dev になる件)も了解した — 製品側で別名を推測する処理は入れず、必要な対応はリモートへのシェル統合導入と ~/.ssh/config への Host エントリ追加という人間側の環境作業のみ。実装・ESSENCE.md の変更は不要。",
     "next_actions": [],
     "open_questions": [],

@@ -1327,6 +1327,37 @@ extension SplitTree {
         self.init(root: Self.equalChain(rowNodes, direction: .vertical), zoomed: nil)
     }
 
+    /// The transpose of `init(gridRows:)`: `columns` sit side by side at
+    /// equal widths, and each column's elements stack vertically at equal
+    /// heights. Traversal order is column-major (left column first, top to
+    /// bottom within a column). Empty columns are skipped, and an empty
+    /// `columns` yields an empty tree.
+    init(gridColumns columns: [[Element]]) {
+        let columnNodes = columns.filter { !$0.isEmpty }.map { column in
+            Self.equalChain(column.map { Node.leaf(view: $0) }, direction: .vertical)
+        }
+        guard !columnNodes.isEmpty else {
+            self.init()
+            return
+        }
+        self.init(root: Self.equalChain(columnNodes, direction: .horizontal), zoomed: nil)
+    }
+
+    /// Stacks `top` over a single full-width `bottom` element: a vertical
+    /// split whose upper part takes `topRatio` of the height. An empty `top`
+    /// yields just the bottom leaf.
+    init(stacking top: Self, over bottom: Element, topRatio: Double) {
+        guard let topRoot = top.root else {
+            self.init(view: bottom)
+            return
+        }
+        self.init(root: .split(.init(
+            direction: .vertical,
+            ratio: min(max(topRatio, 0.05), 0.95),
+            left: topRoot,
+            right: .leaf(view: bottom))), zoomed: nil)
+    }
+
     /// Chains `nodes` into nested splits along `direction` with equal
     /// effective sizes: the first node takes 1/n of the total, the second
     /// 1/(n-1) of the remainder, and so on — every node ends up at 1/n.

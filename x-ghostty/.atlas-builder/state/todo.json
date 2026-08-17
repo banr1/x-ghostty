@@ -9,8 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-061",
-    "T-062"
+    "T-064"
   ],
   "items": [
     {
@@ -2401,7 +2400,7 @@
     {
       "id": "T-057",
       "title": "Human on-device visual verification of the daily priority reset (one-time): a project prioritized yesterday is back to unset when looked at after 06:00 the next morning, both after a restart and while the app kept running",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-090"
@@ -2411,7 +2410,15 @@
       },
       "batch_group": "batch5-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-18T03:19:44+09:00",
+          "reference": "human resume note (reflection.jsonl human_resume at 2026-08-18T03:19:44+09:00)",
+          "summary": "人間が 2026-08-16 以降に日付を跨いで実機で成功条件 23 を一度だけ確認した: 前日に設定した優先度が、アプリを起動し直した場合・稼働したままの場合の両方で翌朝 6:00 以降に未設定に戻っていた。"
+        }
+      ]
     },
     {
       "id": "T-058",
@@ -2574,7 +2581,7 @@
     {
       "id": "T-063",
       "title": "Human on-device re-verification of remote split after the staleness fix (one-time): a pane that returns from ssh to its local shell splits locally again, while a pane still inside a remote session splits to that host and path",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-078"
@@ -2585,6 +2592,322 @@
       "batch_group": "batch6-human",
       "risk_level": "normal",
       "notes": "成功条件 19 の再確認。T-055 の確認時には ssh から戻った直後の split が試されておらず、その経路に実欠陥(古いリモート報告が残って誤って ssh する)があったため T-061 で修正した。修正後の挙動は実機でしか確認できない。",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-16T20:29:17+09:00",
+          "reference": "R-019 resolution / human resume note recorded in context.json handoff at 2026-08-16T20:29:17+09:00 (re-affirmed by the 2026-08-18T03:19:44+09:00 resume note)",
+          "summary": "人間が実機でリモート split の再確認(成功条件 19)を一度だけ行い、3 項目すべてが期待どおり動作した: (a) ssh 中のペインの split が同じホスト・同じパスで開く、(b) ssh を exit して手元のシェルに戻った後の split がローカルで開く(T-061 の修正が効いている)、(c) 素のローカルペインの split が従来どおりローカルで開く。ESSENCE.md の変更は不要と人間が判断した。"
+        }
+      ]
+    },
+    {
+      "id": "T-064",
+      "title": "Ledger inversion in the model: persist a single row order over ALL projects (hidden included) plus each project's hidden state, a persisted column order (default Visibility/Title/Priority/Deadline/Next trigger/Note) and a persisted layout type (default wide/row-major); ordinals become the visible rows counted from the top; the canonical project tree becomes a projection re-derived from (row order, hidden set, layout type) on every change and on restore. Tests: rows = all projects in one unpartitioned order, ordinals skip hidden, row/column reorder persist and restore, layout type persists with wide/row-major default",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-080",
+        "S-062",
+        "S-065",
+        "S-082",
+        "S-083",
+        "S-071"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "ledger-model",
+      "risk_level": "normal",
+      "evidence": [],
+      "notes": "Foundation for the 2026-08-18 Essence revision (大局視点の主従逆転): the list state is the source of truth and the on-screen arrangement is derived from it. Keep WorkspaceStateOf generic and all judgment in the model layer."
+    },
+    {
+      "id": "T-065",
+      "title": "Layout types replacing the 11 registered layouts: ProjectLayoutType = shape (wide / tall / pedestal) x orientation (row-major / column-major); slot frames for every visible count 1-9 (wide: rows = nearest integer to sqrt(n), dealt from the top as evenly as possible, equal heights and in-row widths; tall: transpose; pedestal: n-1 on top by the wide (row-major) or tall (column-major) rule + 1 full-width bottom); per-count exact-match collapsing of identical (arrangement, ordinal progression) options; assignment of the list's visible rows in row order following the orientation (row-major: top row left-to-right, column-major: left column top-to-bottom, pedestal bottom last) with ordinals following; auto-apply of the remembered type whenever the visible count changes (list toggle, Cmd+Opt+H, new project, close) and no change for count-preserving operations. Tests per success condition 15 (all of the above, incl. n=9 wide/tall kept separate and n=3 pedestal collapsing into wide/row-major)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-058",
+        "S-059",
+        "S-061",
+        "S-063",
+        "S-065",
+        "S-071"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "layout-types",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-066",
+      "title": "Cmd+Opt+L selection overlay rework + abolition of project-level resize/equalize: the overlay lists only the choices for the current visible count (arrows choose, Enter applies, Esc changes nothing, project count never changes; a single choice shows a nothing-to-choose message); remove the shortfall creation and the hide-pick paths; remove the resize_project / equalize_projects actions and their default keybinds (pane resize/equalize inside a zoomed project stays); the ProjectLayoutSelector view follows the new model",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-060",
+        "S-059",
+        "S-064",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "layout-types",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-067",
+      "title": "Cmd+Opt+H back to immediate hide of the focused project (no selection screen; remove the hide-selection screen and its model), refusing when only one project is visible; the same at-least-one-visible refusal for the list visibility toggle; the remaining projects are re-laid out with the remembered layout type right after hiding; the hidden shelf stays abolished. Tests per success condition 13",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-055",
+        "S-056",
+        "S-057",
+        "S-069",
+        "S-063"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "hide",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-068",
+      "title": "Sort actions over ALL rows including hidden: Cmd+S priority order (high, medium, low, unset; stable) and Cmd+Shift+S deadline order (nearest first, unset last, stable within a day) reorder the ledger row order (hidden rows included), the ordinal becomes the visible rows counted from the top, sorting works with or without the list open, only on explicit action, and the order persists until the next sort or manual reorder; no next-trigger sort. Tests per success condition 11 (sort items and post-sort ordinals)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-044",
+        "S-045",
+        "S-046",
+        "S-047",
+        "S-048",
+        "S-053"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "sort-all-rows",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-069",
+      "title": "Next trigger: per-project value (self / team member / external person / event / unset), default unset, persisted with priority and restored after restart, untouched by the daily priority reset, shown in overview mode with note/priority/deadline and never in the label band. Tests per success condition 24 (save/restore with unset default, overview content includes the next trigger) plus a reset test that next trigger survives",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-096",
+        "S-097",
+        "S-042",
+        "S-085",
+        "S-048"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "next-trigger",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-070",
+      "title": "Project-list model (ProjectList): rows over all projects in ledger order with the 6 columns; a cell cursor with Tab / Shift+Tab / Enter / Shift+Enter (and arrows) movement, wrap at row end, stop at the last row; text-column editing (Title, Deadline, Note line 1) with commit applying the value and cancel reverting, note edits rewriting only line 1; Space cycling for selection columns (Visibility as a two-value toggle applying hide/show immediately with relayout, Priority, Next trigger); invalid deadline cell input treated as unset; Cmd+Up/Down row move and Cmd+Left/Right column move with persistence; Cmd+Enter focus eligibility (hidden rows do nothing); new-row insertion below the cursor row (visible if visible count < 9, hidden at 9); Cmd+Opt+E full-note toggle state (view-only, transient). All as pure model logic; tests per success condition 20",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-079",
+        "S-080",
+        "S-081",
+        "S-082",
+        "S-083",
+        "S-092",
+        "S-093",
+        "S-094",
+        "S-095",
+        "S-040"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-model",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-071",
+      "title": "Project-list overlay view (Cmd+L): render the ledger model at ~80% of the window width/height with the 6 columns in the persisted column order, unset cells blank, the cell cursor, in-place text editing (typing starts an edit, Enter / Tab commit, Esc cancels only the edit; Esc closes when not editing), Space on selection columns, Cmd+arrows for row/column moves, Cmd+Enter to focus and close, Cmd+Opt+E full-note toggle inside the list, scrolling that follows the cursor, immediate background relayout on visibility toggles; priority and deadline entry moves here — remove the priority/deadline controls from the note edit overlay",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-079",
+        "S-092",
+        "S-093",
+        "S-094",
+        "S-081",
+        "S-040",
+        "S-009"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-view",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-072",
+      "title": "Cmd+N = new project via the list: inside the list insert a new project right below the cursor row (starting a new shell like normal creation), move the cursor to the new row's Title cell in edit mode; outside the list open the list in the same state; new row visible if the visible count < 9 else hidden; auto relayout; remove the new_project_split action and the Cmd+Opt+D / Cmd+Opt+Shift+D defaults so the list is the only creation path (the toolbar/menu creation entry follows the same path)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-095",
+        "S-010",
+        "S-083",
+        "S-063"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-view",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-073",
+      "title": "Key changes: edit_project_note default Cmd+E, toggle_note_overview default Cmd+Opt+E, remove the Cmd+E search_selection default (keep the action), Cmd+Opt+N unbound; the overlay key routing (note editor, overview, list) follows; menu titles/shortcuts updated. Verify with zig build / just test / just swift-test",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-003",
+        "S-004",
+        "S-010",
+        "S-099"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "keys",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-074",
+      "title": "Update SPEC.md and README.md for the 2026-08-18 revision: the ledger inversion (list as source of truth, arrangement as projection), layout types and auto-apply, immediate Cmd+Opt+H hide, sort over all rows, next trigger, list cell editing / reordering / Cmd+N creation / Cmd+Enter focus, priority-deadline entry in the list, key changes (Cmd+E / Cmd+Opt+E, Cmd+Opt+D removal), abolished project resize/equalize; README Building section keeps the 3 verification commands",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-091",
+        "S-068",
+        "S-011",
+        "S-049"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "docs",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-075",
+      "title": "Human on-device visual verification of hide (one-time): Cmd+Opt+H hides the focused project immediately with no selection screen; right after hiding, the remaining projects are re-laid out with the remembered layout type",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-070"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch7-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-076",
+      "title": "Human on-device visual verification of layout types (one-time): Cmd+Opt+L lists only the types for the current visible count, arrows + Enter apply, Esc changes nothing, project count unchanged; hiding one of 6 tall-type projects re-lays out 5 in tall type automatically; the type survives restart; with one visible project Cmd+Opt+L shows nothing to choose; project boundaries cannot be resized while pane boundaries while zoomed can; the selection screen fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-072"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch7-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-077",
+      "title": "Human on-device visual verification of the project list (one-time): Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes, on a hidden row nothing; the list scrolls following the cursor; appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-084"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch7-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-078",
+      "title": "Human on-device visual verification of the priority/deadline layer after the entry-point move (one-time): priority and deadline set in the list cells appear in the label band after save; overview shows them with the note; overdue projects subtly emphasized; Cmd+S / Cmd+Shift+S reorder all rows and Cmd+1-9 follow; appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-054"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch7-human",
+      "risk_level": "normal",
+      "evidence": [],
+      "notes": "Re-verification: the earlier confirmation of success condition 12 was against the note-overlay entry point and visible-only sort; the 2026-08-18 Essence moved entry to the list cells and sort to all rows."
+    },
+    {
+      "id": "T-079",
+      "title": "Human on-device visual verification of the next trigger (one-time): settable in the list cell and shown in overview mode together with note/priority/deadline; not shown in the label band",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-098"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch7-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-080",
+      "title": "Human on-device visual verification of the key changes (one-time): Cmd+E opens the note overlay and Cmd+Opt+E enters overview; Cmd+Opt+N, Cmd+Opt+D, Cmd+Opt+Shift+D do nothing; Cmd+E does not start search_selection",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-099",
+        "S-013"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "batch7-human",
+      "risk_level": "normal",
       "evidence": []
     }
   ]

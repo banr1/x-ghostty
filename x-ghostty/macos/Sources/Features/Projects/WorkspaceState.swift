@@ -3,9 +3,14 @@ import Foundation
 /// The persistent + runtime state of the project layer for a single terminal
 /// window/tab.
 ///
-/// `canonicalProjectTree` is the single source of truth for project placement.
-/// Visibility (`hiddenProjectIDs`) and `zoomedProject` are derived display state
-/// that must never be persisted (see `SPEC.md` §4.1, §12.2, §13).
+/// The **project list is the source of truth** (`SPEC.md` §4.1, §27): every
+/// project — hidden ones included — sits in one persisted row order
+/// (`projectOrder`), visibility is a persisted per-project fact
+/// (`hiddenProjectIDs`), and the on-screen arrangement is a *projection*:
+/// `canonicalProjectTree` is re-derived from the visible rows in row order and
+/// the remembered `layoutType` by `relayout()`, and is never persisted or
+/// hand-edited. Ordinals (Cmd+1–9) are the visible rows counted from the top.
+/// `zoomedProject` stays runtime-only display state (§12.2, §13).
 ///
 /// Generic over the pane element for the same reason as `ProjectStateOf`:
 /// `WorkspaceState` is the runtime specialization, and `XGhosttyTests`
@@ -24,8 +29,25 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     var version: Int
 
-    /// Canonical placement of every project. Always the source of truth.
-    var canonicalProjectTree: SplitTree<ProjectRef>
+    /// The arrangement of the visible projects: a projection of
+    /// (`projectOrder`, `hiddenProjectIDs`, `layoutType`) rebuilt by
+    /// `relayout()` after every ledger change and on restore. Read freely
+    /// (rendering, spatial navigation, hit-testing); never assign it to change
+    /// placement — change the ledger and relayout.
+    private(set) var canonicalProjectTree: SplitTree<ProjectRef>
+
+    /// The list's row order over **every** project, hidden ones included —
+    /// the ledger (`SPEC.md` §27.1). Persisted. Invariant: a permutation of
+    /// `projects.keys` (see `normalizeLedger`).
+    var projectOrder: [ProjectID]
+
+    /// The remembered layout type (`SPEC.md` §26.4). Persisted; wide/row-major
+    /// when nothing is saved.
+    var layoutType: ProjectLayoutType
+
+    /// The list's column order (`SPEC.md` §27.1). Persisted; the default order
+    /// when nothing is saved.
+    var listColumnOrder: [ProjectListColumn]
 
     /// All projects keyed by id. Invariant: every leaf in `canonicalProjectTree`
     /// has a matching entry here (`SPEC.md` §14.1). The converse holds only for
@@ -41,28 +63,53 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// and one restarted before it must not reset again.
     var lastPriorityResetWorkday: Workday?
 
-    // MARK: Runtime-only (never persisted; cleared on decode)
-
+    /// The hidden projects — the list's visibility column (`SPEC.md` §27.2).
+    /// Persisted: a project hidden at quit comes back hidden.
     var hiddenProjectIDs: Set<ProjectID> = []
     var focusedProject: ProjectID?
+
+    // MARK: Runtime-only (never persisted; cleared on decode)
+
     var zoomedProject: ProjectID?
 
+    /// Build a state from a ledger. `projectOrder` defaults to `projects` in
+    /// creation order; when a `canonicalProjectTree` is given (legacy callers,
+    /// tests that describe an arrangement), its traversal order seeds the row
+    /// order for the projects it places and the rest follow by creation. The
+    /// tree itself is always re-derived from the ledger.
     init(
-        canonicalProjectTree: SplitTree<ProjectRef>,
+        canonicalProjectTree: SplitTree<ProjectRef> = .init(),
         projects: [ProjectID: ProjectStateOf<Pane>],
+        projectOrder: [ProjectID]? = nil,
         hiddenProjectIDs: Set<ProjectID> = [],
         focusedProject: ProjectID? = nil,
         zoomedProject: ProjectID? = nil,
         lastPriorityResetWorkday: Workday? = nil,
+        layoutType: ProjectLayoutType = .default,
+        listColumnOrder: [ProjectListColumn] = ProjectListColumn.defaultOrder,
         version: Int = Self.currentVersion
     ) {
         self.version = version
-        self.canonicalProjectTree = canonicalProjectTree
+        self.canonicalProjectTree = .init()
         self.projects = projects
+        self.projectOrder = projectOrder ?? canonicalProjectTree.map(\.id)
         self.hiddenProjectIDs = hiddenProjectIDs
         self.focusedProject = focusedProject
         self.zoomedProject = zoomedProject
         self.lastPriorityResetWorkday = lastPriorityResetWorkday
+        self.layoutType = layoutType
+        self.listColumnOrder = listColumnOrder
+        // A caller that hands over a tree but no hidden set means "these are
+        // the visible ones": everything the tree does not place starts hidden,
+        // matching how the old tree-as-truth model read such a state.
+        if projectOrder == nil, canonicalProjectTree.count > 0 {
+            let placed = Set(canonicalProjectTree.map(\.id))
+            for id in projects.keys where !placed.contains(id) {
+                self.hiddenProjectIDs.insert(id)
+            }
+        }
+        normalizeLedger()
+        relayout()
     }
 
     /// The tree used for rendering / focus / hit-testing. Derived from
@@ -87,24 +134,115 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     // MARK: Project numbering (SPEC §4.1)
 
-    /// Every visible project in canonical traversal order.
-    ///
-    /// Canonical leaves *are* the visible projects (hiding removes the leaf,
-    /// §11.7 / §14.3), so iterating `canonicalProjectTree` yields exactly the
-    /// visible set. The order is `SplitTree`'s in-order leaf traversal — the
-    /// same order `previous`/`next` focus uses — so the numbering matches how
-    /// the projects read on screen, left-to-right / top-to-bottom.
-    ///
-    /// Deliberately derived from the *canonical* tree rather than
-    /// `effectiveVisibleProjectTree`: a zoomed project keeps the number it has in
-    /// the full layout instead of collapsing to `1`.
+    /// Every visible project in **list row order** — the visible rows of the
+    /// ledger counted from the top (`SPEC.md` §27.1). This, not the tree's
+    /// traversal, defines the ordinals: the layout type places the k-th
+    /// visible row into its k-th slot, so the numbering follows the list and
+    /// the arrangement follows the numbering. A zoomed project keeps its
+    /// number.
     var visibleProjectIDs: [ProjectID] {
-        canonicalProjectTree.map(\.id)
+        projectOrder.filter { !hiddenProjectIDs.contains($0) }
     }
 
     /// The number of currently visible projects. Capped at `maxVisibleProjects`.
     var visibleProjectCount: Int {
-        canonicalProjectTree.count
+        visibleProjectIDs.count
+    }
+
+    /// Whether `id` is currently hidden: it exists as a project and is in the
+    /// hidden set. (Visibility is a ledger fact, not a tree fact.)
+    func isProjectHidden(_ id: ProjectID) -> Bool {
+        projects[id] != nil && hiddenProjectIDs.contains(id)
+    }
+
+    // MARK: Ledger → arrangement (SPEC §26.3)
+
+    /// Re-derive the arrangement from the ledger: the visible rows in row
+    /// order take the remembered layout type's slots. Called after every
+    /// change to `projectOrder` / `hiddenProjectIDs` / `layoutType` and on
+    /// restore. A zoom on a project that is no longer visible is released.
+    mutating func relayout() {
+        canonicalProjectTree = layoutType.tree(over: visibleProjectIDs)
+        if let zoomedProject, hiddenProjectIDs.contains(zoomedProject) || projects[zoomedProject] == nil {
+            self.zoomedProject = nil
+        }
+    }
+
+    /// Repair the ledger invariants after a structural change or a decode:
+    /// `projectOrder` is a permutation of `projects.keys` (unknown ids drop,
+    /// missing projects append in creation order), the hidden set names only
+    /// live projects, at most `maxVisibleProjects` rows are visible (the
+    /// extras beyond the ninth visible row become hidden), and at least one
+    /// row is visible while any project exists (the first row is shown).
+    mutating func normalizeLedger() {
+        var seen = Set<ProjectID>()
+        var order: [ProjectID] = []
+        for id in projectOrder where projects[id] != nil && !seen.contains(id) {
+            seen.insert(id)
+            order.append(id)
+        }
+        let missing = projects
+            .filter { !seen.contains($0.key) }
+            .sorted { ($0.value.createdAt, $0.key.rawValue.uuidString) <
+                      ($1.value.createdAt, $1.key.rawValue.uuidString) }
+            .map(\.key)
+        order += missing
+        projectOrder = order
+
+        hiddenProjectIDs = hiddenProjectIDs.filter { projects[$0] != nil }
+
+        var visibleCount = 0
+        for id in projectOrder where !hiddenProjectIDs.contains(id) {
+            visibleCount += 1
+            if visibleCount > Self.maxVisibleProjects {
+                hiddenProjectIDs.insert(id)
+            }
+        }
+        if visibleCount == 0, let first = projectOrder.first {
+            hiddenProjectIDs.remove(first)
+        }
+    }
+
+    /// Move `id` to `index` in the row order (clamped), keeping every other
+    /// row's relative order. Relayouts. No-op for an unknown id.
+    mutating func moveProjectRow(_ id: ProjectID, to index: Int) {
+        guard let from = projectOrder.firstIndex(of: id) else { return }
+        projectOrder.remove(at: from)
+        let clamped = min(max(index, 0), projectOrder.count)
+        projectOrder.insert(id, at: clamped)
+        relayout()
+    }
+
+    /// Insert `project` into the ledger right after row `anchor` (or at the
+    /// tail when `anchor` is nil / unknown), visible when fewer than
+    /// `maxVisibleProjects` rows are visible and hidden otherwise
+    /// (`SPEC.md` §27.4). Relayouts.
+    mutating func insertProject(_ project: ProjectStateOf<Pane>, after anchor: ProjectID?) {
+        projects[project.id] = project
+        let index = anchor.flatMap { projectOrder.firstIndex(of: $0) }.map { $0 + 1 } ?? projectOrder.count
+        projectOrder.insert(project.id, at: min(index, projectOrder.count))
+        if visibleProjectCount >= Self.maxVisibleProjects {
+            hiddenProjectIDs.insert(project.id)
+        }
+        relayout()
+    }
+
+    /// Remove `id` from the ledger entirely (`close_project`). Relayouts.
+    mutating func removeProject(_ id: ProjectID) {
+        projects.removeValue(forKey: id)
+        projectOrder.removeAll { $0 == id }
+        hiddenProjectIDs.remove(id)
+        if focusedProject == id { focusedProject = nil }
+        relayout()
+    }
+
+    /// Hide / show `id` (`SPEC.md` §27.2). Relayouts. The at-least-one-visible
+    /// and the visible-cap rules are the model's to check first
+    /// (`canToggleProjectVisibility`); this is the mutation.
+    mutating func setProjectHidden(_ id: ProjectID, _ hidden: Bool) {
+        guard projects[id] != nil else { return }
+        if hidden { hiddenProjectIDs.insert(id) } else { hiddenProjectIDs.remove(id) }
+        relayout()
     }
 
     /// The 1-based display number of `id`, or `nil` when it is not visible.
@@ -186,33 +324,32 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     // MARK: Priority / deadline sort orderings & overdue judgment (SPEC §24.2–24.3)
 
-    /// The visible projects in priority order (SPEC §24.3): high → medium →
-    /// low → unset. A pure ordering judgment — nothing is reordered here; the
-    /// sort *actions* (T-027 / SPEC §24.4) apply this order to the real
-    /// layout. Stability is explicit: within equal priorities the current
-    /// relative order (`visibleProjectIDs`) is preserved. Hidden projects are not
-    /// part of the input and therefore can never be affected.
-    func priorityOrderedVisibleProjectIDs() -> [ProjectID] {
-        stableOrderedVisibleProjectIDs { id in
+    /// Every row — hidden ones included — in priority order (SPEC §24.3):
+    /// high → medium → low → unset. A pure ordering judgment — nothing is
+    /// reordered here; the sort *actions* (SPEC §24.4) apply it to the ledger.
+    /// Stability is explicit: within equal priorities the current row order
+    /// is preserved.
+    func priorityOrderedProjectIDs() -> [ProjectID] {
+        stableOrderedProjectIDs { id in
             projects[id]?.priority?.sortRank ?? ProjectPriority.unsetSortRank
         }
     }
 
-    /// The visible projects in deadline order (SPEC §24.3): nearest date first,
-    /// unset last. Same contract as `priorityOrderedVisibleProjectIDs`: pure,
-    /// stable within the same date, visible projects only.
-    func deadlineOrderedVisibleProjectIDs() -> [ProjectID] {
-        stableOrderedVisibleProjectIDs { id in
+    /// Every row in deadline order (SPEC §24.3): nearest date first, unset
+    /// last. Same contract as `priorityOrderedProjectIDs`: pure, stable
+    /// within the same date, hidden rows included.
+    func deadlineOrderedProjectIDs() -> [ProjectID] {
+        stableOrderedProjectIDs { id in
             projects[id]?.deadline?.ordinalValue ?? Int.max
         }
     }
 
-    /// `visibleProjectIDs` sorted by `key` with explicit stability: ties keep
+    /// `projectOrder` sorted by `key` with explicit stability: ties keep
     /// their current relative order (the standard-library sort does not
     /// document stability, and the stable-tie rule is a spec requirement, so
     /// it is enforced by construction here).
-    private func stableOrderedVisibleProjectIDs(key: (ProjectID) -> Int) -> [ProjectID] {
-        visibleProjectIDs.enumerated()
+    private func stableOrderedProjectIDs(key: (ProjectID) -> Int) -> [ProjectID] {
+        projectOrder.enumerated()
             .sorted { a, b in
                 let ka = key(a.element)
                 let kb = key(b.element)
@@ -222,22 +359,23 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
             .map(\.element)
     }
 
-    /// Apply `order` to the visible projects' real layout (SPEC §24.4): the
-    /// canonical tree keeps its exact shape and every split ratio, and its
-    /// leaves are reassigned so traversal order equals `order`. Ordinals
-    /// (Cmd+1–9) derive from traversal order, so they follow the new layout
-    /// automatically. Hidden projects have no canonical leaf and are untouched.
-    /// The sort actions are the only callers — reordering happens exclusively
-    /// through an explicit action, never as a side effect of a priority or
-    /// deadline change — and the applied order persists until the next sort
-    /// because nothing else rewrites the leaf assignment.
+    /// Apply `order` — a permutation of every row — as the new ledger order
+    /// (SPEC §24.4) and relayout: ordinals are the visible rows counted from
+    /// the top, so they follow the sort, and the arrangement follows the
+    /// ordinals. The sort actions and the list's manual row moves are the only
+    /// callers — reordering happens exclusively through an explicit act,
+    /// never as a side effect of a priority or deadline change — and the
+    /// applied order persists until the next such act.
     ///
-    /// - Returns: whether the layout was reordered (`order` must be a
-    ///   permutation of the current visible projects).
-    mutating func applyVisibleProjectOrder(_ order: [ProjectID]) -> Bool {
-        guard let reordered = canonicalProjectTree.reorderingLeaves(
-            to: order.map { ProjectRef(id: $0) }) else { return false }
-        canonicalProjectTree = reordered
+    /// - Returns: whether the order changed (`order` must be a permutation
+    ///   of `projectOrder`).
+    @discardableResult
+    mutating func applyProjectOrder(_ order: [ProjectID]) -> Bool {
+        guard order.count == projectOrder.count,
+              Set(order) == Set(projectOrder) else { return false }
+        guard order != projectOrder else { return false }
+        projectOrder = order
+        relayout()
         return true
     }
 
@@ -293,94 +431,24 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     // MARK: Restore (SPEC §12.3)
 
-    /// Zero-out the runtime-only fields that must never be persisted or survive
-    /// a restore (`SPEC.md` §12.2). Called from both the Codable init and
-    /// `restoring(_:)` so the list of reset fields is defined once.
-    private mutating func clearRuntimeState() {
-        hiddenProjectIDs = []
-        zoomedProject = nil
-    }
-
-    /// Prune the canonical tree down to `maxVisibleProjects` leaves, moving the
-    /// extras onto the hidden shelf.
-    ///
-    /// Only a legacy save (written before the cap existed) can carry more than
-    /// nine canonical leaves. The first nine in traversal order keep their slot
-    /// — and therefore their numbers 1..9 — and everything after them becomes a
-    /// hidden project: still alive in `projects`, reachable from the shelf, and
-    /// with no canonical leaf so invariant §14.3 keeps holding.
-    private mutating func capVisibleProjects() {
-        let visible = visibleProjectIDs
-        guard visible.count > Self.maxVisibleProjects else { return }
-
-        for id in visible.dropFirst(Self.maxVisibleProjects) {
-            canonicalProjectTree = canonicalProjectTree.removing(.leaf(view: ProjectRef(id: id)))
-            hiddenProjectIDs.insert(id)
-        }
-    }
-
-    /// Re-attach projects that exist in `projects` but have no leaf in
-    /// `canonicalProjectTree`, up to the `maxVisibleProjects` cap.
-    ///
-    /// Hiding removes a project's leaf from the canonical tree (`SPEC.md` §11.7)
-    /// and `hiddenProjectIDs` is never persisted (§12.2), so quitting with hidden
-    /// projects would otherwise leave them orphaned in `projects`: alive, restored,
-    /// but unreachable. Each one splits the trailing leaf in creation order,
-    /// matching where `show_project` puts them (§11.8).
-    ///
-    /// Only as many orphans as fit under the visible cap are re-attached; the
-    /// rest stay hidden and reachable from the shelf, exactly as if the user
-    /// had hit the cap interactively.
-    private mutating func reconcileOrphanedProjects() {
-        let placed = Set(visibleProjectIDs)
-        let orphans = projects
-            .filter { !placed.contains($0.key) }
-            .sorted { ($0.value.createdAt, $0.key.rawValue.uuidString) <
-                      ($1.value.createdAt, $1.key.rawValue.uuidString) }
-
-        var visibleCount = placed.count
-        for (id, _) in orphans {
-            guard visibleCount < Self.maxVisibleProjects else {
-                hiddenProjectIDs.insert(id)
-                continue
-            }
-
-            canonicalProjectTree = canonicalProjectTree.appendingAtTrailingLeaf(ProjectRef(id: id))
-            visibleCount += 1
-        }
-    }
-
-    /// The structural half of a restore, shared by `restoring(_:)` and the
-    /// `Codable` init so both paths land on the same shape: runtime state is
-    /// zeroed, at most `maxVisibleProjects` projects are visible, and every project
-    /// is either a canonical leaf or on the hidden shelf.
-    ///
-    /// It is deterministic (traversal order, then creation order), so running it
-    /// twice — decode then `restoring(_:)` — produces the same result.
-    private mutating func applyRestoreLayout() {
-        clearRuntimeState()
-        capVisibleProjects()
-        reconcileOrphanedProjects()
-    }
-
-    /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3).
-    ///
-    /// Nothing comes back zoomed, and up to `maxVisibleProjects` projects come back
-    /// visible: projects that were hidden when the state was saved are re-attached
-    /// by splitting the trailing leaf while there is room under the cap, and any
-    /// beyond it stay on the hidden shelf (see `applyRestoreLayout`).
-    /// `focusedProject` is validated against the surviving projects and the canonical
-    /// tree; if it no longer points at a *visible* project — including when the cap
-    /// pushed it onto the shelf — it falls back to the canonical tree's first leaf.
+    /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3):
+    /// the ledger is normalized (permutation of the projects, hidden set over
+    /// live projects, at most `maxVisibleProjects` visible, at least one
+    /// visible), nothing comes back zoomed, the arrangement is re-derived
+    /// from the ledger and the remembered layout type, and `focusedProject`
+    /// is validated against the visible projects — falling back to the first
+    /// visible row.
     static func restoring(_ saved: Self) -> Self {
         var restored = saved
-        restored.applyRestoreLayout()
+        restored.zoomedProject = nil
+        restored.normalizeLedger()
+        restored.relayout()
 
         let focusValid = restored.focusedProject.map { id in
-            restored.projects[id] != nil && restored.canonicalProjectTree.find(id: id) != nil
+            restored.projects[id] != nil && !restored.hiddenProjectIDs.contains(id)
         } ?? false
         if !focusValid {
-            restored.focusedProject = restored.canonicalProjectTree.firstLeaf?.id
+            restored.focusedProject = restored.visibleProjectIDs.first
         }
 
         return restored
@@ -394,13 +462,19 @@ typealias WorkspaceState = WorkspaceStateOf<XGhostty.SurfaceView>
 
 extension WorkspaceStateOf: Codable {
     enum CodingKeys: String, CodingKey {
-        // Runtime-only fields (`hiddenProjectIDs`, `zoomedProject`) are intentionally
-        // omitted; `focusedProject` is persisted per `SPEC.md` §12.1.
+        // `zoomedProject` is runtime-only and intentionally omitted; the
+        // arrangement (`canonicalProjectTree`) is a projection of the ledger
+        // and is not persisted either — it is rebuilt on decode. It is still
+        // *read* from older saves to seed the row order.
         case version
         case canonicalProjectTree
         case projects
+        case projectOrder
+        case hiddenProjectIDs
         case focusedProject
         case lastPriorityResetWorkday
+        case layoutType
+        case listColumnOrder
     }
 
     /// Pre-rename key spellings ("group" vocabulary). Workspaces saved before
@@ -417,8 +491,6 @@ extension WorkspaceStateOf: Codable {
         let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
         self.version = try c.decodeIfPresent(Int.self, forKey: .version)
             ?? Self.currentVersion
-        self.canonicalProjectTree = try c.decodeIfPresent(SplitTree<ProjectRef>.self, forKey: .canonicalProjectTree)
-            ?? legacy.decode(SplitTree<ProjectRef>.self, forKey: .canonicalProjectTree)
 
         // Dictionaries with non-String/Int keys encode as JSON arrays by
         // default; we persist `projects` as a keyed object using uuid strings so
@@ -429,6 +501,25 @@ extension WorkspaceStateOf: Codable {
             UUID(uuidString: key).map { (ProjectID(rawValue: $0), value) }
         })
 
+        // A save written before the ledger existed carries only the tree: its
+        // traversal order seeds the row order (the projects it placed were the
+        // visible ones) and everything else was hidden at quit.
+        let savedTree = (try? c.decodeIfPresent(SplitTree<ProjectRef>.self, forKey: .canonicalProjectTree))
+            ?? (try? legacy.decodeIfPresent(SplitTree<ProjectRef>.self, forKey: .canonicalProjectTree))
+            ?? nil
+        if let order = try c.decodeIfPresent([ProjectID].self, forKey: .projectOrder) {
+            self.projectOrder = order
+            self.hiddenProjectIDs = (try? c.decodeIfPresent(Set<ProjectID>.self, forKey: .hiddenProjectIDs)) ?? []
+        } else if let savedTree {
+            self.projectOrder = savedTree.map(\.id)
+            let placed = Set(self.projectOrder)
+            self.hiddenProjectIDs = Set(self.projects.keys.filter { !placed.contains($0) })
+        } else {
+            self.projectOrder = []
+            self.hiddenProjectIDs = []
+        }
+        self.canonicalProjectTree = .init()
+
         self.focusedProject = try c.decodeIfPresent(ProjectID.self, forKey: .focusedProject)
             ?? legacy.decodeIfPresent(ProjectID.self, forKey: .focusedProject)
 
@@ -438,25 +529,33 @@ extension WorkspaceStateOf: Codable {
         self.lastPriorityResetWorkday =
             (try? c.decodeIfPresent(Workday.self, forKey: .lastPriorityResetWorkday)) ?? nil
 
-        // Runtime-only state is always reset on decode (`SPEC.md` §12.2), and
-        // projects that were hidden when this was encoded (so absent from the
-        // persisted tree) are re-attached — up to the visible cap — so nothing
-        // is orphaned. `hiddenProjectIDs` is re-derived here rather than decoded:
-        // it stays runtime-only, it is just recomputed from the cap.
-        self.applyRestoreLayout()
+        // No saved type / column order (or a corrupt one) means the defaults
+        // (`SPEC.md` §26.4, §27.1).
+        self.layoutType = (try? c.decodeIfPresent(ProjectLayoutType.self, forKey: .layoutType)) ?? .default
+        let columns = (try? c.decodeIfPresent([ProjectListColumn].self, forKey: .listColumnOrder)) ?? nil
+        self.listColumnOrder = ProjectListColumn.normalizedOrder(columns ?? ProjectListColumn.defaultOrder)
+        self.zoomedProject = nil
+
+        // Runtime-only state is always reset on decode (`SPEC.md` §12.2) and
+        // the arrangement is a projection of the ledger, so it is rebuilt.
+        normalizeLedger()
+        relayout()
     }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(version, forKey: .version)
-        try c.encode(canonicalProjectTree, forKey: .canonicalProjectTree)
 
         let keyed = Dictionary(
             uniqueKeysWithValues: projects.map { ($0.key.rawValue.uuidString, $0.value) }
         )
         try c.encode(keyed, forKey: .projects)
+        try c.encode(projectOrder, forKey: .projectOrder)
+        try c.encode(hiddenProjectIDs, forKey: .hiddenProjectIDs)
 
         try c.encodeIfPresent(focusedProject, forKey: .focusedProject)
         try c.encodeIfPresent(lastPriorityResetWorkday, forKey: .lastPriorityResetWorkday)
+        try c.encode(layoutType, forKey: .layoutType)
+        try c.encode(listColumnOrder, forKey: .listColumnOrder)
     }
 }
