@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-068"
+    "T-069"
   ],
   "items": [
     {
@@ -2814,7 +2814,7 @@
     {
       "id": "T-068",
       "title": "Sort actions over ALL rows including hidden: Cmd+S priority order (high, medium, low, unset; stable) and Cmd+Shift+S deadline order (nearest first, unset last, stable within a day) reorder the ledger row order (hidden rows included), the ordinal becomes the visible rows counted from the top, sorting works with or without the list open, only on explicit action, and the order persists until the next sort or manual reorder; no next-trigger sort. Tests per success condition 11 (sort items and post-sort ordinals)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-044",
@@ -2829,7 +2829,30 @@
       },
       "batch_group": "sort-all-rows",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "note": "full macOS app build (zig 0.15.2 via /opt/homebrew/opt/zig@0.15/bin)"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "note": "Zig core tests"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "note": "XGhosttyTests: 0 failures, 1 pre-existing skip (BenchmarkTests/example); both new sort tests passed (sortWorksWhileTheProjectListIsOpen, postSortOrdinalsCountVisibleRowsSkippingHidden)"
+        },
+        {
+          "type": "diff",
+          "summary": "7 files changed, +79/-32. Sort layer finished per success condition 11: renamed sortVisibleProjectsByPriority/ByDeadline -> sortProjectsByPriority/ByDeadline and canSortVisibleProjects -> canSortProjects (the actions sort ALL ledger rows, hidden included — the old names misstated the scope) across WorkspaceModel, BaseTerminalController, XGhostty.App, and tests. canSortProjects now refuses only during the note overview and the layout selector; the open project list no longer refuses, implementing S-046 'sorting works with or without the list open' (the list session stays up and re-renders the reordered rows live — new test). Added post-sort ordinal test: a hidden row sorted to the ledger top is skipped, the first visible row is ordinal 1 (S-053/S-047). Existing tests already covered: all-row orderings incl. hidden, stable ties through real reorder, unset-last, explicit-only + persistence, no next-trigger sort (no such action exists)."
+        }
+      ]
     },
     {
       "id": "T-069",

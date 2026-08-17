@@ -951,10 +951,11 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
                 // Only performable with something to reorder (two or more
-                // visible projects) outside the viewing-only note overview
-                // (SPEC §24.4); otherwise the keybind falls through
-                // unconsumed.
-                guard controller.workspace.canSortVisibleProjects else { return false }
+                // ledger rows) outside the viewing-only note overview and the
+                // layout selector (SPEC §24.4) — the open project list does
+                // NOT refuse: sorting works with or without it. Otherwise the
+                // keybind falls through unconsumed.
+                guard controller.workspace.canSortProjects else { return false }
 
                 NotificationCenter.default.post(
                     name: notification,

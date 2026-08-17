@@ -172,7 +172,7 @@ struct ProjectLayoutSelectionTests {
         #expect(model.gotoProjectIndexTarget(2) == nil)
         model.beginNoteEditing(ids[0])
         #expect(model.noteEditingProject == nil)
-        #expect(!model.canSortVisibleProjects)
+        #expect(!model.canSortProjects)
         #expect(!model.canHideFocusedProject)
         model.toggleNoteOverview()
         #expect(!model.noteOverviewActive)
@@ -180,7 +180,7 @@ struct ProjectLayoutSelectionTests {
         // Everything works again once the selector closes.
         model.cancelLayoutSelection()
         #expect(model.gotoProjectIndexTarget(2) == ids[1])
-        #expect(model.canSortVisibleProjects)
+        #expect(model.canSortProjects)
     }
 
     @Test func restoreStateAndTeardownEndTheSession() {

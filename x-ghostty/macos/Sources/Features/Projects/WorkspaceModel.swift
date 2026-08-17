@@ -1161,13 +1161,16 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Whether a sort action (`sort_projects_by_priority` /
     /// `sort_projects_by_deadline`) can reorder anything: at least two ledger
-    /// rows, and not while an overlay session (note overview, hide-selection,
-    /// layout screens) is up — the overview is viewing-only, and a selection
-    /// screen must not have its listed order reshuffled under it. Callers use
-    /// this both to perform the action and to answer the keybind's
+    /// rows, and not while the note overview or the layout selector is up —
+    /// the overview is viewing-only, and the selector's listed choices must
+    /// not have the arrangement reshuffled under them. The *project list* is
+    /// deliberately not in this set: sorting works with or without the list
+    /// open (SPEC §24.4), and the open list re-renders its rows live. Callers
+    /// use this both to perform the action and to answer the keybind's
     /// performability check, so the two always agree.
-    var canSortVisibleProjects: Bool {
-        !overlaySessionActive && state.projectOrder.count >= 2
+    var canSortProjects: Bool {
+        !noteOverviewActive && !layoutSelectionActive
+            && state.projectOrder.count >= 2
     }
 
     /// Reorder the ledger by priority (`sort_projects_by_priority`, SPEC
@@ -1181,20 +1184,20 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///
     /// - Returns: whether the order changed.
     @discardableResult
-    func sortVisibleProjectsByPriority() -> Bool {
-        guard canSortVisibleProjects else { return false }
+    func sortProjectsByPriority() -> Bool {
+        guard canSortProjects else { return false }
         return state.applyProjectOrder(state.priorityOrderedProjectIDs())
     }
 
     /// Reorder the ledger by deadline (`sort_projects_by_deadline`, SPEC
     /// §24.4): nearest date first, unset last, same-date rows keeping their
     /// current relative order. Same contract as
-    /// `sortVisibleProjectsByPriority`, consuming `deadlineOrderedProjectIDs`.
+    /// `sortProjectsByPriority`, consuming `deadlineOrderedProjectIDs`.
     ///
     /// - Returns: whether the order changed.
     @discardableResult
-    func sortVisibleProjectsByDeadline() -> Bool {
-        guard canSortVisibleProjects else { return false }
+    func sortProjectsByDeadline() -> Bool {
+        guard canSortProjects else { return false }
         return state.applyProjectOrder(state.deadlineOrderedProjectIDs())
     }
 

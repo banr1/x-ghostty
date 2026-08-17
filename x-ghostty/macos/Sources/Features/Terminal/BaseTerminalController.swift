@@ -1225,7 +1225,7 @@ class BaseTerminalController: NSWindowController,
         // The model applies the priority ordering to the real layout
         // (SPEC §24.4); focus is id-keyed and untouched, and the ordinals
         // follow the new traversal order automatically.
-        workspace.sortVisibleProjectsByPriority()
+        workspace.sortProjectsByPriority()
     }
 
     @objc private func ghosttyDidSortProjectsByDeadline(_ notification: Notification) {
@@ -1235,7 +1235,7 @@ class BaseTerminalController: NSWindowController,
         guard isInWorkspace(view) else { return }
 
         // Same as the priority sort, consuming the deadline ordering.
-        workspace.sortVisibleProjectsByDeadline()
+        workspace.sortProjectsByDeadline()
     }
 
     @objc private func ghosttyDidChooseProjectLayout(_ notification: Notification) {
