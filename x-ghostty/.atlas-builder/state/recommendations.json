@@ -401,6 +401,22 @@
       "resolved_at": "2026-08-16T20:29:17+09:00",
       "resolved_by": "human",
       "resolution": "T-063(リモート split の再確認)を実機で確認し、3 項目すべてが期待どおり動作した: (a) ssh 中のペインの split が同じホスト・同じパスで開く、(b) ssh を exit して手元のシェルに戻った後の split がローカルで開く(T-061 の修正が効いている)、(c) 素のローカルペインの split が従来どおりローカルで開く。よって R-019 を解除し、T-063 を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。ESSENCE.md の変更は不要。\n\nT-057(優先度の毎朝 6:00 リセット)は日付跨ぎがまだ済んでいないため今回も未確認。pending のまま据え置き、実際に日を跨いだ朝に改めて確認する。したがって次サイクルは T-063 の記録と下記の勧告 close を行った時点で人間確認待ちになる — その停止は想定どおりの着地であり、差し戻しでも異常でもない。\n\n非ブロッキング勧告 2 件はいずれも人間が承認したので、次サイクルでこの結論を resolution として記録し close すること。R-018(リモート判定に pty の前景プロセスを見る設計解釈)は現行のまま承認する — 前景がシェルならローカル、前景を読めないときは「戻ってきた証拠ではない」として報告に従う倒し方を含めて維持し、実装変更は不要。R-017(リモート側にシェル統合を入れると OSC 7 が報告するのは ssh の別名 gohanserver ではなくリモート機自身のホスト名 nixos-dev になる件)も了解した — 製品側で別名を推測する処理は入れず、必要な対応はリモートへのシェル統合導入と ~/.ssh/config への Host エントリ追加という人間側の環境作業のみ。実装・ESSENCE.md の変更は不要。"
+    },
+    {
+      "id": "R-LG-20260818T033229+0900-a3df",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "raised_by": "atlas-builder-loop",
+      "gate": "idle_cycles",
+      "target": "context.json",
+      "reason": "The loop made no semantic progress for 3 consecutive cycles (threshold 3). A human should inspect recent runs.jsonl / reflection.jsonl entries, address the cause, and resume.",
+      "details": {
+        "idle_cycles_since_progress": 3,
+        "stop_after_idle_cycles": 3
+      },
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "created_at": "2026-08-18T03:32:29+09:00"
     }
   ]
 }

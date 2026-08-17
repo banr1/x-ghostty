@@ -7,10 +7,10 @@
   },
   "progress": {
     "last_signature": "9e79775635354fd87b6192843055bd70aaa89b7dcb585053e53bdf3f6c2fc685",
-    "idle_cycles_since_progress": 2,
+    "idle_cycles_since_progress": 3,
     "infra_fails_since_ok": 0,
     "last_progress_at": "2026-08-18T03:32:14+09:00",
-    "last_checked_at": "2026-08-18T03:32:24+09:00",
+    "last_checked_at": "2026-08-18T03:32:29+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
