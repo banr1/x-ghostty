@@ -1,9 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "last_validated_at": "2026-08-17T17:33:22+09:00",
+  "last_validated_at": "2026-08-18T03:19:44+09:00",
   "status": "warning",
   "errors": [],
   "warnings": [
-    "run ledger divergence: R-20260809T161812+0900-c7ee1c, R-20260816T014000+0900-0f928c recorded in the control plane (control_runs.jsonl) for this project but absent from the project runs.jsonl — a cycle was interrupted between the two appends; run-duration triage on runs.jsonl will under-report (§8.1, §13.5)."
+    "ESSENCE.md changed since the last Spec projection; re-project Spec once the change is human-attested (the loop gates an unreviewed change as essence_unreviewed_change, §13.1-10). 40 Spec(s) (S-003, S-004, S-010…) hold essence_refs that no longer match the edited ESSENCE.md; they are reported here in aggregate, not as per-Spec errors, until Spec is re-projected (§20.2-7).",
+    "run ledger divergence: R-20260809T161812+0900-c7ee1c, R-20260816T014000+0900-0f928c, R-20260817T174949+0900-33b973 recorded in the control plane (control_runs.jsonl) for this project but absent from the project runs.jsonl — a cycle was interrupted between the two appends; run-duration triage on runs.jsonl will under-report (§8.1, §13.5)."
   ]
 }

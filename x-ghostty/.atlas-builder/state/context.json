@@ -10,7 +10,8 @@
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
     "last_progress_at": "2026-08-16T20:09:59+09:00",
-    "last_checked_at": "2026-08-16T20:09:59+09:00"
+    "last_checked_at": "2026-08-16T20:09:59+09:00",
+    "usage_limited_since_ok": 0
   },
   "reset_policy": {
     "hard_threshold_context_usage": 0.8,
