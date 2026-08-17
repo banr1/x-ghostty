@@ -36,23 +36,15 @@ protocol TerminalViewDelegate: AnyObject {
     /// focus to the project that is focused after the session's toggles.
     func closeProjectList()
 
-    /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
-    func equalizeProjects()
-
     /// Confirm the hide-selection screen (Enter, `SPEC.md` §25): batch-hide
     /// the selected projects. Hiding can move focus to another project, which
     /// swaps `surfaceTree`, so the controller handles it like `showProject`.
     func confirmHideSelection()
 
-    /// Choose a registered layout in the open selector (Enter, `SPEC.md`
-    /// §26.2). A shortfall creates new projects with fresh shells, so the
-    /// controller handles it.
-    func chooseLayout(_ layout: ProjectLayout)
-
-    /// Confirm the layout hide-pick (Enter, `SPEC.md` §26.3). Hiding can move
-    /// focus and swap `surfaceTree`, so the controller handles it like
-    /// `confirmHideSelection`.
-    func confirmLayoutHidePick()
+    /// Choose a layout type in the open selector (Enter, `SPEC.md` §26.2):
+    /// the type is remembered and the arrangement re-derives. The controller
+    /// registers the project-aware undo.
+    func chooseLayoutType(_ type: ProjectLayoutType)
 }
 
 /// The view model is a required implementation for TerminalView callers. This contains
@@ -126,10 +118,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         onToggleProjectListVisibility: { delegate?.toggleProjectListVisibility($0) },
                         onFocusProjectListRow: { delegate?.focusProjectListRow($0) },
                         onCloseProjectList: { delegate?.closeProjectList() },
-                        onEqualizeProjects: { delegate?.equalizeProjects() },
                         onConfirmHideSelection: { delegate?.confirmHideSelection() },
-                        onChooseLayout: { delegate?.chooseLayout($0) },
-                        onConfirmLayoutHidePick: { delegate?.confirmLayoutHidePick() })
+                        onChooseLayoutType: { delegate?.chooseLayoutType($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)

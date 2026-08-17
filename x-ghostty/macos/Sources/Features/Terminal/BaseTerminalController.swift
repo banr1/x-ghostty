@@ -224,12 +224,12 @@ class BaseTerminalController: NSWindowController,
             self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
         }
 
-        // Persist state-only project-layer mutations. `resize_project` /
-        // `equalize_projects` / `rename_project` (both the inline editor and the
-        // `set_project_title` action) change `workspace.state` without touching
-        // `surfaceTree`, so they never reach `surfaceTreeDidChange`'s
+        // Persist state-only project-layer mutations. `rename_project` (both
+        // the inline editor and the `set_project_title` action), the sort
+        // actions, and the layout-type choice change `workspace.state` without
+        // touching `surfaceTree`, so they never reach `surfaceTreeDidChange`'s
         // `invalidateRestorableState`. Mirror that hook on the project layer's
-        // source of truth so canonical project ratios and names survive relaunch.
+        // source of truth so the ledger and names survive relaunch.
         // (`dropFirst` skips the initial value emitted on subscription.)
         workspaceStateCancellable = workspace.$state
             .dropFirst()
@@ -351,16 +351,6 @@ class BaseTerminalController: NSWindowController,
             self,
             selector: #selector(ghosttyDidMoveProject(_:)),
             name: XGhostty.Notification.ghosttyMoveProject,
-            object: nil)
-        center.addObserver(
-            self,
-            selector: #selector(ghosttyDidResizeProject(_:)),
-            name: XGhostty.Notification.ghosttyResizeProject,
-            object: nil)
-        center.addObserver(
-            self,
-            selector: #selector(ghosttyDidEqualizeProjects(_:)),
-            name: XGhostty.Notification.ghosttyEqualizeProjects,
             object: nil)
         center.addObserver(
             self,
@@ -1254,9 +1244,9 @@ class BaseTerminalController: NSWindowController,
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(view) else { return }
 
-        // `choose_project_layout` opens the layout selector (`SPEC.md`
+        // `choose_project_layout` opens the layout-type selector (`SPEC.md`
         // §26.2); the application itself happens on the selector's Enter
-        // (`chooseLayout(_:)`) or the hide-pick confirm.
+        // (`chooseLayoutType(_:)`).
         workspace.beginLayoutSelection()
     }
 
@@ -1321,51 +1311,6 @@ class BaseTerminalController: NSWindowController,
             XGhostty.Notification.MoveProjectDirectionKey] as? XGhostty.SplitFocusDirection else { return }
 
         moveFocusedProject(direction.toSplitTreeFocusDirection())
-    }
-
-    @objc private func ghosttyDidResizeProject(_ notification: Notification) {
-        // The triggering surface must be within our workspace (not just the
-        // currently focused project's tree, to survive the async focus window).
-        guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard isInWorkspace(view) else { return }
-
-        guard let direction = notification.userInfo?[
-            XGhostty.Notification.ResizeProjectDirectionKey] as? XGhostty.SplitResizeDirection else { return }
-        guard let amount = notification.userInfo?[
-            XGhostty.Notification.ResizeProjectAmountKey] as? UInt16 else { return }
-
-        let spatialDirection: SplitTree<ProjectRef>.Spatial.Direction
-        switch direction {
-        case .up: spatialDirection = .up
-        case .down: spatialDirection = .down
-        case .left: spatialDirection = .left
-        case .right: spatialDirection = .right
-        }
-
-        // Convert the pixel amount to a normalized ratio delta against the
-        // workspace's content area (the region all visible projects divide). This
-        // is exact for a single top-level project split (the common 2-project case)
-        // and a graceful approximation for nested project splits, where the LCA
-        // split's container is smaller — the divider simply moves a little less
-        // than `amount`px. `adjustRatio` clamps the result to [0.1, 0.9].
-        let size = window?.contentView?.bounds.size ?? surfaceTree.viewBounds()
-        let dimension: CGFloat = switch spatialDirection {
-        case .left, .right: size.width
-        case .up, .down: size.height
-        }
-        guard dimension > 0 else { return }
-        let ratioDelta = Double(amount) / Double(dimension)
-
-        workspace.resizeFocusedProject(spatialDirection, ratioDelta: ratioDelta)
-    }
-
-    @objc private func ghosttyDidEqualizeProjects(_ notification: Notification) {
-        // The triggering surface must be within our workspace (not just the
-        // currently focused project's tree, to survive the async focus window).
-        guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard isInWorkspace(view) else { return }
-
-        equalizeProjects()
     }
 
     @objc private func ghosttyDidToggleProjectZoom(_ notification: Notification) {
@@ -1773,15 +1718,6 @@ class BaseTerminalController: NSWindowController,
         registerWorkspaceUndo("Move Project", undo: before, redo: workspace.state)
     }
 
-    /// Equalize the project layout in response to `equalize_projects` or a
-    /// double-click on a project divider (`SPEC.md` §11.5).
-    ///
-    /// Both entry points land here so they behave identically. Like
-    /// `equalize_splits`, this is a ratio-only change and registers no undo.
-    func equalizeProjects() {
-        workspace.equalizeProjects()
-    }
-
     /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). The model
     /// hides every selected project in one batch and resolves the next focus;
     /// here we swap `surfaceTree` to the surviving focused project's panes and
@@ -1801,68 +1737,15 @@ class BaseTerminalController: NSWindowController,
         registerWorkspaceUndo("Hide Projects", undo: before, redo: workspace.state)
     }
 
-    /// Choose a registered layout in the open selector (Enter, `SPEC.md`
-    /// §26.2–26.3). The model owns the count-matching judgment; this applies
-    /// its outcome:
-    ///
-    /// - equal count: the model already applied — register the undo;
-    /// - shortfall: build the missing projects here (each with a fresh shell,
-    ///   exactly like `newProjectSplit` builds one) and hand them to the
-    ///   model to complete the application;
-    /// - excess: the hide-pick screen opened; nothing to do until its
-    ///   confirm.
-    ///
-    /// Focus stays on the current focused project in the first two cases, so
-    /// `surfaceTree` needs no swap; a "Apply Layout" project-aware undo
-    /// covers the whole application.
-    func chooseLayout(_ layout: ProjectLayout) {
+    /// Choose a layout type in the open selector (Enter, `SPEC.md`
+    /// §26.2–26.4). The model remembers the type and re-derives the
+    /// arrangement over the unchanged visible rows, so `surfaceTree` needs no
+    /// swap and focus stays put; one "Choose Layout" project-aware undo
+    /// reverses the choice (the snapshot carries the previous type).
+    func chooseLayoutType(_ type: ProjectLayoutType) {
         let before = workspace.state
-        guard let outcome = workspace.chooseLayout(
-            layout, savingOutgoingPaneTree: surfaceTree) else { return }
-
-        switch outcome {
-        case .applied:
-            registerWorkspaceUndo("Apply Layout", undo: before, redo: workspace.state)
-
-        case .needsNewProjects(let count):
-            guard let xghostty_app = ghostty.app else { return }
-            let now = Date()
-            var existingNames = Set(workspace.state.projects.values.map(\.name))
-            let newProjects: [ProjectState] = (0..<count).map { _ in
-                let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: nil)
-                let name = ProjectNameGenerator.make(existing: existingNames)
-                existingNames.insert(name)
-                return ProjectState(
-                    id: ProjectID(),
-                    name: name,
-                    paneTree: .init(view: newView),
-                    focusedSurface: SurfaceID(rawValue: newView.id),
-                    createdAt: now)
-            }
-            guard workspace.applyLayout(
-                layout, appending: newProjects,
-                savingOutgoingPaneTree: surfaceTree) else { return }
-            registerWorkspaceUndo("Apply Layout", undo: before, redo: workspace.state)
-
-        case .hidePickOpened:
-            break
-        }
-    }
-
-    /// Confirm the layout hide-pick (Enter, `SPEC.md` §26.3). The model hides
-    /// exactly the selected excess and applies the pending layout to the
-    /// rest; here we swap `surfaceTree` to the surviving focused project's
-    /// panes, move keyboard focus, and register one "Apply Layout" undo for
-    /// the whole application. No-op when the confirm is rejected (selection
-    /// count != excess — the screen stays up).
-    func confirmLayoutHidePick() {
-        let before = workspace.state
-        guard let result = workspace.confirmLayoutHidePick(
-            savingOutgoingPaneTree: surfaceTree) else { return }
-
-        surfaceTree = workspace.focusedPaneTree
-        moveKeyboardFocus(toProjectSurface: result.focus)
-        registerWorkspaceUndo("Apply Layout", undo: before, redo: workspace.state)
+        guard workspace.chooseLayoutType(type) else { return }
+        registerWorkspaceUndo("Choose Layout", undo: before, redo: workspace.state)
     }
 
     /// Show the hidden project `id` in response to a shelf pill click or the

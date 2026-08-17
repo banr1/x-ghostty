@@ -55,24 +55,18 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// persisted.
     @Published private(set) var layoutSelectionActive = false
 
-    /// The in-progress excess hide-pick of a layout application (`SPEC.md`
-    /// §26.3): the chosen layout holds fewer projects than are visible, and
-    /// the user is picking exactly the excess to hide. `nil` while no pick
-    /// screen is up. Transient UI state like `hideSelection`; never persisted.
-    @Published private(set) var layoutHidePick: WorkspaceLayoutHidePick?
-
     /// Whether the project-list overlay (`list_projects`, Cmd+L, `SPEC.md`
     /// §27) is up. Transient UI state like `hideSelection`; never persisted.
     @Published private(set) var projectListActive = false
 
     /// Whether any workspace-modal overlay session (note overview,
-    /// hide-selection, layout selection, layout hide-pick, project list)
-    /// currently owns the interaction: while one is up, focus moves, note
-    /// editing, and sorting are no-ops, and no other overlay may open. The note
-    /// *editor* is not in this set — it locks less (see the individual guards).
+    /// hide-selection, layout selection, project list) currently owns the
+    /// interaction: while one is up, focus moves, note editing, and sorting
+    /// are no-ops, and no other overlay may open. The note *editor* is not in
+    /// this set — it locks less (see the individual guards).
     private var overlaySessionActive: Bool {
         noteOverviewActive || hideSelectionActive
-            || layoutSelectionActive || layoutHidePick != nil
+            || layoutSelectionActive
             || projectListActive
     }
 
@@ -358,18 +352,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return (target, state.projects[target]?.focusedSurface)
     }
 
-    /// Project-boundary resize is abolished (`SPEC.md` §26.3): the arrangement
-    /// is a projection re-derived from the ledger and the remembered layout
-    /// type, whose slot shares are fixed by the type's rule, so there is no
-    /// ratio to adjust. Always a no-op; pane resize inside a zoomed project is
-    /// untouched (it lives on the pane tree, not here).
-    func resizeFocusedProject(
-        _ direction: SplitTree<ProjectRef>.Spatial.Direction,
-        ratioDelta: Double
-    ) {
-        XGhostty.logger.debug("resize_project skipped: the arrangement is a ledger projection")
-    }
-
     /// Whether `move_project` in `direction` would swap anything. Shares
     /// `gotoProjectTarget`'s resolution, so the two actions always agree on what
     /// counts as a neighbor.
@@ -400,16 +382,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
         order.swapAt(a, b)
         return state.applyProjectOrder(order)
-    }
-
-    /// Project-level equalize is abolished with resize (`SPEC.md` §26.3): the
-    /// layout-type rules already deal equal shares by construction, so there
-    /// is never anything to rebalance. Always `false`; pane equalize inside a
-    /// zoomed project is untouched.
-    @discardableResult
-    func equalizeProjects() -> Bool {
-        XGhostty.logger.debug("equalize_projects skipped: the arrangement is a ledger projection")
-        return false
     }
 
     // MARK: Zoom / hide / show (Phase 5)
@@ -843,14 +815,15 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return true
     }
 
-    // MARK: Layout application (SPEC §26)
+    // MARK: Layout-type selection (SPEC §26)
 
-    /// Whether `choose_project_layout` can open the layout selector
+    /// Whether `choose_project_layout` can open the layout-type selector
     /// (`SPEC.md` §26): at least one visible project to arrange around, and
     /// neither the note editor nor another overlay session up (each overlay
-    /// owns the keyboard alone). Callers use this both to open the selector
-    /// and to answer the keybind's performability check, so the two always
-    /// agree.
+    /// owns the keyboard alone). A single available choice does NOT decline:
+    /// the selector opens and shows that there is nothing to choose
+    /// (`SPEC.md` §26.2). Callers use this both to open the selector and to
+    /// answer the keybind's performability check, so the two always agree.
     var canBeginLayoutSelection: Bool {
         noteEditingProject == nil
             && !overlaySessionActive
@@ -873,191 +846,44 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         layoutSelectionActive = false
     }
 
-    /// Choose `layout` in the open selector (`SPEC.md` §26.2–26.3). The
-    /// count-matching judgment lives here:
+    /// The choices the open selector lists (`SPEC.md` §26.2): the
+    /// exact-match-collapsed layout types for the current visible count, in
+    /// canonical enumeration order. Empty while the selector is closed. A
+    /// single entry means there is nothing to choose — the selector shows
+    /// that instead of a list.
+    var layoutTypeChoices: [ProjectLayoutType] {
+        guard layoutSelectionActive else { return [] }
+        return ProjectLayoutType.choices(forVisibleCount: state.visibleProjectCount)
+    }
+
+    /// The choice standing for the remembered type at the current visible
+    /// count — what the selector highlights as current, even when the saved
+    /// spelling collapsed into another representative.
+    var currentLayoutTypeChoice: ProjectLayoutType {
+        state.layoutType.representative(forVisibleCount: state.visibleProjectCount)
+    }
+
+    /// Choose `type` in the open selector (Enter, `SPEC.md` §26.2–26.4): the
+    /// type is remembered (persisted with the ledger, and re-applied whenever
+    /// the visible count changes), the arrangement re-derives as its
+    /// projection over the visible rows in row order, and the selector
+    /// closes. The project count never changes; a zoom re-entered mid-session
+    /// is cleared, since applying arranges the overall view.
     ///
-    /// - Equal count: the layout is applied immediately (the visible projects
-    ///   take the slots in their current ordinal order) and the selector
-    ///   closes — `.applied`.
-    /// - More slots than visible projects: the selector closes and
-    ///   `.needsNewProjects(n)` asks the caller to create the shortfall
-    ///   (fresh shells are the controller's job) and complete via
-    ///   `applyLayout(_:appending:savingOutgoingPaneTree:)`.
-    /// - Fewer slots: the selector closes and the excess hide-pick opens
-    ///   (`layoutHidePick`) — `.hidePickOpened`; the application completes on
-    ///   `confirmLayoutHidePick` or dies on `cancelLayoutHidePick`.
-    ///
-    /// - Returns: `nil` while the selector is not up.
+    /// - Returns: whether the choice was applied (`false` while the selector
+    ///   is not up).
     @discardableResult
-    func chooseLayout(
-        _ layout: ProjectLayout,
-        savingOutgoingPaneTree outgoing: SplitTree<Pane>
-    ) -> WorkspaceLayoutChoiceOutcome? {
-        guard layoutSelectionActive else { return nil }
+    func chooseLayoutType(_ type: ProjectLayoutType) -> Bool {
+        guard layoutSelectionActive else { return false }
         layoutSelectionActive = false
 
-        let visibleCount = state.visibleProjectCount
-        if layout.projectCount == visibleCount {
-            var next = state
-            next.saveOutgoingPaneTree(outgoing)
-            applyLayoutTree(layout, ordered: next.visibleProjectIDs, on: &next)
-            state = next
-            return .applied
-        }
-        if layout.projectCount > visibleCount {
-            return .needsNewProjects(layout.projectCount - visibleCount)
-        }
-        layoutHidePick = WorkspaceLayoutHidePick(layout: layout, selection: [])
-        return .hidePickOpened(required: visibleCount - layout.projectCount)
-    }
-
-    /// Complete a shortfall layout application (`SPEC.md` §26.3): register
-    /// `newProjects` (created by the caller with fresh shells, exactly the
-    /// shortfall count) at the ordinal tail, then apply `layout` — the
-    /// existing visible projects keep their ordinal order in the leading
-    /// slots and the new projects fill the trailing ones. Focus stays on the
-    /// current focused project.
-    ///
-    /// - Returns: `false` when the count does not match the current shortfall
-    ///   or a project id collides (the caller should then discard the new
-    ///   panes; nothing is mutated).
-    @discardableResult
-    func applyLayout(
-        _ layout: ProjectLayout,
-        appending newProjects: [ProjectStateOf<Pane>],
-        savingOutgoingPaneTree outgoing: SplitTree<Pane>
-    ) -> Bool {
-        let shortfall = layout.projectCount - state.visibleProjectCount
-        guard shortfall > 0, newProjects.count == shortfall else { return false }
-        guard newProjects.allSatisfy({ state.projects[$0.id] == nil }) else { return false }
-
         var next = state
-        next.saveOutgoingPaneTree(outgoing)
-        // The new rows land at the ledger tail, visible (the shortfall math
-        // guarantees room under the cap), so they fill the trailing slots.
-        for project in newProjects {
-            next.insertProject(project, after: nil)
-        }
-        applyLayoutTree(layout, ordered: next.visibleProjectIDs, on: &next)
+        next.layoutType = type
+        next.zoomedProject = nil
+        next.relayout()
+        next.snapFocusToPrimaryInOverallView()
         state = next
         return true
-    }
-
-    /// The projects the layout hide-pick screen lists: every visible project
-    /// in canonical (ordinal) order. Empty while no pick is up.
-    var layoutHidePickProjectIDs: [ProjectID] {
-        guard layoutHidePick != nil else { return [] }
-        return state.visibleProjectIDs
-    }
-
-    /// How many projects the open layout hide-pick must select — the excess
-    /// (visible count − layout count), re-derived from live state so a
-    /// mid-session change re-judges. `nil` while no pick is up.
-    var layoutHidePickRequiredCount: Int? {
-        guard let pick = layoutHidePick else { return nil }
-        return state.visibleProjectCount - pick.layout.projectCount
-    }
-
-    /// Toggle project `id` in the layout hide-pick. No-op while no pick is
-    /// up, and for anything but a visible project.
-    func toggleLayoutHidePick(_ id: ProjectID) {
-        guard var pick = layoutHidePick else { return }
-        guard state.visibleProjectIDs.contains(id) else { return }
-        if pick.selection.contains(id) {
-            pick.selection.remove(id)
-        } else {
-            pick.selection.insert(id)
-        }
-        layoutHidePick = pick
-    }
-
-    /// Whether the layout hide-pick can confirm (`SPEC.md` §26.3): exactly
-    /// the excess count must be selected — no more, no fewer.
-    var canConfirmLayoutHidePick: Bool {
-        guard let pick = layoutHidePick,
-              let required = layoutHidePickRequiredCount, required > 0 else { return false }
-        return pick.selection.count == required
-            && pick.selection.allSatisfy { state.canonicalProjectTree.find(id: $0) != nil }
-    }
-
-    /// Confirm the layout hide-pick (`SPEC.md` §26.3): the selected projects
-    /// are hidden (never closed — they keep their panes, processes, and
-    /// information behind the shelf) and the chosen layout is applied to the
-    /// remaining visible projects in their ordinal order, all in one state
-    /// write. Rejected (the screen stays up) while the selection count does
-    /// not equal the excess.
-    ///
-    /// When the focused project is among the hidden, focus moves to the
-    /// nearest surviving project, measured on the pre-removal tree exactly
-    /// like the hide-selection confirm.
-    ///
-    /// - Returns: the project to focus next and its stored focused surface so
-    ///   the caller can swap `surfaceTree` and move keyboard focus, or `nil`
-    ///   when the confirm was rejected.
-    @discardableResult
-    func confirmLayoutHidePick(
-        savingOutgoingPaneTree outgoing: SplitTree<Pane>
-    ) -> (target: ProjectID, focus: SurfaceID?)? {
-        guard let pick = layoutHidePick, canConfirmLayoutHidePick else { return nil }
-        layoutHidePick = nil
-        let selection = pick.selection
-
-        // Resolve the next focus on the pre-removal tree, like the
-        // hide-selection confirm.
-        let target: ProjectID?
-        if let focusedID = state.focusedProject {
-            target = selection.contains(focusedID)
-                ? state.canonicalProjectTree.nearestLeaf(
-                    to: ProjectRef(id: focusedID),
-                    matching: { !selection.contains($0.id) })?.id
-                : focusedID
-        } else {
-            target = nil
-        }
-
-        var next = state
-        next.saveOutgoingPaneTree(outgoing)
-        // Rows keep their ledger positions; only visibility flips.
-        for id in selection {
-            next.setProjectHidden(id, true)
-        }
-        if let target { next.focusedProject = target }
-        applyLayoutTree(pick.layout, ordered: next.visibleProjectIDs, on: &next)
-        state = next
-
-        guard let target else { return nil }
-        return (target, state.projects[target]?.focusedSurface)
-    }
-
-    /// Cancel the layout hide-pick — and with it the whole layout
-    /// application (the Escape path, `SPEC.md` §26.3): nothing is hidden and
-    /// nothing is rearranged.
-    func cancelLayoutHidePick() {
-        layoutHidePick = nil
-    }
-
-    /// Transitional shim of the registered-layout application (ledger
-    /// inversion, `SPEC.md` §26.3): the arrangement is a projection re-derived
-    /// from the ledger and the remembered layout type, so a registered
-    /// layout's own grid no longer applies — only the visible rows' *order*
-    /// does. `ordered` is written into the visible rows (hidden rows keep
-    /// their ledger positions) and the projection relayouts; the layout-type
-    /// selector replaces this whole path. A zoom (possible mid-session via
-    /// the menu bar) is cleared: applying arranges the overall view.
-    private func applyLayoutTree(
-        _ layout: ProjectLayout,
-        ordered ids: [ProjectID],
-        on next: inout WorkspaceStateOf<Pane>
-    ) {
-        assert(ids.count == layout.projectCount)
-        var order = next.projectOrder
-        let positions = order.indices.filter { !next.hiddenProjectIDs.contains(order[$0]) }
-        if positions.count == ids.count {
-            for (position, id) in zip(positions, ids) { order[position] = id }
-            next.applyProjectOrder(order)
-        }
-        next.zoomedProject = nil
-        next.snapFocusToPrimaryInOverallView()
     }
 
     // MARK: Close (SPEC §11.9)
@@ -1531,7 +1357,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // silently dropped; the hide-selection and layout screens own the
         // interaction until they confirm or cancel.
         guard noteEditingProject == nil, hideSelection == nil,
-              !layoutSelectionActive, layoutHidePick == nil else { return noteOverviewActive }
+              !layoutSelectionActive else { return noteOverviewActive }
 
         if noteOverviewActive {
             noteOverviewActive = false
@@ -1579,7 +1405,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         noteOverviewActive = false
         hideSelection = nil
         layoutSelectionActive = false
-        layoutHidePick = nil
     }
 
     // MARK: Teardown
@@ -1598,7 +1423,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         noteOverviewActive = false
         hideSelection = nil
         layoutSelectionActive = false
-        layoutHidePick = nil
     }
 }
 
@@ -1632,31 +1456,6 @@ enum WorkspaceChildExitOutcome: Equatable {
     /// kept — the pane stays with its error message until a key press
     /// closes it.
     case keepPaneAwaitingKey(ProjectID)
-}
-
-/// The in-progress excess hide-pick of a layout application (`SPEC.md`
-/// §26.3): the chosen layout and the projects currently toggled for hiding.
-/// Lives outside the generic class like the outcome enums, since it holds no
-/// pane data.
-struct WorkspaceLayoutHidePick: Equatable {
-    let layout: ProjectLayout
-    var selection: Set<ProjectID>
-}
-
-/// The count-matching judgment of choosing a registered layout (`SPEC.md`
-/// §26.3).
-enum WorkspaceLayoutChoiceOutcome: Equatable {
-    /// Slot count == visible count: the layout was applied immediately.
-    case applied
-
-    /// The layout holds more slots than visible projects: the caller must
-    /// create this many new projects (with fresh shells) and complete via
-    /// `applyLayout(_:appending:savingOutgoingPaneTree:)`.
-    case needsNewProjects(Int)
-
-    /// The layout holds fewer slots than visible projects: the excess
-    /// hide-pick screen opened; the application completes on its confirm.
-    case hidePickOpened(required: Int)
 }
 
 /// The result of closing the focused project (`SPEC.md` §11.9).

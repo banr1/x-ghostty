@@ -630,14 +630,6 @@ pub const Action = union(enum) {
     /// one layer up.
     move_project: SplitFocusDirection,
 
-    /// Resize the current project in the specified direction and amount in
-    /// pixels. The two arguments should be joined with a comma (`,`), like
-    /// `resize_project:up,10`. Mirrors `resize_split`.
-    resize_project: SplitResizeParameter,
-
-    /// Equalize the size of all visible projects in the current window.
-    equalize_projects,
-
     /// Toggle whether the current project is zoomed. A zoomed project takes up
     /// the entire window, hiding the other projects. Independent from
     /// `toggle_split_zoom`, which zooms a pane within a project.
@@ -1364,8 +1356,6 @@ pub const Action = union(enum) {
             .new_project_split,
             .goto_project,
             .move_project,
-            .resize_project,
-            .equalize_projects,
             .toggle_project_zoom,
             .hide_project,
             .show_project,
@@ -3474,20 +3464,7 @@ test "parse: project split actions" {
         try testing.expectEqual(Action.SplitFocusDirection.left, binding.action.move_project);
     }
 
-    // resize_project: tuple, mirrors resize_split
-    {
-        const binding = try parseSingle("a=resize_project:up,10");
-        try testing.expect(binding.action == .resize_project);
-        try testing.expectEqual(Action.SplitResizeDirection.up, binding.action.resize_project[0]);
-        try testing.expectEqual(@as(u16, 10), binding.action.resize_project[1]);
-    }
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=resize_project:up"));
-
     // void project actions
-    {
-        const binding = try parseSingle("a=equalize_projects");
-        try testing.expect(binding.action == .equalize_projects);
-    }
     {
         const binding = try parseSingle("a=toggle_project_zoom");
         try testing.expect(binding.action == .toggle_project_zoom);

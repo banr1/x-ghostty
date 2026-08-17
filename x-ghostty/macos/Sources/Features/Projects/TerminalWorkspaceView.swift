@@ -41,27 +41,16 @@ struct TerminalWorkspaceView: View {
     /// focused when the list opened.
     let onCloseProjectList: () -> Void
 
-    /// Equalize the project layout (a project-divider double-click, `SPEC.md` §11.5).
-    /// The pane-level equivalent routes through `XGhostty.App` because the pane
-    /// tree's owner is the controller's `surfaceTree`; the project tree's owner is
-    /// the controller too, so this is injected the same way as `onFocusProject`.
-    let onEqualizeProjects: () -> Void
-
     /// Confirm the hide-selection screen (Enter, `SPEC.md` §25). Batch-hiding
     /// can move focus to another project, which swaps `surfaceTree`, so the
     /// controller handles it like `onFocusProject`; toggle and cancel are
     /// model-only and wired below.
     let onConfirmHideSelection: () -> Void
 
-    /// Choose a registered layout in the open selector (Enter, `SPEC.md`
-    /// §26.2). A shortfall needs new projects with fresh shells, so the
-    /// controller handles it; cancel is model-only and wired below.
-    let onChooseLayout: (ProjectLayout) -> Void
-
-    /// Confirm the layout hide-pick (Enter, `SPEC.md` §26.3). Hiding can move
-    /// focus and swap `surfaceTree`, so the controller handles it like
-    /// `onConfirmHideSelection`.
-    let onConfirmLayoutHidePick: () -> Void
+    /// Choose a layout type in the open selector (Enter, `SPEC.md` §26.2).
+    /// The controller registers the project-aware undo; cancel is model-only
+    /// and wired below.
+    let onChooseLayoutType: (ProjectLayoutType) -> Void
 
     /// The hide-selection footer: the pending count, or why Enter is blocked
     /// (the model rejects hiding every visible project, `SPEC.md` §25).
@@ -73,16 +62,6 @@ struct TerminalWorkspaceView: View {
             return "nothing selected — ↩ closes"
         }
         return "↩ hides \(selection.count) project\(selection.count == 1 ? "" : "s")"
-    }
-
-    /// The layout hide-pick footer: progress toward exactly the excess count
-    /// the confirm requires (`SPEC.md` §26.3).
-    private func layoutHidePickFooter(pick: WorkspaceLayoutHidePick) -> String {
-        let required = workspace.layoutHidePickRequiredCount ?? 0
-        if workspace.canConfirmLayoutHidePick {
-            return "↩ hides \(pick.selection.count) and applies \(pick.layout.label)"
-        }
-        return "select exactly \(required) to hide (\(pick.selection.count)/\(required))"
     }
 
     private var labelActions: ProjectLabelActions {
@@ -121,8 +100,7 @@ struct TerminalWorkspaceView: View {
                     // on projects holding non-primary panes (SPEC §22.7).
                     paneCountBadges: workspace.state.overallViewPaneCountBadges,
                     paneAction: paneAction,
-                    labelActions: labelActions,
-                    onEqualize: onEqualizeProjects)
+                    labelActions: labelActions)
             }
 
             // Note editor overlay: presented while a note is being edited,
@@ -170,13 +148,14 @@ struct TerminalWorkspaceView: View {
                     onCancel: { workspace.cancelHideSelection() })
             }
 
-            // Layout selector (`SPEC.md` §26.2): presented while the
-            // selector session is up.
+            // Layout-type selector (`SPEC.md` §26.2): presented while the
+            // selector session is up, listing only the current visible
+            // count's collapsed choices.
             if workspace.layoutSelectionActive {
                 ProjectLayoutSelector(
-                    layouts: ProjectLayout.registered,
-                    visibleCount: workspace.state.visibleProjectCount,
-                    onChoose: onChooseLayout,
+                    choices: workspace.layoutTypeChoices,
+                    current: workspace.currentLayoutTypeChoice,
+                    onChoose: onChooseLayoutType,
                     onCancel: { workspace.cancelLayoutSelection() })
             }
 
@@ -197,24 +176,6 @@ struct TerminalWorkspaceView: View {
                     onClose: onCloseProjectList)
             }
 
-            // Layout excess hide-pick (`SPEC.md` §26.3): the same multi-pick
-            // screen as the hide selection, gated on exactly the excess
-            // count; Escape cancels the whole layout application.
-            if let pick = workspace.layoutHidePick {
-                ProjectHideSelector(
-                    title: "apply \(pick.layout.label)",
-                    hint: "space toggle · ↩ apply · esc cancel",
-                    footer: layoutHidePickFooter(pick: pick),
-                    projects: workspace.layoutHidePickProjectIDs.compactMap {
-                        workspace.state.projects[$0]
-                    },
-                    ordinals: workspace.state.projectOrdinals,
-                    selection: pick.selection,
-                    canConfirm: workspace.canConfirmLayoutHidePick,
-                    onToggle: { workspace.toggleLayoutHidePick($0) },
-                    onConfirm: onConfirmLayoutHidePick,
-                    onCancel: { workspace.cancelLayoutHidePick() })
-            }
         }
         .onChange(of: workspace.noteEditingProject) { newValue in
             // When the note editor closes, hand keyboard focus back to the
@@ -251,20 +212,8 @@ struct TerminalWorkspaceView: View {
         }
         .onChange(of: workspace.layoutSelectionActive) { active in
             // Closing the layout selector hands keyboard focus back to the
-            // terminal — unless choosing just opened the hide-pick screen,
-            // which wants the keyboard next.
-            if !active && workspace.layoutHidePick == nil {
-                DispatchQueue.main.async {
-                    if let surface = lastFocusedSurface?.value {
-                        surface.window?.makeFirstResponder(surface)
-                    }
-                }
-            }
-        }
-        .onChange(of: workspace.layoutHidePick == nil) { closed in
-            // Closing the layout hide-pick hands keyboard focus back to the
             // terminal, exactly like the overlays above.
-            if closed && !workspace.layoutSelectionActive {
+            if !active {
                 DispatchQueue.main.async {
                     if let surface = lastFocusedSurface?.value {
                         surface.window?.makeFirstResponder(surface)

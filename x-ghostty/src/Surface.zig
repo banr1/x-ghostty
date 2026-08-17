@@ -5324,26 +5324,6 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             },
         ),
 
-        .resize_project => |value| return try self.rt_app.performAction(
-            .{ .surface = self },
-            .resize_project,
-            .{
-                .amount = value[1],
-                .direction = switch (value[0]) {
-                    inline else => |tag| @field(
-                        apprt.action.ResizeSplit.Direction,
-                        @tagName(tag),
-                    ),
-                },
-            },
-        ),
-
-        .equalize_projects => return try self.rt_app.performAction(
-            .{ .surface = self },
-            .equalize_projects,
-            {},
-        ),
-
         .toggle_project_zoom => return try self.rt_app.performAction(
             .{ .surface = self },
             .toggle_project_zoom,

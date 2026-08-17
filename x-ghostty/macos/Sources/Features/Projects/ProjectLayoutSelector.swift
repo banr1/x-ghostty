@@ -1,15 +1,16 @@
 import SwiftUI
 
-/// The layout-selection overlay, opened by the `choose_project_layout`
-/// action (Cmd+L) over the whole workspace (`SPEC.md` §26.2).
+/// The layout-type selection overlay, opened by the `choose_project_layout`
+/// action (Cmd+Opt+L) over the whole workspace (`SPEC.md` §26.2).
 ///
-/// Lists the 11 built-in registered layouts: ↑/↓ move the cursor, Enter (or
-/// a row click) chooses the highlighted layout, Escape (or a backdrop click)
-/// closes changing nothing. What choosing does — apply directly, create the
-/// shortfall, or open the excess hide-pick — is the model's count-matching
-/// judgment (`WorkspaceModel.chooseLayout`); each row previews it against
-/// the current visible count. Rendered only while the selector is up, so no
-/// permanent terminal area is occupied.
+/// Lists only the choices for the *current* visible count — the shape ×
+/// orientation combinations left after exact-match collapsing
+/// (`ProjectLayoutType.choices(forVisibleCount:)`): ↑/↓ move the cursor,
+/// Enter (or a row click) applies the highlighted type, Escape (or a
+/// backdrop click) closes changing nothing. The project count never changes.
+/// When only one choice exists there is nothing to choose, and the panel
+/// says so instead of listing it. Rendered only while the selector is up, so
+/// no permanent terminal area is occupied.
 ///
 /// Keyboard mechanics follow `ProjectHideSelector` / `CommandPaletteView`:
 /// an invisible focused text field holds first responder so the terminal
@@ -21,23 +22,30 @@ import SwiftUI
 struct ProjectLayoutSelector: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
-    /// The listed layouts, in display order (`ProjectLayout.registered`).
-    let layouts: [ProjectLayout]
+    /// The listed choices for the current visible count
+    /// (`WorkspaceModel.layoutTypeChoices`).
+    let choices: [ProjectLayoutType]
 
-    /// The current visible-project count, for each row's effect preview.
-    let visibleCount: Int
+    /// The choice standing for the remembered type at this count
+    /// (`WorkspaceModel.currentLayoutTypeChoice`) — highlighted as current.
+    let current: ProjectLayoutType
 
-    /// Choose a layout (Enter / row click).
-    let onChoose: (ProjectLayout) -> Void
+    /// Apply a type (Enter / row click).
+    let onChoose: (ProjectLayoutType) -> Void
 
     /// Close the selector changing nothing (Escape / backdrop click).
     let onCancel: () -> Void
 
-    /// The keyboard cursor row. Pure presentation state.
+    /// The keyboard cursor row. Pure presentation state, seeded on the
+    /// current type so Enter with no arrows re-applies what is already set.
     @State private var cursor = 0
 
     @FocusState private var catcherFocused: Bool
     @State private var keyboardSink = ""
+
+    /// Whether there is anything to choose (`SPEC.md` §26.2): a single
+    /// collapsed choice means the arrangement for this count is forced.
+    private var nothingToChoose: Bool { choices.count <= 1 }
 
     var body: some View {
         ZStack {
@@ -74,6 +82,7 @@ struct ProjectLayoutSelector: View {
             .accessibilityHidden(true)
             .onAppear {
                 keyboardSink = ""
+                cursor = choices.firstIndex(of: current) ?? 0
                 // Grab focus on appearance. Dispatching to the next runloop
                 // turn is required for the initial focus to stick (same
                 // workaround as the command palette, ghostty#8497).
@@ -84,37 +93,36 @@ struct ProjectLayoutSelector: View {
     }
 
     private func moveCursor(_ delta: Int) {
-        guard !layouts.isEmpty else { return }
-        cursor = (cursor + delta + layouts.count) % layouts.count
+        guard !nothingToChoose else { return }
+        cursor = (cursor + delta + choices.count) % choices.count
     }
 
     private func chooseCursorRow() {
-        guard layouts.indices.contains(cursor) else { return }
-        onChoose(layouts[cursor])
+        guard !nothingToChoose, choices.indices.contains(cursor) else { return }
+        onChoose(choices[cursor])
     }
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(layouts.enumerated()), id: \.1.id) { index, layout in
-                            row(layout, index: index)
-                                .id(layout.id)
-                        }
+            if nothingToChoose {
+                // A single collapsed choice: nothing to choose for this
+                // visible count (`SPEC.md` §26.2).
+                Text("nothing to choose for this layout count")
+                    .font(.system(size: 12, design: .monospaced))
+                    .opacity(0.6)
+                    .padding(10)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(choices.enumerated()), id: \.1.id) { index, choice in
+                        row(choice, index: index)
                     }
-                    .padding(6)
                 }
-                .frame(maxHeight: 260)
-                .onChange(of: cursor) { newValue in
-                    guard layouts.indices.contains(newValue) else { return }
-                    proxy.scrollTo(layouts[newValue].id)
-                }
+                .padding(6)
             }
         }
-        .frame(width: 420)
+        .frame(width: 340)
         .background(ghostty.config.backgroundColor)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
@@ -124,18 +132,17 @@ struct ProjectLayoutSelector: View {
         .shadow(radius: 8)
     }
 
-    private func row(_ layout: ProjectLayout, index: Int) -> some View {
+    private func row(_ choice: ProjectLayoutType, index: Int) -> some View {
         HStack(spacing: 8) {
-            Text(layout.label)
-                .frame(minWidth: 72, alignment: .leading)
-
-            Text("\(layout.projectCount) projects")
-                .opacity(0.5)
+            Text(choice.label)
+                .frame(minWidth: 140, alignment: .leading)
 
             Spacer(minLength: 0)
 
-            Text(effectPreview(layout))
-                .opacity(0.5)
+            if choice == current {
+                Text("current")
+                    .opacity(0.5)
+            }
         }
         .font(.system(size: 12, design: .monospaced))
         .padding(.horizontal, 8)
@@ -145,27 +152,18 @@ struct ProjectLayoutSelector: View {
         .cornerRadius(4)
         .onTapGesture {
             cursor = index
-            onChoose(layout)
+            onChoose(choice)
         }
-    }
-
-    /// Previews the model's count-matching judgment for this row: what
-    /// choosing the layout will do given the current visible count.
-    private func effectPreview(_ layout: ProjectLayout) -> String {
-        let delta = layout.projectCount - visibleCount
-        if delta > 0 { return "+\(delta) new" }
-        if delta < 0 { return "pick \(-delta) to hide" }
-        return "fits"
     }
 
     /// Header band, styled like the other overlay headers so the family
     /// reads as one.
     private var header: some View {
         HStack {
-            Text("apply layout")
+            Text("layout type")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("↑↓ choose · ↩ apply · esc cancel")
+            Text(nothingToChoose ? "esc close" : "↑↓ choose · ↩ apply · esc cancel")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }

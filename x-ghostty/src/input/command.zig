@@ -487,12 +487,6 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = "Equalize the size of all splits.",
         }},
 
-        .equalize_projects => comptime &.{.{
-            .action = .equalize_projects,
-            .title = "Equalize Projects",
-            .description = "Equalize the size of all visible projects.",
-        }},
-
         .reset_window_size => comptime &.{.{
             .action = .reset_window_size,
             .title = "Reset Window Size",
@@ -623,12 +617,10 @@ fn actionCommands(action: Action.Key) []const Command {
         // apprt-side (macOS). Most of the ones excluded here take arguments
         // that don't have a sensible palette default (a direction, an
         // amount, or a project name/title). Palette entries for the rest are
-        // added per-action as they become useful, mirroring how equalize_projects
-        // was added above.
+        // added per-action as they become useful.
         .new_project_split,
         .goto_project,
         .move_project,
-        .resize_project,
         .toggle_project_zoom,
         .hide_project,
         .show_project,

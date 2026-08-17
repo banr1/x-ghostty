@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-066"
+    "T-067"
   ],
   "items": [
     {
@@ -2710,7 +2710,7 @@
     {
       "id": "T-066",
       "title": "Cmd+Opt+L selection overlay rework + abolition of project-level resize/equalize: the overlay lists only the choices for the current visible count (arrows choose, Enter applies, Esc changes nothing, project count never changes; a single choice shows a nothing-to-choose message); remove the shortfall creation and the hide-pick paths; remove the resize_project / equalize_projects actions and their default keybinds (pane resize/equalize inside a zoomed project stays); the ProjectLayoutSelector view follows the new model",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-060",
@@ -2723,7 +2723,51 @@
       },
       "batch_group": "layout-types",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "src/input/Binding.zig",
+            "src/apprt/action.zig",
+            "src/Surface.zig",
+            "src/input/command.zig",
+            "src/config/Config.zig",
+            "include/xghostty.h",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Sources/Features/Projects/ProjectLayoutSelector.swift",
+            "macos/Sources/Features/Projects/ProjectSplitTreeView.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift",
+            "macos/Sources/Features/Terminal/TerminalView.swift",
+            "macos/Sources/Features/Terminal/BaseTerminalController.swift",
+            "macos/Sources/XGhostty/XGhostty.App.swift",
+            "macos/Sources/XGhostty/XGhosttyPackage.swift",
+            "macos/Sources/Features/Projects/ProjectLayout.swift (deleted)",
+            "macos/Tests/Projects/ProjectLayoutTests.swift (deleted)",
+            "macos/Tests/Projects/ProjectLayoutSelectionTests.swift (new)",
+            "macos/Tests/Projects/WorkspaceModelTests.swift"
+          ],
+          "summary": "Cmd+Opt+L selector rework + resize/equalize abolition (SPEC section 26.2-26.4, must-51/55). Model: chooseLayout/applyLayout/hide-pick machinery (WorkspaceLayoutHidePick, WorkspaceLayoutChoiceOutcome, the applyLayoutTree shim) and the no-op resizeFocusedProject/equalizeProjects methods are deleted; the new selection API is layoutTypeChoices (ProjectLayoutType.choices for the CURRENT visible count, empty while closed), currentLayoutTypeChoice (representative for the highlight), and chooseLayoutType(_:) which remembers the type, clears any zoom, relayouts, and closes the selector - the project count and the ledger never change. View: ProjectLayoutSelector lists the collapsed choices (cursor seeded on the current representative, Enter/click applies, Esc/backdrop cancels) and shows a nothing-to-choose message when only one choice exists; the old shortfall/hide-pick blocks left TerminalWorkspaceView, and ProjectSplitTreeView now renders project boundaries through a non-interactive FixedSplitView (no drag, no double-click; pane dividers inside a zoomed project keep SplitView unchanged). Controller/plumbing: chooseLayoutType registers one 'Choose Layout' project-aware undo; equalizeProjects/confirmLayoutHidePick and the ghosttyResizeProject/ghosttyEqualizeProjects observers, notifications, and App dispatch/performability paths are gone. Zig: resize_project and equalize_projects removed from Binding.zig (action + parse tests), apprt/action.zig (union + Key enum), Surface.zig dispatch, command.zig (palette entry + exclusion list), Config.zig (4 resize defaults Cmd+Ctrl+Opt+arrows and the equalize default Cmd+Ctrl+Shift+=), and both xghostty.h enum tags plus the resize_project union member - both sides changed together, verified by checkXGhosttyHEnum in just test."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 596 test cases (603 prior - 16 obsolete registered-layout/hide-pick tests deleted with ProjectLayoutTests.swift + 9 new ProjectLayoutSelectionTests: choices list only the current count's collapsed set and re-judge after a visibility change, single choice = nothing to choose with the selector still opening, current-choice representative mapping incl. a collapsed saved spelling, Enter remembers the type / re-derives / never changes the project count or ledger with ordinals following, choose rejected while closed, Esc changes nothing, chosen type survives a Codable round trip, zoom release + overlay exclusivity on begin, selector owns the interaction while up, restoreState/teardown end the session)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with the two actions removed end to end (Zig core, regenerated C header consumption, Swift app)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the xghostty.h enum-sync check (checkXGhosttyHEnum) over the shrunk action enum and the embedded xcodebuild Swift test step."
+        }
+      ],
+      "notes": "Done 2026-08-18: the selection UI, the model API, and the Zig action removal landed together. Project boundaries are now rendered by a non-interactive FixedSplitView (SPEC 26.3); zoomed pane dividers keep the interactive SplitView. SPEC.md sections 11.4/11.5/26 still describe the old machinery in places - T-074 owns the doc sweep."
     },
     {
       "id": "T-067",

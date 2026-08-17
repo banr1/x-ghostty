@@ -522,12 +522,6 @@ extension XGhostty {
             case XGHOSTTY_ACTION_MOVE_PROJECT:
                 return moveProject(app, target: target, direction: action.action.move_project)
 
-            case XGHOSTTY_ACTION_RESIZE_PROJECT:
-                return resizeProject(app, target: target, resize: action.action.resize_project)
-
-            case XGHOSTTY_ACTION_EQUALIZE_PROJECTS:
-                return equalizeProjects(app, target: target)
-
             case XGHOSTTY_ACTION_TOGGLE_PROJECT_ZOOM:
                 return toggleProjectZoom(app, target: target)
 
@@ -1179,70 +1173,6 @@ extension XGhostty {
                     name: Notification.ghosttyMoveProject,
                     object: surfaceView,
                     userInfo: [Notification.MoveProjectDirectionKey: focusDirection])
-                return true
-
-            default:
-                assertionFailure()
-                return false
-            }
-        }
-
-        private static func resizeProject(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            resize: xghostty_action_resize_split_s) -> Bool {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("resize project does nothing with an app target")
-                return false
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return false }
-                guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
-
-                // Only performable when more than one project is visible (mirrors
-                // resize_split's `isSplit` gate). Whether a neighbor exists in the
-                // specific direction is resolved by the handler.
-                guard controller.workspace.state.effectiveVisibleProjectTree?.isSplit ?? false else { return false }
-
-                guard let resizeDirection = SplitResizeDirection.from(direction: resize.direction) else { return false }
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyResizeProject,
-                    object: surfaceView,
-                    userInfo: [
-                        Notification.ResizeProjectDirectionKey: resizeDirection,
-                        Notification.ResizeProjectAmountKey: resize.amount,
-                    ])
-                return true
-
-            default:
-                assertionFailure()
-                return false
-            }
-        }
-
-        private static func equalizeProjects(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s) -> Bool {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("equalize projects does nothing with an app target")
-                return false
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return false }
-                guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
-
-                // Only performable when more than one project is visible (mirrors
-                // resize_project's gate); a single project has nothing to equalize, so
-                // let the key fall through instead of consuming it.
-                guard controller.workspace.state.effectiveVisibleProjectTree?.isSplit ?? false else { return false }
-
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyEqualizeProjects,
-                    object: surfaceView)
                 return true
 
             default:

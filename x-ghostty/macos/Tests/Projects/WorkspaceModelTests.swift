@@ -215,24 +215,10 @@ struct WorkspaceModelTests {
         #expect(zoomedModel.gotoProjectTarget(.spatial(.left)) == nil)
     }
 
-    // MARK: resizeFocusedProject — abolished (SPEC §26.3)
-
-    @Test func resizeFocusedProjectIsAlwaysANoOp() throws {
-        // The arrangement is a projection of the ledger: project-boundary
-        // resize is abolished, so the canonical ratios never move.
-        let (model, _, _) = try Self.makeTwoProjectHorizontal()
-        let before = try #require(Self.rootSplitRatio(model))
-
-        model.resizeFocusedProject(.left, ratioDelta: 0.1)
-        model.resizeFocusedProject(.right, ratioDelta: 0.1)
-        model.resizeFocusedProject(.up, ratioDelta: 0.1)
-
-        #expect(Self.rootSplitRatio(model) == before)
-        // A single project (no split) does not crash either.
-        let single = WorkspaceModel(wrapping: .init())
-        single.resizeFocusedProject(.left, ratioDelta: 0.1)
-        #expect(single.state.canonicalProjectTree.root != nil)
-    }
+    // (Project-boundary resize/equalize are abolished with the ledger
+    // inversion, SPEC §26.3: the actions and their model paths no longer
+    // exist. ProjectLayoutSelectionTests covers the surviving layout-type
+    // selection path.)
 
     // MARK: moveFocusedProject (move_project)
 
@@ -326,23 +312,6 @@ struct WorkspaceModelTests {
     @Test func moveFocusedProjectWithoutFocusedProjectIsNoOp() {
         let model = WorkspaceModel()
         #expect(model.moveFocusedProject(.next) == false)
-    }
-
-    // MARK: equalizeProjects — abolished (SPEC §26.3)
-
-    @Test func equalizeProjectsIsAlwaysANoOp() throws {
-        // The layout-type rules deal equal shares by construction, so there is
-        // never anything to rebalance: the action always declines and the
-        // projection is untouched.
-        let (model, left, right) = try Self.makeTwoProjectHorizontal()
-        let ratios = Self.canonicalRatios(model)
-
-        #expect(model.equalizeProjects() == false)
-
-        #expect(Self.canonicalRatios(model) == ratios)
-        #expect(model.state.canonicalProjectTree.map(\.id) == [left, right])
-        #expect(WorkspaceModel(wrapping: .init()).equalizeProjects() == false)
-        #expect(WorkspaceModel().equalizeProjects() == false)
     }
 
     // MARK: Rename (SPEC §7.1, §9.1)

@@ -406,18 +406,6 @@ extension XGhostty.Notification {
     static let ghosttyMoveProject = Notification.Name("com.mitchellh.xghostty.moveProject")
     static let MoveProjectDirectionKey = ghosttyMoveProject.rawValue + ".direction"
 
-    /// Posted when `resize_project` is requested. The sending object is the surface that had focus;
-    /// the userinfo carries a `ResizeProjectDirectionKey` (a `SplitResizeDirection`) and a
-    /// `ResizeProjectAmountKey` (a `UInt16` pixel amount). Resizes the canonical split between the
-    /// focused project and its visible neighbor (`SPEC.md` §11.4).
-    static let ghosttyResizeProject = Notification.Name("com.mitchellh.xghostty.resizeProject")
-    static let ResizeProjectDirectionKey = ghosttyResizeProject.rawValue + ".direction"
-    static let ResizeProjectAmountKey = ghosttyResizeProject.rawValue + ".amount"
-
-    /// Posted when `equalize_projects` is requested. The sending object is the surface that had
-    /// focus; the visible project layout is equalized (`SPEC.md` §11.5).
-    static let ghosttyEqualizeProjects = Notification.Name("com.mitchellh.xghostty.equalizeProjects")
-
     /// Posted when `toggle_project_zoom` is requested. The sending object is the surface that had
     /// focus; the focused project's zoom is toggled (`SPEC.md` §11.6).
     static let ghosttyToggleProjectZoom = Notification.Name("com.mitchellh.xghostty.toggleProjectZoom")

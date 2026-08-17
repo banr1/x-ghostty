@@ -6062,26 +6062,6 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_project = .{ .left, 10 } },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_project = .{ .right, 10 } },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_project = .{ .up, 10 } },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true } },
-                .{ .resize_project = .{ .down, 10 } },
-            );
-            try self.set.put(
-                alloc,
                 .{ .key = .{ .physical = .enter }, .mods = .{ .super = true, .alt = true } },
                 .{ .toggle_project_zoom = {} },
             );
@@ -6145,12 +6125,6 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = '=' }, .mods = .{ .super = true, .ctrl = true } },
                 .{ .equalize_splits = {} },
             );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = '=' }, .mods = .{ .super = true, .ctrl = true, .shift = true } },
-                .{ .equalize_projects = {} },
-            );
-
             // Jump to prompt, matches Terminal.app
             try self.set.put(
                 alloc,

@@ -1,30 +1,19 @@
 import SwiftUI
 
-/// A single project-level operation within the canonical project tree.
-///
-/// As with `TerminalSplitOperation`, the tree is immutable, so mutating
-/// operations are surfaced to the embedder instead of bound directly. Only
-/// resize is modelled today; it is wired up in Phase 4 (`resize_project`). Until
-/// then the action is optional and dragging a project divider is a no-op.
-enum ProjectSplitOperation {
-    case resize(Resize)
-
-    struct Resize {
-        let node: SplitTree<ProjectRef>.Node
-        let ratio: Double
-    }
-}
-
 /// Renders the project layer: a `SplitTree<ProjectRef>` whose leaves are individual
 /// projects (`SPEC.md` §6.1). Mirrors the structure of `TerminalSplitTreeView`
-/// one level up.
+/// one level up — except that project boundaries are **not interactive**
+/// (`SPEC.md` §26.3): the arrangement is a projection of the ledger and the
+/// remembered layout type, so there is no divider drag and no double-click
+/// equalize here. Pane dividers inside a zoomed project keep their existing
+/// interactions (they live in `TerminalSplitTreeView`).
 struct ProjectSplitTreeView: View {
     let tree: SplitTree<ProjectRef>
     let projects: [ProjectID: ProjectState]
     let focusedProject: ProjectID?
 
     /// Every visible project's 1-based display number, keyed by id
-    /// (`WorkspaceState.projectOrdinals`). Derived from the *canonical* tree, so a
+    /// (`WorkspaceState.projectOrdinals`). Derived from the ledger, so a
     /// zoomed project keeps its number in the full layout instead of showing `1`.
     let ordinals: [ProjectID: Int]
 
@@ -55,12 +44,6 @@ struct ProjectSplitTreeView: View {
     /// Label focus / rename callbacks.
     let labelActions: ProjectLabelActions
 
-    /// Double-click on a project divider (`equalize_projects`, `SPEC.md` §11.5).
-    let onEqualize: () -> Void
-
-    /// Project-boundary resize. Wired up in Phase 4; `nil` until then.
-    var projectAction: ((ProjectSplitOperation) -> Void)?
-
     var body: some View {
         if let node = tree.zoomed ?? tree.root {
             ProjectSplitSubtreeView(
@@ -74,9 +57,7 @@ struct ProjectSplitTreeView: View {
                 primaryMarks: primaryMarks,
                 paneCountBadges: paneCountBadges,
                 paneAction: paneAction,
-                labelActions: labelActions,
-                onEqualize: onEqualize,
-                projectAction: projectAction)
+                labelActions: labelActions)
             // Like `TerminalSplitTreeView`, we can't rely on SwiftUI's implicit
             // structural identity across the split tree. Keying on the project
             // tree's structural identity keeps each project's view (and the pane
@@ -101,8 +82,6 @@ private struct ProjectSplitSubtreeView: View {
     let paneCountBadges: [ProjectID: Int]
     let paneAction: (TerminalSplitOperation) -> Void
     let labelActions: ProjectLabelActions
-    let onEqualize: () -> Void
-    let projectAction: ((ProjectSplitOperation) -> Void)?
 
     var body: some View {
         switch node {
@@ -124,20 +103,10 @@ private struct ProjectSplitSubtreeView: View {
             }
 
         case .split(let split):
-            let splitViewDirection: SplitViewDirection = switch split.direction {
-            case .horizontal: .horizontal
-            case .vertical: .vertical
-            }
-
-            SplitView(
-                splitViewDirection,
-                .init(get: {
-                    CGFloat(split.ratio)
-                }, set: {
-                    projectAction?(.resize(.init(node: node, ratio: $0)))
-                }),
+            FixedSplitView(
+                direction: split.direction,
+                ratio: CGFloat(split.ratio),
                 dividerColor: ghostty.config.splitDividerColor,
-                resizeIncrements: .init(width: 1, height: 1),
                 left: {
                     ProjectSplitSubtreeView(
                         node: split.left,
@@ -150,9 +119,7 @@ private struct ProjectSplitSubtreeView: View {
                         primaryMarks: primaryMarks,
                         paneCountBadges: paneCountBadges,
                         paneAction: paneAction,
-                        labelActions: labelActions,
-                        onEqualize: onEqualize,
-                        projectAction: projectAction)
+                        labelActions: labelActions)
                 },
                 right: {
                     ProjectSplitSubtreeView(
@@ -166,14 +133,38 @@ private struct ProjectSplitSubtreeView: View {
                         primaryMarks: primaryMarks,
                         paneCountBadges: paneCountBadges,
                         paneAction: paneAction,
-                        labelActions: labelActions,
-                        onEqualize: onEqualize,
-                        projectAction: projectAction)
-                },
-                // Double-clicking any project divider equalizes the whole project
-                // layout, exactly like the `equalize_projects` keybind.
-                onEqualize: onEqualize
-            )
+                        labelActions: labelActions)
+                })
+        }
+    }
+}
+
+/// A non-interactive split at a fixed ratio: no drag handle, no double-click.
+/// The divider is a hairline in the same color as the pane dividers so the
+/// two layers read as one visual family.
+private struct FixedSplitView<L: View, R: View>: View {
+    let direction: SplitTree<ProjectRef>.Direction
+    let ratio: CGFloat
+    let dividerColor: Color
+    @ViewBuilder let left: () -> L
+    @ViewBuilder let right: () -> R
+
+    var body: some View {
+        GeometryReader { geo in
+            switch direction {
+            case .horizontal:
+                HStack(spacing: 0) {
+                    left().frame(width: max(0, geo.size.width * ratio))
+                    Rectangle().fill(dividerColor).frame(width: 1)
+                    right().frame(maxWidth: .infinity)
+                }
+            case .vertical:
+                VStack(spacing: 0) {
+                    left().frame(height: max(0, geo.size.height * ratio))
+                    Rectangle().fill(dividerColor).frame(height: 1)
+                    right().frame(maxHeight: .infinity)
+                }
+            }
         }
     }
 }

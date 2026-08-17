@@ -303,12 +303,6 @@ pub const Action = union(Key) {
     /// Focus a project in the given direction or creation order.
     goto_project: GotoSplit,
 
-    /// Resize the current project in the given direction.
-    resize_project: ResizeSplit,
-
-    /// Equalize the size of all visible projects in the target window.
-    equalize_projects,
-
     /// Toggle whether the current project is zoomed. A zoomed project is resized
     /// to take up the entire window.
     toggle_project_zoom,
@@ -435,8 +429,6 @@ pub const Action = union(Key) {
         // in include/xghostty.h.
         new_project_split,
         goto_project,
-        resize_project,
-        equalize_projects,
         toggle_project_zoom,
         hide_project,
         show_project,
