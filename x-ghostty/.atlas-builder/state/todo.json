@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-069"
+    "T-070"
   ],
   "items": [
     {
@@ -2857,7 +2857,7 @@
     {
       "id": "T-069",
       "title": "Next trigger: per-project value (self / team member / external person / event / unset), default unset, persisted with priority and restored after restart, untouched by the daily priority reset, shown in overview mode with note/priority/deadline and never in the label band. Tests per success condition 24 (save/restore with unset default, overview content includes the next trigger) plus a reset test that next trigger survives",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-096",
@@ -2871,7 +2871,30 @@
       },
       "batch_group": "next-trigger",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "note": "full macOS app build (zig 0.15.2 via /opt/homebrew/opt/zig@0.15/bin)"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "note": "Zig core tests"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "note": "XGhosttyTests: 0 failures; all 6 new ProjectNextTriggerTests passed (defaults-to-unset, model set/clear, save-restore for every value, missing-key/unknown-value decode as unset, overview content includes next trigger, daily reset leaves next triggers untouched)"
+        },
+        {
+          "type": "diff",
+          "summary": "4 files changed (+1 new test file), +105/-11. ProjectState: nextTrigger field (ProjectNextTrigger enum: myself/teamMember/externalPerson/event, unset = nil mirroring priority), init param, Codable with the invalid-to-unset lenient decode, plus overviewContent (ProjectOverviewContent: note+priority+deadline+nextTrigger) as the single model judgment of what the note overview shows. WorkspaceModel: setProjectNextTrigger/projectNextTrigger(of:) mirroring the priority accessors. ProjectNoteOverview: panel reads overviewContent and the header shows the next trigger readout (displayText 'next:me/team/external/event') after the priority/deadline meta; the label band (ProjectLabel) is untouched, so the next trigger never appears there. Daily reset code untouched (it only clears priority) — the survival is pinned by test. List-cell entry point is T-070/T-071; key change (Cmd+Opt+E overview chord) is T-073."
+        }
+      ]
     },
     {
       "id": "T-070",

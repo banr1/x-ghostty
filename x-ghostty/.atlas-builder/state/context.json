@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "8eda6b35ad7a92c32ab7540038322f8e6a0d42f6e9a718893426557289783ef0",
+    "last_signature": "aaa2eb8dc34f9fea68a39bc32e37e30dde1ea190f0cce9018961fb5899310dbc",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T05:05:09+09:00",
-    "last_checked_at": "2026-08-18T05:05:09+09:00",
+    "last_progress_at": "2026-08-18T05:13:42+09:00",
+    "last_checked_at": "2026-08-18T05:13:42+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,21 +21,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.6,
+    "context_usage_estimate": 0.7,
     "failed_attempts_since_reset": 1,
-    "changed_files_since_reset": 21,
-    "completed_todos_since_reset": 2,
+    "changed_files_since_reset": 25,
+    "completed_todos_since_reset": 3,
     "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T05:10:00+09:00",
-    "summary": "T-067(即時 hide)・T-068(ソート整備)完了、3 ゲート green(zig build / just test / just swift-test = exit 0)。ソートは sortProjectsByPriority/ByDeadline + canSortProjects に改名済みで、拒否は note overview と layout selector のみ(プロジェクト一覧オープン中は S-046 により許可 — テストあり)。ソート後序数の hidden スキップもテスト済み。注意: brew の zig は 0.16 が既定 — /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に(lessons.jsonl)。changed_files 21 / completed 2 — 次サイクル完了で reset 閾値(25 files / 5 todos)に近づく。",
+    "written_at": "2026-08-18T05:25:00+09:00",
+    "summary": "T-067(即時 hide)・T-068(ソート整備)・T-069(次トリガー)完了、各サイクル 3 ゲート green(zig build / just test / just swift-test = exit 0)。changed_files 25 でリセット閾値到達 — 本ハンドオフのみで再開できるよう書いてある。現況: ProjectState に nextTrigger(ProjectNextTrigger: myself/teamMember/externalPerson/event、未設定=nil)+ overviewContent(一望モード表示内容のモデル判定、ProjectOverviewContent)。ソートは sortProjectsByPriority/ByDeadline + canSortProjects(一覧オープン中は許可、note overview / layout selector 中は拒否)。hide_project は即時 hide(canHideFocusedProject が performability、オーバーレイ中拒否)。一覧の既定列順テスト(ProjectLedgerTests.defaultColumnOrderIsVisibilityTitlePriorityDeadlineNextTriggerNote)は既に存在 — T-070 の土台は ProjectList.swift / ProjectLedgerTests を先に読むこと。",
     "next_actions": [
-      "T-069(active batch): 次トリガー。ProjectState に nextTrigger(自分/チームメンバー/組織外部人/イベント/未設定の 5 値、既定未設定)+ Codable 永続化(既存 priority/deadline と同じ経路・復元テスト)。一望モード表示に nextTrigger を含める(noteOverview 系ビューとモデルの表示内容判定 — 成功条件 24『一望モードの表示内容に次トリガーが含まれる』はモデル層テスト)。ラベル帯には表示しない。毎朝リセット(resetPrioritiesIfNeeded 系)の非対象であることをテストで固定。設定入口は一覧セル(T-070/T-071)なので今回は UI 入口なしでよい。",
-      "以降: T-070(一覧セルモデル: 6 列・セルカーソル・編集確定/取消・行列入替と永続化)→ T-071(一覧ビュー Cmd+L 8 割・スクロール)→ T-072(Cmd+N)→ T-073(キー変更: Cmd+E/Cmd+Opt+E 移設・search_selection 解除・Cmd+Opt+N/D 廃止)→ T-074(SPEC/README 総整備 — §25 即時 hide 化・§24.4 ソート改名と一覧オープン中許可・旧記述掃除)→ batch7-human(T-075〜T-080 実機確認)。",
-      "運用注意: (a) projection は CONTROL_ROOT から stage → python patch → apply。(b) apply の evidence 文中の doc ファイル名羅列は pre-tool guard 誤検知あり — 文言を変えて再実行。(c) validation の run ledger divergence 警告は既知・対応不要。(d) zig は zig@0.15 を使う。(e) swift-test のログ行数カウントは並列出力で揺れる — 失敗判定は exit code と 'failed' grep で行う。"
+      "T-070(active batch): 一覧セルモデル。ProjectList.swift の既存モデル(ProjectListRow / ProjectLedgerTests の既存カバレッジ)を確認してから不足分を実装: セルカーソル移動(Tab/Shift+Tab/Enter/Shift+Enter + 矢印、行末折返し・最終行停止)、テキスト列(タイトル・締切・ノート1行目のみ書換え・2行目以降保持)の編集確定/Esc取消、選択式列(表示=2値即時反映・優先度・次トリガー)の Space 循環、行順・列順の入替と永続化・復元、締切セル不正入力→未設定、新規行挿入位置(カーソル行直下、visible 9 未満なら visible / 9 なら hidden)、hidden 行への focus 要求は no-op。すべてモデル層・成功条件 20 のテスト。次トリガーのセル値は ProjectNextTrigger を使う(実装済み、Space 循環は unset→myself→teamMember→externalPerson→event→unset の定義順)。",
+      "以降: T-071(一覧ビュー: Cmd+L 8 割・6 列・スクロールとカーソル追従・Cmd+Opt+E 全行ノート全行表示トグル)→ T-072(Cmd+N 新規作成一本化・Cmd+Opt+D/Shift+D 廃止)→ T-073(キー変更: ノート操作を Cmd+E/Cmd+Opt+E へ、Cmd+Opt+N 廃止、Cmd+E の search_selection 既定解除)→ T-074(SPEC/README 総整備: §25 即時 hide・§24.4 ソート改名+一覧中許可・§24.6 次トリガー新設(コード doc が §24.6 を先行参照中)・旧記述掃除)→ batch7-human(T-075〜T-080 実機確認、Human-executor)。",
+      "運用注意: (a) projection は CONTROL_ROOT から stage → python patch → apply。(b) apply の evidence 文中の doc ファイル名羅列で pre-tool guard が誤検知したら文言を変えて再実行。(c) validation の run ledger divergence 警告は既知・対応不要。(d) zig は /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に(brew 既定 0.16 は build 拒否、lessons.jsonl)。(e) テスト失敗判定は exit code と 'failed' grep(ログ行数は並列出力で揺れる)。(f) exit code はパイプ経由で取らない(cmd > log 2>&1; echo $?)。"
     ],
     "open_questions": []
   }

@@ -1059,6 +1059,15 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return parsed != nil
     }
 
+    /// Set (or unset, with `nil`) the next trigger of project `id`
+    /// (SPEC §24.6). No-op when the project is unknown or the value is
+    /// unchanged.
+    func setProjectNextTrigger(_ id: ProjectID, to trigger: ProjectNextTrigger?) {
+        guard var project = state.projects[id], project.nextTrigger != trigger else { return }
+        project.nextTrigger = trigger
+        state.projects[id] = project
+    }
+
     /// The priority of project `id`, or `nil` for unset / an unknown project.
     func projectPriority(of id: ProjectID) -> ProjectPriority? {
         state.projects[id]?.priority
@@ -1067,6 +1076,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// The deadline of project `id`, or `nil` for unset / an unknown project.
     func projectDeadline(of id: ProjectID) -> ProjectDeadline? {
         state.projects[id]?.deadline
+    }
+
+    /// The next trigger of project `id`, or `nil` for unset / an unknown
+    /// project.
+    func projectNextTrigger(of id: ProjectID) -> ProjectNextTrigger? {
+        state.projects[id]?.nextTrigger
     }
 
     /// Every row — hidden ones included — in priority order (SPEC §24.3).

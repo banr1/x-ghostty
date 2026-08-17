@@ -90,6 +90,12 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     /// same record as the note.
     var deadline: ProjectDeadline?
 
+    /// Who or what moves this project next (`SPEC.md` §24.6), or `nil` for
+    /// unset — the default. Human-written workspace information like the
+    /// priority, persisted through the same record; the daily priority reset
+    /// never touches it, and the label band never shows it.
+    var nextTrigger: ProjectNextTrigger?
+
     var createdAt: Date
     var lastFocusedAt: Date?
 
@@ -102,6 +108,7 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         primaryPane: SurfaceID? = nil,
         priority: ProjectPriority? = nil,
         deadline: ProjectDeadline? = nil,
+        nextTrigger: ProjectNextTrigger? = nil,
         createdAt: Date,
         lastFocusedAt: Date? = nil
     ) {
@@ -117,8 +124,23 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         ).map(SurfaceID.init(rawValue:))
         self.priority = priority
         self.deadline = deadline
+        self.nextTrigger = nextTrigger
         self.createdAt = createdAt
         self.lastFocusedAt = lastFocusedAt
+    }
+
+    /// What the note overview shows for this project (`SPEC.md` §21.3, §24):
+    /// the note together with the priority, deadline, and next trigger. One
+    /// model judgment shared by the overlay and the tests, so "what the
+    /// overview displays" cannot drift from what is asserted. The label band
+    /// deliberately reads priority/deadline directly and never the next
+    /// trigger (§24.6).
+    var overviewContent: ProjectOverviewContent {
+        ProjectOverviewContent(
+            note: note,
+            priority: priority,
+            deadline: deadline,
+            nextTrigger: nextTrigger)
     }
 
     /// Replace the note with `raw`, normalized through `normalizedNote`. The
@@ -223,6 +245,7 @@ extension ProjectStateOf: Codable {
         case primaryPanes
         case priority
         case deadline
+        case nextTrigger
         case createdAt
         case lastFocusedAt
     }
@@ -251,6 +274,10 @@ extension ProjectStateOf: Codable {
         // project record.
         self.priority = (try? c.decodeIfPresent(ProjectPriority.self, forKey: .priority)) ?? nil
         self.deadline = (try? c.decodeIfPresent(ProjectDeadline.self, forKey: .deadline)) ?? nil
+        // The next trigger follows the same invalid-to-unset rule (SPEC
+        // §24.6): an unknown value in a save decodes as unset.
+        self.nextTrigger =
+            (try? c.decodeIfPresent(ProjectNextTrigger.self, forKey: .nextTrigger)) ?? nil
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
         self.lastFocusedAt = try c.decodeIfPresent(Date.self, forKey: .lastFocusedAt)
     }
@@ -269,6 +296,7 @@ extension ProjectStateOf: Codable {
         try c.encode([primaryPane].compactMap { $0 }, forKey: .primaryPanes)
         try c.encodeIfPresent(priority, forKey: .priority)
         try c.encodeIfPresent(deadline, forKey: .deadline)
+        try c.encodeIfPresent(nextTrigger, forKey: .nextTrigger)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encodeIfPresent(lastFocusedAt, forKey: .lastFocusedAt)
     }
@@ -300,6 +328,43 @@ enum ProjectPriority: String, Codable, CaseIterable, Equatable {
 
     /// The sort rank of an unset priority: last (SPEC §24.3).
     static var unsetSortRank: Int { 3 }
+}
+
+// MARK: Next trigger (SPEC §24.6)
+
+/// Who or what moves a project next: the human's own action, a team member,
+/// someone outside the organization, or an external event. "Unset" — the
+/// default — is the absence of a value (`ProjectState.nextTrigger == nil`),
+/// mirroring the priority. Human-written workspace information, distinct from
+/// any terminal-observed live state.
+enum ProjectNextTrigger: String, Codable, CaseIterable, Equatable {
+    case myself
+    case teamMember
+    case externalPerson
+    case event
+
+    /// The compact terminal-style readout the note overview (and later the
+    /// list cell) shows for this value.
+    var displayText: String {
+        switch self {
+        case .myself: return "next:me"
+        case .teamMember: return "next:team"
+        case .externalPerson: return "next:external"
+        case .event: return "next:event"
+        }
+    }
+}
+
+// MARK: Overview content (SPEC §21.3, §24)
+
+/// The display content of one project's note-overview panel: the note plus
+/// the priority, deadline, and next trigger. A pure model value so the
+/// overview's "what is shown" is a single testable judgment.
+struct ProjectOverviewContent: Equatable {
+    let note: String
+    let priority: ProjectPriority?
+    let deadline: ProjectDeadline?
+    let nextTrigger: ProjectNextTrigger?
 }
 
 // MARK: Deadline (SPEC §24.1)
