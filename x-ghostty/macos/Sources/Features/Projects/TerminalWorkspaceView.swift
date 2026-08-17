@@ -41,6 +41,12 @@ struct TerminalWorkspaceView: View {
     /// focused when the list opened.
     let onCloseProjectList: () -> Void
 
+    /// Create a new project below the list's cursor row (`Cmd+N` inside the
+    /// list, `SPEC.md` §27.4). Needs a fresh `SurfaceView`, so the controller
+    /// handles it; the new row comes back through the model's pending title
+    /// edit.
+    let onCreateProjectListRow: (ProjectID?) -> Void
+
     /// Choose a layout type in the open selector (Enter, `SPEC.md` §26.2).
     /// The controller registers the project-aware undo; cancel is model-only
     /// and wired below.
@@ -128,6 +134,7 @@ struct TerminalWorkspaceView: View {
                     rows: workspace.projectListRows,
                     columns: workspace.state.listColumnOrder,
                     fullNotes: workspace.projectListFullNotes,
+                    pendingTitleEdit: workspace.projectListPendingTitleEdit,
                     canToggle: { workspace.canToggleProjectListVisibility($0) },
                     canFocus: { workspace.canFocusProjectListRow($0) },
                     isOverdue: {
@@ -142,7 +149,9 @@ struct TerminalWorkspaceView: View {
                     onCycle: { workspace.cycleProjectListCell($0, for: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
-                    onToggleFullNotes: { workspace.toggleProjectListFullNotes() })
+                    onToggleFullNotes: { workspace.toggleProjectListFullNotes() },
+                    onCreate: onCreateProjectListRow,
+                    onConsumePendingTitleEdit: { workspace.clearProjectListPendingTitleEdit() })
             }
 
         }

@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-072"
+    "T-073"
   ],
   "items": [
     {
@@ -2990,7 +2990,7 @@
     {
       "id": "T-072",
       "title": "Cmd+N = new project via the list: inside the list insert a new project right below the cursor row (starting a new shell like normal creation), move the cursor to the new row's Title cell in edit mode; outside the list open the list in the same state; new row visible if the visible count < 9 else hidden; auto relayout; remove the new_project_split action and the Cmd+Opt+D / Cmd+Opt+Shift+D defaults so the list is the only creation path (the toolbar/menu creation entry follows the same path)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-095",
@@ -3003,7 +3003,30 @@
       },
       "batch_group": "list-view",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "Full build (Zig core + macOS app) passes with the new_project action replacing new_project_split end to end (Binding/apprt action/Surface forwarding/command palette/C header tag renamed in place to keep later tag values stable; union payload member removed)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests pass, including the updated Binding parse tests (new_project takes no parameter; a parameter is InvalidFormat)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin first)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; 607 test cases passed, 0 failed, including 2 new ProjectListCellTests: insertProjectFromList lands the row right below the anchor visible under the cap without moving focus and marks projectListPendingTitleEdit (refused while the list is closed, duplicate ids refused), and the pending handoff does not survive across list sessions."
+        },
+        {
+          "type": "diff",
+          "summary": "Cmd+N now runs the new parameterless new_project action: outside the list App.swift gates on the-list-can-open and posts ghosttyNewProject with inherited project-context config; BaseTerminalController.ghosttyDidNewProject opens the list and inserts below its first row; inside the list the overlay's monitor handles Cmd+N itself and calls createProjectFromList(after: cursor row). createProjectFromList builds the SurfaceView (fresh shell) + ProjectState exactly like newProjectSplit but inserts via WorkspaceModel.insertProjectFromList — ledger insertion below the anchor, visible <9 / hidden at 9, relayout, focus unchanged, list stays open — and registers the New Project undo. The overlay seats the cursor on the new row's title cell in edit mode with an empty draft via projectListPendingTitleEdit (consumed once; dies with the session). Cmd+Opt+D / Cmd+Opt+Shift+D defaults and the new_project_split action are removed everywhere; controller.newProjectSplit remains only as the AppDelegate file-drop opener, which is a file-open path, not a creation entry."
+        }
+      ]
     },
     {
       "id": "T-073",

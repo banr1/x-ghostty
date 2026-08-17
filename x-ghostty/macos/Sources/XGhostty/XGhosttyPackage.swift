@@ -376,7 +376,7 @@ extension XGhostty.Notification {
     /// Posted when a new project split is requested. Like `ghosttyNewSplit`, the sending object is the
     /// surface that had focus and the userinfo carries a "direction" key, but this creates a sibling
     /// project in the workspace's project tree rather than a split within the focused project (`SPEC.md` §11.1).
-    static let ghosttyNewProjectSplit = Notification.Name("com.mitchellh.xghostty.newProjectSplit")
+    static let ghosttyNewProject = Notification.Name("com.mitchellh.xghostty.newProject")
 
     /// Posted when `rename_project` is requested. The sending object is the surface that had focus;
     /// the focused project enters inline-rename mode (`SPEC.md` §7.1).

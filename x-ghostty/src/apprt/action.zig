@@ -297,8 +297,10 @@ pub const Action = union(Key) {
     // split actions. New actions must be appended (here and in the Key enum
     // below) to preserve C ABI compatibility.
 
-    /// Create a new project split in the given direction.
-    new_project_split: SplitDirection,
+    /// Create a new project through the project list (the list opens if
+    /// needed and the new row lands below the cursor row, ready for title
+    /// entry).
+    new_project,
 
     /// Focus a project in the given direction or creation order.
     goto_project: GotoSplit,
@@ -426,8 +428,9 @@ pub const Action = union(Key) {
 
         // Project-layer actions, appended for C ABI compatibility. Keep this
         // order in sync with the union above and with `xghostty_action_tag_e`
-        // in include/xghostty.h.
-        new_project_split,
+        // in include/xghostty.h. (`new_project` replaced `new_project_split`
+        // in place, keeping every later tag value stable.)
+        new_project,
         goto_project,
         toggle_project_zoom,
         hide_project,

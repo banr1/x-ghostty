@@ -58,6 +58,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// starts back at first-lines-only.
     @Published private(set) var projectListFullNotes = false
 
+    /// The just-created project whose title cell the list should open in
+    /// edit mode (`Cmd+N`, `SPEC.md` §27.4), or `nil`. Transient UI state
+    /// like `renamingProject`: set by `insertProjectFromList`, consumed by
+    /// the overlay once it has seated the cursor, never persisted.
+    @Published private(set) var projectListPendingTitleEdit: ProjectID?
+
     /// Whether any workspace-modal overlay session (note overview, layout
     /// selection, project list) currently owns the interaction: while one is
     /// up, focus moves, note editing, and sorting are no-ops, and no other
@@ -180,8 +186,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// Whether another project can become visible, i.e. whether fewer than
-    /// `WorkspaceState.maxVisibleProjects` are visible right now. Gates both
-    /// `new_project_split` and `show_project`; at the cap both are silent no-ops.
+    /// `WorkspaceState.maxVisibleProjects` are visible right now. Gates
+    /// `show_project` and the visible entry of project creation; at the cap
+    /// a new row comes in hidden and a show is a silent no-op.
     var canAddVisibleProject: Bool {
         state.visibleProjectCount < WorkspaceStateOf<Pane>.maxVisibleProjects
     }
@@ -551,6 +558,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         projectListActive = true
         // A fresh session always opens at first-lines-only (SPEC §27.2).
         projectListFullNotes = false
+        projectListPendingTitleEdit = nil
     }
 
     /// Close the project list (the Escape path, `SPEC.md` §27.3). Visibility
@@ -558,6 +566,33 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     func endProjectList() {
         projectListActive = false
         projectListFullNotes = false
+        projectListPendingTitleEdit = nil
+    }
+
+    /// Insert a newly created project into the ledger right below `anchor`
+    /// (`Cmd+N`, `SPEC.md` §27.4), only while the list session is up. The row
+    /// comes in visible while fewer than `WorkspaceState.maxVisibleProjects`
+    /// rows are visible and hidden otherwise, the arrangement re-derives, and
+    /// — unlike `openNewProject` — focus does not move: the list stays open
+    /// with the new row awaiting its title (`projectListPendingTitleEdit`).
+    ///
+    /// The caller builds the project (with its live initial pane) exactly as
+    /// normal creation does; this is the ledger insertion plus the pending
+    /// title-edit handoff to the overlay.
+    @discardableResult
+    func insertProjectFromList(
+        _ project: ProjectStateOf<Pane>, after anchor: ProjectID?
+    ) -> Bool {
+        guard projectListActive, state.projects[project.id] == nil else { return false }
+        state.insertProject(project, after: anchor)
+        projectListPendingTitleEdit = project.id
+        return true
+    }
+
+    /// The overlay has seated the cursor on the pending row's title cell;
+    /// clear the handoff so a later re-render does not re-open the edit.
+    func clearProjectListPendingTitleEdit() {
+        projectListPendingTitleEdit = nil
     }
 
     /// Toggle the list between first-lines-only and full notes (`SPEC.md`
@@ -1329,7 +1364,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Restore an entire captured `WorkspaceState` wholesale. Used by the
     /// controller's project-aware undo/redo to atomically reinstate a snapshot
-    /// taken before a structural project mutation (`new_project_split` / `hide` /
+    /// taken before a structural project mutation (project creation / `hide` /
     /// `show` / `close`).
     ///
     /// Unlike `replaceFocusedPaneTree` (which only updates the *focused* project's

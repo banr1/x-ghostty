@@ -890,7 +890,7 @@ typedef enum {
   XGHOSTTY_ACTION_SEARCH_SELECTED,
   XGHOSTTY_ACTION_READONLY,
   XGHOSTTY_ACTION_COPY_TITLE_TO_CLIPBOARD,
-  XGHOSTTY_ACTION_NEW_PROJECT_SPLIT,
+  XGHOSTTY_ACTION_NEW_PROJECT,
   XGHOSTTY_ACTION_GOTO_PROJECT,
   XGHOSTTY_ACTION_TOGGLE_PROJECT_ZOOM,
   XGHOSTTY_ACTION_HIDE_PROJECT,
@@ -942,7 +942,6 @@ typedef union {
   xghostty_action_search_total_s search_total;
   xghostty_action_search_selected_s search_selected;
   xghostty_action_readonly_e readonly;
-  xghostty_action_split_direction_e new_project_split;
   xghostty_action_goto_split_e goto_project;
   xghostty_action_set_title_s show_project;
   xghostty_action_set_title_s set_project_title;

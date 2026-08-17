@@ -483,8 +483,8 @@ extension XGhostty {
             case XGHOSTTY_ACTION_NEW_SPLIT:
                 newSplit(app, target: target, direction: action.action.new_split)
 
-            case XGHOSTTY_ACTION_NEW_PROJECT_SPLIT:
-                newProjectSplit(app, target: target, direction: action.action.new_project_split)
+            case XGHOSTTY_ACTION_NEW_PROJECT:
+                return newProject(app, target: target)
 
             case XGHOSTTY_ACTION_RENAME_PROJECT:
                 renameProject(app, target: target)
@@ -837,31 +837,40 @@ extension XGhostty {
             }
         }
 
-        private static func newProjectSplit(
+        private static func newProject(
             _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            direction: xghostty_action_split_direction_e) {
+            target: xghostty_target_s) -> Bool {
             switch target.tag {
             case XGHOSTTY_TARGET_APP:
-                // A new project split does nothing with an app target.
-                XGhostty.logger.warning("new project split does nothing with an app target")
-                return
+                XGhostty.logger.warning("new project does nothing with an app target")
+                return false
 
             case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return }
-                guard let surfaceView = self.surfaceView(from: surface) else { return }
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+
+                // This action is the outside-the-list entry (`SPEC.md` §27.4):
+                // it opens the list and inserts the new row in one step, so
+                // it is performable exactly when the list could open. (While
+                // the list is up the surface is not first responder, so the
+                // in-list Cmd+N is the overlay's own key handling, not this
+                // action.)
+                guard controller.workspace.projectListActive
+                        || controller.workspace.canBeginProjectList else { return false }
 
                 NotificationCenter.default.post(
-                    name: Notification.ghosttyNewProjectSplit,
+                    name: Notification.ghosttyNewProject,
                     object: surfaceView,
                     userInfo: [
-                        "direction": direction,
                         Notification.NewSurfaceConfigKey: SurfaceConfiguration(from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_PROJECT)),
                     ]
                 )
+                return true
 
             default:
                 assertionFailure()
+                return false
             }
         }
 

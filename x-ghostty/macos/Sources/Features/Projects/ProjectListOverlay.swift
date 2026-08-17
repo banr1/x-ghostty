@@ -39,6 +39,11 @@ struct ProjectListOverlay: View {
     /// (`Cmd+Opt+E` inside the list, viewing-only, transient).
     let fullNotes: Bool
 
+    /// A just-created project whose title cell should open in edit mode
+    /// (`Cmd+N`, `SPEC.md` §27.4), or `nil`. Consumed once seated via
+    /// `onConsumePendingTitleEdit`.
+    let pendingTitleEdit: ProjectID?
+
     /// Whether Space would change anything for a row — the model refuses to
     /// hide the last visible project and to show one past the visible cap.
     let canToggle: (ProjectID) -> Bool
@@ -75,6 +80,14 @@ struct ProjectListOverlay: View {
     /// Toggle whole-list full-note display (Cmd+Opt+E inside the list).
     let onToggleFullNotes: () -> Void
 
+    /// Create a new project below the given cursor row (Cmd+N inside the
+    /// list, `SPEC.md` §27.4). The new row comes back via `pendingTitleEdit`.
+    let onCreate: (ProjectID?) -> Void
+
+    /// The pending title edit has been seated on the new row's title cell;
+    /// clear it so a later re-render does not re-open the edit.
+    let onConsumePendingTitleEdit: () -> Void
+
     /// The keyboard cell cursor. Pure presentation state; the movement rules
     /// live on `ProjectListCellCursor`.
     @State private var cursor = ProjectListCellCursor(row: 0, column: 0)
@@ -107,6 +120,11 @@ struct ProjectListOverlay: View {
             }
         }
         .overlayKeyDownMonitor { handleKey($0) }
+        // Both faces of Cmd+N (SPEC §27.4): a creation from inside the list
+        // fires onChange; the outside-the-list action opens the list with the
+        // pending edit already set, which onAppear picks up.
+        .onAppear { DispatchQueue.main.async { seatPendingTitleEdit() } }
+        .onChange(of: pendingTitleEdit) { _ in seatPendingTitleEdit() }
     }
 
     // MARK: Keyboard
@@ -175,6 +193,15 @@ struct ProjectListOverlay: View {
         if modifiers == [.command, .option],
            event.charactersIgnoringModifiers?.lowercased() == "e" {
             onToggleFullNotes()
+            return nil
+        }
+
+        // Cmd+N: create a new project below the cursor row (SPEC §27.4). The
+        // new row arrives through `pendingTitleEdit`, which seats the cursor
+        // on its title cell in edit mode.
+        if modifiers == [.command],
+           event.charactersIgnoringModifiers?.lowercased() == "n" {
+            onCreate(cursorRow?.id)
             return nil
         }
 
@@ -309,6 +336,22 @@ struct ProjectListOverlay: View {
     private func cancelEdit() {
         edit = nil
         DispatchQueue.main.async { focus = .catcher }
+    }
+
+    /// Seat the cursor on the pending new row's title cell in edit mode
+    /// (`Cmd+N`, SPEC §27.4). The draft starts empty so the title can be
+    /// typed immediately; cancelling keeps the generated name.
+    private func seatPendingTitleEdit() {
+        guard let id = pendingTitleEdit,
+              let rowIndex = rows.firstIndex(where: { $0.id == id }),
+              let columnIndex = columns.firstIndex(of: .title),
+              var session = ProjectListCellEdit(row: rows[rowIndex], column: .title)
+        else { return }
+        cursor = ProjectListCellCursor(row: rowIndex, column: columnIndex)
+        session.draft = ""
+        edit = session
+        onConsumePendingTitleEdit()
+        DispatchQueue.main.async { focus = .editor }
     }
 
     // MARK: Table
@@ -520,7 +563,7 @@ struct ProjectListOverlay: View {
             Text("projects")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("type edit · space cycle · ⌘↩ focus · ⌘⌥e notes · esc close")
+            Text("type edit · space cycle · ⌘n new · ⌘↩ focus · ⌘⌥e notes · esc close")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }

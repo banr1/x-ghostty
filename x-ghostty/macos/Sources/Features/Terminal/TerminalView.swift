@@ -36,6 +36,11 @@ protocol TerminalViewDelegate: AnyObject {
     /// focus to the project that is focused after the session's toggles.
     func closeProjectList()
 
+    /// Create a new project below the list's cursor row (`Cmd+N` inside the
+    /// list, `SPEC.md` §27.4). Needs a fresh `SurfaceView` (a live shell), so
+    /// the controller handles it.
+    func createProjectListRow(after anchorID: ProjectID?)
+
     /// Choose a layout type in the open selector (Enter, `SPEC.md` §26.2):
     /// the type is remembered and the arrangement re-derives. The controller
     /// registers the project-aware undo.
@@ -113,6 +118,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         onToggleProjectListVisibility: { delegate?.toggleProjectListVisibility($0) },
                         onFocusProjectListRow: { delegate?.focusProjectListRow($0) },
                         onCloseProjectList: { delegate?.closeProjectList() },
+                        onCreateProjectListRow: { delegate?.createProjectListRow(after: $0) },
                         onChooseLayoutType: { delegate?.chooseLayoutType($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)

@@ -289,8 +289,8 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
-            selector: #selector(ghosttyDidNewProjectSplit(_:)),
-            name: XGhostty.Notification.ghosttyNewProjectSplit,
+            selector: #selector(ghosttyDidNewProject(_:)),
+            name: XGhostty.Notification.ghosttyNewProject,
             object: nil)
         center.addObserver(
             self,
@@ -599,6 +599,47 @@ class BaseTerminalController: NSWindowController,
         return newView
     }
 
+    /// Create a new project through the project list (`Cmd+N`, `SPEC.md`
+    /// §27.4): build the initial pane with a fresh shell exactly like normal
+    /// creation, insert the row right below `anchorID` (visible under the
+    /// visible cap, hidden at it), and hand the title cell to the overlay via
+    /// the model's pending title edit. Unlike `newProjectSplit`, focus and
+    /// `surfaceTree` stay with the current project — the list remains open
+    /// with the cursor on the new row.
+    ///
+    /// - Returns: the new project's id, or `nil` when the list session is not
+    ///   up or the app is not running.
+    @discardableResult
+    func createProjectFromList(
+        after anchorID: ProjectID?,
+        baseConfig config: XGhostty.SurfaceConfiguration? = nil
+    ) -> ProjectID? {
+        guard workspace.projectListActive else { return nil }
+        guard let xghostty_app = ghostty.app else { return nil }
+
+        // Inherit the project-context config from the focused surface when
+        // the caller (the in-list path) did not carry one, matching what the
+        // action path inherits from its triggering surface.
+        let inherited: XGhostty.SurfaceConfiguration? = config ?? focusedSurface?.surface.map {
+            .init(from: xghostty_surface_inherited_config($0, XGHOSTTY_SURFACE_CONTEXT_PROJECT))
+        }
+
+        let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: inherited)
+        let now = Date()
+        let existingNames = Set(workspace.state.projects.values.map(\.name))
+        let newProject = ProjectState(
+            id: ProjectID(),
+            name: ProjectNameGenerator.make(existing: existingNames),
+            paneTree: SplitTree<XGhostty.SurfaceView>(view: newView),
+            focusedSurface: SurfaceID(rawValue: newView.id),
+            createdAt: now)
+
+        let before = workspace.state
+        guard workspace.insertProjectFromList(newProject, after: anchorID) else { return nil }
+        registerWorkspaceUndo("New Project", undo: before, redo: workspace.state)
+        return newProject.id
+    }
+
     /// Move focus to a surface view.
     func focusSurface(_ view: XGhostty.SurfaceView) {
         // Check if target surface is in our tree
@@ -898,7 +939,7 @@ class BaseTerminalController: NSWindowController,
     /// The snapshots are value-type copies that retain the live `SurfaceView`s,
     /// so an undo of `close_project` keeps the closed project's processes alive for
     /// the `undoExpiration` window (mirroring `close_surface` undo), and a redo of
-    /// `new_project_split` can restore the new pane the post-mutation snapshot
+    /// project creation can restore the new pane the post-mutation snapshot
     /// retains. Symmetric ping-pong: each direction re-registers its inverse.
     private func registerWorkspaceUndo(
         _ actionName: String,
@@ -1123,28 +1164,24 @@ class BaseTerminalController: NSWindowController,
         newSplit(at: oldView, direction: splitDirection, baseConfig: config)
     }
 
-    @objc private func ghosttyDidNewProjectSplit(_ notification: Notification) {
-        // The anchor surface must be within our tree.
-        guard let oldView = notification.object as? XGhostty.SurfaceView else { return }
-        guard surfaceTree.root?.node(view: oldView) != nil else { return }
+    @objc private func ghosttyDidNewProject(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused project's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
 
-        // Notification must contain our base config.
         let configAny = notification.userInfo?[XGhostty.Notification.NewSurfaceConfigKey]
         let config = configAny as? XGhostty.SurfaceConfiguration
 
-        // Determine the direction the new project should be placed in.
-        guard let directionAny = notification.userInfo?["direction"] else { return }
-        guard let direction = directionAny as? xghostty_action_split_direction_e else { return }
-        let splitDirection: SplitTree<ProjectRef>.NewDirection
-        switch direction {
-        case XGHOSTTY_SPLIT_DIRECTION_RIGHT: splitDirection = .right
-        case XGHOSTTY_SPLIT_DIRECTION_LEFT: splitDirection = .left
-        case XGHOSTTY_SPLIT_DIRECTION_DOWN: splitDirection = .down
-        case XGHOSTTY_SPLIT_DIRECTION_UP: splitDirection = .up
-        default: return
+        // This is the outside-the-list entry (`SPEC.md` §27.4): the surface
+        // only holds the keyboard while the list is closed. Open the list and
+        // insert the new row below its cursor row — the first row of a fresh
+        // session.
+        if !workspace.projectListActive {
+            workspace.beginProjectList()
+            guard workspace.projectListActive else { return }
         }
-
-        newProjectSplit(at: oldView, direction: splitDirection, baseConfig: config)
+        createProjectFromList(after: workspace.state.projectOrder.first, baseConfig: config)
     }
 
     // Returns true when `view` belongs to any project in this workspace.
@@ -1797,6 +1834,12 @@ class BaseTerminalController: NSWindowController,
 
         surfaceTree = workspace.focusedPaneTree
         moveKeyboardFocus(toProjectSurface: targetFocus)
+    }
+
+    /// Create a new project below the list's cursor row (`Cmd+N` inside the
+    /// list, `SPEC.md` §27.4): the delegate face of `createProjectFromList`.
+    func createProjectListRow(after anchorID: ProjectID?) {
+        createProjectFromList(after: anchorID)
     }
 
     /// Close the project list (Escape, `SPEC.md` §27.3). Toggles made during

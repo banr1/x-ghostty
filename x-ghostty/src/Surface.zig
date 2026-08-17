@@ -5279,19 +5279,10 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
         // target the window's project tree. Project state lives in the apprt, so
         // they are forwarded to the apprt action layer like `new_split`.
 
-        .new_project_split => |direction| return try self.rt_app.performAction(
+        .new_project => return try self.rt_app.performAction(
             .{ .surface = self },
-            .new_project_split,
-            switch (direction) {
-                .right => .right,
-                .left => .left,
-                .down => .down,
-                .up => .up,
-                .auto => if (self.size.screen.width > self.size.screen.height)
-                    .right
-                else
-                    .down,
-            },
+            .new_project,
+            {},
         ),
 
         .goto_project => |target| switch (target) {

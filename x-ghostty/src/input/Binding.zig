@@ -608,12 +608,12 @@ pub const Action = union(enum) {
     // The project state lives in the apprt (macOS for now), so these are
     // dispatched through the apprt action layer like `new_split`.
 
-    /// Create a new project split in the specified direction, creating a new
-    /// project with a single initial pane beside the current project.
-    ///
-    /// Valid arguments are the same as `new_split` (`right`, `down`, `left`,
-    /// `up`, `auto`).
-    new_project_split: SplitDirection,
+    /// Create a new project through the project list: the list opens (if it
+    /// is not already open) and a new project with a single initial pane is
+    /// inserted below the cursor row, ready for title entry. The new row is
+    /// visible while fewer than nine projects are visible, hidden otherwise.
+    /// This is the only project-creation path.
+    new_project,
 
     /// Focus on a project either in the specified direction (`right`, `down`,
     /// `left`, `up`), or in the adjacent project in the order of creation
@@ -1353,7 +1353,7 @@ pub const Action = union(enum) {
             .toggle_readonly,
             .resize_split,
             .equalize_splits,
-            .new_project_split,
+            .new_project,
             .goto_project,
             .move_project,
             .toggle_project_zoom,
@@ -3382,19 +3382,14 @@ test "parse: action with a tuple" {
 test "parse: project split actions" {
     const testing = std.testing;
 
-    // new_project_split: enum parameter, mirrors new_split
+    // new_project: no parameter (creation goes through the project list)
     {
-        const binding = try parseSingle("a=new_project_split:right");
-        try testing.expect(binding.action == .new_project_split);
-        try testing.expectEqual(Action.SplitDirection.right, binding.action.new_project_split);
+        const binding = try parseSingle("a=new_project");
+        try testing.expect(binding.action == .new_project);
     }
 
-    // new_project_split: omitted parameter defaults to auto
-    {
-        const binding = try parseSingle("a=new_project_split");
-        try testing.expect(binding.action == .new_project_split);
-        try testing.expectEqual(Action.SplitDirection.auto, binding.action.new_project_split);
-    }
+    // new_project: rejects a parameter
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=new_project:right"));
 
     // goto_project: focus-direction enum, mirrors goto_split
     {

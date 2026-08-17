@@ -618,7 +618,7 @@ fn actionCommands(action: Action.Key) []const Command {
         // that don't have a sensible palette default (a direction, an
         // amount, or a project name/title). Palette entries for the rest are
         // added per-action as they become useful.
-        .new_project_split,
+        .new_project,
         .goto_project,
         .move_project,
         .toggle_project_zoom,

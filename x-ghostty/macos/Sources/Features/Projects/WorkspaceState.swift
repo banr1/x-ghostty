@@ -22,9 +22,9 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     ///
     /// Visible projects are numbered 1..9 in the header (`ordinal(of:)`) and are
     /// addressed directly by `goto_project:<1-9>` (Cmd+1..9), so nine is the
-    /// hard ceiling: `new_project_split` and `show_project` are silently rejected
-    /// once it is reached, and a restore caps the visible set at this many
-    /// (the extras stay alive on the hidden shelf).
+    /// hard ceiling: `show_project` is silently rejected once it is reached, a
+    /// new project row comes in hidden, and a restore caps the visible set at
+    /// this many (the extras stay alive, hidden).
     static var maxVisibleProjects: Int { 9 }
 
     var version: Int

@@ -338,6 +338,54 @@ struct ProjectListCellTests {
         #expect(model.state.ordinal(of: a.id) == 2)
     }
 
+    // MARK: Creation through the list (SPEC §27.4)
+
+    @Test func insertFromListLandsBelowTheAnchorAndMarksThePendingTitleEdit() {
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
+        let model = TestWorkspaceModel(Self.makeState([a, b]))
+        let created = Self.makeProject(name: "new", at: Date(timeIntervalSince1970: 2))
+
+        // Inert while no session is up: creation is a list-only path.
+        #expect(model.insertProjectFromList(created, after: a.id) == false)
+        #expect(model.state.projects[created.id] == nil)
+        #expect(model.projectListPendingTitleEdit == nil)
+
+        model.beginProjectList()
+
+        #expect(model.insertProjectFromList(created, after: a.id))
+        // The row lands right below the anchor, visible under the cap, and
+        // focus stays where it was — the list session remains open.
+        #expect(model.state.projectOrder == [a.id, created.id, b.id])
+        #expect(model.state.isProjectHidden(created.id) == false)
+        #expect(model.state.focusedProject == a.id)
+        #expect(model.projectListActive == true)
+        // The overlay is told to open the new row's title cell, then clears
+        // the handoff once seated.
+        #expect(model.projectListPendingTitleEdit == created.id)
+        model.clearProjectListPendingTitleEdit()
+        #expect(model.projectListPendingTitleEdit == nil)
+
+        // A duplicate id is refused.
+        #expect(model.insertProjectFromList(created, after: b.id) == false)
+    }
+
+    @Test func pendingTitleEditDoesNotSurviveAcrossListSessions() {
+        let a = Self.makeProject(name: "alpha")
+        let model = TestWorkspaceModel(Self.makeState([a]))
+        model.beginProjectList()
+        let created = Self.makeProject(name: "new", at: Date(timeIntervalSince1970: 1))
+        #expect(model.insertProjectFromList(created, after: a.id))
+        #expect(model.projectListPendingTitleEdit == created.id)
+
+        // An unconsumed handoff dies with the session: reopening must not
+        // re-open a title edit for a row created last time.
+        model.endProjectList()
+        #expect(model.projectListPendingTitleEdit == nil)
+        model.beginProjectList()
+        #expect(model.projectListPendingTitleEdit == nil)
+    }
+
     @Test func fullNoteToggleIsViewingOnlyAndResetsEachSession() {
         let a = Self.makeProject(name: "alpha", note: "1\n2\n3")
         let model = TestWorkspaceModel(Self.makeState([a]))

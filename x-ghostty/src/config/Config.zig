@@ -5962,23 +5962,16 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true } },
-                .{ .new_project_split = .right },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 'd' }, .mods = .{ .super = true, .alt = true, .shift = true } },
-                .{ .new_project_split = .down },
-            );
-            try self.set.put(
-                alloc,
                 .{ .key = .{ .unicode = 'r' }, .mods = .{ .super = true, .alt = true } },
                 .{ .rename_project = {} },
             );
+            // Cmd+N creates a new project through the project list — the
+            // only creation path (the former Cmd+Opt+D / Cmd+Opt+Shift+D
+            // `new_project_split` defaults are retired with the action).
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'n' }, .mods = .{ .super = true } },
-                .{ .edit_project_note = {} },
+                .{ .new_project = {} },
             );
             try self.set.put(
                 alloc,
