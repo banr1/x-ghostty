@@ -420,6 +420,26 @@
       "resolved_at": "2026-08-18T03:47:16+09:00",
       "resolved_by": "human",
       "resolution": "idle_cycles ゲート R-LG-20260818T033229+0900-a3df を解除する。3 サイクル無進捗の原因はプロジェクト側ではなく Claude セッションの起動失敗(使用量上限)であり、03:32 台の 3 本はいずれも 2 秒で claude_exit_1 となり何も実行していない。人間がアカウントを切り替えて上限は解消済みなので、そのまま再開してよい。\nなお 2026-08-18T03:19:53 のサイクルは実作業(新 ESSENCE fad594… からの Spec 99 / Todo 80 再射影、T-057 / T-063 の human evidence 付き done、R-017 / R-018 の close)を終えてコミット f25b0d0 まで作った後に exit 1 したため、reflection.jsonl のサイクル記録だけが欠けている。次サイクルはその作業をやり直さず、active batch の T-064(台帳モデル層)から通常どおり実装を進めること。\nvalidation.json の run ledger divergence 警告(8/9・8/16・8/17 の 3 本が control 側にのみ記録)は中断サイクルの記録差分であり、対応不要。"
+    },
+    {
+      "id": "R-020",
+      "type": "Human-input Recommendation",
+      "status": "proposed",
+      "requires_human_approval": true,
+      "agent_action": "stop_until_human_review",
+      "title": "2026-08-18 改訂の実機確認(T-075〜T-080)をお願いします",
+      "body": "atlas-builder 実行可能な must Todo はすべて完了しました(実装 T-066〜T-073、ドキュメント T-074)。残る must は人間の実機確認 6 件のみです: T-075 即時 hide(Cmd+Opt+H・選択画面なし・直後のレイアウト型再配置)、T-076 レイアウト型(Cmd+Opt+L の選択肢・自動適用・再起動維持・1 択時の表示・プロジェクト境界リサイズ不可)、T-077 プロジェクト一覧(8 割サイズ・6 列・セルカーソル/編集・Space トグル・Cmd+矢印の行/列入替・Cmd+Opt+E 全行ノート・Cmd+N 作成・Cmd+Enter focus・スクロール)、T-078 優先度/締切の一覧入口(セル設定→ラベル帯表示・全行ソート・Cmd+1〜9 追従)、T-079 次トリガー(一覧セル設定・一望モード表示・ラベル帯非表示)、T-080 キー変更(Cmd+E/Cmd+Opt+E が効き、Cmd+Opt+N/Cmd+Opt+D/Cmd+Opt+Shift+D/Cmd+E 検索が無効)。実機確認が済んだら、`just resume --resolve R-020` で本 Recommendation を解消し、確認結果(OK/NG と気づいた点)を resume ノートに記録してください。NG があれば該当 Todo(T-075〜T-080)を指す形でお知らせいただければ、次サイクルで修正します。",
+      "source": [
+        "T-075",
+        "T-076",
+        "T-077",
+        "T-078",
+        "T-079",
+        "T-080"
+      ],
+      "raised_by": "atlas-builder",
+      "created_at": "2026-08-18T06:35:00+09:00",
+      "reason": "must フェーズの残 Todo が実機目視確認(executor: human)のみで、atlas-builder に実行可能な作業が無いため(成功条件 14/16/21/12/25/26 は人間の実機確認で閉じる)。"
     }
   ]
 }

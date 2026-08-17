@@ -42,13 +42,19 @@ MVPでは、**プロジェクト作成・名前表示・rename・focus移動・r
 
 ## 3. 基本設計
 
-採用する構造は **二層SplitTree**。
+採用する構造は **台帳 + 二層SplitTree**(2026-08-18 改訂で台帳を導入)。
 
 ```swift
 WorkspaceState
-  canonicalProjectTree: SplitTree<ProjectRef>
+  // 台帳(source of truth、§27.1)
+  projectOrder: [ProjectID]              // hidden を含む全行の単一の行順
+  hiddenProjectIDs: Set<ProjectID>       // visibility 列(永続)
+  layoutType: ProjectLayoutType          // 記憶しているレイアウト型(§26)
+  listColumnOrder: [ProjectListColumn]   // 一覧の列順
   projects: [ProjectID: ProjectState]
-  hiddenProjectIDs: Set<ProjectID>
+
+  // 投影・runtime
+  canonicalProjectTree: SplitTree<ProjectRef>  // 台帳+型から relayout() で再導出
   focusedProject: ProjectID?
   zoomedProject: ProjectID?
 ```
@@ -67,29 +73,34 @@ Ghostty macOS 側の `SplitTree.swift` は、leaf/split 構造、zoom tracking�
 
 ## 4. 最重要設計判断
 
-### 4.1 `canonicalProjectTree` と `effectiveVisibleProjectTree` を分ける
+### 4.1 台帳が source of truth、tree は投影
 
-プロジェクトの配置は常に `canonicalProjectTree` に保持する。
-canonical tree の leaf 集合 = visible project の集合であり、
-hidden project は leaf を持たず、`projects` の `ProjectState` としてのみ生存する。
+**台帳(`projectOrder` + `hiddenProjectIDs` + `layoutType`)が配置の
+source of truth** であり(2026-08-18 改訂の主従逆転、§27.1)、
+`canonicalProjectTree` は台帳の visible な行をレイアウト型のスロットへ
+割り当てた**投影**である(`relayout()`、§26.3)。canonical tree の leaf 集合 =
+visible project の集合であり、hidden project は leaf を持たず、`projects` の
+`ProjectState` としてのみ生存する。
 
 ```text
-canonicalProjectTree:
-  calm-river | server
+projectOrder:  calm-river, logs, server, agent   ← 単一の行順(台帳)
+hidden:        logs, agent                        ← projects には残るが leaf は持たない
 
-hiddenProjectIDs:
-  logs, agent        ← projects には残るが leaf は持たない
+canonicalProjectTree(投影):
+  calm-river | server        ← layoutType.tree(over: visible 行)
 
 effectiveVisibleProjectTree:
   canonicalProjectTree に zoom を適用した派生tree
 ```
 
-`hide_project` は対象の leaf を canonical tree から削除する(process は生存)。
-`show_project` は末尾 leaf を左右分割して右側に再接続する(位置は復元しない)。
-`close_project` だけが `projects` からも削除して process を終了する。
+`hide_project` / `show_project` / 一覧の表示トグルは台帳の hidden フラグを
+変えるだけで、配置は `relayout()` が再導出する(hide 中は残りの visible
+project がスペースを回収し、show は行順どおりの位置に戻る — 位置復元ロジックは
+不要)。`close_project` だけが `projects` と台帳の行からも削除して process を
+終了する。
 
-これにより、非表示プロジェクトを元の場所に戻すための path 復元ロジックが不要になり、
-hide 中は残りの visible project がスペースを回収できる。
+さらに `effectiveVisibleProjectTree`(zoom の派生)を分けることで、
+台帳 → 配置 → 表示の 3 段が常に一方向に導出される。
 
 ### 4.2 プロジェクトは最上位レイアウト単位
 
@@ -100,8 +111,8 @@ hide 中は残りの visible project がスペースを回収できる。
 Cmd+D:
   focusedProject.paneTree を split
 
-Cmd+Opt+D:
-  canonicalProjectTree を split して新 project を作る
+Cmd+N:
+  台帳に新規 project の行を挿入する(§27.4。分割ではない)
 ```
 
 ### 4.3 terminal surface の lifetime と layout tree を分離する
@@ -141,18 +152,25 @@ struct SurfaceRef: Codable, Hashable, Identifiable {
 struct WorkspaceState: Codable {
     var version: Int = 1
 
-    var canonicalProjectTree: SplitTree<ProjectRef>
-    var projects: [ProjectID: ProjectState]
-
-    // runtime-only
+    // 台帳(すべて永続、§27.1)
+    var projectOrder: [ProjectID]
     var hiddenProjectIDs: Set<ProjectID> = []
-    var focusedProject: ProjectID?
-    var zoomedProject: ProjectID?
+    var layoutType: ProjectLayoutType = .default
+    var listColumnOrder: [ProjectListColumn] = ProjectListColumn.defaultOrder
+    var projects: [ProjectID: ProjectState]
+    var lastPriorityResetWorkday: Workday?      // §28.2
+
+    // 投影(encode されない。decode 時に relayout() で再構築)
+    var canonicalProjectTree: SplitTree<ProjectRef>
+
+    var focusedProject: ProjectID?              // 永続(復元時に検証)
+    var zoomedProject: ProjectID?               // runtime-only
 }
 ```
 
-`hiddenProjectIDs` と `zoomedProject` は原則 runtime-only。
-保存してもよいが、restore時には破棄する。
+`zoomedProject` だけが runtime-only。`hiddenProjectIDs` は 2026-08-18 改訂で
+永続へ昇格した(一覧の visibility 列、§12.1)。旧保存の
+`canonicalProjectTree` は decode 時に行順の種としてのみ読まれる。
 
 ### 5.3 ProjectState
 
@@ -195,7 +213,7 @@ TerminalWorkspaceView
   │       ├─ ProjectLabel header band
   │       └─ TerminalSplitTreeView
   └─ overlay 群(呼び出し中のみ:ノート編集 §21.2 / 一望モード §21.3 /
-     hide 選択 §25 / レイアウト選択 §26.2 / プロジェクト一覧 §27)
+     レイアウト型選択 §26.2 / プロジェクト一覧 §27)
 ```
 
 常時表示の overlay は無い(思想 2)。hidden プロジェクトを常時映す帯も持たない
@@ -218,7 +236,7 @@ struct TerminalWorkspaceView: View {
             }
 
             // 呼び出し中のオーバーレイだけがここに載る(§21.2, §21.3,
-            // §25, §26.2, §27)。常設の overlay は無い。
+            // §26.2, §27)。常設の overlay は無い。
         }
     }
 }
@@ -323,8 +341,9 @@ shelf は廃止し、**hidden プロジェクトの唯一の復帰導線を `Cmd
 ```
 
 `show_project:<project-id-or-name>` action(§11.8)はモデルプリミティブとして
-そのまま残る。一覧の Space トグルの show 経路も同じ再接続規則
-(trailing leaf の隣へ再アタッチ)を使う。
+そのまま残る。show は台帳の hidden フラグを外すだけで、復帰位置は行順と
+レイアウト型からの再導出(`relayout()`、§26.3)が決める。一覧の Space
+トグルの show 経路も同じ(ただし focus は動かさない、§27.2)。
 
 ### 7.3 プロジェクト番号（1～9）と表示上限
 
@@ -332,10 +351,13 @@ visible project は最大 9 個まで。`WorkspaceState.maxVisibleProjects = 9` 
 
 #### 動的序数
 
-visible project は canonical tree の **葉走査順序**（in-order、前後 focus 移動と同じ順）で
-1～N（N = visible count）の序数を自動付与する。序数は display-only で内部保持しない。
+visible project は**台帳の visible な行を上から数えた順**(§27.1、
+`visibleProjectIDs` / `ordinal(of:)`)で 1～N(N = visible count)の序数を
+自動付与する。序数は display-only で内部保持しない。配置は台帳から序数順に
+導出される(§26.3)ため、canonical tree の葉走査順とも一致する。
 
-枚数変化時（hide / close / show / move_project）、序数は自動的に再計算・再配置される。
+枚数変化時(hide / close / show / 新規作成)や行移動(move_project・一覧の
+`Cmd+↑↓`)・ソート(§24.4)の後、序数は自動的に再計算・再配置される。
 
 ```text
 canon: [project-A | project-B | project-C]  (3 visible)
@@ -362,7 +384,8 @@ zoom: project-B
 
 visible project が既に 9 個のとき:
 
-- `new_project_split` ... quietly no-op（モデル・UI 変化なし）
+- `new_project` ... 作成自体は拒否しない — 新規行は **hidden として**挿入される
+  (§27.4。登録総数に上限は無く、同時に画面へ並ぶ数だけが 9 まで)
 - `show_project`（`show_project:<name>` action、およびプロジェクト一覧の Space トグル §27.2） ... quietly no-op（行は hidden のまま残る）
 - `goto_project` index form（`goto_project:1`～`goto_project:9`）... 無効な index は no-op、performability gate あり
 - `goto_project` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
@@ -373,8 +396,6 @@ performability gate の扱い：
   keybind を消費しない
 - `goto_project` index form ... 対象 index が解決できない・focused と同じ
   （zoom 中は zoomed project 自身と同じ）とき performable = false で keybind を消費しない
-- `new_project_split` ... performability 配線が無いため keybind は消費されるが、
-  controller/model 側の gate（`canAddVisibleProject`）で静かに no-op
 
 ## 8. プロジェクト名生成
 
@@ -416,11 +437,7 @@ Ghostty既存の action naming に合わせ、`focus_project` ではなく `goto
 ### 9.1 追加action一覧
 
 ```text
-new_project_split:right
-new_project_split:down
-new_project_split:left
-new_project_split:up
-new_project_split:auto
+new_project
 
 goto_project:right
 goto_project:down
@@ -438,12 +455,10 @@ goto_project:7
 goto_project:8
 goto_project:9
 
-resize_project:right,10
-resize_project:left,10
-resize_project:up,10
-resize_project:down,10
-
-equalize_projects
+move_project:right
+move_project:down
+move_project:left
+move_project:up
 
 toggle_project_zoom
 
@@ -468,16 +483,22 @@ list_projects
 close_project
 ```
 
+2026-08-18 改訂で廃止した action:`new_project_split`(方向付き分割作成 →
+`new_project` の一覧経由作成に一本化、§27.4)、`resize_project` /
+`equalize_projects`(プロジェクト境界の手動操作 → レイアウト型の投影に置換、
+§26)。いずれも parser・C ABI(`xghostty.h` の action enum)から削除済みで、
+keybind に書けば設定エラーになる(後方互換は保証しない方針、必須対応事項 58)。
+
 ### 9.2 既存actionとの対応
 
 ```text
-new_split          -> new_project_split
 goto_split         -> goto_project
-resize_split       -> resize_project
-equalize_splits    -> equalize_projects
 toggle_split_zoom  -> toggle_project_zoom
 close_surface      -> close_project
 ```
+
+`new_project` は既存 action に対応物を持たない(分割ではなく台帳への行挿入、
+§27.4)。`move_project` は `goto_project` と同じ方向語彙で行を入れ替える。
 
 ## 10. デフォルトキー割り当て
 
@@ -490,50 +511,44 @@ Cmd+D                 -> new_split:right
 Cmd+Shift+D           -> new_split:down
 ```
 
-### 10.2 プロジェクト分割
+### 10.2 新規プロジェクト作成
 
 ```text
-Cmd+Opt+D             -> new_project_split:right
-Cmd+Opt+Shift+D       -> new_project_split:down
+Cmd+N                 -> new_project
 ```
+
+新規作成の導線はプロジェクト一覧に一本化(§27.4)。旧
+`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)は 2026-08-18 改訂で
+action ごと廃止した。
 
 ### 10.3 プロジェクト移動
 
-方向移動:
+方向 focus 移動と行の入れ替え:
 
 ```text
-Cmd+Ctrl+Opt+Left     -> goto_project:left
-Cmd+Ctrl+Opt+Right    -> goto_project:right
-Cmd+Ctrl+Opt+Up       -> goto_project:up
-Cmd+Ctrl+Opt+Down     -> goto_project:down
+Cmd+Ctrl+Opt+Shift+Left/Right/Up/Down   -> goto_project:left/right/up/down
+Cmd+Ctrl+Shift+Left/Right/Up/Down       -> move_project:left/right/up/down
 ```
+
+`move_project` は台帳上で focused プロジェクトの行を隣の visible 行と
+入れ替える(§26.3。配置は再導出で追従)。
 
 序数ジャンプ:
 
 ```text
-Cmd+1                 -> goto_project:1
-Cmd+2                 -> goto_project:2
-Cmd+3                 -> goto_project:3
-Cmd+4                 -> goto_project:4
-Cmd+5                 -> goto_project:5
-Cmd+6                 -> goto_project:6
-Cmd+7                 -> goto_project:7
-Cmd+8                 -> goto_project:8
-Cmd+9                 -> goto_project:9
+Cmd+1〜9              -> goto_project:1〜9
 ```
 
 Cmd+1～9 は physical `digit_1`～`digit_9` と unicode `1`～`9` の両方に登録し
 （AZERTY 等のレイアウト対策）、`goto_project:1`～`goto_project:9` に performable 付きでバインドする。
 本 fork にタブは存在せず、上流の `goto_tab` / `last_tab` は core ごと削除済みなので衝突しない。
 
-### 10.4 プロジェクトリサイズ
+### 10.4 プロジェクトリサイズ(廃止)
 
-```text
-Cmd+Ctrl+Opt+Shift+Left     -> resize_project:left,10
-Cmd+Ctrl+Opt+Shift+Right    -> resize_project:right,10
-Cmd+Ctrl+Opt+Shift+Up       -> resize_project:up,10
-Cmd+Ctrl+Opt+Shift+Down     -> resize_project:down,10
-```
+プロジェクト単位の resize / equalize は 2026-08-18 改訂で action ごと廃止した
+(§26.4、必須対応事項 55)。プロジェクト境界の配置はレイアウト型(§26)が
+決め、手動では動かせない。zoom 中のプロジェクト内ペインの
+`resize_split` / `equalize_splits` は従来どおり有効。
 
 ### 10.5 その他
 
@@ -541,8 +556,8 @@ Cmd+Ctrl+Opt+Shift+Down     -> resize_project:down,10
 Cmd+Opt+Enter         -> toggle_project_zoom
 Cmd+Opt+H             -> hide_project
 Cmd+Opt+R             -> rename_project
-Cmd+N                 -> edit_project_note
-Cmd+Opt+N             -> toggle_note_overview
+Cmd+E                 -> edit_project_note
+Cmd+Opt+E             -> toggle_note_overview
 Cmd+P                 -> set_primary
 Cmd+S                 -> sort_projects_by_priority
 Cmd+Shift+S           -> sort_projects_by_deadline
@@ -551,20 +566,22 @@ Cmd+Opt+L             -> choose_project_layout
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
-ノート系 2 action の仕様は §21。`Cmd+N` / `Cmd+Opt+N` は config デフォルトにも
-メニュー xib にも既存割り当てがないことを確認済み。
+ノート系 2 action の仕様は §21。2026-08-18 改訂で `Cmd+N` / `Cmd+Opt+N` から
+`Cmd+E` / `Cmd+Opt+E` へ移した(`Cmd+N` は新規プロジェクト作成へ、§10.2。
+`Cmd+Opt+N` は無割当)。上流デフォルトの `cmd+e=search_selection` は解除済み
+(action 自体は残り、ユーザー keybind で復活できる)。
 `set_primary`(§22.4)は zoom 中に focused ペインをプライマリーへ指定する。素の
 `Cmd+P` に既存割り当てはない(コマンドパレットは `Cmd+Shift+P`)。
 ソート 2 action の仕様は §24.4。素の `Cmd+S` / `Cmd+Shift+S` にも既存割り当てが
 ないことを確認済み(上流はどちらの chord も未使用)。
-`hide_project` は §25 の hide 選択画面を開く(即時 hide ではない。単一 hide の
-モデルプリミティブは §11.7 のまま残る)。`list_projects`(§27)は hidden を含む
-全プロジェクトのプロジェクト一覧オーバーレイを開き、hidden プロジェクトの唯一の
+`hide_project`(§25)は focused プロジェクトの**即時 hide**(2026-08-18 改訂で
+hide 選択画面を廃止し即時に戻した)。`list_projects`(§27)は hidden を含む
+全プロジェクトの台帳オーバーレイを開き、hidden プロジェクトの唯一の
 復帰導線となる(hidden シェルフは廃止、§7.2)。`choose_project_layout`(§26.2)は
-レイアウト選択オーバーレイを開く。素の `Cmd+L` に既存割り当てはない(config
+レイアウト型の選択オーバーレイを開く。素の `Cmd+L` に既存割り当てはない(config
 デフォルトにもメニュー key equivalent にも `l` の super chord は無いことを
 確認済み)。`Cmd+L` は日々使うプロジェクト一覧に与え、レイアウト選択は
-オーバーレイ系の修飾に揃えて `Cmd+Opt+L` へ移した(`Cmd+Opt+H` / `Cmd+Opt+N` と
+オーバーレイ系の修飾に揃えて `Cmd+Opt+L` へ移した(`Cmd+Opt+H` / `Cmd+Opt+E` と
 同じ族)。`Cmd+Opt+L` にも既存割り当てはない。
 また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
 ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
@@ -572,35 +589,25 @@ Cmd+Opt+L             -> choose_project_layout
 
 ## 11. 状態遷移仕様
 
-### 11.1 `new_project_split`
+### 11.1 `new_project`
 
-表示上限到達時は no-op（§7.3）。
+新規プロジェクト作成はプロジェクト一覧経由に一本化(§27.4。旧
+`new_project_split` は廃止、§9.1)。
 
 挙動:
 
 ```text
-1. visible project 数が既に 9 個の場合は no-op（§7.3 の上限 gate）
-2. focusedProject を基準projectにする
-3. zoomedProject がある場合は、まず zoom を解除する
-4. 新規 ProjectState を作る
-5. 新規 project 内に初期paneを1つ作る
-6. canonicalProjectTree に ProjectRef を挿入する
-7. focus を新project内の初期paneへ移す
+1. 一覧が開いていなければ開く(beginProjectList。zoom は先に解除)
+2. 新規 ProjectState を作る(ProjectNameGenerator 名、初期ペイン 1 つ =
+   プライマリー、新シェル)
+3. 台帳のカーソル行の直下に行を挿入する(insertProject(_:after:))
+4. 挿入前の visible 数が 9 未満なら visible(relayout が配置を組み直す)、
+   9 なら hidden(§7.3 の上限を作成でも守る)
+5. カーソルは新しい行のタイトル列に移り、その場でタイトル編集が始まる
 ```
 
-ズーム中に実行した場合:
-
-```text
-Before:
-  zoomedProject = server
-
-new_project_split:right
-
-After:
-  zoomedProject = nil
-  server の右に新project
-  focus = 新projectの初期pane
-```
+作成しても focus は一覧が保持する(端末への focus 移動は `Cmd+Enter` の
+役割、§27.3)。
 
 ### 11.2 `Cmd+D`
 
@@ -693,61 +700,17 @@ Cmd+2 (goto_project:2,自 project):
 hidden project は jump 対象にならない（序数は visible only）。
 無効な index（0、10+、目標が hidden 等）は no-op。
 
-### 11.4 `resize_project`
+### 11.4 `resize_project`(廃止)
 
-`resize_project` は `effectiveVisibleProjectTree` の見た目上の隣接関係を使うが、ratio変更は `canonicalProjectTree` に適用する。
+2026-08-18 改訂で action ごと削除(§9.1、§26.4)。プロジェクト境界の配置は
+レイアウト型(§26)からの投影で決まり、手動リサイズは存在しない。zoom 中の
+ペイン `resize_split` は従来どおり。
 
-```text
-1. visible tree で focusedProject の隣接projectを探す
-2. focusedProject と neighbor の canonical tree 上の LCA split を探す
-3. その split ratio を変更する
-```
+### 11.5 `equalize_projects`(廃止)
 
-hidden project がいる状態でも、canonical tree を直接正しく更新する。
-
-```swift
-func resizeProject(_ direction: Direction, amount: CGFloat) {
-    guard zoomedProject == nil else { return }
-    guard let focused = focusedProject else { return }
-    guard let visibleTree = effectiveVisibleProjectTree else { return }
-
-    guard let neighbor = visibleTree.spatialNeighbor(
-        from: focused,
-        direction: direction
-    ) else { return }
-
-    guard let splitPath = canonicalProjectTree.lowestCommonSplitPath(
-        between: focused,
-        and: neighbor,
-        matchingResizeDirection: direction
-    ) else { return }
-
-    canonicalProjectTree = canonicalProjectTree.adjustRatio(
-        at: splitPath,
-        direction: direction,
-        amount: amount
-    )
-}
-```
-
-### 11.5 `equalize_projects`
-
-`equalize_projects` は visible project のレイアウトを均等化する。
-
-hidden project は canonical tree に leaf を持たない(§11.7)ため、
-`canonicalProjectTree.equalized()` をそのまま保存すればよい。
-均等化されるのは visible project 間の split ratio だけである。
-
-```swift
-func equalizeProjects() -> Bool {
-    guard canonicalProjectTree.isSplit else { return false }
-    canonicalProjectTree = canonicalProjectTree.equalized()
-    return true
-}
-```
-
-project が1つ以下で split が存在しない場合は no-op。
-hidden project の有無で実行を拒否してはいけない。
+2026-08-18 改訂で action ごと削除(§9.1、§26.4)。レイアウト型のスロットは
+定義上等分なので、均等化アクションの出番も存在しない。zoom 中のペイン
+`equalize_splits` は従来どおり。
 
 ### 11.6 `toggle_project_zoom`
 
@@ -781,78 +744,46 @@ project zoom と inner split zoom は共存可能。
 
 ### 11.7 `hide_project`
 
-`hide_project` action(既定 `Cmd+Opt+H`)自体は §25 の hide 選択画面を開く。
-本節が定める単一プロジェクト hide はモデルのプリミティブ
-(`hideFocusedProject`)として残り、show/undo フローと §25 の一括 hide が
-この意味論を共有する。
+`hide_project` action(既定 `Cmd+Opt+H`)は focused プロジェクトの
+**即時 hide**(§25。2026-08-18 改訂で hide 選択画面を廃止)。
 
 ```text
-1. focus の移動先を hide 前の canonical tree 上で解決(nearest leaf)
-2. focusedProject の leaf を canonicalProjectTree から削除
-   → 残りの visible project がスペースを回収する
-3. focusedProject を hiddenProjectIDs に追加(runtime hidden 集合)
+1. focus の移動先を hide 前の配置上で解決(nearest 規則)
+2. 台帳の hidden フラグを立てる(setProjectHidden(id, true)。行順は不変)
+3. relayout() が記憶しているレイアウト型で残りの visible 行の配置を再導出
+   → 残りの visible project がスペースを回収する(§26.3)
 4. process / PTY / surface は生存(ProjectState は projects に残る)
-5. zoomedProject == hidden target なら zoom解除
+5. zoomedProject == hidden target なら zoom解除(relayout 内)
 6. focus を 1 で解決した neighbor へ移す
 7. 画面上の常設表示は無い — 復帰導線はプロジェクト一覧(§7.2, §27)
-```
-
-```swift
-func hideProject(_ id: ProjectID) {
-    guard projects[id] != nil else { return }
-    // 最後の visible project は hide できない
-    guard let neighbor = canonicalProjectTree.nearestLeaf(to: id) else { return }
-
-    canonicalProjectTree = canonicalProjectTree.removing(.leaf(view: ProjectRef(id: id)))
-    hiddenProjectIDs.insert(id)
-
-    if zoomedProject == id {
-        zoomedProject = nil
-    }
-
-    focusedProject = neighbor
-}
 ```
 
 全projectをhiddenにしようとした場合:
 
 ```text
-最後の visible project は hide できない
+最後の visible project は hide できない(canHideFocusedProject、§25)
 ```
 
-理由: workspace が空になると操作・復帰UIが不安定になるため。
+理由: workspace が空になると操作・復帰UIが不安定になるため。同じ規則が
+一覧の表示トグル(§27.2)にも適用される。
 
 ### 11.8 `show_project`
 
-表示上限到達時は no-op（§7.3）。
+表示上限到達時は no-op(§7.3)。
 
 ```text
-1. visible project 数が既に 9 個の場合は no-op（pill は表示のまま、toast/beep なし）
-2. hiddenProjectIDs から除外
-3. 末尾プロジェクト(走査順の最後の leaf)を 50/50 で左右分割し、
-   その右側に leaf を再接続
+1. visible project 数が既に 9 個の場合は no-op(toast/beep なし)
+2. 台帳の hidden フラグを外す(setProjectHidden(id, false)。行順は不変)
+3. relayout() が記憶しているレイアウト型で新しい visible 数の配置を再導出
+   — 復帰位置は台帳の行順が決める(hide 前と行が同じなら同じ序数位置へ戻る)
 4. zoomedProject を解除
-5. focus をそのprojectへ移す
+5. focus をそのprojectへ移す(show_project action の場合。一覧の表示トグルは
+   focus を動かさない、§27.2)
 6. project内では最後にfocusしていたpaneへ戻す
 ```
 
-```swift
-func showProject(_ id: ProjectID) {
-    guard !hiddenProjectIDs.contains(id) else { return }
-    guard visibleProjectCount < 9 else { return }  // cap gate
-
-    hiddenProjectIDs.remove(id)
-    canonicalProjectTree = canonicalProjectTree.appendingAtTrailingLeaf(ProjectRef(id: id))
-    zoomedProject = nil
-    focusedProject = id
-    focusLastPane(in: id)
-}
-```
-
-hide が leaf を削除しているため、show は元の位置を復元しない。
-再表示された project は末尾プロジェクトのスペースを半分もらうだけで、
-他の visible project のサイズと split ratio は一切変わらない。
-空 tree への再接続は単一 leaf になる。
+2026-08-18 改訂で「末尾 leaf の 50/50 分割で再接続」は廃止:配置は常に台帳と
+レイアウト型からの投影なので、show は特別な再接続規則を持たない。
 
 ### 11.9 `close_project`
 
@@ -904,69 +835,63 @@ close_surface 経路)。
 ### 12.1 保存するもの
 
 ```text
-- canonicalProjectTree
-- projects
-- project names
-- project paneTree
-- focusedProject
+- projectOrder(台帳の行順、hidden を含む)
+- hiddenProjectIDs(visibility 列 — 2026-08-18 改訂で永続へ昇格)
+- layoutType(記憶しているレイアウト型)
+- listColumnOrder(一覧の列順)
+- projects(names / paneTree / note / priority / deadline / nextTrigger /
+  primary フラグ / createdAt)
+- lastPriorityResetWorkday(§28.2)
+- focusedProject(復元時に検証)
 - focusedSurface per project
 ```
 
 ### 12.2 保存しないもの
 
 ```text
-- hiddenProjectIDs
-- zoomedProject
+- canonicalProjectTree(台帳からの投影 — decode 時に relayout() で再構築。
+  旧保存の tree は行順の種としてのみ読まれる)
+- zoomedProject(runtime-only。復元時は非 zoom)
 ```
 
-復元時はすべて visible、非zoom状態に戻す。ただし §7.3 の表示上限 9 を適用する。
+hidden 状態は復元される(旧設計の「復元時はすべて visible」は 2026-08-18
+改訂で廃止 — 一覧が台帳になった以上、visibility は台帳の永続列である)。
 
 ### 12.3 起動時pane復元
 
-MVPでは各paneは新規 shell として復元する。
+各paneは新規 shell として復元する。
 
 ```text
 Before quit:
-  project / pane layout 保存
+  台帳 / project / pane layout 保存
 
 After launch:
-  同じ project / pane layout で shell を起動
+  台帳を正規化・再投影し、同じ project / pane layout で shell を起動
 ```
 
 live process / scrollback / PTY状態は復元しない。
 
-### 12.4 表示上限による pruning
+### 12.4 台帳の正規化(normalizeLedger)
 
-保存時の canonical tree に 9 個を超える leaf がある場合は、復元時に **先頭 9 個のみを visible のまま、
-超過分を hiddenProjectIDs に移す**（alive・プロジェクト一覧には出るが leaf なし）。
+復元(`WorkspaceState.restoring`)は台帳を正規化してから再投影する:
 
-保存時に hidden だった project は canonical tree に leaf を持たないまま
-`projects` に残っている(§11.7)。復元時はまず canonical 上限 9 個の枠に収めてから、
-orphaned project（leaf なし・creation order 順）を末尾に再接続する。枠内に収まる orphaned のみ
-再接続し、超過分は hidden のまま。
-
-```swift
-func applyRestoreLayout() -> WorkspaceState {
-    var restored = self
-    restored.hiddenProjectIDs = []
-    restored.zoomedProject = nil
-
-    // canonical が 9 を超える場合は超過分を非表示化
-    restored.capVisibleProjects()  // 先頭 9 保持、以降を hiddenProjectIDs へ
-
-    // orphaned（leaf なし）project を末尾から順に再接続（枠内で止める）
-    restored.reconcileOrphanedProjects()  // 再接続可能な分のみ connect
-
-    // focusedProject 検証・フォールバック
-    let focusValid = restored.focusedProject.map { id in
-        restored.projects[id] != nil && restored.canonicalProjectTree.find(id: id) != nil
-    } ?? false
-    if !focusValid {
-        restored.focusedProject = restored.canonicalProjectTree.firstLeaf?.id
-    }
-    return restored
-}
+```text
+1. zoomedProject = nil
+2. normalizeLedger():
+   - projectOrder を projects.keys の順列に修復(未知 id は落とし、
+     載っていないプロジェクトは (createdAt, id) 順で末尾に追加)
+   - hiddenProjectIDs を生存プロジェクトに限定
+   - visible な行が 9 を超える場合、10 個目以降の visible 行を hidden へ
+     (§7.3 の表示上限)
+   - 全行 hidden なら先頭行を visible に戻す(最低 1 つは visible)
+3. relayout(): 台帳とレイアウト型から配置を再導出(§26.3)
+4. focusedProject を検証(生存かつ visible でなければ先頭の visible 行へ
+   フォールバック)
 ```
+
+壊れた保存(列順の欠落・未知のレイアウト型等)は decode の寛容経路が既定値へ
+落とし、`normalizeLedger` が構造を修復するため、復元は常に不変条件(§14)を
+満たした状態で終わる。
 
 ## 13. effectiveVisibleProjectTree
 
@@ -1001,33 +926,45 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
 2. projects に存在しない ProjectID は canonicalProjectTree に存在しない
 3. hiddenProjectIDs は projects.keys の部分集合であり、hidden project は
    canonicalProjectTree に leaf を持たない(leaf 集合 = visible project 集合)
-4. hiddenProjectIDs は永続復元しない
+4. projectOrder は projects.keys の順列である(§27.1。decode 後は
+   normalizeLedger が修復する)
 5. zoomedProject は visible project のみ
 6. focusedProject は visible project のみ
 7. hide_project は process を終了しない
 8. close_project は process を終了する
 9. Cmd+D は focused project 内の paneTree だけを変更する
-10. new_project_split は canonicalProjectTree を変更し、新project内に初期paneを1つ作る
-11. new_project_split 後は新projectの初期paneにfocusする
+10. canonicalProjectTree は台帳(projectOrder・hiddenProjectIDs・layoutType)
+    からの投影であり、台帳を経由せずに変更されない(§4.1, §26.3)。
+    永続化もされない(§12.2)
+11. new_project は台帳のカーソル行直下に行を挿入し、新project内に初期pane
+    (=プライマリー)を1つ作る。visible 数 9 未満なら visible、9 なら hidden
+    (§27.4)
 12. goto_project 後は対象projectの last focused pane にfocusする
 13. project label はヘッダー帯であり、terminal layout を自身の高さぶん押し下げる
-14. オーバーレイ(ノート編集・一望モード・hide 選択・レイアウト選択・
+14. オーバーレイ(ノート編集・一望モード・レイアウト型選択・
     プロジェクト一覧)は workspace 層のものであり、project overlay ではない。
     常設の overlay は存在しない(§6.1, §7.2)
 15. project zoom と pane zoom は外側から内側へ適用する
-16. hidden project は focus / resize / equalize の直接対象にならない
-17. 最後の visible project は hide できない
+16. hidden project は focus の直接対象にならない(プロジェクト境界の
+    resize / equalize は存在しない、§26.4)
+17. 最後の visible project は hide できない(即時 hide・一覧トグルとも、§25)
 18. project が複数あるとき、最後の pane で close_surface すると close_project
     confirmation に昇格する（唯一の project では通常の close_surface として
     window close → app 終了になる。§11.10, §18.5）
-19. visible project 数は常に ≤ 9（§7.3）
-20. visible project の序数は canonical tree 葉走査順で 1～visibleCount となり、
-    hide/close/show/move 時に自動 re-pack される（表示のみ、保存しない）
-21. restore 時は canonical が 9 を超える場合は先頭 9 のみ visible、
-    超過分と orphaned project を hiddenProjectIDs に移す（§12.4）
+19. visible project 数は常に ≤ 9（§7.3。登録総数は無制限）
+20. visible project の序数は台帳の visible な行を上から数えた順で
+    1～visibleCount となり、台帳の変更時に自動 re-pack される
+    (表示のみ、保存しない。§7.3, §27.1)
+21. restore 時は normalizeLedger が台帳を修復し(順列・生存・上限 9・
+    最低 1 visible)、relayout が配置を再導出する(§12.4)
+22. 優先度・締切・次トリガー・ノートの値変更は台帳の行順を変えない
+    (並び替えは明示のソート・行移動のみ、§24.4)
 ```
 
 ## 15. 実装フェーズ
+
+(MVP 構築時の計画記録。`new_project_split` / `resize_project` /
+`equalize_projects` は 2026-08-18 改訂で廃止済み — 現行仕様は §9〜§11 を参照。)
 
 ### Phase 0: 既存挙動を1プロジェクトに包む
 
@@ -1159,18 +1096,20 @@ macos/Sources/Features/Projects/
   ProjectNoteOverview.swift
   NoteEditHistory.swift            (ノート編集セッションの取り消し履歴、§21.2)
   ProjectTerminatedPaneView.swift  (§23.3)
-  ProjectHideSelector.swift        (hide 選択画面とレイアウト hide-pick が共用、§25/§26.3)
-  ProjectLayout.swift              (登録レイアウト 11 種とスロット計算、§26.1)
-  ProjectLayoutSelector.swift      (レイアウト選択オーバーレイ、§26.2)
-  ProjectList.swift                (一覧行の導出と日次優先度リセット、§27.1/§28.2)
-  ProjectListOverlay.swift         (プロジェクト一覧オーバーレイ、§27)
+  ProjectLayoutType.swift          (レイアウト型・スロット計算・畳み込み、§26.1-26.2)
+  ProjectLayoutSelector.swift      (レイアウト型選択オーバーレイ、§26.2)
+  ProjectList.swift                (台帳の行/列/セル機構と日次優先度リセット、§27.1-27.2/§28.2)
+  ProjectListOverlay.swift         (プロジェクト一覧(台帳)オーバーレイ、§27)
   ProjectWorkday.swift             (作業日と 06:00 境界、§28.1)
   ProjectRemoteSplit.swift         (リモート split の起動判断とレポート鮮度、§29)
   PaneForegroundProbe.swift        (pty の前景プロセス取得、§29.3)
-  ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2/§25)
+  ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2)
 ```
 
 `HiddenProjectShelf.swift` は hidden シェルフの廃止に伴い削除済み(§7.2)。
+`ProjectHideSelector.swift` / `ProjectLayout.swift`(登録レイアウト 11 種)は
+2026-08-18 改訂の即時 hide(§25)とレイアウト型(§26)への置き換えに伴い
+削除済み。
 
 (close 確認ダイアログは専用ファイルではなく `BaseTerminalController` の既存
 確認経路を流用する。§23.1)
@@ -1179,6 +1118,11 @@ macos/Sources/Features/Projects/
 ただし初期実装では `Features/Projects` として分離した方が差分を追いやすい。
 
 ## 17. Action parser 追加方針
+
+(MVP 構築時の方針記録。現行の action 集合は §9.1 が正 —
+`newProjectSplit` / `resizeProject` / `equalizeProjects` は削除済みで、
+`new_project` / `move_project` / ノート・ソート・一覧・レイアウト型の各 action
+が加わっている。)
 
 既存 action enum に追加する。
 
@@ -1240,14 +1184,15 @@ close 対象は visible focused project のみ(一覧で Space により visible
 3. nearest visible project にfocus
 ```
 
-### 18.4 zoomed project 中の `new_project_split`
+### 18.4 zoomed project 中の `new_project`
 
 ```text
-1. base = zoomedProject
-2. zoom解除
-3. base の隣に new project
-4. new project にfocus
+1. zoom解除(beginProjectList が先に解除する、§27.3)
+2. 一覧が開き、カーソル行の直下に新規行が挿入される(§27.4)
+3. タイトル編集がその場で始まる。focus は一覧が保持する
 ```
+
+(旧 `new_project_split` の「zoom 解除して隣に作成」は action 廃止に伴い消滅。)
 
 ### 18.5 close_project 後に project が0個になる
 
@@ -1267,6 +1212,9 @@ close 対象は visible focused project のみ(一覧で Space により visible
 ```
 
 ## 19. テスト計画
+
+(MVP 構築時の計画記録。現行のテストは各仕様節末尾のテスト小節 —
+§21.4/§22.8/§23.5/§24.5/§25/§26.5/§27.5/§28.4/§29.4 — が正。)
 
 ### 19.1 Unit tests
 
@@ -1309,6 +1257,11 @@ close 対象は visible focused project のみ(一覧で Space により visible
 ```
 
 ## 20. 最終MVP仕様サマリ
+
+(MVP 完了時点のスナップショット。以後の改訂で置き換わった点 —
+`Cmd+Opt+D` 分割作成 → `Cmd+N` 一覧作成(§27.4)、プロジェクト
+resize/equalize の廃止(§26.4)、hidden 状態の永続化と台帳復元(§12)、
+序数の台帳由来化(§7.3)— は各節が正。)
 
 ```text
 既存:
@@ -1370,7 +1323,12 @@ restore:
   focusedProject 無効時は firstLeaf へフォールバック
 ```
 
-この仕様の核は、**`canonicalProjectTree` を唯一のプロジェクト配置source of truthにし、hide/zoomを派生表示状態として扱うこと**です。これにより、プロジェクトは第一級レイアウト単位になりつつ、既存のペイン分割・surface lifetime・GhosttyのSplitTree設計を壊さずに拡張できます。また、**表示上限 9 と動的序数により、UI の安定性と操作性を両立**させています。
+MVP 時点の核は「`canonicalProjectTree` を唯一の配置 source of truth にする」
+ことだった。2026-08-18 改訂でこの主従は逆転し、**台帳(§27.1)が source of
+truth、tree は投影**になった(§4.1)— それでもプロジェクトが第一級レイアウト
+単位であること、既存のペイン分割・surface lifetime・Ghostty の SplitTree 設計を
+壊さないこと、表示上限 9 と動的序数で UI の安定性と操作性を両立することは
+変わらない。
 
 ## 21. ノート仕様
 
@@ -1396,7 +1354,7 @@ static let maxNoteLines = 10
 - `WorkspaceModel.setProjectNote(_:to:)` が唯一の書込み口。正規化後に変化が
   なければ状態を発行しない。
 
-### 21.2 編集オーバーレイ(edit_project_note / Cmd+N)
+### 21.2 編集オーバーレイ(edit_project_note / Cmd+E)
 
 - focused プロジェクトのノート編集オーバーレイを開く。セッション状態は
   `WorkspaceModel.noteEditingProject`(transient、永続化しない)。
@@ -1449,19 +1407,22 @@ static let maxNoteLines = 10
 - **貼り付けで 10 行を超えた場合も保存時に先頭 10 行へ切り詰める**(手入力と
   同じ §21.1 の正規化経路。CRLF / CR の行末は正規化で `\n` に統一されるため、
   ペースト由来の行末でもキャップは回避されない)。
-- **優先度・締切コントロール**: `TextEditor` 下の metaRow で優先度と締切を
-  設定・変更できる(§24.1)。保存は Cmd+Enter の単一 commit にノートと一括、
-  Esc は 3 ドラフト(ノート・優先度・締切)とも破棄する。
+- **ノート本文専用**:優先度・締切はプロジェクト一覧のセルで設定する
+  (§24.1, §27.2)。旧 metaRow(優先度 picker + 締切フィールド)は
+  2026-08-18 改訂で削除した — このオーバーレイが保存するのはノート本文のみ。
 - 閉じると(保存・破棄どちらでも)first responder は端末 surface に戻る。
 - オーバーレイは編集中のみ描画され、端末領域を恒久的に占有しない。
 - 編集対象プロジェクトが消えた場合(undo 復元・全プロジェクト削除)はセッションを
   クリアする。
 
-### 21.3 一望モード(toggle_note_overview / Cmd+Opt+N)
+### 21.3 一望モード(toggle_note_overview / Cmd+Opt+E)
 
-- visible な全プロジェクトの上に、それぞれのノートを同時に読み取り専用
-  オーバーレイ表示するトグルモード。状態は
-  `WorkspaceModel.noteOverviewActive`(transient、永続化しない)。
+- visible な全プロジェクトの上に、それぞれのノート — 優先度・締切・次トリガー
+  と併せて(§24.2, §24.6)— を同時に読み取り専用オーバーレイ表示するトグル
+  モード。状態は `WorkspaceModel.noteOverviewActive`(transient、永続化
+  しない)。一覧の中の `Cmd+Opt+E` は別物(全行ノート表示トグル、§27.2)—
+  オーバーレイセッションは相互排他なので、一覧が開いている間このモードには
+  入れず、chord は衝突しない。
 - **進入時に zoom を先に解除**してから表示する(`zoomedProject = nil`)。
   `focusedProject` は変更しない。
 - **表示対象集合は visible プロジェクトのみ**:
@@ -1472,10 +1433,10 @@ static let maxNoteLines = 10
   すべて no-op。ワークスペース全面の捕捉層がマウス操作も遮断する。
 - ノート編集オーバーレイが開いている間のトグルは no-op(編集ドラフトを
   黙って破棄しない)。
-- 退出は**再度 Cmd+Opt+N または Esc**。退出時に first responder は端末
+- 退出は**再度 Cmd+Opt+E または Esc**。退出時に first responder は端末
   surface に戻る。実装上、モード中は surface が unfocused で keybind 経路が
   効かないため、Esc は捕捉層内の focused field の `onExitCommand`、
-  再トグルはデフォルト chord (cmd+opt+n) を再照合する隠し
+  再トグルはデフォルト chord (cmd+opt+e) を再照合する隠し
   `keyboardShortcut` ボタンで受ける(keybind を変更した場合の退出は Esc)。
 - **切り詰め表示**: 各プロジェクトのパネルは `lineLimit(maxNoteLines)` +
   末尾切り詰めをプロジェクト境界内のフレームで行い、レイアウトを壊さない。
@@ -1765,13 +1726,15 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   状態クリア)/ 非 terminated では拒否
 ```
 
-## 24. 優先度・締切仕様
+## 24. 優先度・締切・次トリガー仕様
 
-プロジェクトごとの優先度と締切を保持・表示し、明示的なソート
-アクションで実レイアウトを並び替える層。保持・復元・ソート順・締切超過判定は
-すべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。
+プロジェクトごとの優先度・締切・次トリガー(§24.6)を保持・表示し、明示的な
+ソートアクションで台帳の行順を並び替える層。保持・復元・ソート順・締切超過判定は
+すべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。設定・変更の入口は
+**プロジェクト一覧のセル**(§27.2)であり、ノート編集オーバーレイからは設定
+しない(2026-08-18 改訂で入口を移設。必須対応事項 36)。
 
-### 24.1 データモデルとエディタ統合
+### 24.1 データモデルと入力境界
 
 ```swift
 // ProjectState に追加(いずれも未設定 = nil)
@@ -1798,15 +1761,12 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   無変化は no-op)。保存時境界 `setProjectDeadline(parsing:)`:空入力は意図的な
   クリア(true を返す)、不正入力は**未設定へ**拒否(false。前の値には
   戻さない)。
-- エディタ統合(§21.2 の metaRow):segmented な優先度 picker
-  (none/high/med/low)と等幅 `YYYY-MM-DD` テキストフィールド(Return は
-  Cmd+Enter と同じ commit)。不正入力の "→ unset" ヒントは
-  `ProjectDeadline(parsing:)` を再利用するため、ヒントと保存時判断は乖離
-  しえない。全保存経路は単一 commit ポイント
-  `endNoteEditing(saving:priority:deadlineInput:)` に集約され、ノート・
-  優先度・締切が一括保存される。note-only の `endNoteEditing(saving:)` は
-  優先度・締切に触れない。Esc(`cancelNoteEditing`)は 3 ドラフトとも破棄
-  する — ドラフトは view 状態で、モデルは commit まで不変。
+- **設定入口はプロジェクト一覧のセル**(§27.2):優先度・次トリガーは `Space`
+  循環、締切はテキストセル編集で設定・変更する(セル確定が
+  `setProjectDeadline(parsing:)` を通るため、セルの挙動と保存時判断は乖離
+  しえない)。ノート編集オーバーレイ(§21.2)はノート本文専用で、優先度・
+  締切のコントロールを持たない(2026-08-18 改訂で旧 metaRow を削除。
+  必須対応事項 36)。
 
 ### 24.2 締切超過の判定と表示
 
@@ -1827,39 +1787,34 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 
 ### 24.3 ソート順序付け(純関数)
 
-- `priorityOrderedVisibleProjectIDs()`:high → medium → low → 未設定。
-- `deadlineOrderedVisibleProjectIDs()`:近い日付順、未設定は末尾。
-- 共通契約:入力は `visibleProjectIDs` のみ(hidden は入力に入らないため構造的に
-  影響不能)、純関数で副作用なし、**安定性は構成で保証**(stdlib の sort は
-  安定性を文書化しないため、enumerated + offset の明示タイブレーク)。
-  同順位・同日は現在の相対順を維持する。
+- `priorityOrderedProjectIDs()`:high → medium → low → 未設定。
+- `deadlineOrderedProjectIDs()`:近い日付順、未設定は末尾。
+- 共通契約:入力は台帳の**全行**(`projectOrder`。hidden を含む —
+  2026-08-18 改訂で visible-only から全行へ。必須対応事項 40〜43)、純関数で
+  副作用なし、**安定性は構成で保証**(stdlib の sort は安定性を文書化しない
+  ため、enumerated + offset の明示タイブレーク)。同順位・同日は現在の相対順を
+  維持する。次トリガー順のソートは設けない(必須対応事項 43)。
 
 ### 24.4 ソートアクション(sort_projects_by_priority / sort_projects_by_deadline)
 
 - `sort_projects_by_priority`(既定 `Cmd+S`)/ `sort_projects_by_deadline`
   (既定 `Cmd+Shift+S`)。§10.5 のとおり両 chord とも既存割り当てなし。
-- 判定は `WorkspaceModel.canSortVisibleProjects`:visible プロジェクト 2 つ以上 +
-  オーバーレイセッション中でない(`overlaySessionActive`:一望モード §21.3・
-  hide 選択 §25・レイアウトセッション §26 を統合した判定)。`set_primary` と同型で、
-  performable チェックと実行が同じ判定を共有し、不成立時はキー未消費で
-  fall through する。
-- 実行:`SplitTree.reorderingLeaves(to:)` が**同一構造の上で leaf の載せ替え
-  だけ**を行い(形状・分割方向・分割比は不変。現 leaf の順列でなければ nil)、
-  `WorkspaceState.applyVisibleProjectOrder` が §24.3 の順序を canonical tree へ
-  適用する。レイアウトはリフローせず、プロジェクトがスロットを入れ替える —
-  `move_project` の `swappingLeaves` と同じ意味論の n 項版。
+- 実行:`sortProjectsByPriority()` / `sortProjectsByDeadline()` が §24.3 の
+  順序を**台帳の行順 `projectOrder` へ適用**する(2026-08-18 改訂:leaf の
+  載せ替えではなく台帳の並び替え)。hidden を含む全行が並び替わり、
+  `relayout()` が visible 行の新しい順で配置を再導出する(§26.3)。
 - 帰結(いずれも構成から従う):
-  - 序数(Cmd+1〜9)は走査順由来なので**自動追従**する。
-  - focus は id ベースなので不変(focused プロジェクトが新しいスロットに移る)。
-  - hidden プロジェクトは canonical leaf を持たないため影響を受けない。
-  - **明示実行時のみソート**:優先度・締切の setter はツリーに触れないため、
-    値の変更で自動再ソートは起きない。
-  - ソート後の並びは次のソートまで持続する(leaf 割り当てを書き換える経路が
-    他にない)。
-  - zoom 中も実行可(canonical tree は表示非依存。zoom 解除時に新しい並びが
-    見える)。
+  - 序数(Cmd+1〜9)は**ソート後の並びの visible 行を上から数えた順**になり
+    自動追従する。
+  - focus は id ベースなので不変。
+  - **一覧を開いていなくても効き**、開いていれば行が live に並び替わる
+    (必須対応事項 42)。
+  - **明示実行時のみソート**:優先度・締切の setter は台帳の行順に触れない
+    ため、値の変更・毎朝リセット(§28)で自動再ソートは起きない。
+  - ソート後の並びは次のソートまたは手動の行移動(§27.1)まで持続する。
+  - zoom 中も実行可(台帳は表示非依存。zoom 解除時に新しい並びが見える)。
 
-### 24.5 テスト(ProjectPriorityDeadlineTests、21 件)
+### 24.5 テスト(ProjectPriorityDeadlineTests、20 件)
 
 ```text
 - 既定: 新規プロジェクトは優先度・締切とも未設定
@@ -1869,285 +1824,274 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   クリア / parser は実在日付のみ受理(閏日含む)/ today 導出は時刻を捨てる
 - 超過: 締切日より厳密に後のみ / 未設定は非超過 / hidden も判定対象
 - 順序付け: 優先度順(安定タイ)/ 締切順(未設定末尾・同日安定)/
-  visible のみ・無副作用
-- ソートアクション: 実レイアウトの並び替え(優先度・締切とも、序数追従)/
-  hidden・focus 不変 / 明示実行のみで次のソートまで持続 / 単一プロジェクトと
-  一望モード中は decline(退出後は可)
-- エディタ commit: 3 値一括保存 / 不正締切は unset へ / note-only 経路は
-  優先度・締切不変 / セッションなし no-op / 未知プロジェクト setter no-op
+  hidden を含む全行・無副作用
+- ソートアクション: 台帳の行順の並び替え(優先度・締切とも)/ ソート後の
+  序数が visible 行を上から数えた順 / focus 不変 / 明示実行のみで次の
+  ソートまで持続
+- setter: 不正締切は unset へ / 未知プロジェクト setter no-op
 ```
 
-## 25. hide 選択仕様
+### 24.6 次トリガー(ProjectNextTrigger)
 
-`Cmd+Opt+H`(`hide_project` action)は focused プロジェクトの即時 hide ではなく、
-visible なプロジェクトから隠すものを複数選ぶ選択画面を開く(即時 hide の置換は
-必須対応事項 14 の列挙済み意図的変更)。判断ロジックはモデル層に置き、
-`XGhosttyTests` から検証する(本節末尾)。
+- プロジェクトごとの**次トリガー = プロジェクトを次に動かす主体**。
+  `ProjectNextTrigger`:String-raw の Codable enum
+  (`myself` 自分 / `teamMember` チームメンバー / `externalPerson` 組織外部人 /
+  `event` イベント)。未設定は値の不在(Optional)で、既定は未設定
+  (必須対応事項 71)。
+- 書込み口は `setProjectNextTrigger`(未知プロジェクト・無変化は no-op)。
+  設定・変更は一覧のセルの `Space` 循環(§27.2)。
+- 永続化は優先度と同じ ProjectState レコード(`encodeIfPresent`、不正保存は
+  unset として decode)。
+- **表示は一望モードのみ**:ノート・優先度・締切と併せて表示する(§21.3)。
+  **ラベル帯には表示しない**(§24.2 の meta 表示は優先度・締切のみ)。
+- 毎朝の優先度リセット(§28)は次トリガーに**触れない**(締切・ノートと同様)。
+- 人間が書き込む情報であり、端末が観測するライブ状態(非対応事項の将来候補)
+  とは別物。
+- テスト:ProjectNextTriggerTests(6 件)— round trip 復元・既定未設定・
+  一望モードの表示内容に含まれる・リセット生存・不正保存の unset decode・
+  setter no-op。
 
-### セッションとモデル判断
+## 25. 即時 hide 仕様
 
-- セッション状態は `WorkspaceModel.hideSelection`(`Set<ProjectID>?`、nil =
-  画面なし)。**transient(保存しない)**で、`restoreState`(undo/redo)と
-  `removeAllProjects` がセッションを終了する。
-- `canBeginHideSelection`:visible プロジェクト 2 つ以上(1 つでは「最低 1 つは
-  visible に残る」制約により何も隠せない)+ ノートエディタ・他のオーバーレイ
-  セッションが開いていないこと。performable チェックと実行が同じ判定を共有し、
-  不成立時はキー未消費で fall through する(`set_primary` と同型)。
-- `beginHideSelection` は zoom を先に解除する(zoom 中呼び出しの挙動は Essence が
-  実装に委ねた部分)。列挙対象 `hideSelectionProjectIDs` は visible な
-  プロジェクトを序数順で返す。hidden なプロジェクトは列挙されず選択にも
-  入れない — 復帰導線はプロジェクト一覧が担う(§7.2, §27)。
-- `toggleHideSelection` は visible なプロジェクトのみトグルする。
-- `canConfirmHideSelection`:**select-all は拒否**(selection.count <
-  visibleProjectCount。最低 1 つは visible に残る)。空選択は確定可能 —
-  「何も隠さず閉じる」として扱う。
-- `confirmHideSelection(savingOutgoingPaneTree:)`:選択された全プロジェクトを
-  **1 回の state 書き込みで一括 hide** — 各 leaf が canonical tree から抜けて
-  残存プロジェクトがスペースを回収し、id が `hiddenProjectIDs`(runtime hidden
-  集合)へ入る。focused プロジェクトが選択に含まれる場合、除去前の
-  ツリー上で `hideFocusedProject` と同じ nearest-leaf 規則により生存者へ focus を
-  渡す。ミッドセッションの menu-bar zoom に備えた zoom 解除バックストップと
-  `snapFocusToPrimaryInOverallView` を適用する。
-- `cancelHideSelection`(Esc 経路)は何も隠さず閉じる。
-- セッション中は画面が対話を占有する:focus 移動(`switchFocusedProject` /
-  `gotoProjectTarget` / `gotoProjectIndexTarget`)・ノート編集・一望モード・
-  ソートは既存の閲覧専用ガードと統合された `overlaySessionActive` 判定で
-  no-op になる(一望モード §21.3・レイアウトセッション §26 と相互排他)。
+`Cmd+Opt+H`(`hide_project` action)は focused プロジェクトを**即座に hidden に
+する**。選択画面は開かない(2026-08-18 改訂で hide 選択画面から即時 hide へ
+戻した。必須対応事項 46。旧 `ProjectHideSelector` / hide 選択モデルは削除済み)。
+判断ロジックはモデル層に置き、`XGhosttyTests` から検証する(本節末尾)。
 
-### UI(ProjectHideSelector)
+### モデル判断と実行
 
-- オーバーレイはセッション中のみ描画され、端末領域を恒久的に占有しない。抜ければ
-  端末が全面に戻り、キーボード focus も端末へ返る(ノートエディタと同じ流儀)。
-- visible なプロジェクトを序数順に列挙(チェックボックスグリフ + 序数 + 名前、
-  カーソル行ハイライト、ProjectNoteEditor 様式のスタイリング)。フッターは
-  選択中の件数、または Enter がブロックされる理由(「at least one project must
-  stay visible」)を表示する。
-- キーボードは CommandPaletteView と同じ機構(不可視の focused TextField が
-  キーボードを所有):Esc(`onExitCommand`)= キャンセル、Enter(`onSubmit`)=
-  確定(モデルが `canConfirmHideSelection` を再判定するため、拒否された確定は
-  画面が残る)、Space = カーソル行トグル。矢印(↑/↓)のカーソル移動だけは
-  `onMoveCommand` でなくローカル keyDown モニタ(`overlayArrowKeys`、
-  `ProjectOverlayKeys.swift`)で受ける — 編集可能な sink TextField が
-  フォーカスを持つ間は field editor が矢印を消費して `onMoveCommand` が
-  発火しない(実機で不達を確認)ため、dispatch 前にイベントを取って消費する。
-  行クリックでトグル、**背景クリックはキャンセル**(hide するのは
-  Enter だけ)。
-- controller の確定経路は、バッチ全体に対して **1 つ**のプロジェクト対応
-  「Hide Projects」undo を登録する。
-- 本画面はレイアウト適用の超過分 hide-pick(§26.3)と共用で、title / hint /
-  footer をパラメータ化してある。
+- `canHideFocusedProject`:hide 後も**最低 1 つは visible に残る**こと
+  (visible プロジェクト 2 つ以上)。performable チェックと実行が同じ判定を
+  共有し、不成立時はキー未消費で fall through する(`set_primary` と同型)。
+  同じ「最低 1 つ visible」拒否は一覧の表示トグル(§27.2)にも適用される
+  (必須対応事項 47)。
+- 実行 `hideFocusedProject(savingOutgoingPaneTree:)`:
+  1. focus の移動先を hide 前の配置上で解決する(nearest 規則)
+  2. 台帳の hidden フラグを立てる(`setProjectHidden(id, true)`)—
+     台帳の**行はそのまま**残り、visibility 列だけが変わる(§27.1)
+  3. `relayout()` が記憶しているレイアウト型で残りの visible 行の配置を
+     即座に再導出する(§26.3 の自動適用。hide 直後に選択画面もリサイズ操作も
+     介在しない)
+  4. process / PTY / surface は生存(`ProjectState` は `projects` に残る)
+  5. zoom バックストップと `snapFocusToPrimaryInOverallView` を適用する
+- 復帰導線はプロジェクト一覧のみ(§7.2, §27)。hidden シェルフは廃止済みの
+  まま(必須対応事項 48)。
+- controller は 1 hide につき 1 つの「Hide Project」undo を登録する。
 
-### テスト(ProjectHideSelectionTests、14 件)
+### テスト(WorkspaceModelTests 内)
 
 ```text
-- 確定: 選択した複数プロジェクトが一括で hidden(1 コミット、leaf 除去、
-  projects には生存、プロジェクト一覧から復帰可能)
-- キャンセル: 何も hidden にならず、画面を開く前と完全に同一
-- select-all: 確定できず画面が残る / 1 つ外せば確定でき、外した 1 つが
-  visible に残る
-- セッション機構: begin は序数順列挙・zoom 解除 / visible 1 つ・ノート
-  エディタ中・一望モード中は begin 拒否 / toggle は複数可・hidden と未知 id
-  拒否 / 空選択の確定は何も隠さず閉じる
-- focus: focused プロジェクトが選択に含まれると最近傍の生存者へ移る
-- 占有: セッション中の focus 移動・ノート編集・一望モード・ソートは no-op、
-  終了後に復活 / restoreState と removeAllProjects がセッションを終了
+- hide: focused プロジェクトだけが hidden になり、focus が生存者へ移る
+- 拒否: 最後の visible プロジェクトの hide は拒否(canHideFocusedProject =
+  false、実行は nil)/ 他プロジェクトが既に hidden の場合も同様
+- 再配置: hide 直後に残りの行が記憶しているレイアウト型で組み直される
+  (§26.3 の relayout 経由。ProjectLedgerTests の自動適用テストが検証)
 ```
 
-## 26. 登録レイアウト仕様
+## 26. レイアウト型仕様
 
-組み込み固定 11 種の画面配置テンプレートを一手で適用する層。スロット計算・
-数合わせ・割り当て順の判断ロジックはモデル層に置き、`XGhosttyTests` から
-検証する(§26.5)。
+全体ビューの配置を**レイアウト型 = 形 × 向き**の規則として記憶し、visible な
+表示数が変わるたびに同じ型で自動適用する層(2026-08-18 改訂で登録レイアウト
+11 種の一手適用を置き換えた。必須対応事項 49〜56)。「適用中のレイアウト」を
+持たなかった旧設計と異なり、**型は永続状態**であり、配置は台帳(§27.1)と型から
+常に再導出される投影である。スロット計算・畳み込み・導出の判断ロジックは
+モデル層(`ProjectLayoutType.swift`)に置き、`XGhosttyTests` から検証する
+(§26.5)。
 
-### 26.1 レイアウト定義とスロット計算(ProjectLayout)
+### 26.1 レイアウト型とスロット計算(ProjectLayoutType)
 
-- `ProjectLayout.registered`:等分割(プロジェクト数 4〜9 の 6 種)と X+1
-  (X = 4〜8 の 5 種)の計 11 種。**データとしての閉集合**で、ユーザー定義
-  レイアウトは存在しない(非対応事項)。
-- 等分割の行配分は純関数 `equalSplitRowCounts(n)`:行数 = √n に最も近い整数、
-  余りは上の行から 1 つずつ配る — 4 = 2+2、5 = 3+2、6 = 3+3、7 = 3+2+2、
-  8 = 3+3+2、9 = 3+3+3(Essence の表をそのまま固定)。
-- `rowCounts`:X+1 は X 部分の行配分の末尾に `[1]`(最下段・全幅)を足したもの。
-- `slotFrames`:単位正方形上の rect 列を**割り当て順**(row-major:上の行から、
-  行内は左から右 — +1 枠は最下段なので自然に最後)で返す。**全行の高さは等分**
-  (X+1 の +1 行も他の行と同じ高さ — Essence は +1 行の高さを規定しないため、
-  行高等分をそのまま延長する設計解釈。T-041 の実機確認対象)。行内の各スロット
-  幅は等分。
-- `SplitTree.init(gridRows:)`(element-agnostic)がグリッドを入れ子の等比
-  split として構築する(行方向 vertical、行内 horizontal。equalChain により
-  先頭ノード比 1/n、以降は残りの 1/(n-1) で全スロット等分)。走査順は
-  row-major で、`slotFrames` の割り当て順と一致する。
+- `ProjectLayoutType` = `Shape`(`wide` 横長型 / `tall` 縦長型 / `pedestal`
+  台座型)× `Orientation`(`rowMajor` 行送り / `columnMajor` 列送り)。
+  ユーザー定義レイアウトは存在しない(非対応事項)。
+- **横長型**:行数 = √n に最も近い整数のグリッドに、上の行からできるだけ
+  均等に配る(余りは上の行から 1 つずつ)— 4 = 2+2、5 = 3+2、6 = 3+3、
+  7 = 3+2+2、8 = 3+3+2、9 = 3+3+3。行高・行内幅は等分。
+- **縦長型**:横長型の転置。列数 = √n に最も近い整数、左の列から均等に配り、
+  列幅・列内高を等分。
+- **台座型**:n−1 個を上部に(行送りは横長型・列送りは縦長型の規則で)配置し、
+  1 個を最下段に全幅で置く。
+- **向きは序数の進み方**:行送りは上の行から左→右、列送りは左の列から上→下。
+  横長型・縦長型では向きは割り当て順だけを変え、形は変えない。台座型の最下段は
+  常に最後。
+- `slots(forVisibleCount:)` が単位正方形上の `Slot`(frame + row/column)列を
+  **割り当て順**で返す。`tree(over:)` がスロット列を入れ子の等比 split
+  (`SplitTree`)として構築し、走査順は割り当て順と一致する。
 
-### 26.2 レイアウト選択オーバーレイ(choose_project_layout / Cmd+Opt+L)
+### 26.2 選択肢の畳み込みと選択オーバーレイ(choose_project_layout / Cmd+Opt+L)
 
-- 新規 action `choose_project_layout`(§9.1、既定 `Cmd+Opt+L`。§10.5 のとおり
-  既存割り当てなし。当初は `Cmd+L` だったが、日々使うプロジェクト一覧に
-  `Cmd+L` を譲り、オーバーレイ系の `Cmd+Opt+` 族へ移した)。performability は `canBeginLayoutSelection`(visible
-  プロジェクト 1 つ以上 + 他のオーバーレイなし)で、不成立時はキー未消費で
-  fall through する。
-- `beginLayoutSelection` は zoom を先に解除する(zoom 中呼び出しの挙動は
-  Essence が実装に委ねた部分)。セッション状態 `layoutSelectionActive` は
+- 各 visible 数(1〜9)の選択肢は `choices(forVisibleCount:)`:形 3 × 向き 2 の
+  6 通りから、**配置と序数の進み方が完全一致するものを 1 つに畳んだ**集合
+  (例:n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれず、n=3 の
+  台座型・行送りは横長型・行送りと一致して畳まれる。n=1 は 1 択)。
+- `choose_project_layout`(既定 `Cmd+Opt+L`、§10.5)が選択オーバーレイ
+  `ProjectLayoutSelector` を開く。performability は `canBeginLayoutSelection`
+  (visible プロジェクト 1 つ以上 + 他のオーバーレイなし)で、不成立時は
+  キー未消費で fall through する。`beginLayoutSelection` は zoom を先に解除する
+  (zoom 中呼び出しの挙動は Essence が実装に委ねた部分)。セッション状態は
   transient で、`restoreState` / `removeAllProjects` が終了する。
-- `ProjectLayoutSelector` オーバーレイ:11 種を列挙(ラベル・プロジェクト数・
-  **効果プレビュー** — モデルの数合わせ判断をそのまま行ごとに表示:
-  「fits」/「+N new」/「pick N to hide」)。矢印でカーソル移動、Enter または
-  行クリックで選択、Esc または背景クリックで何も変えずに閉じる。キーボード
-  機構は ProjectHideSelector と同じ sink-TextField 方式(矢印も同じく共有の
-  ローカル keyDown モニタ `overlayArrowKeys` で受ける、§25)。
-- オーバーレイは呼び出し中のみ描画され、抜ければ端末が全面に戻る。selector →
-  hide-pick の遷移では focus 手戻りをスキップし、キーボードは pick 画面に
-  着地する。
+- オーバーレイは**現在の visible 数に対する選択肢だけ**を列挙し、矢印で選んで
+  Enter で適用、Esc で何も変えずに閉じる。**プロジェクト数は一切変えない**
+  (旧設計の不足分新規作成・超過分 hide-pick は廃止)。選択肢が 1 つのときは
+  選ぶものが無い旨を表示するだけとする(必須対応事項 50)。
+- オーバーレイは呼び出し中のみ描画され、抜ければ端末が全面に戻る。
 
-### 26.3 数合わせ(chooseLayout の判断)
+### 26.3 台帳 → 配置の導出(relayout)
 
-`chooseLayout` がモデルの数合わせ判断を一手に持つ:
+- 配置の導出は `WorkspaceState.relayout()` の 1 点:
+  `canonicalProjectTree = layoutType.tree(over: visibleProjectIDs)` —
+  台帳(§27.1)の visible な行を行順のまま、記憶している型のスロットへ
+  割り当てる(行送りは上の行から左→右、列送りは左の列から上→下、台座型の
+  最下段は最後)。序数(Cmd+1〜9)は visible 行を上から数えた順なので、
+  配置は常に序数に追従する。
+- **自動適用**:`projectOrder` / `hiddenProjectIDs` / `layoutType` を変える
+  すべての変更(一覧の表示トグル・`Cmd+Opt+H`・新規作成・close・行移動・
+  ソート・型選択)と復元の後に `relayout()` が呼ばれる。visible 数が変わらない
+  操作(終了済み状態への遷移等)は台帳に触れないため発火しない
+  (必須対応事項 54)。
+- visible でなくなったプロジェクトへの zoom は relayout が解除する。
 
-- **等数**(レイアウト数 = 現表示数):即時適用(`.applied`)。visible な
-  プロジェクトが現在の序数順のままスロットへ入る。
-- **不足**(レイアウト数 > 現表示数):`.needsNewProjects(n)` を返し、controller
-  が不足分を通常の新規作成と同様に構築(fresh `SurfaceView` = 新シェル、
-  `ProjectNameGenerator` 名、初期ペインがプライマリー)して
-  `applyLayout(appending:)` で完了する。新規プロジェクトは**序数の末尾**に
-  登録され、既存 visible が先頭側スロットを、新規が末尾側スロットを埋める。
-  `applyLayout` は不足数の不一致・id 衝突を拒否する(無変化で false)。
-- **超過**(レイアウト数 < 現表示数):hide-pick セッション
-  (`layoutHidePick`:選ばれたレイアウト + 選択集合)が開く。
-  - `layoutHidePickRequiredCount`(超過数)は live state から再導出される。
-  - `canConfirmLayoutHidePick`:**選択数が超過分ちょうど**のときのみ確定可
-    (多くても少なくても不可。画面は残る)。
-  - `confirmLayoutHidePick`:選択されたプロジェクトを hide(**close はしない**
-     — ペイン・プロセス・情報は hidden のまま生存)し、残りへレイアウトを
-    序数順で適用 — **1 回の state 書き込み**。focus 規則は §25 の確定と同一。
-  - `cancelLayoutHidePick`(Esc)は**レイアウト適用ごと**キャンセルする —
-    何も隠れず、何も並び替わらない。
-  - UI は ProjectHideSelector の再利用(title「apply <layout>」、footer
-    「select exactly N to hide (k/N)」/確定サマリ)。
-- controller は適用 1 回につき **1 つ**の「Apply Layout」undo を登録する
-  (等数・不足・超過のいずれの完了経路でも)。
+### 26.4 永続化と既定
 
-### 26.4 一回性と永続化
+- 選んだ型は `WorkspaceState.layoutType` として永続化され、再起動後も維持
+  される。保存が無いとき(レガシー保存・新規ワークスペース)の既定は
+  **横長型・行送り**(`ProjectLayoutType.default`)。
+- `canonicalProjectTree` は台帳と型からの投影なので**永続化しない**(§12)。
+  旧保存の tree は decode 時に行順の種としてのみ読まれる。
+- プロジェクト単位のレイアウト resize / equalize は**廃止**
+  (`resize_project` / `equalize_projects` action ごと削除、§9.1)。
+  プロジェクト境界は動かせない。zoom 中のプロジェクト内ペイン(split)の
+  resize / equalize は従来どおり有効(必須対応事項 55)。
 
-- 適用は `applyLayoutTree` による canonical tree の再構築のみ:**「適用中の
-  レイアウト」という状態は持たない**(one-shot)。適用後の手動 resize・分割・
-  ソートは従来どおり可能で、配置は従来の経路でそのまま保存・復元される。
-- 選択されなかった hidden プロジェクトは `projects` エントリも hidden のままの
-  状態も一切影響を受けない。
-- 序数(Cmd+1〜9)は走査順由来なので適用後の配置に自動追従する。zoom は
-  クリアされる(適用は全体ビューの配置替え)。
-
-### 26.5 テスト(ProjectLayoutTests、15 件)
+### 26.5 テスト(ProjectLayoutTypeTests 13 件 / ProjectLayoutSelectionTests 10 件)
 
 ```text
-- 定義とスロット計算: 11 種の registered 定義 / 等分割行配分の Essence 表 /
-  slotFrames のグリッド規則(行高等分〔+1 行含む〕・行内幅等分・+1 全幅
-  最下段・row-major 割り当て順・7 分割の具体ピン)/ gridRows ツリーが
-  手組みの等比ノードツリーと一致
-- 等数: 序数順割り当て・ツリー = 期待グリッド・序数追従
-- 不足: 新規プロジェクトが序数末尾に作成・割り当て / 不足数不一致は拒否
-- 超過: hide-pick が超過分ちょうどで確定ゲート(0/1/3 選択は拒否・画面
-  維持)/ 選択 2 つだけが hidden(close されない)・残り 4 つが序数順割り
-  当て・序数追従 / focused が選択されると最近傍生存者へ focus /
-  選択外の hidden プロジェクトは不変
-- キャンセル: selector の Esc も hide-pick の Esc も適用ごと取りやめ(無変化)
-- セッション: begin は zoom 解除・他オーバーレイ中は拒否 / セッション中は
-  画面が対話を占有 / restoreState・teardown で終了
-- 一回性: 適用後のソートは自由 / Codable round trip で適用後の canonical
-  tree が保存・復元される
+- スロット計算: visible 数 1〜9 の各々で横長・縦長・台座 × 行送り・列送りの
+  スロットが定義どおり(√n 行配分・転置・台座の最下段全幅・等分)
+- 割り当て順: 行送りは上の行から左→右、列送りは左の列から上→下、台座の
+  最下段は最後 — 序数がそれに追従する
+- 畳み込み: 配置と序数の進み方が完全一致する選択肢は 1 つに畳まれる
+  (n=9 の横長/縦長は畳まれない、n=3 の台座・行送りは横長・行送りへ畳まれる)
+- 永続化: 型の round trip 復元 / 保存が無ければ横長型・行送り
+- 自動適用: visible 数が変わる操作の後、記憶している型で新しい数の配置が
+  導かれる / 変わらない操作では配置が変わらない(ProjectLedgerTests)
+- 選択セッション: 現在の visible 数の選択肢だけを列挙 / 1 択のときは選ぶ
+  ものが無い / Enter で適用・Esc で無変化 / プロジェクト数は変わらない
 ```
 
-## 27. プロジェクト一覧仕様
+## 27. プロジェクト一覧仕様(台帳)
 
-hidden を含む**全プロジェクト**を 1 つの表で読む層。抱えているプロジェクトの
-全体像はここで一望でき、hidden プロジェクトの**唯一の復帰導線**でもある
-(hidden シェルフは廃止、§7.2)。行の内容・並び・トグル可否・Enter 可否の判断は
-すべてモデル層に置き、`XGhosttyTests` から検証する(§27.4)。
+hidden を含む**全プロジェクト**を載せた一覧は、全体像を把握し統括管理する
+**台帳(source of truth)**である(2026-08-18 改訂の主従逆転)。行順・列順・
+各行の visibility は永続状態であり、画面配置はそこからレイアウト型(§26)で
+導かれる投影にすぎない。一覧は hidden プロジェクトの**唯一の復帰導線**であり
+(hidden シェルフは廃止、§7.2)、新規プロジェクト作成の**唯一の導線**でもある
+(§27.4)。行の内容・並び・セル編集の確定と取り消し・トグル可否・focus 可否・
+新規行の表示状態の判断はすべてモデル層(`ProjectList.swift` /
+`WorkspaceState.swift`)に置き、`XGhosttyTests` から検証する(§27.5)。
 
-### 27.1 行の導出(ProjectListRow / projectListRows)
+### 27.1 台帳と一覧の形(projectOrder / ProjectListRow / ProjectListColumn)
 
-```swift
-struct ProjectListRow: Equatable, Identifiable {
-    let id: ProjectID
-    let title: String
-    let ordinal: Int?          // hidden のとき nil
-    let isHidden: Bool
-    let priority: ProjectPriority?
-    let deadline: ProjectDeadline?
-    let noteFirstLine: String
-}
-```
+- 台帳の実体は `WorkspaceState` の永続フィールド 3 つ:
+  - `projectOrder: [ProjectID]` — hidden を含む全プロジェクトの**単一の行順**
+    (visible / hidden で区画分けしない)。`projects.keys` の順列という不変条件を
+    持ち、decode 後は `normalizeLedger()` が修復する(未知 id は落ち、
+    載っていないプロジェクトは作成順で末尾に足される)。
+  - `hiddenProjectIDs: Set<ProjectID>` — 一覧の visibility 列。**永続化される**
+    (2026-08-18 改訂で runtime-only から昇格、§12.1)。
+  - `listColumnOrder: [ProjectListColumn]` — 列順。既定は
+    **表示・タイトル・優先度・締切・次トリガー・ノート**の 6 列。
+- **序数(Cmd+1〜9)は visible な行を上から数えた順**
+  (`visibleProjectIDs = projectOrder.filter { !hidden }`、`ordinal(of:)`)。
+  ツリーの走査順ではなく台帳が序数を定義し、配置が序数に追従する(§26.3)。
+- `ProjectListRow` は行の純粋導出(`projectListRows`):タイトル・序数
+  (hidden は nil)・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
+  まま運び、空欄に描くのは view の仕事。ノート列は通常 1 行目のみを表示し、
+  全行表示トグル(§27.2)が全文を描く。
+- 行順の入れ替えは `moveProjectRow(_:to:)`(一覧では `Cmd+↑`/`Cmd+↓`、端で
+  クランプ)、列順の入れ替えは `moveListColumn(_:by:)`(`Cmd+←`/`Cmd+→`)。
+  どちらも永続化され、閉じて開き直しても残る。
+- オーバーレイはウィンドウの幅・高さそれぞれ**8 割程度**を占め、行が収まらない
+  ときはスクロールしてセルカーソルに追従する(zoom 中に呼び出した場合の挙動は
+  定めず、実装に任せる)。
 
-- `WorkspaceStateOf.projectListRows` が純粋導出する:**visible を序数順**
-  (canonical tree の葉走査順 = Cmd+1〜9 の順)に並べ、**hidden をその後ろ**に
-  置く。
-- hidden の並びは `(createdAt, id.uuidString)` 昇順。これは
-  `reconcileOrphanedProjects` が復元時に再アタッチする順と同一なので、
-  一覧の見え方と「復元したら戻ってくる順」が一致する。
-- 「hidden か」は `hiddenProjectIDs` ではなく **canonical tree に葉を持つか**
-  から導く(不変条件 §14.3)。runtime の hidden 集合が仮に古くても一覧は正しい。
-- `ordinal == nil` と `isHidden` は同値だが両方を持つ。view が「番号が無い」から
-  意味を推論しなくてよいようにするため。
-- 未設定は未設定のまま運ぶ(`nil` 優先度・`nil` 締切・空の `noteFirstLine`)。
-  空欄に描くのは view の仕事。
-- `noteFirstLine` は `firstNoteLine(_:)` — ノート本文の 1 行目のみ。空ノートは
-  空文字。
+### 27.2 セル機構(カーソル・編集・Space・全行ノート)
 
-### 27.2 表示/非表示の即時トグル(Space)
+- **セルカーソル**(`ProjectListCellCursor`):`Tab` 右 / `Shift+Tab` 左 /
+  `Enter` 下 / `Shift+Enter` 上(矢印キーも同じ)。行末の `Tab` は次の行の
+  先頭へ折り返し、最終行の `Enter` はそこで止まる(グリッドの角は吸収)。
+- **テキスト列**(タイトル・締切・ノート)は文字を打つと編集が始まる
+  (`ProjectListCellEdit`:編集開始時の `original` とドラフト)。`Enter` /
+  `Tab` で確定して移動、`Esc` は**その編集だけ**を取り消して元の値に戻す。
+  確定は `commitListCellEdit`:タイトルは rename と同じ正規化(§9.1)、
+  締切は §24.1 の保存時境界(不正入力は未設定へ)、**ノート列の確定は 1 行目
+  だけを書き換え、2 行目以降は保持する**(複数行編集は `Cmd+E` の
+  オーバーレイの役割、§21.2)。
+- **選択式の列**(表示・優先度・次トリガー)は `Space` で値が循環する
+  (`cycledSelectionValue`。優先度:未設定→high→medium→low→未設定、
+  次トリガー:未設定→自分→チームメンバー→組織外部人→イベント→未設定)。
+  **表示列は 2 値のトグルで即時反映**:`setProjectHidden` が台帳を書き、
+  `relayout()` が背後の配置を即座に組み直す(§26.3)。確定ステップは無く、
+  Esc で一覧を閉じてもトグルは残る。可否は `canToggleProjectVisibility`:
+  hidden → visible は表示上限 9(§7.3)、visible → hidden は**最低 1 つは
+  visible に残す**(§25 と同じ規則)。
+- **全行ノート表示**(`Cmd+Opt+E`、一覧の中でのみ):全行のノートを全行表示に
+  するトグル。閲覧のみ・行ごとではなく一括・状態は透過的(セッション開始時は
+  常に 1 行表示、永続化しない)。一望モードの `toggle_note_overview` とは
+  別物(オーバーレイセッションは相互排他なので chord は衝突しない)。
+- 編集していないときの `Esc` は一覧を閉じる(§27.3)。
 
-- `canToggleProjectListVisibility(id)`:
-  - hidden → visible は `canAddVisibleProject`(表示上限 9、§7.3)で判定。
-  - visible → hidden は `visibleProjectCount >= 2` — **最低 1 つは visible に
-    残す**(§25 の hide 選択と同じ規則をこのトグルにも適用)。
-- `toggleProjectListVisibility(id, savingOutgoingPaneTree:)` は**確定ステップ
-  無しで即座に**適用する。Esc で一覧を閉じてもトグルは残る(実際の変更であって
-  ドラフトではない)。
-- show 経路は `showProject`(§11.8)と同じく trailing leaf の隣へ再アタッチする
-  が、**focus は動かさない**。focus 移動は Enter の役割。
-- hide 経路は除去前のツリー上で nearest leaf を解決し、**隠した対象が focused
-  だったときだけ**生存者へ focus を渡す(`confirmHideSelection` と同一規則)。
-  zoom バックストップと `snapFocusToPrimaryInOverallView` も同じ。
-- controller はトグル 1 回につき 1 つの undo("Show Project" / "Hide Project")を
-  登録する。キーボードフォーカスはセッション中ずっと一覧が保持し、focus の実移動は
-  一覧を閉じた時点で着地する。
+### 27.3 Cmd+Enter / Escape とセッション
 
-### 27.3 Enter / Escape
-
-- `canFocusProjectListRow(id)`:**visible な行のみ** true。hidden な行には
-  画面上の focus 先が無いので Enter は完全な no-op で、一覧も開いたまま残る。
-- `focusProjectListRow(id, savingOutgoingPaneTree:)`:セッションを閉じ、対象を
-  `focusedProject` にし、全体ビューに着地するので focus はそのプロジェクトの
-  **プライマリーペイン**へ寄る(§22.4)。undo は登録しない(focus 変更のため)。
-- Escape(`closeProjectList`)はトグルを残したまま閉じる。**focus は「いま
-  focused なプロジェクト」へ戻す** — 開いた時点の surface ではない。セッション中に
-  focused プロジェクトを隠した場合、その surface はもう画面上に無いため。
+- **focus は `Cmd+Enter`**(2026-08-18 改訂で Enter を下セル移動に譲った)。
+  `canFocusProjectListRow(id)`:**visible な行のみ** true。hidden な行には
+  画面上の focus 先が無いので `Cmd+Enter` は完全な no-op で、一覧も開いたまま
+  残る。
+- `focusProjectListRow(id)`:セッションを閉じ、対象を `focusedProject` にし、
+  全体ビューに着地するので focus はそのプロジェクトの**プライマリーペイン**へ
+  寄る(§22.4)。undo は登録しない(focus 変更のため)。
+- Escape(`closeProjectList`)は編集中でなければ一覧を閉じる。トグル・確定済み
+  セル編集・行/列移動はすべて実変更として残る。focus は「いま focused な
+  プロジェクト」へ戻す。
 - セッション状態 `projectListActive` は transient(永続化しない)。
   `canBeginProjectList` は「プロジェクトが 1 つ以上あり、ノートエディタも他の
   オーバーレイも出ていない」— 各オーバーレイはキーボードを単独で占有する。
-- `beginProjectList` は**先に zoom を解除**する(一覧は全体ビューを説明する
-  ものなので。zoom 中呼び出しの挙動は Essence が実装に委ねた部分)。
+  `beginProjectList` は**先に zoom を解除**する(一覧は全体ビューを説明する
+  ものなので)。`restoreState` / `removeAllProjects` はセッションを終了する。
 
-### 27.4 UI(ProjectListOverlay)
+### 27.4 新規プロジェクト作成(new_project / Cmd+N)
 
-- 1 行 = 序数(hidden は `·`)/ タイトル / 優先度・締切
-  (`ProjectPriorityDeadlineMeta` を共用、§24.2)/ ノート 1 行目(末尾切り詰め)。
-  hidden 行は全体を減光する。
-- ↑/↓ でカーソル移動(端で巻き戻る)、Space でカーソル行をトグル、Enter で
-  focus、Esc で閉じる。キーボード機構は ProjectHideSelector と同じ
-  sink-TextField + `overlayArrowKeys` 方式(§25)。
-- フッターはカーソル行に対して**そのキーが今何をするか**を表示する。拒否された
-  Space(最後の visible / 表示上限)が理由を自分で説明できるようにするため。
-- 呼び出し中のみ描画され、抜ければ端末が全面に戻る。
+- `new_project` action(既定 `Cmd+N`)が**唯一の作成導線**
+  (`new_project_split` と `Cmd+Opt+D` / `Cmd+Opt+Shift+D` は廃止、§9.1。
+  メニューの作成項目も同じ経路)。
+- **一覧の中**:カーソル行の直下に新規プロジェクトを挿入
+  (`insertProject(_:after:)`)し、通常の新規作成と同様に新しいシェルを起動
+  (fresh `SurfaceView`、`ProjectNameGenerator` 名、初期ペインがプライマリー)。
+  カーソルは新しい行のタイトル列に移り、**その場でタイトル編集が始まる**
+  (`pendingTitleEdit`)。
+- **一覧の外**:一覧を開いて同じ状態にする(挿入位置はカーソル初期行の直下)。
+- **新規行の表示状態はモデル判断**:挿入前の visible 数が 9 未満なら visible、
+  9 なら hidden(表示上限 §7.3 を作成でも守る)。visible での挿入は
+  `relayout()` が配置を即座に組み直す。
+- controller は作成 1 回につき 1 つの undo を登録する。
 
-### 27.5 テスト(ProjectListTests、14 件)
+### 27.5 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 19 件 / ProjectListTests 14 件)
 
 ```text
-- 行の導出: hidden を含む全プロジェクトを網羅 / visible が序数順・hidden が
-  その後ろ / 行内容 = タイトル・優先度・締切・ノート 1 行目 / 未設定は空
-- Space: 即時に hide/show を反映 / 最後の visible を隠すトグルは拒否 /
-  表示上限では show を拒否 / show は focus を動かさない /
-  focused を隠すと最近傍へ focus が移る
-- Enter: visible 行で focus して閉じる / hidden 行は何も起きず一覧が残る
-- セッション: begin は zoom 解除・他オーバーレイ中は拒否 /
-  Esc で閉じてもトグルは残る
+- 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
+  visible 行を上から数えた順で hidden を飛ばす / 既定列順 = 表示・タイトル・
+  優先度・締切・次トリガー・ノート / 行順・列順の入れ替えと round trip 復元 /
+  配置が台帳の全変更と復元で再導出される / 挿入はアンカー行の直下・上限では
+  hidden
+- セルカーソル: Tab/Shift+Tab/Enter/Shift+Enter の移動 / 行末の折り返し /
+  最終行での停止
+- セル編集: テキスト列の確定で値が反映・Esc の取り消しで元の値 / ノート列は
+  1 行目だけを書き換え 2 行目以降を保持 / 不正な締切入力は未設定 /
+  選択式列の Space 循環 / 表示列のトグルは即時反映・最後の visible と
+  表示上限で拒否
+- focus: Cmd+Enter は visible 行で focus して閉じる / hidden 行は何も起きず
+  一覧が残る
+- セッション: begin は zoom 解除・他オーバーレイ中は拒否 / Esc で閉じても
+  実変更は残る / 全行ノートトグルは transient
 ```
 
 ## 28. 優先度の毎朝リセット仕様
@@ -2192,8 +2136,8 @@ struct Workday: Codable, Equatable, Hashable {
 - `resetPrioritiesIfNeeded(at:calendar:)` は due のときだけ、**hidden を含む
   全プロジェクト**の `priority` を `nil` にし、現在の作業日を刻む。実行したかを
   返す。
-- **意図的に狭い**:締切とノートは触らず、`canonicalProjectTree` を書かないので
-  **並び替えは構造的に起こり得ない**。
+- **意図的に狭い**:締切・ノート・次トリガー(§24.6)は触らず、台帳の行順
+  (`projectOrder`)を書かないので**並び替えは構造的に起こり得ない**。
 
 ### 28.3 トリガ(BaseTerminalController)
 

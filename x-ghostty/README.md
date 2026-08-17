@@ -24,20 +24,24 @@ its window management with a single model:
 - **One window.** There is exactly one terminal window. There are no tabs, no
   additional windows, and no quick terminal. Closing the last project closes the
   window and quits the app.
-- **Projects.** A "project" layer sits above splits. Projects are arranged in a
-  `ProjectTree` within the single window and can be created, moved, resized,
-  zoomed, hidden, shown, renamed, and jumped to by ordinal (Cmd+1-9). See
+- **Projects.** A "project" layer sits above splits. Projects can be created,
+  zoomed, hidden, shown, renamed, reordered, and jumped to by ordinal
+  (Cmd+1-9). The project list (see below) is the ledger that holds every
+  project; the on-screen arrangement is derived from it. See
   [SPEC.md](SPEC.md) for the design.
 - **Notes.** Each project holds a short handwritten note (up to 10 lines),
-  persisted with the project and restored across restarts. `Cmd+N` opens a
+  persisted with the project and restored across restarts. `Cmd+E` opens a
   note editor overlay for the focused project (`Cmd+Enter` saves and closes,
   Esc discards and closes; to keep `Cmd+Enter` free for this, the upstream
   `cmd+enter` fullscreen default is unbound — fullscreen remains on
-  `Ctrl+Cmd+F` and the Window menu); clicking the note glyph at the right
+  `Ctrl+Cmd+F` and the Window menu; the upstream `cmd+e` search-selection
+  default is likewise removed, though the action stays available for user
+  keybinds); clicking the note glyph at the right
   edge of a project's header band opens that project's note editor directly,
-  without moving focus; `Cmd+Opt+N` toggles a read-only
-  overview that lays every visible project's note over it at once (press
-  `Cmd+Opt+N` again or Esc to leave). Inside the editor the standard editing
+  without moving focus; `Cmd+Opt+E` toggles a read-only
+  overview that lays every visible project's note — along with its priority,
+  deadline, and next trigger — over it at once (press
+  `Cmd+Opt+E` again or Esc to leave). Inside the editor the standard editing
   shortcuts apply, including `Cmd+Z` / `Cmd+Shift+Z` for undo and redo of the
   note body — the history covers one editing session and nothing else, so it
   can never reach back into the project layer's own undo. See SPEC.md §21.
@@ -52,37 +56,53 @@ its window management with a single model:
   resize/equalize) work only while zoomed. If the primary pane's shell exits,
   the nearest remaining pane is promoted. The primary flag is persisted with
   the pane layout and restored across restarts. See SPEC.md §22.
-- **Priorities & deadlines.** Each project can carry a priority
-  (high/medium/low, unset by default) and a date-only deadline, set in the
-  same `Cmd+N` overlay as the note (invalid dates are rejected to unset) and
-  persisted with it. The project's header band and the note overview show a
-  subtle priority mark (`!!!`/`!!`/`!`) and the deadline; a past-due deadline
-  gets a single-stage subtle emphasis. `Cmd+S` reorders the visible projects by
-  priority and `Cmd+Shift+S` by deadline — sorting happens only when invoked
-  (never automatically), the layout keeps its shape, hidden projects are
-  untouched, and the `Cmd+1-9` ordinals follow the new order. Priority means
-  "today's focus", so it clears itself every morning: at local 06:00 every
-  project's priority — hidden ones included — goes back to unset, once per
-  day, silently, without reordering anything. Deadlines and notes are left
-  alone. See SPEC.md §24 and §28.
+- **Priorities, deadlines & next triggers.** Each project can carry a priority
+  (high/medium/low, unset by default), a date-only deadline (invalid dates are
+  rejected to unset), and a next trigger — who or what moves the project next
+  (self / team member / external person / event, unset by default). All three
+  are set in the project list's cells and persisted with the project. The
+  project's header band shows a subtle priority mark (`!!!`/`!!`/`!`) and the
+  deadline (never the next trigger); the note overview shows all three
+  alongside the note; a past-due deadline gets a single-stage subtle emphasis.
+  `Cmd+S` reorders the project list's rows by priority and `Cmd+Shift+S` by
+  deadline — every row is sorted, hidden ones included, sorting happens only
+  when invoked (never automatically), it works whether or not the list is
+  open, and the `Cmd+1-9` ordinals follow the visible rows of the new order.
+  Priority means "today's focus", so it clears itself every morning: at local
+  06:00 every project's priority — hidden ones included — goes back to unset,
+  once per day, silently, without reordering anything. Deadlines, notes, and
+  next triggers are left alone. See SPEC.md §24 and §28.
 - **Deletion protection.** Closing a project always asks for confirmation,
   whether or not anything is running in it. When a project's last pane's shell
-  exits, the project stays as a terminated pane — its note, priority, and
-  deadline kept — and pressing Return starts a new shell in the same pane.
+  exits, the project stays as a terminated pane — its note, priority,
+  deadline, and next trigger kept — and pressing Return starts a new shell in
+  the same pane.
   The only way a project and its information are lost is an explicitly
   confirmed close. See SPEC.md §23.
-- **Hide selection.** `Cmd+Opt+H` opens a selection screen listing every
-  visible project: toggle any number of them (arrows + Space, or click) and
-  press Enter to hide them all in one batch; Esc closes without hiding
-  anything. At least one project always stays visible. See SPEC.md §25.
-- **Project list.** `Cmd+L` opens a table of *every* project, hidden ones
-  included — ordinal, title, priority, deadline, and the note's first line —
-  with the visible ones first in ordinal order and the hidden ones after
-  them. Arrow keys move the cursor, Space hides or shows the cursor's project
-  on the spot (the change sticks even if you then press Esc), Enter focuses a
-  visible project and closes the list, and Esc closes it. This is the only way
-  back for a hidden project: there is no always-on hidden-project shelf, so
-  nothing permanently occupies terminal space. See SPEC.md §27.
+- **Hiding.** `Cmd+Opt+H` immediately hides the focused project — no
+  selection screen — and the remaining projects re-lay themselves out with
+  the remembered layout type. At least one project always stays visible, so
+  hiding the last visible project is refused. See SPEC.md §25.
+- **Project list.** `Cmd+L` opens the ledger: a table covering roughly 80% of
+  the window that lists *every* project, hidden ones included, in one
+  unpartitioned row order with six columns — visibility, title, priority,
+  deadline, next trigger, and the note's first line. This row order is the
+  source of truth: the on-screen arrangement is derived from it, and the
+  `Cmd+1-9` ordinals are its visible rows counted from the top. The list has
+  a cell cursor (Tab / Shift+Tab / Enter / Shift+Enter, or arrows); typing in
+  a text cell starts an edit that Enter / Tab commit and Esc cancels; Space
+  cycles a selection cell — on the visibility column it hides or shows the
+  project on the spot, immediately re-laying out the terminals behind the
+  list (the change sticks even if you then press Esc). `Cmd+↑`/`Cmd+↓` move
+  the cursor's row and `Cmd+←`/`Cmd+→` its column, and both orders persist
+  across restarts. `Cmd+Opt+E` toggles showing every row's full note.
+  `Cmd+N` — inside or outside the list — creates a new project right below
+  the cursor row, ready for its title to be typed; the list is the only
+  creation path. `Cmd+Enter` on a visible row focuses that project and
+  closes the list (on a hidden row it does nothing), Esc closes it, and the
+  table scrolls to follow the cursor. This is also the only way back for a
+  hidden project: there is no always-on hidden-project shelf, so nothing
+  permanently occupies terminal space. See SPEC.md §27.
 - **Remote splits.** Splitting a pane whose shell is on a remote host (as
   reported by shell integration over OSC 7) opens the new pane on that same
   host and in the same directory, reconnecting with `ssh` and leaving user,
@@ -92,14 +112,16 @@ its window management with a single model:
   cannot be determined or the connection fails, you simply get a local pane as
   before. Only splits do this — new projects always start locally. See
   SPEC.md §29.
-- **Layouts.** `Cmd+Opt+L` opens a list of 11 built-in layouts — equal splits for
-  4–9 projects and X+1 (X = 4–8: X projects on top, one full-width across the
-  bottom). Arrow keys + Enter apply one, Esc closes without changing
-  anything. If the layout holds more projects than are visible, new projects
-  with fresh shells are created at the ordinal tail; if fewer, a pick screen
-  asks to select exactly the excess to hide (never close) before applying.
-  Applying is a one-shot arrangement: nothing remembers the "current layout",
-  and manual resizing, splitting, and sorting keep working as before. See
+- **Layout types.** The screen arrangement is a layout type — a shape (wide,
+  tall, or pedestal: n−1 on top plus one full-width across the bottom) times
+  an ordinal direction (row-major or column-major) — remembered persistently
+  and re-applied automatically whenever the number of visible projects
+  changes (hiding, showing, creating, closing). `Cmd+Opt+L` lists only the
+  distinct choices for the current visible count (identical arrangements are
+  collapsed; with a single choice it just says there is nothing to choose):
+  arrow keys + Enter apply one, Esc closes without changing anything, and
+  the project count never changes. Project boundaries cannot be resized or
+  equalized by hand — pane resizing inside a zoomed project still works. See
   SPEC.md §26.
 - **Splits** work as they do upstream, nested inside each project; in the
   overall view only each project's primary pane is shown (see above).

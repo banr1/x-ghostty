@@ -8,9 +8,7 @@
     "avoid_mixing_high_risk_items": true,
     "avoid_mixing_executors": true
   },
-  "active_batch": [
-    "T-074"
-  ],
+  "active_batch": [],
   "items": [
     {
       "id": "T-001",
@@ -3072,7 +3070,7 @@
     {
       "id": "T-074",
       "title": "Update SPEC.md and README.md for the 2026-08-18 revision: the ledger inversion (list as source of truth, arrangement as projection), layout types and auto-apply, immediate Cmd+Opt+H hide, sort over all rows, next trigger, list cell editing / reordering / Cmd+N creation / Cmd+Enter focus, priority-deadline entry in the list, key changes (Cmd+E / Cmd+Opt+E, Cmd+Opt+D removal), abolished project resize/equalize; README Building section keeps the 3 verification commands",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-091",
@@ -3085,7 +3083,30 @@
       },
       "batch_group": "docs",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "Full build passes after the SPEC.md / README.md revision (docs only, no code changes)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests pass."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED, 0 failures (failure grep = 0)."
+        },
+        {
+          "type": "diff",
+          "summary": "SPEC.md rewritten for the 2026-08-18 revision, keeping section numbers aligned with code doc-comments (ProjectList*/ProjectLayoutType/WorkspaceState reference the new meanings): §3-§5 ledger model (projectOrder/hiddenProjectIDs/layoutType/listColumnOrder as source of truth, canonicalProjectTree as relayout() projection); §4.1 inversion; §6.1 overlay set; §7.3 ordinals from ledger visible rows, cap behaviour for new_project; §9 action list (new_project/move_project added; new_project_split/resize_project/equalize_projects removed with C-ABI note); §10 keymap (Cmd+N=new_project, Cmd+E/Cmd+Opt+E notes, resize section abolished, goto/move chords per Config.zig); §11.1 new_project, §11.4/11.5 abolition stubs, §11.7 immediate hide, §11.8 show via ledger relayout; §12 persistence (hidden persisted, tree not persisted, normalizeLedger restore); §14 invariants updated (ledger permutation, projection-only tree, value-changes-do-not-reorder); §15/§17/§19/§20 annotated as historical with pointers; §21.2 Cmd+E and metaRow removal, §21.3 Cmd+Opt+E with overview showing priority/deadline/next trigger and list-chord disambiguation; §24 retitled priority/deadline/next-trigger, entry via list cells, sorts over all rows (priorityOrderedProjectIDs/deadlineOrderedProjectIDs), §24.5 20 tests, new §24.6 ProjectNextTrigger; §25 rewritten as immediate-hide spec (canHideFocusedProject); §26 rewritten as layout-type spec (ProjectLayoutType, choices collapsing, relayout derivation, persistence, resize/equalize abolition); §27 rewritten as ledger spec (27.1 ledger/rows/columns/80% size, 27.2 cell cursor+edits+Space+full-note toggle, 27.3 Cmd+Enter/Esc, 27.4 new_project creation, 27.5 tests); §28 reset-untouched fields include next trigger. README.md About section rewritten: Cmd+E/Cmd+Opt+E notes bullet, priorities/deadlines/next-trigger bullet (list-cell entry, all-row sorts), immediate-hide bullet, ledger project-list bullet (6 columns, cell editing, Cmd+N creation, Cmd+Enter focus, ~80% size), layout-types bullet; Building section keeps zig build / just test / just swift-test."
+        }
+      ]
     },
     {
       "id": "T-075",

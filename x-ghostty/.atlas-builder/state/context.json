@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "e986af9c1b2269c5171dbf0db2d6325669e4ae57ec538cd2454eed88a1d60e08",
+    "last_signature": "0f6f6e856ccdfe13f4b9679b8fdf25b8a6a76506fcf084205dce77b9cc639474",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T06:03:28+09:00",
-    "last_checked_at": "2026-08-18T06:03:28+09:00",
+    "last_progress_at": "2026-08-18T06:29:27+09:00",
+    "last_checked_at": "2026-08-18T06:29:27+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -23,19 +23,19 @@
   "counters": {
     "context_usage_estimate": 0.6,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 26,
-    "completed_todos_since_reset": 4,
-    "important_decisions_since_reset": 0,
+    "changed_files_since_reset": 2,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T07:00:00+09:00",
-    "summary": "T-073(キー変更)完了、3 ゲート green(zig build / just test / just swift-test = exit 0、TEST SUCCEEDED・failed 0。テスト件数表示は並列出力で揺れるため exit code と failed grep が判定基準)。Config.zig 既定: cmd+e=edit_project_note、cmd+opt+e=toggle_note_overview、upstream の cmd+e=search_selection 既定は削除(action 自体は残存・ユーザー keybind 可)、cmd+opt+n は無割当。ProjectNoteOverviewKeyCatcher の再押下チョードを Cmd+Opt+E に変更。メニュー項目はこれらの action を参照していない(MainMenu.xib に該当なし)ため変更不要。一覧内 Cmd+Opt+E(全行ノート・T-071)との衝突なし(オーバーレイセッションは相互排他、一覧中は一覧のモニタが消費)。キーマップ最終形: Cmd+N=new_project、Cmd+E=ノート編集、Cmd+Opt+E=一望/全行ノート、Cmd+Opt+H=即時 hide、Cmd+L=一覧、Cmd+Opt+L=レイアウト、Cmd+S/Cmd+Shift+S=ソート、Cmd+P=set_primary、Cmd+1〜9=序数ジャンプ。",
+    "written_at": "2026-08-18T06:28:30+09:00",
+    "summary": "T-074 完了(cycle 15): SPEC.md / README.md を 2026-08-18 改訂(台帳反転)に全面整合させた。SPEC の節番号はコード doc-comment の参照を正として内容側を書き換え(§24.6 次トリガー新設、§25 即時 hide、§26 レイアウト型、§27 台帳、§9/§10/§11/§12/§14 更新、§15/§17/§19/§20 は歴史的注記)。README は About 全面更新・Building 3 コマンド維持。3 ゲート green(zig build / just test / just swift-test = exit 0)。これで atlas-builder 実行可能な must/should Todo は全完了。残 must は実機確認 6 件(T-075〜T-080、executor: human)のみ — R-020(Human-input Recommendation、stop_until_human_review、proposed)を記録済みで、ループはここで停止する。運用の定型・ツール制約は lessons.jsonl に集約済み(projection/stage-apply の手順、guard の Bash 文面照合、3 ゲートの判定基準、zig PATH、C ABI append 規約、Human-input Rec の必須 shape)。",
     "next_actions": [
-      "T-074(active batch): SPEC.md / README.md の 2026-08-18 改訂反映。SPEC.md: §26 台帳反転(一覧=source of truth、配置=投影)・レイアウト型と自動適用は既記載か確認し、§25 即時 hide、§24.4 全行ソート、§24.6 次トリガー、§27 一覧(セル編集・セルカーソル・列/行の入替永続化・Cmd+N 作成一本化と new_project_split 廃止・Cmd+Enter focus・Cmd+Opt+E 全行ノート・優先度/締切入口の一覧移設[ノート編集オーバーレイの meta 行削除]・8割サイズ)、§21.2 キー変更(Cmd+E/Cmd+Opt+E、search_selection 既定解除、Cmd+Opt+N/Cmd+Opt+D 廃止)、プロジェクト単位 resize/equalize 廃止の各節を実装に合わせ改訂。コード内 SPEC 参照(§27.1/§27.2/§27.3/§27.4 等)と節番号の整合を保つこと(ProjectList*.swift の doc が §27.x を参照中)。README.md: 機能説明を現状語彙(プロジェクト・一覧・レイアウト型・次トリガー・キーマップ)に更新、Building 節に zig build / just test / just swift-test の 3 コマンド維持。検証 3 ゲート実行。",
-      "以降: batch7-human(T-075〜T-080 実機確認、Human-executor)— T-074 完了後は atlas-builder 実行可能な must Todo が尽きるため、Human-input Recommendation で実機確認の依頼を記録して停止(§21.4)。",
-      "運用注意: (a) projection は CONTROL_ROOT から stage → python patch → apply(bundle 編集 python と apply は別 Bash 呼び出しに)。(b) context.json は Edit ツールで(Bash python は guard deny)。(c) Swift Testing #expect 内 mutating 不可 — let に受ける。(d) validation の run ledger divergence 警告は既知・対応不要。(e) zig は /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に。(f) exit code はパイプ経由で取らない。(g) Bash の cwd はサイクル開始時 CONTROL_ROOT — just は x-ghostty に cd してから。(h) C ABI: xghostty.h の action enum は in-place 置換で後続タグ値を保つ(append 規約)。"
+      "人間の resume 待ち(R-020)。resume 後: 実機確認の結果を読み、OK なら T-075〜T-080 を human 確認の記録(resume ノート/attestation)を根拠に done 化する projection を適用。NG 報告があれば該当 Todo を in_progress に戻して修正 Todo を切り、実装 → 3 ゲート → 再度実機確認依頼の順で回す。",
+      "resume で ESSENCE.md が更新されていた場合は先に Spec 再投影(projected_from_essence_sha256 の drift を validate で確認)。",
+      "全 must 完了後は must_complete 相当の状態だが phase は extended_approved で should も全 done のため、should-complete 判定に到達するはず — ループの判定に任せ、自前で完了ゲートを立てないこと。"
     ],
     "open_questions": []
   }
