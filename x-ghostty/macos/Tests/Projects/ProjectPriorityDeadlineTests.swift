@@ -395,38 +395,11 @@ struct ProjectPriorityDeadlineTests {
         #expect(model.state.visibleProjectID(ordinal: 2) == visibleLow.id)
     }
 
-    // MARK: Editor commit point (SPEC §24.1)
+    // MARK: Editor commit point (SPEC §24.1, §27.2)
 
-    @Test func endNoteEditingSavesNotePriorityAndDeadlineTogether() throws {
-        let project = Self.makeProject(name: "alpha")
-        let model = try Self.makeModel(visible: [project])
-        model.beginNoteEditing(project.id)
-
-        model.endNoteEditing(
-            saving: "ship it", priority: .high, deadlineInput: "2026-09-01")
-
-        #expect(model.noteEditingProject == nil)
-        #expect(model.state.projects[project.id]?.note == "ship it")
-        #expect(model.projectPriority(of: project.id) == .high)
-        #expect(model.projectDeadline(of: project.id) == Self.deadline(2026, 9, 1))
-    }
-
-    @Test func endNoteEditingRejectsInvalidDeadlineInputToUnset() throws {
-        let project = Self.makeProject(name: "alpha")
-        let model = try Self.makeModel(visible: [project])
-        model.setProjectDeadline(project.id, to: Self.deadline(2026, 8, 15))
-        model.beginNoteEditing(project.id)
-
-        // The commit goes through the same parsing boundary as the direct
-        // setter: an impossible date is rejected — to unset, not to the
-        // previous value.
-        model.endNoteEditing(saving: "", priority: nil, deadlineInput: "2026-02-30")
-
-        #expect(model.noteEditingProject == nil)
-        #expect(model.projectDeadline(of: project.id) == nil)
-    }
-
-    @Test func noteOnlyEndNoteEditingKeepsPriorityAndDeadline() throws {
+    @Test func noteEditingSavesTheNoteOnlyKeepingPriorityAndDeadline() throws {
+        // Priority and deadline entry lives in the project list's cells; the
+        // note editor's commit touches the note and nothing else.
         let project = Self.makeProject(name: "alpha")
         let model = try Self.makeModel(visible: [project])
         model.setProjectPriority(project.id, to: .medium)
@@ -435,20 +408,10 @@ struct ProjectPriorityDeadlineTests {
 
         model.endNoteEditing(saving: "note only")
 
+        #expect(model.noteEditingProject == nil)
         #expect(model.state.projects[project.id]?.note == "note only")
         #expect(model.projectPriority(of: project.id) == .medium)
         #expect(model.projectDeadline(of: project.id) == Self.deadline(2026, 8, 15))
-    }
-
-    @Test func fullEndNoteEditingWithoutSessionIsNoOp() throws {
-        let project = Self.makeProject(name: "alpha")
-        let model = try Self.makeModel(visible: [project])
-
-        model.endNoteEditing(saving: "stray", priority: .high, deadlineInput: "2026-09-01")
-
-        #expect(model.state.projects[project.id]?.note == "")
-        #expect(model.projectPriority(of: project.id) == nil)
-        #expect(model.projectDeadline(of: project.id) == nil)
     }
 
     @Test func settersOnUnknownProjectAreNoOps() throws {

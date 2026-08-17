@@ -35,23 +35,15 @@ struct ProjectNoteEditor: View {
     /// The note text at open time; seeds the draft.
     let note: String
 
-    /// The priority at open time; seeds the priority draft (SPEC §24.1).
-    let priority: ProjectPriority?
+    /// Save the note draft and close the editor (Cmd+Enter / backdrop
+    /// click). Priority and deadline are set in the project list's cells,
+    /// never here (SPEC §24.1, §27.2).
+    let onEnd: (String) -> Void
 
-    /// The deadline at open time; seeds the deadline text draft (SPEC §24.1).
-    let deadline: ProjectDeadline?
-
-    /// Save the given draft set — note, priority, deadline text input — and
-    /// close the editor (Cmd+Enter / backdrop click). The deadline input is
-    /// validated at the model boundary: invalid input is rejected to unset.
-    let onEnd: (String, ProjectPriority?, String) -> Void
-
-    /// Discard all drafts and close the editor (Escape).
+    /// Discard the draft and close the editor (Escape).
     let onCancel: () -> Void
 
     @State private var draft: String = ""
-    @State private var priorityDraft: ProjectPriority?
-    @State private var deadlineDraft: String = ""
     @FocusState private var editorFocused: Bool
 
     /// The session's undo history for the note body (`SPEC.md` §21.2). Created
@@ -59,9 +51,9 @@ struct ProjectNoteEditor: View {
     /// open into the project layer's own undo entries.
     @State private var history = NoteEditHistory("")
 
-    /// Commit the full draft set (every save path funnels here).
+    /// Commit the note draft (every save path funnels here).
     private func commit() {
-        onEnd(draft, priorityDraft, deadlineDraft)
+        onEnd(draft)
     }
 
     var body: some View {
@@ -133,9 +125,8 @@ struct ProjectNoteEditor: View {
     ]
 
     /// Performs an editing selector on the focused text view directly (the
-    /// note editor, or the deadline field's field editor — both NSTextView),
-    /// falling back to the responder chain when first responder is not a
-    /// text view.
+    /// note editor's NSTextView), falling back to the responder chain when
+    /// first responder is not a text view.
     private static func performOnEditor(_ selector: Selector) {
         if let editor = NSApp.keyWindow?.firstResponder as? NSTextView,
            editor.responds(to: selector) {
@@ -164,8 +155,6 @@ struct ProjectNoteEditor: View {
                     // change cannot make a typing run coalesce oddly.
                     history.record(text, at: ProcessInfo.processInfo.systemUptime)
                 }
-
-            metaRow
         }
         .frame(width: 480)
         .background(ghostty.config.backgroundColor)
@@ -178,8 +167,6 @@ struct ProjectNoteEditor: View {
         .onExitCommand { onCancel() }
         .onAppear {
             draft = note
-            priorityDraft = priority
-            deadlineDraft = deadline?.displayText ?? ""
             // The session's history starts at the text the editor opened with,
             // so the first Cmd+Z returns to it and no further.
             history = NoteEditHistory(note)
@@ -190,57 +177,6 @@ struct ProjectNoteEditor: View {
                 editorFocused = true
             }
         }
-    }
-
-    /// Priority and deadline controls (SPEC §24.1), sharing the note's commit
-    /// point: nothing here touches the model directly — the drafts ride the
-    /// same Cmd+Enter save / Escape discard as the note text.
-    private var metaRow: some View {
-        HStack(spacing: 6) {
-            Text("priority")
-                .opacity(0.5)
-            Picker("", selection: $priorityDraft) {
-                Text("none").tag(ProjectPriority?.none)
-                Text("high").tag(ProjectPriority?.some(.high))
-                Text("med").tag(ProjectPriority?.some(.medium))
-                Text("low").tag(ProjectPriority?.some(.low))
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
-            .fixedSize()
-
-            Spacer(minLength: 8)
-
-            Text("deadline")
-                .opacity(0.5)
-            TextField("YYYY-MM-DD", text: $deadlineDraft)
-                .textFieldStyle(.plain)
-                .frame(width: 84)
-                .onSubmit { commit() }
-            // The save-time judgment is the model's (invalid input is
-            // rejected to unset); this hint only previews it, reusing the
-            // same parser so the two can never disagree.
-            if deadlineDraftInvalid {
-                Text("→ unset")
-                    .opacity(0.5)
-            }
-        }
-        .font(.system(size: 10, design: .monospaced))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(ghostty.config.splitDividerColor)
-                .frame(height: 1)
-        }
-    }
-
-    /// Whether the current deadline draft would be rejected to unset on save:
-    /// non-empty but not a real date (SPEC §24.1).
-    private var deadlineDraftInvalid: Bool {
-        let trimmed = deadlineDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && ProjectDeadline(parsing: trimmed) == nil
     }
 
     /// Header band: the project name plus the save/discard affordances. Styled

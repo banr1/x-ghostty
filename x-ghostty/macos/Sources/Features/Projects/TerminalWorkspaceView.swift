@@ -94,9 +94,7 @@ struct TerminalWorkspaceView: View {
                 ProjectNoteEditor(
                     projectName: project.name,
                     note: project.note,
-                    priority: project.priority,
-                    deadline: project.deadline,
-                    onEnd: { workspace.endNoteEditing(saving: $0, priority: $1, deadlineInput: $2) },
+                    onEnd: { workspace.endNoteEditing(saving: $0) },
                     onCancel: { workspace.cancelNoteEditing() })
             }
 
@@ -128,6 +126,8 @@ struct TerminalWorkspaceView: View {
             if workspace.projectListActive {
                 ProjectListOverlay(
                     rows: workspace.projectListRows,
+                    columns: workspace.state.listColumnOrder,
+                    fullNotes: workspace.projectListFullNotes,
                     canToggle: { workspace.canToggleProjectListVisibility($0) },
                     canFocus: { workspace.canFocusProjectListRow($0) },
                     isOverdue: {
@@ -135,7 +135,14 @@ struct TerminalWorkspaceView: View {
                     },
                     onToggle: onToggleProjectListVisibility,
                     onFocus: onFocusProjectListRow,
-                    onClose: onCloseProjectList)
+                    onClose: onCloseProjectList,
+                    // Cell mutations are model-only: no `surfaceTree` swap is
+                    // involved, so no controller round-trip is needed.
+                    onCommitEdit: { workspace.commitProjectListCellEdit($0, column: $1, for: $2) },
+                    onCycle: { workspace.cycleProjectListCell($0, for: $1) },
+                    onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
+                    onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
+                    onToggleFullNotes: { workspace.toggleProjectListFullNotes() })
             }
 
         }

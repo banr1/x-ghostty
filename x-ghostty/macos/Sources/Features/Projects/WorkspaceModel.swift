@@ -1072,23 +1072,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         setProjectNote(id, to: text)
     }
 
-    /// Close the note editor, saving the full draft set — note, priority, and
-    /// the deadline text input — to the project being edited (SPEC §24.1). The
-    /// overlay's single commit point (Cmd+Enter / backdrop click), so the
-    /// three values save and persist together through the note path;
-    /// `deadlineInput` goes through the `setProjectDeadline(parsing:)` boundary,
-    /// where empty clears and invalid input is rejected to unset. Escape goes
-    /// through `cancelNoteEditing`, which drops all three drafts at once.
-    func endNoteEditing(
-        saving text: String, priority: ProjectPriority?, deadlineInput: String
-    ) {
-        defer { noteEditingProject = nil }
-        guard let id = noteEditingProject else { return }
-        setProjectNote(id, to: text)
-        setProjectPriority(id, to: priority)
-        setProjectDeadline(id, parsing: deadlineInput)
-    }
-
     /// Close the note editor, discarding the draft so the project keeps the
     /// text it had when the editor opened. This is the Escape path; no
     /// confirmation is asked before the draft is dropped (SPEC.md §21.2).

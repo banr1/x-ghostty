@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-071"
+    "T-072"
   ],
   "items": [
     {
@@ -2946,7 +2946,7 @@
     {
       "id": "T-071",
       "title": "Project-list overlay view (Cmd+L): render the ledger model at ~80% of the window width/height with the 6 columns in the persisted column order, unset cells blank, the cell cursor, in-place text editing (typing starts an edit, Enter / Tab commit, Esc cancels only the edit; Esc closes when not editing), Space on selection columns, Cmd+arrows for row/column moves, Cmd+Enter to focus and close, Cmd+Opt+E full-note toggle inside the list, scrolling that follows the cursor, immediate background relayout on visibility toggles; priority and deadline entry moves here — remove the priority/deadline controls from the note edit overlay",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-079",
@@ -2962,7 +2962,30 @@
       },
       "batch_group": "list-view",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin first)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; 605 test cases passed, 0 failed. The removed 3-arg note-editor commit tests were replaced by one test asserting the editor path saves the note only and keeps priority/deadline (their entry now lives in the list cells; the parse-or-unset and cell-commit judgments remain covered by ProjectListCellTests and the setProjectDeadline(parsing:) tests)."
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "Full macOS app build passes with the rewritten list overlay."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests pass (Swift-only change)."
+        },
+        {
+          "type": "diff",
+          "summary": "ProjectListOverlay.swift rewritten (+527/-92 net): 6-column cell table in the persisted column order at ~80% of the window in both dimensions, ordinal gutter, unset cells blank; cell cursor rendered from ProjectListCellCursor with a single keyDown monitor implementing Tab/Shift+Tab/Enter/Shift+Enter + arrows (wrap/stops via the model), typing-starts-edit on text columns seeded with the typed character (in-place TextField via ProjectListCellEdit; Enter/Tab commit then move, Escape cancels only the edit; Escape outside an edit closes), Space cycling (visibility -> onToggle with immediate background relayout, priority/nextTrigger -> cycleProjectListCell), Cmd+arrows row/column moves, Cmd+Enter focus (hidden rows inert), Cmd+Opt+E whole-list full-note display, cursor-following scroll, overdue emphasis on the deadline cell, contextual footer. TerminalWorkspaceView.swift wires the new model-only closures. ProjectNoteEditor.swift loses the priority/deadline metaRow and drafts (onEnd back to note-only); WorkspaceModel.swift drops the 3-arg endNoteEditing overload. ProjectPriorityDeadlineTests.swift adapted."
+        }
+      ]
     },
     {
       "id": "T-072",
