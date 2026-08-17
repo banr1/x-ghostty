@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "6398cda9374c2cbf96f5010cccfeeebd5ed0d39faf9d1c6fbe42da3b65c457b7",
+    "last_signature": "574b51b6aa375e750e76dc34057d77a85453bb8a1da9e7e0428cdd6ca5e4289f",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T04:13:18+09:00",
-    "last_checked_at": "2026-08-18T04:13:18+09:00",
+    "last_progress_at": "2026-08-18T04:23:49+09:00",
+    "last_checked_at": "2026-08-18T04:23:49+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,21 +21,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.6,
+    "context_usage_estimate": 0.7,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 13,
-    "completed_todos_since_reset": 1,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 14,
+    "completed_todos_since_reset": 2,
+    "important_decisions_since_reset": 3,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T04:13:00+09:00",
-    "summary": "T-064(台帳反転のモデル層)完了、3 ゲート green(zig build / just test / just swift-test = exit 0、Swift 590 件)。中断サイクル R-20260818T031953 が途中まで書いた WorkspaceState 台帳化を完成させた: ProjectListColumn 新設、projectListRows を単一台帳順に、WorkspaceModel の全ミューテーションを台帳操作へ置換(show/close は自分の行位置へ戻る。trailing 再接続は廃止)、resize/equalize はモデル層 no-op 化(must-55 裁可済み。Zig action の除去は T-066)、旧登録レイアウト適用は可視行の並び替えのみの経過シム(T-065/T-066 で置換)、ソートは全行対象へ(T-068 のテストは未着手)。中断サイクル由来の insertProject のバグ(挿入後に cap 判定して 9 個目を誤 hidden)も修正済み。新テスト ProjectLedgerTests が T-064 の 4 要件を担保。",
+    "written_at": "2026-08-18T04:24:00+09:00",
+    "summary": "T-065(レイアウト型)完了、3 ゲート green(zig build / just test / just swift-test = exit 0、Swift 603 件)。実装は T-064 で完成済みだったため本サイクルはテスト整備: ProjectLayoutTypeTests(13 件)が成功条件 15 の全項目(1〜9 のスロット計算を独立計算と照合、tall = wide の転置、台座の合成規則と最下段最後、畳み込み選択肢集合の手導出照合 n=1:1/n=2:2/n=3:5(台座・行送り→横長・行送りへ畳み)/n=9:4(tall 進行は wide 代表に吸収)、向き別の行割り当て、序数は台帳順、非既定型の自動適用と数不変操作の非発火)を初回全通過で担保。型の永続化と既定は ProjectLedgerTests(T-064)側にあり。",
     "next_actions": [
-      "T-065(active batch): レイアウト型のテスト整備が主作業 — ProjectLayoutType の slots/choices/tree は実装済みなので、成功条件 15 の全項目(1〜9 の各 visible 数のスロット計算、n=9 の wide/tall 非畳み込みと n=3 台座の畳み込み、行送り/列送りの割り当て順と序数追従、型の永続化と既定、visible 数変化時の自動適用と数不変時の非発火)を XGhosttyTests に書き、不足があれば実装を補う。ProjectLedgerTests に既にある永続化/既定/再導出テストと重複させない。",
-      "T-066: Cmd+Opt+L セレクタを ProjectLayoutType.choices(forVisibleCount:) ベースに作り替え(選択肢 1 つなら『選ぶものが無い』表示、Enter 適用 = state.layoutType 変更 + relayout、Esc 無変更、プロジェクト数不変)、shortfall 作成/hide-pick 経路と WorkspaceLayoutHidePick/ProjectLayout(11 種)を削除、resize_project / equalize_projects の Zig action・既定キーバインドを除去(xghostty.h の enum-sync に注意)。",
-      "T-066 完了時に SPEC.md §26 の旧記述(登録レイアウト 11 種)が残っていれば T-074 を待たず最小限の整合修正を検討(仕様書と実装の乖離防止は前提事項)。"
+      "T-066(active batch): (1) WorkspaceModel に型選択 API を追加(例: canBeginLayoutSelection は choices(forVisibleCount: visibleCount).count > 1 に変更し、1 択なら『選ぶものが無い』表示用の状態を返す。chooseLayoutType(_ type:) = state.layoutType 変更 + relayout + セレクタ閉。Esc は無変更)。プロジェクト数は一切変えない — 旧 shortfall 作成 / hide-pick(WorkspaceLayoutHidePick、chooseLayout(ProjectLayout,...)、applyLayout(appending:)、applyLayoutTree シム)を model から削除。(2) ProjectLayoutSelector ビューを choices(forVisibleCount:) ベースに書き換え(矢印選択 + Enter 適用 + Esc、現在型のハイライトは representative(forVisibleCount:) を使用)。(3) ProjectLayout.swift(旧 11 種)と ProjectLayoutTests.swift の旧テストを削除し、hide-pick 関連テストも整理。(4) Zig 側: resize_project / equalize_projects action と既定キーバインドを削除(src/input/Binding.zig, apprt/action.zig, Surface.zig, command.zig, Config.zig, include/xghostty.h — enum は末尾削除でなく中間削除になるため C ABI タグの並びに注意。checkXGhosttyHEnum が守る)。Swift 側の対応 dispatch / performability / メニュー項目(16 個の pane-op セレクタとは別の project 系 resize/equalize)も除去。(5) 3 ゲートで検証。",
+      "T-067 以降: hide 即時化(選択画面の廃止)→ T-068 ソートのテスト → T-069 次トリガー → T-070/T-071 一覧モデル/ビュー。",
+      "注意: 旧登録レイアウトの適用経路は T-064 で『可視行の並び替えのみの経過シム』になっており、T-066 が削除するまで選択 UI の見た目と実動作が乖離している(既知・意図的)。"
     ],
     "open_questions": []
   }

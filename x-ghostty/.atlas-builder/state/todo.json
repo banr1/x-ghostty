@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-065"
+    "T-066"
   ],
   "items": [
     {
@@ -2663,7 +2663,7 @@
     {
       "id": "T-065",
       "title": "Layout types replacing the 11 registered layouts: ProjectLayoutType = shape (wide / tall / pedestal) x orientation (row-major / column-major); slot frames for every visible count 1-9 (wide: rows = nearest integer to sqrt(n), dealt from the top as evenly as possible, equal heights and in-row widths; tall: transpose; pedestal: n-1 on top by the wide (row-major) or tall (column-major) rule + 1 full-width bottom); per-count exact-match collapsing of identical (arrangement, ordinal progression) options; assignment of the list's visible rows in row order following the orientation (row-major: top row left-to-right, column-major: left column top-to-bottom, pedestal bottom last) with ordinals following; auto-apply of the remembered type whenever the visible count changes (list toggle, Cmd+Opt+H, new project, close) and no change for count-preserving operations. Tests per success condition 15 (all of the above, incl. n=9 wide/tall kept separate and n=3 pedestal collapsing into wide/row-major)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-058",
@@ -2678,7 +2678,34 @@
       },
       "batch_group": "layout-types",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Tests/Projects/ProjectLayoutTypeTests.swift"
+          ],
+          "summary": "New ProjectLayoutTypeTests (13 cases) covering success condition 15 against the ProjectLayoutType implementation landed with T-064: (1) tierCounts deals 1-9 into rows/columns per the Essence table ([1],[2],[2,1],[2,2],[3,2],[3,3],[3,2,2],[3,3,2],[3,3,3]); (2) wide slot frames for every count match an in-test independent computation of the definition (equal row heights, equal in-row widths, dealt from the top); (3) tall is the exact transpose of wide with row-major/column-major swapping under transposition; (4) wide orientations place the same slot set and differ only in ordinal progression (concrete n=3 pin); (5) pedestal stacks the wide-rule (row-major) or tall-rule (column-major) top over a full-width bottom with the t/(t+1) height split for every count 2-9, bottom slot always last, n=1 degenerate full slot; (6) per-count choice sets equal the hand-derived exact-match-collapsed sets - n=1 one choice, n=2 [wide/rowMajor, tall/rowMajor], n=3 five choices with pedestal/row-major collapsing into wide/row-major (the Essence example), n=9 four choices with tall/rowMajor collapsing into wide/rowMajor and tall/columnMajor into wide/columnMajor (the 3x3 grid keeps exactly its two ordinal progressions apart, the other Essence example); (7) every type resolves to a kept representative for every count; (8) orientation assignment: row-major fills the top row left-to-right, column-major the left column top-to-bottom (hand-built SplitTree comparisons incl. tall/rowMajor and wide/columnMajor cross cases), pedestal bottom last; (9) ordinals follow the list order, not the visual position, under tall/column-major; (10) visible-count changes (Cmd+Opt+H hide, list visibility toggle, new project, close) re-apply the remembered non-default type, while count-preserving operations (rename, priority, note, the terminated-state transition) leave the arrangement untouched and a row move re-derives with the same type. Type persistence and the wide/row-major default were already covered by ProjectLedgerTests (T-064) and are cross-referenced in the test file doc comment."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "xcodebuild XGhosttyTests: TEST SUCCEEDED, 603 test cases passed (590 prior + 13 new ProjectLayoutTypeTests), all first-run green - the implementation matches the independently hand-derived slot geometry and collapse sets."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 (test-only cycle; confirms no cross-language breakage)."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0, including the embedded xcodebuild Swift test step."
+        }
+      ],
+      "notes": "Done 2026-08-18: the slot/choice/tree implementation itself landed with T-064's state-layer rework (ProjectLayoutType.swift); this Todo verified it against success condition 15 with independent in-test expectations and added the auto-apply/count-preserving model coverage. The type SELECTION path (Cmd+Opt+L selector on choices(forVisibleCount:), a model API to set layoutType) is T-066."
     },
     {
       "id": "T-066",
