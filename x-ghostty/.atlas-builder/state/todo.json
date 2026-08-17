@@ -9,7 +9,7 @@
     "avoid_mixing_executors": true
   },
   "active_batch": [
-    "T-070"
+    "T-071"
   ],
   "items": [
     {
@@ -2899,7 +2899,7 @@
     {
       "id": "T-070",
       "title": "Project-list model (ProjectList): rows over all projects in ledger order with the 6 columns; a cell cursor with Tab / Shift+Tab / Enter / Shift+Enter (and arrows) movement, wrap at row end, stop at the last row; text-column editing (Title, Deadline, Note line 1) with commit applying the value and cancel reverting, note edits rewriting only line 1; Space cycling for selection columns (Visibility as a two-value toggle applying hide/show immediately with relayout, Priority, Next trigger); invalid deadline cell input treated as unset; Cmd+Up/Down row move and Cmd+Left/Right column move with persistence; Cmd+Enter focus eligibility (hidden rows do nothing); new-row insertion below the cursor row (visible if visible count < 9, hidden at 9); Cmd+Opt+E full-note toggle state (view-only, transient). All as pure model logic; tests per success condition 20",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-079",
@@ -2918,7 +2918,30 @@
       },
       "batch_group": "list-model",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin first)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; 608 test cases passed, 0 failed, including the 17 new ProjectListCellTests (cell cursor movement with row-end wrap and last/first-row stops, text-cell commit/cancel with title trim rule, invalid deadline input treated as unset, note cell rewriting only line 1, priority and next-trigger Space cycling in definition order through unset, visibility excluded from cycling, column moves clamped and persisted via round-trip decode, session gating of all cell operations, row move relayouting the arrangement, transient session-scoped full-note toggle)."
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "Full macOS app build passes with the new list-cell model."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests pass (unchanged by this Swift-only change)."
+        },
+        {
+          "type": "diff",
+          "summary": "macos/Sources/Features/Projects/ProjectList.swift +250/-11: ProjectListRow now carries nextTrigger and the full note (noteFirstLine derived), editableText(for:) for the text columns; ProjectListColumn.isTextColumn/isSelectionColumn; new ProjectListCellCursor (right/left/down/up with row-end wrap, last-row stop, clamp repair); new ProjectListCellEdit session (text columns only, cancel = discard); ProjectPriority.cycled/ProjectNextTrigger.cycled (unset -> definition order -> unset); WorkspaceStateOf.renameProject (shared trim/reject-empty rule), commitListCellEdit (title/deadline-parse-or-unset/note-line-1), cycleListCellValue (priority/nextTrigger only), moveListColumn (clamped). macos/Sources/Features/Projects/WorkspaceModel.swift +93/-9: projectListFullNotes transient session state + toggleProjectListFullNotes, session-gated commitProjectListCellEdit/cycleProjectListCell/moveProjectListRow/moveProjectListColumn (copy-mutate-assign to avoid spurious emissions), renameProject delegates to the shared state rule. macos/Tests/Projects/ProjectListCellTests.swift new (+369): 17 tests per success condition 20."
+        }
+      ]
     },
     {
       "id": "T-071",

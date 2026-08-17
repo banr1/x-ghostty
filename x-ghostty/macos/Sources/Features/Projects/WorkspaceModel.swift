@@ -52,6 +52,12 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// persisted.
     @Published private(set) var projectListActive = false
 
+    /// Whether the list is showing every note in full instead of first lines
+    /// only (`toggle_note_overview` inside the list, `SPEC.md` §27.2).
+    /// Viewing-only and transient: never persisted, and every list session
+    /// starts back at first-lines-only.
+    @Published private(set) var projectListFullNotes = false
+
     /// Whether any workspace-modal overlay session (note overview, layout
     /// selection, project list) currently owns the interaction: while one is
     /// up, focus moves, note editing, and sorting are no-ops, and no other
@@ -543,12 +549,81 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         guard !projectListActive, canBeginProjectList else { return }
         state.zoomedProject = nil
         projectListActive = true
+        // A fresh session always opens at first-lines-only (SPEC §27.2).
+        projectListFullNotes = false
     }
 
     /// Close the project list (the Escape path, `SPEC.md` §27.3). Visibility
     /// toggles made during the session are real mutations and therefore stay.
     func endProjectList() {
         projectListActive = false
+        projectListFullNotes = false
+    }
+
+    /// Toggle the list between first-lines-only and full notes (`SPEC.md`
+    /// §27.2). Viewing-only, whole-list, transient; a no-op while no session
+    /// is up.
+    ///
+    /// - Returns: whether full notes are showing after the call.
+    @discardableResult
+    func toggleProjectListFullNotes() -> Bool {
+        guard projectListActive else { return false }
+        projectListFullNotes.toggle()
+        return projectListFullNotes
+    }
+
+    /// Commit an in-place text-cell edit (`SPEC.md` §27.2), only while the
+    /// list session is up. The value rules live on the state
+    /// (`commitListCellEdit`); Escape's cancel never reaches the model — the
+    /// view just discards the edit session.
+    @discardableResult
+    func commitProjectListCellEdit(
+        _ text: String, column: ProjectListColumn, for id: ProjectID
+    ) -> Bool {
+        guard projectListActive else { return false }
+        var next = state
+        guard next.commitListCellEdit(text, column: column, for: id) else { return false }
+        state = next
+        return true
+    }
+
+    /// Space on a cycling selection cell (priority / next trigger, `SPEC.md`
+    /// §27.2), only while the list session is up. The visibility column goes
+    /// through `toggleProjectListVisibility` instead — it hides/shows with
+    /// the relayout and focus rules.
+    @discardableResult
+    func cycleProjectListCell(_ column: ProjectListColumn, for id: ProjectID) -> Bool {
+        guard projectListActive else { return false }
+        var next = state
+        guard next.cycleListCellValue(column, for: id) else { return false }
+        state = next
+        return true
+    }
+
+    /// Move row `id` one-or-more places up (negative `delta`) or down in the
+    /// ledger order (`Cmd+↑`/`Cmd+↓`, `SPEC.md` §27.1), clamped to the ends;
+    /// only while the list session is up. The arrangement re-derives and the
+    /// new order persists with the ledger.
+    @discardableResult
+    func moveProjectListRow(_ id: ProjectID, by delta: Int) -> Bool {
+        guard projectListActive,
+              let from = state.projectOrder.firstIndex(of: id) else { return false }
+        let target = min(max(from + delta, 0), state.projectOrder.count - 1)
+        guard target != from else { return false }
+        state.moveProjectRow(id, to: target)
+        return true
+    }
+
+    /// Move `column` one-or-more places left (negative `delta`) or right in
+    /// the persisted column order (`Cmd+←`/`Cmd+→`, `SPEC.md` §27.1), clamped
+    /// to the ends; only while the list session is up.
+    @discardableResult
+    func moveProjectListColumn(_ column: ProjectListColumn, by delta: Int) -> Bool {
+        guard projectListActive else { return false }
+        var next = state
+        guard next.moveListColumn(column, by: delta) else { return false }
+        state = next
+        return true
     }
 
     /// The rows the project list shows: every project, hidden ones included,
@@ -945,17 +1020,17 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         renamingProject = nil
     }
 
-    /// Rename `id` to `newName` and leave rename mode. Whitespace is trimmed and
-    /// an empty result is rejected (the existing name is kept). Shared by the
-    /// inline editor's commit and the `set_project_title` action (`SPEC.md` §9.1).
+    /// Rename `id` to `newName` and leave rename mode. The trim-and-reject-
+    /// empty rule lives on the state (`WorkspaceState.renameProject`), shared
+    /// by the inline editor's commit, the `set_project_title` action, and the
+    /// list's title cell (`SPEC.md` §9.1, §27.2).
     func renameProject(_ id: ProjectID, to newName: String) {
         defer { if renamingProject == id { renamingProject = nil } }
-
-        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, var project = state.projects[id], project.name != trimmed else { return }
-
-        project.name = trimmed
-        state.projects[id] = project
+        // Copy-mutate-assign so a rejected or no-op rename emits no state
+        // change (no spurious re-render / re-persist).
+        var next = state
+        guard next.renameProject(id, to: newName) else { return }
+        state = next
     }
 
     // MARK: Notes

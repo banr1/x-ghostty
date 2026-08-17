@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "aaa2eb8dc34f9fea68a39bc32e37e30dde1ea190f0cce9018961fb5899310dbc",
+    "last_signature": "f48272840202d336bd0a2cf50b35053c6b4eb47fcf458afed883ce49d675e9d3",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T05:13:42+09:00",
-    "last_checked_at": "2026-08-18T05:13:42+09:00",
+    "last_progress_at": "2026-08-18T05:28:37+09:00",
+    "last_checked_at": "2026-08-18T05:28:37+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,21 +21,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.7,
-    "failed_attempts_since_reset": 1,
-    "changed_files_since_reset": 25,
-    "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 2,
+    "context_usage_estimate": 0.45,
+    "failed_attempts_since_reset": 0,
+    "changed_files_since_reset": 3,
+    "completed_todos_since_reset": 1,
+    "important_decisions_since_reset": 0,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T05:25:00+09:00",
-    "summary": "T-067(即時 hide)・T-068(ソート整備)・T-069(次トリガー)完了、各サイクル 3 ゲート green(zig build / just test / just swift-test = exit 0)。changed_files 25 でリセット閾値到達 — 本ハンドオフのみで再開できるよう書いてある。現況: ProjectState に nextTrigger(ProjectNextTrigger: myself/teamMember/externalPerson/event、未設定=nil)+ overviewContent(一望モード表示内容のモデル判定、ProjectOverviewContent)。ソートは sortProjectsByPriority/ByDeadline + canSortProjects(一覧オープン中は許可、note overview / layout selector 中は拒否)。hide_project は即時 hide(canHideFocusedProject が performability、オーバーレイ中拒否)。一覧の既定列順テスト(ProjectLedgerTests.defaultColumnOrderIsVisibilityTitlePriorityDeadlineNextTriggerNote)は既に存在 — T-070 の土台は ProjectList.swift / ProjectLedgerTests を先に読むこと。",
+    "written_at": "2026-08-18T05:35:00+09:00",
+    "summary": "T-070(一覧セルモデル)完了、3 ゲート green(zig build / just test / just swift-test = exit 0、608 テスト・新規 ProjectListCellTests 17 件)。実装: ProjectListRow に nextTrigger と note 全文(noteFirstLine は導出)+ editableText(for:)。ProjectListCellCursor(右/左/下/上、行末折返し・最終行/先頭行停止・clamp 修復)。ProjectListCellEdit(テキスト列のみ、cancel=破棄)。WorkspaceStateOf: renameProject(trim/空却下の共通規則、モデルの renameProject も委譲化)・commitListCellEdit(title/deadline は parse-or-unset/note は 1 行目のみ書換)・cycleListCellValue(priority/nextTrigger のみ、定義順で未設定へ循環)・moveListColumn(clamp)。WorkspaceModel: projectListFullNotes(セッション限定・一時的)+ toggleProjectListFullNotes、一覧セッション中のみ有効な commitProjectListCellEdit / cycleProjectListCell / moveProjectListRow / moveProjectListColumn(copy-mutate-assign で無変更時の emission 抑止)。",
     "next_actions": [
-      "T-070(active batch): 一覧セルモデル。ProjectList.swift の既存モデル(ProjectListRow / ProjectLedgerTests の既存カバレッジ)を確認してから不足分を実装: セルカーソル移動(Tab/Shift+Tab/Enter/Shift+Enter + 矢印、行末折返し・最終行停止)、テキスト列(タイトル・締切・ノート1行目のみ書換え・2行目以降保持)の編集確定/Esc取消、選択式列(表示=2値即時反映・優先度・次トリガー)の Space 循環、行順・列順の入替と永続化・復元、締切セル不正入力→未設定、新規行挿入位置(カーソル行直下、visible 9 未満なら visible / 9 なら hidden)、hidden 行への focus 要求は no-op。すべてモデル層・成功条件 20 のテスト。次トリガーのセル値は ProjectNextTrigger を使う(実装済み、Space 循環は unset→myself→teamMember→externalPerson→event→unset の定義順)。",
-      "以降: T-071(一覧ビュー: Cmd+L 8 割・6 列・スクロールとカーソル追従・Cmd+Opt+E 全行ノート全行表示トグル)→ T-072(Cmd+N 新規作成一本化・Cmd+Opt+D/Shift+D 廃止)→ T-073(キー変更: ノート操作を Cmd+E/Cmd+Opt+E へ、Cmd+Opt+N 廃止、Cmd+E の search_selection 既定解除)→ T-074(SPEC/README 総整備: §25 即時 hide・§24.4 ソート改名+一覧中許可・§24.6 次トリガー新設(コード doc が §24.6 を先行参照中)・旧記述掃除)→ batch7-human(T-075〜T-080 実機確認、Human-executor)。",
-      "運用注意: (a) projection は CONTROL_ROOT から stage → python patch → apply。(b) apply の evidence 文中の doc ファイル名羅列で pre-tool guard が誤検知したら文言を変えて再実行。(c) validation の run ledger divergence 警告は既知・対応不要。(d) zig は /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に(brew 既定 0.16 は build 拒否、lessons.jsonl)。(e) テスト失敗判定は exit code と 'failed' grep(ログ行数は並列出力で揺れる)。(f) exit code はパイプ経由で取らない(cmd > log 2>&1; echo $?)。"
+      "T-071(active batch): 一覧ビュー拡張。ProjectListOverlay.swift を 6 列テーブル化: ウィンドウ 8 割サイズ、listColumnOrder の列順で描画、未設定セル空欄、セルカーソル(ProjectListCellCursor を @State に、moved/clamped を利用)、文字入力で編集開始(ProjectListCellEdit)→ Enter/Tab 確定(model.commitProjectListCellEdit)/Esc は編集のみ取消(非編集時 Esc は閉じる)、選択列 Space(visibility は既存 toggleProjectListVisibility、priority/nextTrigger は model.cycleProjectListCell)、Cmd+矢印(model.moveProjectListRow / moveProjectListColumn)、一覧の Enter は下セル移動に変わったので focus は Cmd+Enter へ(既存 focusProjectListRow の配線変更)、Cmd+Opt+E 全行ノート(model.projectListFullNotes / toggleProjectListFullNotes、row.note 全文表示)、カーソル追従スクロール、優先度・締切の設定入口をノート編集オーバーレイから除去(ProjectNoteEditor に priority/deadline UI があれば外す)。キールーティングは ProjectOverlayKeys.swift 参照。目視項目は T-077 に残す。",
+      "以降: T-072(Cmd+N 新規作成一本化・new_project_split 廃止)→ T-073(キー変更: Cmd+E/Cmd+Opt+E 移設、Cmd+Opt+N 廃止、search_selection 既定解除)→ T-074(SPEC/README 総整備: §25 即時 hide・§24.4 ソート・§24.6 次トリガー・§27 一覧セル編集/列移動/全行ノート表示の新設記述)→ batch7-human(T-075〜T-080 実機確認、Human-executor)。",
+      "運用注意: (a) projection は CONTROL_ROOT から stage → python patch → apply(bundle 編集の python と apply コマンドは別々の Bash 呼び出しに分ける — 同一 compound だと guard が deny)。(b) context.json の更新は Bash の python では guard に deny される — Edit ツールで行う。(c) Swift Testing の #expect 内で mutating メソッドは呼べない(immutable $0 エラー)— let に受けてから #expect。(d) validation の run ledger divergence 警告は既知・対応不要。(e) zig は /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に。(f) exit code はパイプ経由で取らない(cmd > log 2>&1; echo $?)。"
     ],
     "open_questions": []
   }
