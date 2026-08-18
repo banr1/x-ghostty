@@ -90,7 +90,11 @@ its window management with a single model:
   source of truth: the on-screen arrangement is derived from it, and the
   `Cmd+1-9` ordinals are its visible rows counted from the top. The list has
   a cell cursor (Tab / Shift+Tab / Enter / Shift+Enter, or arrows); typing in
-  a text cell starts an edit that Enter / Tab commit and Esc cancels; Space
+  a text cell starts an edit that Enter / Tab commit and Esc cancels — text
+  cells are ordinary macOS text input, so an input method composes from the
+  very first keystroke and, while an uncommitted string is up, Space / Enter /
+  Esc convert, commit, and cancel the composition instead of moving the cursor
+  or ending the edit; Space
   cycles a selection cell — on the visibility column it hides or shows the
   project on the spot, immediately re-laying out the terminals behind the
   list (the change sticks even if you then press Esc). On the deadline cell

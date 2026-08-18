@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "d5c403a2b0f8286230272bd625d64f4453252ab419592b7d0427d73baca16611",
+  "projected_from_essence_sha256": "e427ef83c1ffe56783c2835ea4370c558f66bc3e5e4f8d81b219425a19f4948a",
   "projected_at": "2026-08-18T03:35:00+09:00",
   "items": [
     {
@@ -1090,13 +1090,13 @@
     },
     {
       "id": "S-091",
-      "title": "Update SPEC.md and README.md to match the implemented remote split, project-list cell editing and reordering, deadline Space advance, next trigger, note-editor undo/redo, priority reset, and key changes",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, project-list cell editing and reordering, deadline Space stepping, next trigger, note-editor undo/redo, priority reset, key changes, and the list cell editing IME support",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧のセル編集と",
-        "並べ替え・締切の Space 送り・次トリガー・Undo/Redo・優先度リセット・キー変更の",
-        "仕様に合わせて更新する。"
+        "並べ替え・締切の Space 送り・次トリガー・Undo/Redo・優先度リセット・キー変更・",
+        "一覧セル編集の IME 対応の仕様に合わせて更新する。"
       ]
     },
     {
@@ -1208,6 +1208,39 @@
         "での `Shift+Space` は何もしない。各押下は選択式の列と同様に即時反映され、`Esc`",
         "でも取り消されない。文字入力(タイプによる編集と確定・取り消し)は従来どおり残し、",
         "過去日の設定は文字入力で行う。"
+      ]
+    },
+    {
+      "id": "S-101",
+      "title": "Cell editing of the list's text columns (Title, Note) accepts Japanese IME input — marked-text display, conversion, commit — on a par with the note editor overlay and the double-click title rename: the very first keystroke that starts the edit also goes through the IME and becomes part of the marked string instead of being committed raw, and while a marked string is up, Space / Enter / Escape act as IME operations (convert / commit / cancel) without misfiring the cell's value cycling, cursor movement, edit commit, or edit cancel",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧のテキスト列(タイトル・ノート)のセル編集は、日本語 IME による入力(未確定",
+        "文字列の表示・変換・確定)を、ノート編集オーバーレイおよびタイトルのダブルクリック",
+        "編集と同等に受け付ける。編集開始の最初の 1 打鍵も IME を経由して未確定文字列の",
+        "一部となり、素通しで確定されない。未確定文字列がある間の Space / Enter / Esc は",
+        "IME の操作(変換・確定・取り消し)として効き、セルの値循環・セル移動・編集確定・",
+        "編集取り消しを誤発火させない。"
+      ]
+    },
+    {
+      "id": "S-102",
+      "title": "Human performs a one-time on-device visual verification of the list cell editing IME support; not complete until confirmed (typing 「こんにちは」 in the Title cell shows a marked string from the first keystroke, converts with Space and commits with Enter into the saved cell; the Note cell does the same and the committed string lands on the note's first line; Enter / Escape while a marked string is up act as IME commit / cancel without moving the cursor or cancelling the edit, and after an IME cancel the cell edit is still live with Enter committing and Escape cancelling as before; English input, the note editor overlay, and the double-click title rename still work)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "一覧セル編集の IME 対応が揃った後、人間が実機で一度だけ以下を目視確認し、",
+        "確認が取れる。確認が取れるまで完了とはしない。",
+        "一覧のタイトル列で「こんにちは」とタイプすると、最初の打鍵から未確定文字列と",
+        "して表示され、Space での変換と Enter での確定ができ、確定した「こんにちは」が",
+        "セルに反映され保存される",
+        "ノート列でも同様に日本語入力・変換・確定ができ、確定文字列がノートの 1 行目に",
+        "反映される",
+        "未確定文字列がある間の Enter / Esc はセル移動・編集取り消しを起こさず IME の",
+        "確定・取り消しとして効き、IME 取り消し後もセル編集は継続していて、従来どおり",
+        "Enter で確定・Esc で編集取り消しができる",
+        "英語入力・ノート編集オーバーレイ・タイトルのダブルクリック編集は従来どおり効く"
       ]
     }
   ]

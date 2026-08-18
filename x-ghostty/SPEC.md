@@ -1100,6 +1100,7 @@ macos/Sources/Features/Projects/
   ProjectLayoutSelector.swift      (レイアウト型選択オーバーレイ、§26.2)
   ProjectList.swift                (台帳の行/列/セル機構と日次優先度リセット、§27.1-27.2/§28.2)
   ProjectListOverlay.swift         (プロジェクト一覧(台帳)オーバーレイ、§27)
+  ProjectListCellEditor.swift      (一覧セルの AppKit 編集フィールドと IME 橋渡し、§27.5)
   ProjectWorkday.swift             (作業日と 06:00 境界、§28.1)
   ProjectRemoteSplit.swift         (リモート split の起動判断とレポート鮮度、§29)
   PaneForegroundProbe.swift        (pty の前景プロセス取得、§29.3)
@@ -1214,7 +1215,7 @@ close 対象は visible focused project のみ(一覧で Space により visible
 ## 19. テスト計画
 
 (MVP 構築時の計画記録。現行のテストは各仕様節末尾のテスト小節 —
-§21.4/§22.8/§23.5/§24.5/§25/§26.5/§27.5/§28.4/§29.4 — が正。)
+§21.4/§22.8/§23.5/§24.5/§25/§26.5/§27.6/§28.4/§29.4 — が正。)
 
 ### 19.1 Unit tests
 
@@ -1990,9 +1991,9 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
 導かれる投影にすぎない。一覧は hidden プロジェクトの**唯一の復帰導線**であり
 (hidden シェルフは廃止、§7.2)、新規プロジェクト作成の**唯一の導線**でもある
 (§27.4)。行の内容・並び・セル編集の確定と取り消し・締切の Space 送りの
-日付計算・トグル可否・focus 可否・新規行の表示状態の判断はすべてモデル層
-(`ProjectList.swift` / `WorkspaceState.swift`)に置き、`XGhosttyTests` から
-検証する(§27.5)。
+日付計算・トグル可否・focus 可否・新規行の表示状態・編集中のキー振り分けの
+判断はすべてモデル層(`ProjectList.swift` / `WorkspaceState.swift`)に置き、
+`XGhosttyTests` から検証する(§27.6)。
 
 ### 27.1 台帳と一覧の形(projectOrder / ProjectListRow / ProjectListColumn)
 
@@ -2031,8 +2032,12 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   `Enter` 下 / `Shift+Enter` 上(矢印キーも同じ)。行末の `Tab` は次の行の
   先頭へ折り返し、最終行の `Enter` はそこで止まる(グリッドの角は吸収)。
 - **テキスト列**(タイトル・締切・ノート)は文字を打つと編集が始まる
-  (`ProjectListCellEdit`:編集開始時の `original` とドラフト)。`Enter` /
+  (`ProjectListCellEdit.started(on:column:)`:編集開始時の `original` と
+  **空のドラフト** — 打鍵は draft に注がず編集フィールドの input context へ
+  流し直す。IME 対応の要、§27.5)。`Enter` /
   `Tab` で確定して移動、`Esc` は**その編集だけ**を取り消して元の値に戻す。
+  ただし IME が未確定文字列を保持している間はこの 3 つも IME のものになる
+  (§27.5)。
   確定は `commitListCellEdit`:タイトルは rename と同じ正規化(§9.1)、
   締切は §24.1 の保存時境界(不正入力は未設定へ)、**ノート列の確定は 1 行目
   だけを書き換え、2 行目以降は保持する**(複数行編集は `Cmd+E` の
@@ -2096,7 +2101,50 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   `relayout()` が配置を即座に組み直す。
 - controller は作成 1 回につき 1 つの undo を登録する。
 
-### 27.5 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 24 件 / ProjectListTests 14 件)
+### 27.5 セル編集の IME 対応(2026-08-18 改訂・必須 78)
+
+一覧のセル編集は**標準的な macOS のテキスト入力**である。ノート編集
+オーバーレイ(§21.2)やタイトルのダブルクリック編集と同等に、日本語 IME の
+未確定文字列の表示・変換・確定を受け付ける。
+
+破れの原因は 2 つあり、対応もその 2 つである:
+
+- **編集フィールドは AppKit**(`ProjectListCellEditor`、`NSTextField` の
+  `NSViewRepresentable` ラッパ)。SwiftUI の `TextField` を置き換えたのは、
+  未確定文字列の状態(field editor の `hasMarkedText()`)を overlay 側から
+  読む必要があるため。編集中は**このフィールド自身が first responder を取り**、
+  SwiftUI の `@FocusState` は編集開始時に手放す(合成中に focus を奪い合わない)。
+- **編集開始の打鍵は再生する**。overlay のローカル keyDown モニタ
+  (§21.2 の `OverlayKeyDownMonitor`)は dispatch 前に全キーを見るため、
+  編集開始の打鍵はどの input context にも届かない。したがってこの打鍵を
+  draft に注ぐのをやめ(`started(on:column:)` の draft は空)、
+  `ProjectListCellEditorHandle.pendingKeyEvent` に預けて、フィールドが
+  first responder を取った直後に field editor の `interpretKeyEvents([event])`
+  へ**流し直す**。IME はこれを合成の第 1 打鍵として扱う。英字入力では
+  そのまま `insertText:` になるので、「打つと置き換えで編集が始まる」挙動は
+  従来どおり。
+
+編集中のキー振り分けはモデル層の純判断
+(`ProjectListCellEdit.routing(for:shifted:composing:)`):
+
+```text
+composing == true  … 全キー .editor(Space = 変換、Enter = 確定、
+                     Esc = 取り消しは IME のもの。セルの値循環・セル移動・
+                     編集確定・編集取り消しを誤発火させない)
+composing == false … Esc = .cancel / Enter = .commit(下、Shift で上) /
+                     Tab = .commit(右、Shift で左) / その他 = .editor
+```
+
+`composing` は `ProjectListCellEditorHandle.isComposing`(field editor の
+`hasMarkedText()`)の投影であり、判断そのものは view に無い。IME 取り消し後は
+未確定文字列が消えるだけで**編集セッションは生き続ける**ため、続く `Enter` /
+`Esc` は従来どおり確定・取り消しとして効く。`updateNSView` は合成中に
+`stringValue` を書き戻さない(未確定文字列を破壊しないため)。
+
+締切セルの Space 送り(§27.2)は編集していない状態の話なので、この規則とは
+競合しない。
+
+### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 27 件 / ProjectListTests 14 件)
 
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
@@ -2115,6 +2163,10 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   繰り上げ)/ Shift+Space = -1 日・ちょうど今日から戻すと未設定・未設定では
   no-op / 各押下は編集セッション外の即時確定(セッション gating・typed edit
   との独立)
+- IME(§27.5): 打鍵で始まる編集の draft は空(打鍵は編集フィールドへ再生)・
+  original は従来どおり保持・選択式列は非編集 / 未確定文字列がある間は
+  Esc/Enter/Tab/その他すべてが .editor / 未確定が無ければ Esc = 取り消し・
+  Enter = 確定して下(Shift で上)・Tab = 確定して右(Shift で左)
 - focus: Cmd+Enter は visible 行で focus して閉じる / hidden 行は何も起きず
   一覧が残る
 - セッション: begin は zoom 解除・他オーバーレイ中は拒否 / Esc で閉じても

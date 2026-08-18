@@ -202,6 +202,72 @@ struct ProjectListCellEdit: Equatable {
         self.original = text
         self.draft = text
     }
+
+    /// The session a keystroke on a text cell starts (`SPEC.md` §27.2, §27.5).
+    ///
+    /// The draft starts *empty* — typing replaces the cell's value, as it
+    /// always has — and, unlike a seeded draft, it does not carry the
+    /// keystroke that started the edit. That keystroke is replayed into the
+    /// cell editor's input context instead, so a Japanese IME composition can
+    /// begin on the very first stroke rather than having its raw character
+    /// committed straight into the draft (must 78).
+    static func started(
+        on row: ProjectListRow, column: ProjectListColumn
+    ) -> ProjectListCellEdit? {
+        guard var session = ProjectListCellEdit(row: row, column: column) else {
+            return nil
+        }
+        session.draft = ""
+        return session
+    }
+}
+
+// MARK: Edit-session key routing (SPEC §27.5)
+
+/// A key press the list's keyDown monitor must route while a cell edit is up.
+/// Only the presses that mean something to the *session* are named; every
+/// other key is `.other` and belongs to the editor.
+enum ProjectListEditKeyPress: Equatable {
+    case escape
+    case enter
+    case tab
+    case other
+}
+
+/// What the list does with a key press while a cell edit is up
+/// (`SPEC.md` §27.5).
+enum ProjectListEditKeyRouting: Equatable {
+    /// Commit the draft and move the cursor.
+    case commit(ProjectListCellCursor.Move)
+    /// Discard the draft, leaving the cell's original value.
+    case cancel
+    /// Hand the press to the cell editor — which is also the IME's input
+    /// path, so this is what "the IME keeps the key" looks like.
+    case editor
+}
+
+extension ProjectListCellEdit {
+    /// Where a key press goes while this edit is up (`SPEC.md` §27.5).
+    ///
+    /// The whole judgment is `composing`: while the IME holds a marked
+    /// (uncommitted) string, *every* key belongs to the editor, because Space
+    /// converts, Enter commits the conversion, and Escape cancels it — none of
+    /// them may reach the session's own Enter-commits / Escape-cancels /
+    /// Tab-moves meaning (must 78). Once nothing is marked, the session's
+    /// terminators read exactly as they did before: Enter commits and moves
+    /// down (Shift+Enter up), Tab commits and moves right (Shift+Tab left),
+    /// Escape cancels this edit alone (§27.2).
+    static func routing(
+        for press: ProjectListEditKeyPress, shifted: Bool, composing: Bool
+    ) -> ProjectListEditKeyRouting {
+        guard !composing else { return .editor }
+        switch press {
+        case .escape: return .cancel
+        case .enter: return .commit(shifted ? .up : .down)
+        case .tab: return .commit(shifted ? .left : .right)
+        case .other: return .editor
+        }
+    }
 }
 
 // MARK: Selection-column cycling (SPEC §27.2)

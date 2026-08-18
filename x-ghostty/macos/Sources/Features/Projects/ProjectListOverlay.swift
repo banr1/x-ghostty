@@ -26,6 +26,12 @@ import SwiftUI
 /// text field owns first responder so the terminal sees no keystrokes, and a
 /// local keyDown monitor (`OverlayKeyDownMonitor`) observes every key before
 /// any dispatch — including the ones a focused field editor would eat.
+///
+/// While a cell edit is up, first responder passes to the edit's AppKit field
+/// (`ProjectListCellEditor`) so the cell is ordinary macOS text input: the
+/// keystroke that started the edit is replayed through its input context and
+/// the monitor yields every key to the IME while a marked string is up
+/// (`SPEC.md` §27.5).
 struct ProjectListOverlay: View {
     @EnvironmentObject private var ghostty: XGhostty.App
 
@@ -102,9 +108,14 @@ struct ProjectListOverlay: View {
     /// `onCommitEdit`; cancel just discards this value (`SPEC.md` §27.2).
     @State private var edit: ProjectListCellEdit?
 
-    private enum FocusTarget: Hashable { case catcher, editor }
+    private enum FocusTarget: Hashable { case catcher }
     @FocusState private var focus: FocusTarget?
     @State private var keyboardSink = ""
+
+    /// The bridge to the cell editor's AppKit field (`SPEC.md` §27.5): the
+    /// keystroke that starts an edit is replayed through it, and it reports
+    /// whether the IME currently holds a marked string.
+    @State private var editor = ProjectListCellEditorHandle()
 
     var body: some View {
         GeometryReader { geometry in
@@ -170,22 +181,21 @@ struct ProjectListOverlay: View {
         if edit != nil {
             // While editing, the cell field owns every key except the edit's
             // own terminators (SPEC §27.2): Enter / Tab commit and move,
-            // Escape cancels only this edit.
-            if isEscape {
+            // Escape cancels only this edit — unless the IME holds a marked
+            // string, in which case every key is the IME's (SPEC §27.5, must
+            // 78). The routing itself is the model's judgment.
+            let shifted = modifiers == [.shift] || event.specialKey == .some(.backTab)
+            let press = Self.editKeyPress(for: event, isEscape: isEscape)
+            switch ProjectListCellEdit.routing(
+                for: press, shifted: shifted, composing: editor.isComposing
+            ) {
+            case .commit(let move):
+                commitEdit(thenMove: move)
+                return nil
+            case .cancel:
                 cancelEdit()
                 return nil
-            }
-            switch event.specialKey {
-            case .some(.carriageReturn), .some(.enter):
-                commitEdit(thenMove: modifiers == [.shift] ? .up : .down)
-                return nil
-            case .some(.tab):
-                commitEdit(thenMove: modifiers == [.shift] ? .left : .right)
-                return nil
-            case .some(.backTab):
-                commitEdit(thenMove: .left)
-                return nil
-            default:
+            case .editor:
                 return event
             }
         }
@@ -263,7 +273,10 @@ struct ProjectListOverlay: View {
         }
 
         // Any other printable character starts an in-place edit on a text
-        // column, seeding the draft with what was typed (SPEC §27.2).
+        // column (SPEC §27.2). The keystroke is *not* seeded into the draft:
+        // it is replayed into the new editor's input context, so an IME
+        // composition starts on this very stroke instead of its raw character
+        // landing in the cell (SPEC §27.5, must 78).
         if let typed = event.characters,
            !typed.isEmpty,
            event.specialKey == nil,
@@ -271,11 +284,24 @@ struct ProjectListOverlay: View {
            let row = cursorRow,
            let column = cursorColumn,
            column.isTextColumn {
-            beginEdit(row: row, column: column, seedingDraft: typed)
+            beginEdit(row: row, column: column, replaying: event)
             return nil
         }
 
         return event
+    }
+
+    /// How the edit session reads a key event (`SPEC.md` §27.5). Shift+Tab
+    /// arrives as its own special key and means the same press as Tab.
+    private static func editKeyPress(
+        for event: NSEvent, isEscape: Bool
+    ) -> ProjectListEditKeyPress {
+        if isEscape { return .escape }
+        switch event.specialKey {
+        case .some(.carriageReturn), .some(.enter): return .enter
+        case .some(.tab), .some(.backTab): return .tab
+        default: return .other
+        }
     }
 
     /// The plain-movement reading of a key event, or `nil` when the event is
@@ -324,25 +350,38 @@ struct ProjectListOverlay: View {
         }
     }
 
+    /// Start an in-place edit, handing `event` — the keystroke that started
+    /// it — to the cell editor to replay through the IME (`SPEC.md` §27.5).
+    /// Passing `nil` starts an edit no keystroke opened (the Cmd+N title
+    /// cell).
     private func beginEdit(
-        row: ProjectListRow, column: ProjectListColumn, seedingDraft typed: String
+        row: ProjectListRow, column: ProjectListColumn, replaying event: NSEvent?
     ) {
-        guard var session = ProjectListCellEdit(row: row, column: column) else { return }
-        session.draft = typed
+        guard let session = ProjectListCellEdit.started(on: row, column: column) else {
+            return
+        }
+        editor.pendingKeyEvent = event
+        // The cell field takes first responder itself, so SwiftUI's focus
+        // claim is released first — released synchronously, before the editor
+        // exists, so nothing fights it mid composition.
+        focus = nil
         edit = session
-        DispatchQueue.main.async { focus = .editor }
     }
 
     private func commitEdit(thenMove move: ProjectListCellCursor.Move) {
         guard let session = edit else { return }
         onCommitEdit(session.draft, session.column, session.rowID)
-        edit = nil
+        endEdit()
         moveCursor(move)
-        DispatchQueue.main.async { focus = .catcher }
     }
 
     private func cancelEdit() {
+        endEdit()
+    }
+
+    private func endEdit() {
         edit = nil
+        editor.pendingKeyEvent = nil
         DispatchQueue.main.async { focus = .catcher }
     }
 
@@ -352,14 +391,11 @@ struct ProjectListOverlay: View {
     private func seatPendingTitleEdit() {
         guard let id = pendingTitleEdit,
               let rowIndex = rows.firstIndex(where: { $0.id == id }),
-              let columnIndex = columns.firstIndex(of: .title),
-              var session = ProjectListCellEdit(row: rows[rowIndex], column: .title)
+              let columnIndex = columns.firstIndex(of: .title)
         else { return }
         cursor = ProjectListCellCursor(row: rowIndex, column: columnIndex)
-        session.draft = ""
-        edit = session
+        beginEdit(row: rows[rowIndex], column: .title, replaying: nil)
         onConsumePendingTitleEdit()
-        DispatchQueue.main.async { focus = .editor }
     }
 
     // MARK: Table
@@ -515,11 +551,14 @@ struct ProjectListOverlay: View {
 
         Self.columnFrame(column, Group {
             if isEditing {
-                TextField("", text: Binding(
-                    get: { edit?.draft ?? "" },
-                    set: { edit?.draft = $0 }))
-                    .textFieldStyle(.plain)
-                    .focused($focus, equals: .editor)
+                // An AppKit field, not a SwiftUI TextField: the cell edit has
+                // to be ordinary macOS text input, IME composition included
+                // (SPEC §27.5).
+                ProjectListCellEditor(
+                    text: Binding(
+                        get: { edit?.draft ?? "" },
+                        set: { edit?.draft = $0 }),
+                    handle: editor)
             } else {
                 cellText(row: row, column: column)
             }

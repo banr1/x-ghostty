@@ -3157,7 +3157,7 @@
     {
       "id": "T-077",
       "title": "Human on-device visual verification of the project list (one-time): Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes, on a hidden row nothing; the list scrolls following the cursor; appearance fits the terminal; each Space press in the deadline cell steps today then +1 day, Shift+Space steps back and clears from today, and typed entry still works",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-084"
@@ -3167,7 +3167,13 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": [],
+      "evidence": [
+        {
+          "type": "human",
+          "summary": "Human on-device confirmation of success criterion 21 (project list on-device pass, including the deadline-cell Space stepping added by T-083 and the T-081/T-082 fixes): every bullet behaved as expected. Recorded by the human in the 2026-08-18T17:50:49+09:00 resume note (gate R-021): 「R-021 の実機確認を実施し、T-077(成功条件 21)/ T-079(成功条件 25)の全項目が期待どおり動作した」。",
+          "reference": "just resume --resolve R-021 @ 2026-08-18T17:50:49+09:00"
+        }
+      ],
       "notes": "Returned by the human in the 2026-08-18T15:38:58+09:00 resume: (1) consecutive row/column reordering misapplies from the second Cmd+arrow press on — the cursor is left behind, so the move hits a different row/column (fix: T-081); (2) some column widths are too narrow to read their values (fix: T-082); (3) the 2026-08-18 Essence adds deadline-cell Space stepping to this gate (implement: T-083). Re-raise this on-device gate only after T-081, T-082, and T-083 are done. The earlier partial confirmations do not need re-checking beyond the listed items."
     },
     {
@@ -3197,7 +3203,7 @@
     {
       "id": "T-079",
       "title": "Human on-device visual verification of the next trigger (one-time): settable in the list cell and shown in overview mode together with note/priority/deadline; not shown in the label band",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-098"
@@ -3207,7 +3213,13 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": [],
+      "evidence": [
+        {
+          "type": "human",
+          "summary": "Human on-device confirmation of success criterion 25 (next trigger on-device pass, including the prefix drop from T-084): every bullet behaved as expected. Recorded by the human in the 2026-08-18T17:50:49+09:00 resume note (gate R-021): 「R-021 の実機確認を実施し、T-077(成功条件 21)/ T-079(成功条件 25)の全項目が期待どおり動作した」。",
+          "reference": "just resume --resolve R-021 @ 2026-08-18T17:50:49+09:00"
+        }
+      ],
       "notes": "Returned by the human in the 2026-08-18T15:38:58+09:00 resume: drop the `next:` prefix from the next-trigger display (the value alone is self-evident; the label band still never shows the trigger) — fix: T-084. Re-raise this on-device gate after T-084 is done."
     },
     {
@@ -3451,6 +3463,109 @@
           "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED (exit 0) — the full suite including the three new success-condition-20 tests, all named passing in the log: ProjectListCellTests/spaceOnDeadlineCellSetsTodayThenAdvancesOneDay, shiftSpaceStepsBackClearsFromTodayAndIgnoresUnset, deadlineSpaceStepsCommitImmediatelyOutsideAnyEditSession."
         }
       ]
+    },
+    {
+      "id": "T-086",
+      "title": "IME-capable list cell editing (must 78): the Title / Note cell editor becomes an AppKit text field whose field editor owns the composition, the keystroke that starts an edit is replayed through the IME instead of being seeded raw, and the overlay's keyDown monitor yields Space / Enter / Tab / Escape to the IME while a marked string is up. Routing judgment in the model layer with XGhosttyTests coverage",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-101",
+        "S-092"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-ime",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectListCellEditor.swift",
+            "macos/Sources/Features/Projects/ProjectList.swift",
+            "macos/Sources/Features/Projects/ProjectListOverlay.swift",
+            "macos/Tests/Projects/ProjectListCellTests.swift"
+          ],
+          "summary": "IME-capable list cell editing (must 78), attacking the two causes of the break the human found. (1) The editor is now AppKit: new ProjectListCellEditor (an NSTextField NSViewRepresentable) replaces the SwiftUI TextField, because the overlay needs to read the field editor's hasMarkedText() and because the field must own first responder itself — SwiftUI's @FocusState is released synchronously when an edit starts, so nothing fights the field editor mid composition, and updateNSView never writes stringValue while composing. (2) The keystroke that starts an edit is replayed, not seeded: ProjectListCellEdit.started(on:column:) opens the session with an empty draft (original still kept for the cancel path), the starting NSEvent goes to ProjectListCellEditorHandle.pendingKeyEvent, and the handle replays it through the field editor's interpretKeyEvents([event]) the moment the field takes first responder — so the IME sees it as the first stroke of a composition instead of its raw character landing in the cell (English typing still reaches insertText:, so type-to-replace is unchanged). The routing judgment is model-layer and pure: ProjectListCellEdit.routing(for:shifted:composing:) sends every key to the editor while a marked string is up (Space converts, Enter commits the conversion, Escape cancels it) and otherwise keeps the §27.2 terminators exactly as they were (Escape cancels, Enter commits down / Shift+Enter up, Tab commits right / Shift+Tab left); the overlay only maps NSEvent to the ProjectListEditKeyPress cases and projects handle.isComposing into it. An IME cancel leaves the session live, so the following Enter / Escape read as commit / cancel again. Three new XGhosttyTests cover the empty-draft edit start and both halves of the routing table."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + macOS app bundle) exited 0 with the IME cell editor and the doc updates in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: the Zig core test suite exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: XGhosttyTests exited 0 — 615 test cases passed, including the three new ProjectListCellTests IME cases. (A first run had failed only on the unrelated timing-sensitive ConfigFileWatcherTests/keepsWatchingAcrossReplacements, which passed on the runs before and after.)"
+        }
+      ]
+    },
+    {
+      "id": "T-087",
+      "title": "Update SPEC.md and README.md for the list cell editing IME support (must 76): the §27 cell mechanics gain the marked-text rule and the editor's AppKit shape, and the README keeps the three verification commands",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-091",
+        "S-101"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-ime",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "must 76 docs refresh for the IME support. SPEC.md: new §27.5 「セル編集の IME 対応」 stating the rule (list cell editing is ordinary macOS text input, on a par with the note overlay and the double-click rename), both causes and their fixes (AppKit field + first-responder ownership; the replayed starting keystroke), and the routing table with composing as the whole judgment; the old test subsection became §27.6 (with an IME bullet and the 24→27 ProjectListCellTests count) and the two §27.5 cross-references (§19 index, §27 preamble) follow it; §27.2's text-column bullet now points at the empty draft and the marked-string exception; the §17 file map gains ProjectListCellEditor.swift. README.md: the project-list entry says text cells are ordinary macOS text input — an input method composes from the first keystroke and Space / Enter / Esc belong to the composition while it is up. The Building section keeps all three verification commands."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full build (Zig core + macOS app bundle) exited 0 with the IME cell editor and the doc updates in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: the Zig core test suite exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: XGhosttyTests exited 0 — 615 test cases passed, including the three new ProjectListCellTests IME cases. (A first run had failed only on the unrelated timing-sensitive ConfigFileWatcherTests/keepsWatchingAcrossReplacements, which passed on the runs before and after.)"
+        }
+      ]
+    },
+    {
+      "id": "T-088",
+      "title": "Human on-device visual verification of the list cell editing IME support (one-time, success criterion 27): 「こんにちは」 typed in the Title cell is a marked string from the first keystroke, converts with Space, commits with Enter and is saved; the Note cell does the same onto the note's first line; Enter / Escape while marked act as IME commit / cancel without moving the cursor or cancelling the edit, and the edit stays live afterwards with the usual Enter commit / Escape cancel; English input, the note editor overlay, and the double-click title rename are unchanged",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-102"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "list-ime-human",
+      "risk_level": "normal",
+      "evidence": []
     }
   ]
 }

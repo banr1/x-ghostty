@@ -550,4 +550,66 @@ struct ProjectListCellTests {
         #expect(model.projectListFullNotes == false)
         #expect(model.state.projects[a.id]?.note == "1\n2\n3")
     }
+
+    // MARK: IME-capable cell editing (SPEC §27.5, must 78)
+
+    @Test func aTypedEditStartsEmptySoTheFirstKeystrokeCanComposeThroughTheIME() {
+        let a = Self.makeProject(name: "alpha", note: "first\nsecond")
+        let rows = Self.makeState([a]).projectListRows
+        let row = rows[0]
+
+        // A session opened by typing carries no keystroke of its own: the
+        // stroke goes to the editor's input context, not into the draft, so
+        // an IME composition can begin with it instead of its raw character
+        // landing in the cell.
+        for column in [ProjectListColumn.title, .deadline, .note] {
+            let started = ProjectListCellEdit.started(on: row, column: column)
+            #expect(started?.draft == "")
+        }
+
+        // Typing still replaces rather than appends: the original is kept for
+        // the cancel path only.
+        #expect(ProjectListCellEdit.started(on: row, column: .title)?.original == "alpha")
+        #expect(ProjectListCellEdit.started(on: row, column: .note)?.original == "first")
+
+        // The selection columns are still not text-editable.
+        for column in [ProjectListColumn.visibility, .priority, .nextTrigger] {
+            #expect(ProjectListCellEdit.started(on: row, column: column) == nil)
+        }
+    }
+
+    @Test func aMarkedStringKeepsEveryKeyOnTheImeInsteadOfTheSession() {
+        // While the IME holds an uncommitted string, Enter commits the
+        // conversion, Escape cancels it and Space converts — none of them may
+        // read as the session's commit / cancel / move.
+        for press in [
+            ProjectListEditKeyPress.escape, .enter, .tab, .other,
+        ] {
+            for shifted in [false, true] {
+                #expect(
+                    ProjectListCellEdit.routing(
+                        for: press, shifted: shifted, composing: true) == .editor)
+            }
+        }
+    }
+
+    @Test func withNothingMarkedTheSessionTerminatorsReadAsBefore() {
+        func routing(
+            _ press: ProjectListEditKeyPress, shifted: Bool = false
+        ) -> ProjectListEditKeyRouting {
+            ProjectListCellEdit.routing(for: press, shifted: shifted, composing: false)
+        }
+
+        #expect(routing(.escape) == .cancel)
+        #expect(routing(.escape, shifted: true) == .cancel)
+        #expect(routing(.enter) == .commit(.down))
+        #expect(routing(.enter, shifted: true) == .commit(.up))
+        #expect(routing(.tab) == .commit(.right))
+        #expect(routing(.tab, shifted: true) == .commit(.left))
+
+        // Everything else — the typing itself, the standard edit chords — is
+        // the field editor's, exactly as it is mid composition.
+        #expect(routing(.other) == .editor)
+        #expect(routing(.other, shifted: true) == .editor)
+    }
 }
