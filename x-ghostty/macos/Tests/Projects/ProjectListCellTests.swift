@@ -304,8 +304,8 @@ struct ProjectListCellTests {
         // Closed list: everything is inert.
         #expect(model.commitProjectListCellEdit("x", column: .title, for: a.id) == false)
         #expect(model.cycleProjectListCell(.priority, for: a.id) == false)
-        #expect(model.moveProjectListRow(b.id, by: -1) == false)
-        #expect(model.moveProjectListColumn(.note, by: -1) == false)
+        #expect(model.moveProjectListRow(b.id, by: -1) == nil)
+        #expect(model.moveProjectListColumn(.note, by: -1) == nil)
         #expect(model.state.projects[a.id]?.name == "alpha")
         #expect(model.state.projectOrder == [a.id, b.id])
 
@@ -315,14 +315,76 @@ struct ProjectListCellTests {
         #expect(model.state.projects[a.id]?.name == "gamma")
         #expect(model.cycleProjectListCell(.priority, for: a.id))
         #expect(model.state.projects[a.id]?.priority == .high)
-        #expect(model.moveProjectListRow(b.id, by: -1))
+        #expect(model.moveProjectListRow(b.id, by: -1) == 0)
         #expect(model.state.projectOrder == [b.id, a.id])
         // Clamped at the top now.
-        #expect(model.moveProjectListRow(b.id, by: -1) == false)
-        #expect(model.moveProjectListColumn(.note, by: -1))
+        #expect(model.moveProjectListRow(b.id, by: -1) == nil)
+        #expect(model.moveProjectListColumn(.note, by: -1) == 4)
         #expect(model.state.listColumnOrder == [
             .visibility, .title, .priority, .deadline, .note, .nextTrigger,
         ])
+    }
+
+    // MARK: Consecutive reorders follow the moved row/column (SPEC §27.1)
+
+    @Test func consecutiveRowMovesKeepActingOnTheSameRow() {
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
+        let c = Self.makeProject(name: "gamma", at: Date(timeIntervalSince1970: 2))
+        let model = Self.makeListModel([a, b, c])
+
+        // The reported index is where the moved row now sits — the cursor
+        // follows it, so pressing Cmd+↓ again moves the same row again.
+        var cursor = 0
+        for (expectedIndex, expectedOrder) in [
+            (1, [b.id, a.id, c.id]),
+            (2, [b.id, c.id, a.id]),
+        ] {
+            let moved = model.moveProjectListRow(
+                model.state.projectOrder[cursor], by: 1)
+            #expect(moved == expectedIndex)
+            #expect(model.state.projectOrder == expectedOrder)
+            #expect(model.state.projectOrder.firstIndex(of: a.id) == moved)
+            cursor = moved ?? cursor
+        }
+
+        // The bottom end clamps: nothing moves, nothing is reported, the
+        // cursor stays on the same row.
+        #expect(model.moveProjectListRow(model.state.projectOrder[cursor], by: 1) == nil)
+        #expect(model.state.projectOrder == [b.id, c.id, a.id])
+
+        // And two consecutive moves back up return it to the top.
+        cursor = model.moveProjectListRow(model.state.projectOrder[cursor], by: -1) ?? cursor
+        #expect(cursor == 1)
+        cursor = model.moveProjectListRow(model.state.projectOrder[cursor], by: -1) ?? cursor
+        #expect(cursor == 0)
+        #expect(model.state.projectOrder == [a.id, b.id, c.id])
+    }
+
+    @Test func consecutiveColumnMovesKeepActingOnTheSameColumn() {
+        let a = Self.makeProject(name: "alpha")
+        let model = Self.makeListModel([a])
+
+        // Priority right twice: each report is the moved column's new index.
+        var cursor = model.state.listColumnOrder.firstIndex(of: .priority)!
+        for expectedOrder: [ProjectListColumn] in [
+            [.visibility, .title, .deadline, .priority, .nextTrigger, .note],
+            [.visibility, .title, .deadline, .nextTrigger, .priority, .note],
+        ] {
+            let moved = model.moveProjectListColumn(
+                model.state.listColumnOrder[cursor], by: 1)
+            #expect(moved == model.state.listColumnOrder.firstIndex(of: .priority))
+            #expect(model.state.listColumnOrder == expectedOrder)
+            cursor = moved ?? cursor
+        }
+
+        // One more lands on the end; the end then clamps and reports nothing.
+        cursor = model.moveProjectListColumn(
+            model.state.listColumnOrder[cursor], by: 1) ?? cursor
+        #expect(cursor == 5)
+        #expect(model.state.listColumnOrder.last == .priority)
+        #expect(model.moveProjectListColumn(
+            model.state.listColumnOrder[cursor], by: 1) == nil)
     }
 
     @Test func rowMovesFromTheListRelayoutTheArrangement() {
@@ -330,7 +392,7 @@ struct ProjectListCellTests {
         let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
         let model = Self.makeListModel([a, b])
 
-        #expect(model.moveProjectListRow(b.id, by: -1))
+        #expect(model.moveProjectListRow(b.id, by: -1) == 0)
         // The arrangement is a projection of the ledger: the visible order
         // follows the row move immediately (SPEC §26.3).
         #expect(model.state.canonicalProjectTree.map(\.id) == [b.id, a.id])

@@ -18,14 +18,29 @@ struct OverlayKeyDownMonitor: ViewModifier {
     /// let normal dispatch continue.
     let handler: (NSEvent) -> NSEvent?
 
+    /// The installed monitor calls the handler through this box, which every
+    /// body evaluation repoints at the current view value's closure. The
+    /// monitor outlives the view value it was installed from, so calling the
+    /// installation-time closure directly would keep reading that first
+    /// snapshot's captured state (rows, columns, ...) after re-renders — on
+    /// device, the second of two consecutive Cmd+arrow row moves acted on
+    /// the pre-move row order that way.
+    private final class HandlerBox {
+        var handler: (NSEvent) -> NSEvent? = { $0 }
+    }
+
+    @State private var box = HandlerBox()
     @State private var monitor: Any?
 
     func body(content: Content) -> some View {
-        content
+        box.handler = handler
+        return content
             .onAppear {
                 guard monitor == nil else { return }
                 monitor = NSEvent.addLocalMonitorForEvents(
-                    matching: .keyDown, handler: handler)
+                    matching: .keyDown) { [box] event in
+                    box.handler(event)
+                }
             }
             .onDisappear {
                 if let monitor { NSEvent.removeMonitor(monitor) }

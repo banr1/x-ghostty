@@ -343,14 +343,15 @@ enum ProjectNextTrigger: String, Codable, CaseIterable, Equatable {
     case externalPerson
     case event
 
-    /// The compact terminal-style readout the note overview (and later the
-    /// list cell) shows for this value.
+    /// The compact terminal-style readout the note overview and the list
+    /// cell show for this value. The bare value carries no prefix: it is
+    /// self-evident next to the note (and under the list's "next" header).
     var displayText: String {
         switch self {
-        case .myself: return "next:me"
-        case .teamMember: return "next:team"
-        case .externalPerson: return "next:external"
-        case .event: return "next:event"
+        case .myself: return "me"
+        case .teamMember: return "team"
+        case .externalPerson: return "external"
+        case .event: return "event"
         }
     }
 }

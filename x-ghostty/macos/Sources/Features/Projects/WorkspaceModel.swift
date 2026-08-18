@@ -639,26 +639,34 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// ledger order (`Cmd+↑`/`Cmd+↓`, `SPEC.md` §27.1), clamped to the ends;
     /// only while the list session is up. The arrangement re-derives and the
     /// new order persists with the ledger.
+    ///
+    /// - Returns: the moved row's new ledger index — the cell cursor follows
+    ///   it, so consecutive moves keep acting on the same row — or `nil`
+    ///   when nothing moved (no session, unknown id, or a clamped end).
     @discardableResult
-    func moveProjectListRow(_ id: ProjectID, by delta: Int) -> Bool {
+    func moveProjectListRow(_ id: ProjectID, by delta: Int) -> Int? {
         guard projectListActive,
-              let from = state.projectOrder.firstIndex(of: id) else { return false }
+              let from = state.projectOrder.firstIndex(of: id) else { return nil }
         let target = min(max(from + delta, 0), state.projectOrder.count - 1)
-        guard target != from else { return false }
+        guard target != from else { return nil }
         state.moveProjectRow(id, to: target)
-        return true
+        return target
     }
 
     /// Move `column` one-or-more places left (negative `delta`) or right in
     /// the persisted column order (`Cmd+←`/`Cmd+→`, `SPEC.md` §27.1), clamped
     /// to the ends; only while the list session is up.
+    ///
+    /// - Returns: the moved column's new index — the cell cursor follows it,
+    ///   so consecutive moves keep acting on the same column — or `nil` when
+    ///   nothing moved.
     @discardableResult
-    func moveProjectListColumn(_ column: ProjectListColumn, by delta: Int) -> Bool {
-        guard projectListActive else { return false }
+    func moveProjectListColumn(_ column: ProjectListColumn, by delta: Int) -> Int? {
+        guard projectListActive else { return nil }
         var next = state
-        guard next.moveListColumn(column, by: delta) else { return false }
+        guard next.moveListColumn(column, by: delta) else { return nil }
         state = next
-        return true
+        return state.listColumnOrder.firstIndex(of: column)
     }
 
     /// The rows the project list shows: every project, hidden ones included,

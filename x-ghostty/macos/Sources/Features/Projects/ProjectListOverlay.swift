@@ -71,11 +71,13 @@ struct ProjectListOverlay: View {
     /// Space on a cycling selection cell (priority / next trigger).
     let onCycle: (ProjectListColumn, ProjectID) -> Void
 
-    /// Move a row by ±1 in the ledger order (Cmd+↑ / Cmd+↓).
-    let onMoveRow: (ProjectID, Int) -> Void
+    /// Move a row by ±1 in the ledger order (Cmd+↑ / Cmd+↓). Returns the
+    /// row's new index, or `nil` when nothing moved (a clamped end).
+    let onMoveRow: (ProjectID, Int) -> Int?
 
-    /// Move a column by ±1 in the column order (Cmd+← / Cmd+→).
-    let onMoveColumn: (ProjectListColumn, Int) -> Void
+    /// Move a column by ±1 in the column order (Cmd+← / Cmd+→). Returns the
+    /// column's new index, or `nil` when nothing moved.
+    let onMoveColumn: (ProjectListColumn, Int) -> Int?
 
     /// Toggle whole-list full-note display (Cmd+Opt+E inside the list).
     let onToggleFullNotes: () -> Void
@@ -214,23 +216,22 @@ struct ProjectListOverlay: View {
         }
 
         // Cmd+arrows reorder: the cursor row through the ledger, the cursor
-        // column through the persisted column order (SPEC §27.1). The cursor
-        // follows the moved row/column, which stays under it by index.
+        // column through the persisted column order (SPEC §27.1). The model
+        // reports the moved row's/column's new index and the cursor follows
+        // it, so consecutive moves keep acting on the same row/column; a
+        // clamped move reports nothing and the cursor stays put.
         if modifiers == [.command], let special = event.specialKey {
             switch special {
             case .upArrow, .downArrow:
                 let delta = special == .upArrow ? -1 : 1
-                if let row = cursorRow {
-                    onMoveRow(row.id, delta)
-                    cursor.row = min(max(cursor.row + delta, 0), max(rows.count - 1, 0))
+                if let row = cursorRow, let moved = onMoveRow(row.id, delta) {
+                    cursor.row = moved
                 }
                 return nil
             case .leftArrow, .rightArrow:
                 let delta = special == .leftArrow ? -1 : 1
-                if let column = cursorColumn {
-                    onMoveColumn(column, delta)
-                    cursor.column = min(
-                        max(cursor.column + delta, 0), max(columns.count - 1, 0))
+                if let column = cursorColumn, let moved = onMoveColumn(column, delta) {
+                    cursor.column = moved
                 }
                 return nil
             default:
@@ -397,16 +398,32 @@ struct ProjectListOverlay: View {
         }
     }
 
-    /// The fixed width of a column's cells, or `nil` for the flexible note
-    /// column, which fills the rest of the panel.
+    /// The fixed width of a column's cells, or `nil` for the flexible title
+    /// and note columns, which share the panel width left by the fixed ones.
+    /// Fixed widths hold each column's widest value at the 12pt monospaced
+    /// cell font: "●" / "·", "high", "YYYY-MM-DD", "external".
     private static func width(of column: ProjectListColumn) -> CGFloat? {
         switch column {
         case .visibility: return 34
-        case .title: return 150
+        case .title: return nil
         case .priority: return 48
-        case .deadline: return 84
-        case .nextTrigger: return 92
+        case .deadline: return 92
+        case .nextTrigger: return 72
         case .note: return nil
+        }
+    }
+
+    /// The one width rule both the header band and the cells apply, so the
+    /// columns stay aligned: a fixed column takes its width, a flexible one
+    /// expands into an equal share of the remaining panel width.
+    @ViewBuilder
+    private static func columnFrame(
+        _ column: ProjectListColumn, _ content: some View
+    ) -> some View {
+        if let width = width(of: column) {
+            content.frame(width: width, alignment: .leading)
+        } else {
+            content.frame(minWidth: 100, maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -430,9 +447,10 @@ struct ProjectListOverlay: View {
                 .frame(minWidth: 16, alignment: .trailing)
 
             ForEach(Array(columns.enumerated()), id: \.1.id) { index, column in
-                Text(Self.headerLabel(of: column))
-                    .opacity(index == cursor.column ? 0.9 : 0.4)
-                    .frame(width: Self.width(of: column), alignment: .leading)
+                Self.columnFrame(
+                    column,
+                    Text(Self.headerLabel(of: column))
+                        .opacity(index == cursor.column ? 0.9 : 0.4))
             }
 
             Spacer(minLength: 0)
@@ -488,7 +506,7 @@ struct ProjectListOverlay: View {
         let isCursor = rowIndex == cursor.row && columnIndex == cursor.column
         let isEditing = isCursor && edit != nil
 
-        Group {
+        Self.columnFrame(column, Group {
             if isEditing {
                 TextField("", text: Binding(
                     get: { edit?.draft ?? "" },
@@ -498,8 +516,7 @@ struct ProjectListOverlay: View {
             } else {
                 cellText(row: row, column: column)
             }
-        }
-        .frame(width: Self.width(of: column), alignment: .leading)
+        })
         .padding(.horizontal, 2)
         .background(
             isCursor ? Color.secondary.opacity(isEditing ? 0.3 : 0.22) : Color.clear)

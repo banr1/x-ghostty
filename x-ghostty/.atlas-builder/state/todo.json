@@ -3111,7 +3111,7 @@
     {
       "id": "T-075",
       "title": "Human on-device visual verification of hide (one-time): Cmd+Opt+H hides the focused project immediately with no selection screen; right after hiding, the remaining projects are re-laid out with the remembered layout type",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-070"
@@ -3121,12 +3121,20 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-18T15:38:58+09:00",
+          "reference": "R-020 resolution / reflection.jsonl human_resume entry at 2026-08-18T15:38:58+09:00",
+          "summary": "The human performed the one-time on-device check of success condition 14 during the R-020 verification and confirmed both items: Cmd+Opt+H immediately hides the focused project with no selection screen, and right after hiding the remaining projects re-lay out with the remembered layout type. Recorded per the human instruction in the 2026-08-18T15:38:58+09:00 resume handoff."
+        }
+      ]
     },
     {
       "id": "T-076",
       "title": "Human on-device visual verification of layout types (one-time): Cmd+Opt+L lists only the types for the current visible count, arrows + Enter apply, Esc changes nothing, project count unchanged; hiding one of 6 tall-type projects re-lays out 5 in tall type automatically; the type survives restart; with one visible project Cmd+Opt+L shows nothing to choose; project boundaries cannot be resized while pane boundaries while zoomed can; the selection screen fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-072"
@@ -3136,11 +3144,19 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-18T15:38:58+09:00",
+          "reference": "R-020 resolution / reflection.jsonl human_resume entry at 2026-08-18T15:38:58+09:00",
+          "summary": "The human performed the one-time on-device check of success condition 16 during the R-020 verification and confirmed all items: Cmd+Opt+L lists only the current visible count's types, arrows + Enter apply and Esc changes nothing with the project count unchanged; hiding one of 6 tall-type projects re-lays out 5 in tall type automatically; the chosen type survives an app restart; with one visible project Cmd+Opt+L reports nothing to choose; project boundaries cannot be resized while zoomed pane boundaries can; the selection screen fits the terminal. Recorded per the human instruction in the 2026-08-18T15:38:58+09:00 resume handoff."
+        }
+      ]
     },
     {
       "id": "T-077",
-      "title": "Human on-device visual verification of the project list (one-time): Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes, on a hidden row nothing; the list scrolls following the cursor; appearance fits the terminal",
+      "title": "Human on-device visual verification of the project list (one-time): Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes, on a hidden row nothing; the list scrolls following the cursor; appearance fits the terminal; each Space press in the deadline cell steps today then +1 day, Shift+Space steps back and clears from today, and typed entry still works",
       "status": "pending",
       "priority": "must",
       "spec": [
@@ -3151,12 +3167,13 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [],
+      "notes": "Returned by the human in the 2026-08-18T15:38:58+09:00 resume: (1) consecutive row/column reordering misapplies from the second Cmd+arrow press on — the cursor is left behind, so the move hits a different row/column (fix: T-081); (2) some column widths are too narrow to read their values (fix: T-082); (3) the 2026-08-18 Essence adds deadline-cell Space stepping to this gate (implement: T-083). Re-raise this on-device gate only after T-081, T-082, and T-083 are done. The earlier partial confirmations do not need re-checking beyond the listed items."
     },
     {
       "id": "T-078",
       "title": "Human on-device visual verification of the priority/deadline layer after the entry-point move (one-time): priority and deadline set in the list cells appear in the label band after save; overview shows them with the note; overdue projects subtly emphasized; Cmd+S / Cmd+Shift+S reorder all rows and Cmd+1-9 follow; appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-054"
@@ -3166,7 +3183,15 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": [],
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-18T15:38:58+09:00",
+          "reference": "R-020 resolution / reflection.jsonl human_resume entry at 2026-08-18T15:38:58+09:00",
+          "summary": "The human performed the one-time on-device re-check of success condition 12 (list-cell entry points, all-row sort) during the R-020 verification and confirmed all items: priority and deadline set in the list cells appear in the label band after save; the overview shows them with the note; overdue projects are subtly emphasized; Cmd+S / Cmd+Shift+S reorder and Cmd+1-9 follow; the appearance fits the terminal. Recorded per the human instruction in the 2026-08-18T15:38:58+09:00 resume handoff."
+        }
+      ],
       "notes": "Re-verification: the earlier confirmation of success condition 12 was against the note-overlay entry point and visible-only sort; the 2026-08-18 Essence moved entry to the list cells and sort to all rows."
     },
     {
@@ -3182,12 +3207,13 @@
       },
       "batch_group": "batch7-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [],
+      "notes": "Returned by the human in the 2026-08-18T15:38:58+09:00 resume: drop the `next:` prefix from the next-trigger display (the value alone is self-evident; the label band still never shows the trigger) — fix: T-084. Re-raise this on-device gate after T-084 is done."
     },
     {
       "id": "T-080",
       "title": "Human on-device visual verification of the key changes (one-time): Cmd+E opens the note overlay and Cmd+Opt+E enters overview; Cmd+Opt+N, Cmd+Opt+D, Cmd+Opt+Shift+D do nothing; Cmd+E does not start search_selection",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-099",
@@ -3197,6 +3223,174 @@
         "mode": "human"
       },
       "batch_group": "batch7-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-18T15:38:58+09:00",
+          "reference": "R-020 resolution / reflection.jsonl human_resume entry at 2026-08-18T15:38:58+09:00",
+          "summary": "The human performed the one-time on-device check of success condition 26 during the R-020 verification and confirmed all items: Cmd+E opens the note overlay and Cmd+Opt+E enters overview mode; Cmd+Opt+N, Cmd+Opt+D, Cmd+Opt+Shift+D do nothing; Cmd+E does not start search_selection. Recorded per the human instruction in the 2026-08-18T15:38:58+09:00 resume handoff."
+        }
+      ]
+    },
+    {
+      "id": "T-081",
+      "title": "Fix consecutive row/column reordering in the project list: a second Cmd+Up/Down (or Cmd+Left/Right) must apply to the same row/column that was just moved. Root cause: the overlay's local keyDown monitor is installed once with the initial view snapshot and keeps reading stale rows/columns after re-renders. Keep the monitor on the live handler, have the model's move APIs report the moved row's/column's new index, and drive the cursor from that report; add XGhosttyTests covering the row/column order after N consecutive moves and the cursor continuing to point at the moved row/column (including the clamped ends)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-094",
+        "S-083",
+        "S-082"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-fixes",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectOverlayKeys.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Sources/Features/Projects/ProjectListOverlay.swift",
+            "macos/Tests/Projects/ProjectListCellTests.swift"
+          ],
+          "summary": "Root cause confirmed in code: OverlayKeyDownMonitor installed its NSEvent local monitor once in onAppear with the initial handler closure and never repointed it, so after any re-render the monitor kept reading the first view snapshot's captured rows/columns — the second Cmd+arrow resolved the cursor against the pre-move order and moved a different row/column (exactly the human-observed defect). Fix in three parts: (1) the monitor now calls the handler through a reference box repointed on every body evaluation, so it always sees the live view value (this also fixes latent staleness for every other overlay sharing the modifier); (2) the model's moveProjectListRow/moveProjectListColumn now return the moved row's/column's new index (nil when nothing moved) — the cursor-follow judgment is the model's report, not a view-side delta guess, and a clamped end leaves the cursor put; (3) ProjectListOverlay drives cursor.row/.column from the returned index. Two new XGhosttyTests cover N consecutive row and column moves' resulting order, the reported index always equalling the moved row's/column's current position, and the clamped ends reporting nil; existing move-API call sites updated to the Int? contract."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the T-081/T-082/T-084 changes in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED (exit 0) — the full suite including the two new consecutive-reorder tests, both named passing in the log: ProjectListCellTests/consecutiveRowMovesKeepActingOnTheSameRow, ProjectListCellTests/consecutiveColumnMovesKeepActingOnTheSameColumn."
+        }
+      ]
+    },
+    {
+      "id": "T-082",
+      "title": "Project list column widths: allocate widths so all six columns' values are readable inside the ~80% overlay (returned defect of success condition 21)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-079"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-fixes",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectListOverlay.swift"
+          ],
+          "summary": "Column widths reworked so every column's values are readable: a single columnFrame rule shared by the header band and the cells (they were previously two separate frame calls that could drift). Title and note are now flexible columns splitting the panel width left over by the fixed ones (title was a fixed 150pt, which truncated real titles even though the ~80% panel had room); fixed widths hold each column's widest 12pt-monospaced value — deadline 92pt for YYYY-MM-DD, next trigger 72pt for the bare 'external' (was 92pt holding 'next:external', which did not fit and truncated). Final on-device readability remains T-077's human gate."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the T-081/T-082/T-084 changes in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED (exit 0) — the full suite including the two new consecutive-reorder tests, both named passing in the log: ProjectListCellTests/consecutiveRowMovesKeepActingOnTheSameRow, ProjectListCellTests/consecutiveColumnMovesKeepActingOnTheSameColumn."
+        }
+      ]
+    },
+    {
+      "id": "T-083",
+      "title": "Deadline-cell Space stepping (must 77): outside an edit, Space sets today on an unset deadline cell and advances one day on a dated one; Shift+Space steps back one day and clears from today; unset + Shift+Space is a no-op; each press commits immediately outside any edit session and Esc does not revert it; typed entry (edit/commit/cancel) unchanged, past dates set by typing. Date-step judgment in the model layer with the three success-condition-20 tests in XGhosttyTests",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-100",
+        "S-083",
+        "S-082"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-space",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-084",
+      "title": "Drop the next: prefix from the next-trigger display: the overview (and the list cell under its 'next' header) show the bare value; the label band still never shows the trigger",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-097"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-fixes",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectState.swift"
+          ],
+          "summary": "ProjectNextTrigger.displayText dropped the next: prefix: me / team / external / event. The value is shared by the note overview (the human's returned surface) and the list cell, where it sits under the 'next' column header — the prefix was redundant in both, and the human's rationale (the value alone is self-evident) applies to each. The label band still never shows the trigger (unchanged). No test asserted the prefixed spelling. On-device check remains T-079's human gate."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build (Zig core + C header + macOS app) exited 0 with the T-081/T-082/T-084 changes in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle; confirms no cross-language breakage)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED (exit 0) — the full suite including the two new consecutive-reorder tests, both named passing in the log: ProjectListCellTests/consecutiveRowMovesKeepActingOnTheSameRow, ProjectListCellTests/consecutiveColumnMovesKeepActingOnTheSameColumn."
+        }
+      ]
+    },
+    {
+      "id": "T-085",
+      "title": "Update SPEC.md and README.md for the deadline Space stepping, the next-trigger display change, and the list reorder/width fixes",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-091"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-docs",
       "risk_level": "normal",
       "evidence": []
     }

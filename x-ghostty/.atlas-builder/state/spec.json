@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "fad594402a4f079f788f355716c6532f606108f99c765744621060d3e9c21ca9",
+  "projected_from_essence_sha256": "d5c403a2b0f8286230272bd625d64f4453252ab419592b7d0427d73baca16611",
   "projected_at": "2026-08-18T03:35:00+09:00",
   "items": [
     {
@@ -958,17 +958,18 @@
     },
     {
       "id": "S-082",
-      "title": "Judgment logic for the list's row content, order, cell-edit commit and cancel, toggle eligibility, focus eligibility, and the new row's visibility state lives in the model layer, verifiable from XGhosttyTests",
+      "title": "Judgment logic for the list's row content, order, cell-edit commit and cancel, the deadline cell's Space-advance date calculation, toggle eligibility, focus eligibility, and the new row's visibility state lives in the model layer, verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧の行の内容・並び・セル編集の確定と取り消し・トグル可否・focus 可否・新規行の",
-        "表示状態の判断ロジックはモデル層に置き、`XGhosttyTests` から検証可能にする。"
+        "一覧の行の内容・並び・セル編集の確定と取り消し・締切の Space 送りの日付計算・",
+        "トグル可否・focus 可否・新規行の表示状態の判断ロジックはモデル層に置き、",
+        "`XGhosttyTests` から検証可能にする。"
       ]
     },
     {
       "id": "S-083",
-      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects incl. hidden in a single unpartitioned order, ordinals = visible rows counted from the top skipping hidden, default column order Visibility/Title/Priority/Deadline/Next trigger/Note, row/column reordering with persistence and restore, cell-cursor movement (Tab / Shift+Tab / Enter / Shift+Enter, wrap at row end, stop at last row), text-column commit applying the value and Esc reverting, note-column edit rewriting only line 1 and keeping the rest, Space cycling of selection columns with the visibility toggle applying hide/show immediately, invalid deadline cell input treated as unset, new-project insertion right below the cursor row visible when the visible count < 9 and hidden at 9, and a focus request on a hidden row doing nothing",
+      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects incl. hidden in a single unpartitioned order, ordinals = visible rows counted from the top skipping hidden, default column order Visibility/Title/Priority/Deadline/Next trigger/Note, row/column reordering with persistence and restore, cell-cursor movement (Tab / Shift+Tab / Enter / Shift+Enter, wrap at row end, stop at last row), text-column commit applying the value and Esc reverting, note-column edit rewriting only line 1 and keeping the rest, Space cycling of selection columns with the visibility toggle applying hide/show immediately, invalid deadline cell input treated as unset, new-project insertion right below the cursor row visible when the visible count < 9 and hidden at 9, and a focus request on a hidden row doing nothing, Space on an unset deadline cell setting today and advancing one day on a dated cell, Shift+Space stepping back one day and clearing from today with unset a no-op, and each Space press committing immediately outside any edit session",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -987,12 +988,16 @@
         "締切セルへの不正な日付入力は未設定として扱われる",
         "新規作成でカーソル行の直下に行が挿入され、visible 数が 9 未満なら visible、",
         "9 なら hidden になる",
-        "hidden な行への focus 要求は何もしない"
+        "hidden な行への focus 要求は何もしない",
+        "未設定の締切セルへの Space で今日が設定され、日付のあるセルでは 1 日進む",
+        "Shift+Space で 1 日戻り、今日からさらに戻すと未設定になる。未設定では何も",
+        "起きない",
+        "Space 送りの各押下は編集セッションに属さず、即時に確定値となる"
       ]
     },
     {
       "id": "S-084",
-      "title": "Human performs a one-time on-device visual verification of the project list; not complete until confirmed (Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside the list inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes while a hidden row does nothing; the list scrolls following the cursor; appearance fits the terminal)",
+      "title": "Human performs a one-time on-device visual verification of the project list; not complete until confirmed (Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside the list inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes while a hidden row does nothing; the list scrolls following the cursor; appearance fits the terminal; each Space press in the deadline cell steps today then +1 day, Shift+Space steps back and clears from today, and typed entry still works)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1012,7 +1017,9 @@
         "visible な行で `Cmd+Enter` するとそのプロジェクトに focus して一覧が閉じ、",
         "hidden な行では何も起きない",
         "行が収まらない数のときにスクロールし、カーソルに追従する",
-        "一覧の見た目がターミナルに馴染む"
+        "一覧の見た目がターミナルに馴染む",
+        "締切セルで Space を押すたびに今日 → +1 日と進み、Shift+Space で戻り、今日から",
+        "戻すと空欄に戻る。文字入力での設定も従来どおりできる"
       ]
     },
     {
@@ -1083,12 +1090,13 @@
     },
     {
       "id": "S-091",
-      "title": "Update SPEC.md and README.md to match the implemented remote split, project-list cell editing and reordering, next trigger, note-editor undo/redo, priority reset, and key changes",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, project-list cell editing and reordering, deadline Space advance, next trigger, note-editor undo/redo, priority reset, and key changes",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧のセル編集と",
-        "並べ替え・次トリガー・Undo/Redo・優先度リセット・キー変更の仕様に合わせて更新する。"
+        "並べ替え・締切の Space 送り・次トリガー・Undo/Redo・優先度リセット・キー変更の",
+        "仕様に合わせて更新する。"
       ]
     },
     {
@@ -1186,6 +1194,20 @@
         "`Cmd+E` でノート編集オーバーレイが開き、`Cmd+Opt+E` で一望モードに入る",
         "`Cmd+Opt+N`、`Cmd+Opt+D`、`Cmd+Opt+Shift+D` を押しても何も起きない",
         "`Cmd+E` で選択文字列の検索が起動しない"
+      ]
+    },
+    {
+      "id": "S-100",
+      "title": "Deadline cells accept Space stepping in addition to typed entry: outside an edit, Space sets today when unset and advances the date one day otherwise; Shift+Space steps back one day and clears back to unset from today, doing nothing when already unset; each press applies immediately like the selection columns and is not reverted by Esc; typed editing with commit/cancel stays, and past dates are set by typing",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "締切セルでは、文字入力に加えて Space 送りで日付を設定できる。編集していない状態で",
+        "`Space` を押すと、未設定なら今日が設定され、日付があればその日付から 1 日進む。",
+        "`Shift+Space` は 1 日戻し、今日の状態からさらに戻すと未設定に戻る。未設定の状態",
+        "での `Shift+Space` は何もしない。各押下は選択式の列と同様に即時反映され、`Esc`",
+        "でも取り消されない。文字入力(タイプによる編集と確定・取り消し)は従来どおり残し、",
+        "過去日の設定は文字入力で行う。"
       ]
     }
   ]
