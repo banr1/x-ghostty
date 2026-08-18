@@ -30,13 +30,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T06:28:30+09:00",
-    "summary": "T-074 完了(cycle 15): SPEC.md / README.md を 2026-08-18 改訂(台帳反転)に全面整合させた。SPEC の節番号はコード doc-comment の参照を正として内容側を書き換え(§24.6 次トリガー新設、§25 即時 hide、§26 レイアウト型、§27 台帳、§9/§10/§11/§12/§14 更新、§15/§17/§19/§20 は歴史的注記)。README は About 全面更新・Building 3 コマンド維持。3 ゲート green(zig build / just test / just swift-test = exit 0)。これで atlas-builder 実行可能な must/should Todo は全完了。残 must は実機確認 6 件(T-075〜T-080、executor: human)のみ — R-020(Human-input Recommendation、stop_until_human_review、proposed)を記録済みで、ループはここで停止する。運用の定型・ツール制約は lessons.jsonl に集約済み(projection/stage-apply の手順、guard の Bash 文面照合、3 ゲートの判定基準、zig PATH、C ABI append 規約、Human-input Rec の必須 shape)。",
-    "next_actions": [
-      "人間の resume 待ち(R-020)。resume 後: 実機確認の結果を読み、OK なら T-075〜T-080 を human 確認の記録(resume ノート/attestation)を根拠に done 化する projection を適用。NG 報告があれば該当 Todo を in_progress に戻して修正 Todo を切り、実装 → 3 ゲート → 再度実機確認依頼の順で回す。",
-      "resume で ESSENCE.md が更新されていた場合は先に Spec 再投影(projected_from_essence_sha256 の drift を validate で確認)。",
-      "全 must 完了後は must_complete 相当の状態だが phase は extended_approved で should も全 done のため、should-complete 判定に到達するはず — ループの判定に任せ、自前で完了ゲートを立てないこと。"
-    ],
-    "open_questions": []
+    "written_at": "2026-08-18T15:38:58+09:00",
+    "summary": "Human resume: R-020 の実機目視確認 6 件を実施した。T-075(即時 hide・成功条件 14)/ T-076(レイアウト型・成功条件 16)/ T-078(優先度・締切の一覧入口・成功条件 12)/ T-080(キー変更・成功条件 26)は全項目が期待どおり動作したので、human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。T-077(プロジェクト一覧・成功条件 21)と T-079(次トリガー・成功条件 25)は done にせず pending のまま差し戻す。\n\n(1) T-077 差し戻し・実欠陥(行/列入替の連続適用): 一覧の行入替(Cmd+↑↓)と列入替(Cmd+←→)は 1 回目こそ正しく動くが、行も列も 2 回以上連続で適用すると意図しない挙動になる。人間の見立てでは、入替後にセルカーソルが移動した行・列へ追従せず元の位置に取り残されており、2 回目の入替が別の行・列に対して掛かっている疑いがある。必須 67 および成功条件 21「Cmd+↑↓ で行が、Cmd+←→ で列が動き、閉じて開き直しても順序が残っている」に対する実欠陥である。修正にあたっては「連続 N 回の入替後の行順・列順」と「入替後もカーソルが移動対象の行・列を指し続けること」をモデル層に置き、XGhosttyTests に検証を追加すること。\n\n(2) T-077 差し戻し・見た目(列幅): オーバーレイがウィンドウの 8 割を占めるようになったにもかかわらず、列幅が小さすぎて値が表示しきれない列がある。6 列すべてが読める幅配分に調整すること(成功条件 21「hidden を含む全プロジェクトが 6 列で見える」「一覧の見た目がターミナルに馴染む」)。ESSENCE.md の変更は不要。\n\n(3) T-077 仕様追加・締切セルの Space 送り: 締切の入力手段として Space 送りを採用すると決定し、本 resume に先立って人間が update-essence で ESSENCE.md を改訂した。追加箇所は、必須対応事項 77(新設。締切セルの Space / Shift+Space の定義)、必須対応事項 70(モデル層に置く判断ロジックへ「締切の Space 送りの日付計算」を追加)、必須対応事項 76(SPEC.md / README.md の更新対象へ追加)、成功条件 20(モデル層テスト 3 項目)、成功条件 21(実機確認 1 項目)、およびモチベーション節の 1 段落である。\n    読み方の補足: 必須対応事項 65 は据え置いたため「テキスト列(タイトル・締切・ノート)は文字を打つと編集が始まる」が残っているが、締切セルの Space については、より具体的な必須 77 が 65 を特定化するものとして読むこと。すなわち編集していない状態の締切セルでの Space は編集開始ではなく 77 の日送りであり、Space 送りは選択式の列と同様に即時確定して Esc でも取り消されない。過去日の設定は従来どおり文字入力で行う。\n    次サイクルはまず現行 ESSENCE.md から Spec/Todo を再射影すること(projected_from_essence_sha256 の drift を validate で確認)。\n\n(4) T-079 差し戻し・表示文言: 次トリガーの表示から `next:` の prefix を外すこと。値だけで自明であるため。対象は一望モードの表示(ラベル帯には従来どおり次トリガーを出さない)。Essence は次トリガーの表示形式を規定していないので ESSENCE.md の変更は不要。\n\n上記 4 点を実装・検証したうえで、T-077 と T-079 について改めて人間の実機確認をゲートとして立てること。T-075 / T-076 / T-078 / T-080 の再確認は不要。",
+    "next_actions": [],
+    "open_questions": [],
+    "pending_cycle": true
   }
 }
