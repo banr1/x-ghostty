@@ -30,13 +30,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T16:07:00+09:00",
-    "summary": "R-020 差し戻し対応が完遂し、R-021(Human-input Recommendation・stop_until_human_review)で人間の実機確認待ちに入った。today までの完了: T-081(行・列入替の連続適用 — OverlayKeyDownMonitor の stale closure を handler box で解消、move API が移動後 index を返しカーソル追従、連続入替テスト 2 本)、T-082(列幅 — columnFrame 共有規則、title/note 可変幅)、T-083(締切セル Space 送り・必須 77 — ProjectDeadline.stepped/advanced をモデル層に、成功条件 20 の 3 テスト追加)、T-084(next: prefix 除去)、T-085(SPEC.md §24/§27・README.md を実装に同期)。全サイクルで 3 ゲート green(zig build 0 / just test 0 / just swift-test TEST SUCCEEDED)。must の残りは実機確認 2 件のみ: T-077(成功条件 21、連続入替・列幅・Space 送りを含む)と T-079(成功条件 25、prefix なし表示)。resume 後の分岐: (a) 両方 OK → T-077/T-079 を human 証跡付き done に記録(R-021 の resolution を reference)。must が全て done になるので、以後は must 境界 or 完了判定へ。(b) NG あり → resume ノートの指摘を新 Todo に起票して修正し、再度ゲートを立てる。extended フェーズ(phase=extended_approved)の should Todo は現在すべて done。",
-    "next_actions": [
-      "resume 待ち: R-021(T-077 成功条件 21 / T-079 成功条件 25 の実機確認)。resume の resolution を読み、OK なら T-077/T-079 を type: human 証跡付き done に、NG なら指摘を Todo 化して修正",
-      "T-077/T-079 done 後: must-priority Todo が全件 done になるため should-complete / must 境界の機構的判定に委ねる(自分で phase を書かない)"
-    ],
+    "written_at": "2026-08-18T17:50:49+09:00",
+    "summary": "Human resume: R-021 の実機確認を実施し、T-077(成功条件 21)/ T-079(成功条件 25)の全項目が期待どおり動作したので、両 Todo を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。\n\nただし確認の過程で新たな不具合を発見した:プロジェクト一覧のセル編集(タイトル列・ノート列)だけが日本語 IME 入力を受け付けず、最初の 1 打鍵が素通しで確定され、以降の未確定文字列を変換・確定しても反映されない(ノート編集オーバーレイとタイトルのダブルクリック編集では従来どおり効く)。人間がこれを update-essence で ESSENCE.md へ取り込み済みであり(必須対応事項 78 の新設、成功条件 27 の新設、必須 76 への「一覧セル編集の IME 対応」の追記、モチベーション 1 段落)、この ESSENCE.md 編集(e427ef83…)は人間自身のものでレビュー済みとして記録する。\n\n次サイクルはまず現行 ESSENCE.md から Spec/Todo を再射影すること(現 spec.json は旧 Essence d5c403a2… 由来で、必須 78 と成功条件 27 が未射影)。そのうえで必須 78 の IME 対応を実装・テストし、必須 76 に従い SPEC.md / README.md を更新したのち、成功条件 27 の実機確認を改めて人間のゲートとして立てること。T-075 / T-076 / T-078 / T-080 の再確認は不要。",
+    "next_actions": [],
     "open_questions": [],
-    "pending_cycle": false
+    "pending_cycle": true
   }
 }
