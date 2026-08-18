@@ -147,6 +147,7 @@ struct TerminalWorkspaceView: View {
                     // involved, so no controller round-trip is needed.
                     onCommitEdit: { workspace.commitProjectListCellEdit($0, column: $1, for: $2) },
                     onCycle: { workspace.cycleProjectListCell($0, for: $1) },
+                    onStepDeadline: { workspace.stepProjectListDeadline($0, forward: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },

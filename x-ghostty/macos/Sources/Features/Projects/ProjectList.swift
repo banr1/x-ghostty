@@ -310,6 +310,27 @@ extension WorkspaceStateOf {
         return true
     }
 
+    /// One Space (`forward`) or Shift+Space press on `id`'s deadline cell
+    /// (`SPEC.md` §27.2): applies `ProjectDeadline.stepped` to the stored
+    /// value immediately. The press belongs to no edit session — the value
+    /// is committed the moment it is applied, so there is nothing an Esc
+    /// could revert.
+    ///
+    /// - Returns: whether the press changed the deadline (an unset cell
+    ///   stepped back is the no-op).
+    @discardableResult
+    mutating func stepListDeadline(
+        for id: ProjectID, forward: Bool, today: ProjectDeadline
+    ) -> Bool {
+        guard var project = projects[id] else { return false }
+        let step = ProjectDeadline.stepped(
+            project.deadline, forward: forward, today: today)
+        guard step.changed else { return false }
+        project.deadline = step.value
+        projects[id] = project
+        return true
+    }
+
     /// Move `column` by `delta` places in the persisted column order
     /// (`SPEC.md` §27.1), clamped to the ends.
     ///

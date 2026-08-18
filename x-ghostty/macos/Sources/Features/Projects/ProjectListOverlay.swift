@@ -71,6 +71,10 @@ struct ProjectListOverlay: View {
     /// Space on a cycling selection cell (priority / next trigger).
     let onCycle: (ProjectListColumn, ProjectID) -> Void
 
+    /// Space (`true`) / Shift+Space (`false`) on the deadline cell outside
+    /// an edit (`SPEC.md` §27.2): step the date, committing immediately.
+    let onStepDeadline: (ProjectID, Bool) -> Void
+
     /// Move a row by ±1 in the ledger order (Cmd+↑ / Cmd+↓). Returns the
     /// row's new index, or `nil` when nothing moved (a clamped end).
     let onMoveRow: (ProjectID, Int) -> Int?
@@ -249,11 +253,12 @@ struct ProjectListOverlay: View {
             return nil
         }
 
-        // Space: the selection columns cycle (SPEC §27.2). On a text column
-        // it does nothing — typing there starts an edit, and a stray leading
-        // space is not a useful edit to start.
+        // Space: the selection columns cycle, and the deadline cell steps
+        // its date — Space forward, Shift+Space back (SPEC §27.2). On the
+        // other text columns it does nothing — typing there starts an edit,
+        // and a stray leading space is not a useful edit to start.
         if event.charactersIgnoringModifiers == " " {
-            spaceOnCursorCell()
+            spaceOnCursorCell(shifted: modifiers == [.shift])
             return nil
         }
 
@@ -305,14 +310,16 @@ struct ProjectListOverlay: View {
             move, rowCount: rows.count, columnCount: columns.count)
     }
 
-    private func spaceOnCursorCell() {
+    private func spaceOnCursorCell(shifted: Bool) {
         guard let row = cursorRow, let column = cursorColumn else { return }
         switch column {
         case .visibility:
             onToggle(row.id)
         case .priority, .nextTrigger:
             onCycle(column, row.id)
-        case .title, .deadline, .note:
+        case .deadline:
+            onStepDeadline(row.id, !shifted)
+        case .title, .note:
             break
         }
     }
@@ -634,7 +641,10 @@ struct ProjectListOverlay: View {
             return "space cycles priority"
         case .nextTrigger:
             return "space cycles next trigger"
-        case .title, .deadline, .note:
+        case .deadline:
+            let base = "space today/+1d · ⇧space back · type to edit deadline"
+            return canFocus(row.id) ? base + " · ⌘↩ focuses \(row.title)" : base
+        case .title, .note:
             let base = "type to edit \(Self.headerLabel(of: column))"
             return canFocus(row.id) ? base + " · ⌘↩ focuses \(row.title)" : base
         }

@@ -3324,7 +3324,7 @@
     {
       "id": "T-083",
       "title": "Deadline-cell Space stepping (must 77): outside an edit, Space sets today on an unset deadline cell and advances one day on a dated one; Shift+Space steps back one day and clears from today; unset + Shift+Space is a no-op; each press commits immediately outside any edit session and Esc does not revert it; typed entry (edit/commit/cancel) unchanged, past dates set by typing. Date-step judgment in the model layer with the three success-condition-20 tests in XGhosttyTests",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-100",
@@ -3336,7 +3336,38 @@
       },
       "batch_group": "list-space",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectState.swift",
+            "macos/Sources/Features/Projects/ProjectList.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift",
+            "macos/Sources/Features/Projects/ProjectListOverlay.swift",
+            "macos/Sources/Features/Projects/TerminalWorkspaceView.swift",
+            "macos/Tests/Projects/ProjectListCellTests.swift"
+          ],
+          "summary": "Deadline-cell Space stepping (must 77) with the judgment in the model layer: ProjectDeadline.advanced(by:) does the Gregorian day arithmetic (month/year rollover; nil only outside the four-digit-year range) and the pure ProjectDeadline.stepped(_:forward:today:) encodes the must-77 rules — forward: unset -> today, dated -> +1 day; back: dated -> -1 day, exactly-today -> unset, unset -> no change — returning (value, changed) so a refused press is distinguishable from a clear-to-unset. WorkspaceStateOf.stepListDeadline applies it immediately (no edit session involved, nothing for Esc to revert); WorkspaceModel.stepProjectListDeadline gates on the list session like every cell op and defaults today to ProjectDeadline(from: Date()). View: Space/Shift+Space on a non-editing deadline cell routes to the new API (spaceOnCursorCell(shifted:)); typing still starts the usual edit (past dates set by typing); the footer hint explains the keys. Three new XGhosttyTests map to the three success-condition-20 bullets."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with the deadline Space stepping and the docs updates in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED (exit 0) — the full suite including the three new success-condition-20 tests, all named passing in the log: ProjectListCellTests/spaceOnDeadlineCellSetsTodayThenAdvancesOneDay, shiftSpaceStepsBackClearsFromTodayAndIgnoresUnset, deadlineSpaceStepsCommitImmediatelyOutsideAnyEditSession."
+        }
+      ]
     },
     {
       "id": "T-084",
@@ -3382,7 +3413,7 @@
     {
       "id": "T-085",
       "title": "Update SPEC.md and README.md for the deadline Space stepping, the next-trigger display change, and the list reorder/width fixes",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-091"
@@ -3392,7 +3423,34 @@
       },
       "batch_group": "list-docs",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "SPEC.md",
+            "README.md"
+          ],
+          "summary": "SPEC.md: §27 intro adds the deadline Space-step date calculation to the model-layer judgment list (must 70); §27.1 documents the move APIs reporting the moved row's/column's new index with the cursor following it (the T-081 fix) and the shared columnFrame width rule (T-082); §27.2 gains the full must-77 Space-stepping bullet (semantics, pure function, immediate commit, the must-65/77 reading); §27.5 test inventory extended (ProjectListCellTests 19 -> 24) with the reorder-follow and deadline-stepping cases; §24.1 lists Space stepping beside typed entry as the deadline entry point; §24.6 records the prefix-free next-trigger readout (T-084). README.md: the project-list bullet describes deadline Space stepping and the cursor following moved rows/columns."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0 with the deadline Space stepping and the docs updates in the tree."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: Zig test suite exited 0 (no Zig-side changes this cycle)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "Success-criterion 3 gate: xcodebuild XGhosttyTests TEST SUCCEEDED (exit 0) — the full suite including the three new success-condition-20 tests, all named passing in the log: ProjectListCellTests/spaceOnDeadlineCellSetsTodayThenAdvancesOneDay, shiftSpaceStepsBackClearsFromTodayAndIgnoresUnset, deadlineSpaceStepsCommitImmediatelyOutsideAnyEditSession."
+        }
+      ]
     }
   ]
 }

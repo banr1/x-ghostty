@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "a65b1d3c4b9bc13d7d497a578268df38bf26811e26cc3eea007bc3d572cb7101",
+    "last_signature": "14c9b2b58935b459e991c44dd44992e1a06a698c3190a5ce9cc0a76a5dafb3d8",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T15:55:17+09:00",
-    "last_checked_at": "2026-08-18T15:55:17+09:00",
+    "last_progress_at": "2026-08-18T16:07:32+09:00",
+    "last_checked_at": "2026-08-18T16:07:32+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,21 +21,20 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.35,
+    "context_usage_estimate": 0.4,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 7,
-    "completed_todos_since_reset": 4,
-    "important_decisions_since_reset": 2,
+    "changed_files_since_reset": 15,
+    "completed_todos_since_reset": 6,
+    "important_decisions_since_reset": 3,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T15:54:30+09:00",
-    "summary": "Resume 後サイクル(R-20260818T153906)完了。再射影済み: Spec は現行 ESSENCE.md(d5c403a2…)にスタンプ済み、S-100(必須 77・締切セル Space 送り)新設、S-082/S-083/S-084/S-091 更新。T-075/T-076/T-078/T-080 は human 証跡付き done。T-081(行・列入替の連続適用修正: OverlayKeyDownMonitor が onAppear で初回 closure を一度だけ登録し stale な rows/columns を読み続けるのが根因 — handler box 経由に修正し、move API が移動後 index を返してカーソル追従、連続入替テスト 2 本追加)、T-082(列幅: header/cell 共有の columnFrame 規則、title/note 可変幅・deadline 92pt・next trigger 72pt)、T-084(next: prefix 除去 — displayText 共有のため一望モードと一覧セルの両面に適用)は 3 ゲート green(zig build 0 / just test 0 / just swift-test TEST SUCCEEDED)で done。残り: T-083(締切セル Space 送り)と T-085(SPEC/README 更新)。両方 done になったら T-077 と T-079 の実機確認を Human-input Recommendation として再提起して停止すること(人間指示どおり T-075/T-076/T-078/T-080 の再確認は不要)。必須 65 と 77 の読み方: 編集していない締切セルの Space は編集開始ではなく 77 の日送りで、選択式の列と同様に即時確定・Esc でも取り消されない。過去日の設定は従来どおり文字入力。",
+    "written_at": "2026-08-18T16:07:00+09:00",
+    "summary": "R-020 差し戻し対応が完遂し、R-021(Human-input Recommendation・stop_until_human_review)で人間の実機確認待ちに入った。today までの完了: T-081(行・列入替の連続適用 — OverlayKeyDownMonitor の stale closure を handler box で解消、move API が移動後 index を返しカーソル追従、連続入替テスト 2 本)、T-082(列幅 — columnFrame 共有規則、title/note 可変幅)、T-083(締切セル Space 送り・必須 77 — ProjectDeadline.stepped/advanced をモデル層に、成功条件 20 の 3 テスト追加)、T-084(next: prefix 除去)、T-085(SPEC.md §24/§27・README.md を実装に同期)。全サイクルで 3 ゲート green(zig build 0 / just test 0 / just swift-test TEST SUCCEEDED)。must の残りは実機確認 2 件のみ: T-077(成功条件 21、連続入替・列幅・Space 送りを含む)と T-079(成功条件 25、prefix なし表示)。resume 後の分岐: (a) 両方 OK → T-077/T-079 を human 証跡付き done に記録(R-021 の resolution を reference)。must が全て done になるので、以後は must 境界 or 完了判定へ。(b) NG あり → resume ノートの指摘を新 Todo に起票して修正し、再度ゲートを立てる。extended フェーズ(phase=extended_approved)の should Todo は現在すべて done。",
     "next_actions": [
-      "T-083: 締切セル Space 送り(S-100)。モデル層に date-step 判断(未設定+Space=今日、日付+Space=+1 日、Shift+Space=-1 日、今日から戻すと未設定、未設定+Shift+Space=no-op、編集セッション外で即時確定・Esc 不可逆)を置き、成功条件 20 の 3 テストを XGhosttyTests に追加。overlay は spaceOnCursorCell の deadline 分岐(現状 break)から WorkspaceModel の新 API を呼び、Shift+Space の配線を追加",
-      "T-085: SPEC.md / README.md を Space 送り・next トリガー表示変更・列幅/入替修正に合わせて更新(S-091)",
-      "T-083/T-085 done 後: T-077・T-079 の実機確認を Human-input Recommendation(requires_human_approval: true、source に Todo ID)として起票し、その場で停止"
+      "resume 待ち: R-021(T-077 成功条件 21 / T-079 成功条件 25 の実機確認)。resume の resolution を読み、OK なら T-077/T-079 を type: human 証跡付き done に、NG なら指摘を Todo 化して修正",
+      "T-077/T-079 done 後: must-priority Todo が全件 done になるため should-complete / must 境界の機構的判定に委ねる(自分で phase を書かない)"
     ],
     "open_questions": [],
     "pending_cycle": false

@@ -93,8 +93,14 @@ its window management with a single model:
   a text cell starts an edit that Enter / Tab commit and Esc cancels; Space
   cycles a selection cell — on the visibility column it hides or shows the
   project on the spot, immediately re-laying out the terminals behind the
-  list (the change sticks even if you then press Esc). `Cmd+↑`/`Cmd+↓` move
-  the cursor's row and `Cmd+←`/`Cmd+→` its column, and both orders persist
+  list (the change sticks even if you then press Esc). On the deadline cell
+  Space steps the date instead: today first, then one day forward per press,
+  with Shift+Space stepping back and clearing the cell when it reaches
+  today — each press takes effect immediately (typing a date still works,
+  and is how past dates are set). `Cmd+↑`/`Cmd+↓` move
+  the cursor's row and `Cmd+←`/`Cmd+→` its column — the cursor follows the
+  moved row or column, so repeated presses keep moving the same one — and
+  both orders persist
   across restarts. `Cmd+Opt+E` toggles showing every row's full note.
   `Cmd+N` — inside or outside the list — creates a new project right below
   the cursor row, ready for its title to be typed; the list is the only

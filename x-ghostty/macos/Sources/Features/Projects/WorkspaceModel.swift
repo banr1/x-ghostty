@@ -635,6 +635,24 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return true
     }
 
+    /// Space / Shift+Space on the deadline cell (`SPEC.md` §27.2), only
+    /// while the list session is up. Each press commits immediately, exactly
+    /// like the selection columns' cycling — no edit session opens, and Esc
+    /// cannot revert it. Typed editing (with its commit/cancel) is untouched
+    /// and remains the way to set past dates.
+    @discardableResult
+    func stepProjectListDeadline(
+        _ id: ProjectID, forward: Bool,
+        today: ProjectDeadline = ProjectDeadline(from: Date())
+    ) -> Bool {
+        guard projectListActive else { return false }
+        var next = state
+        guard next.stepListDeadline(for: id, forward: forward, today: today)
+        else { return false }
+        state = next
+        return true
+    }
+
     /// Move row `id` one-or-more places up (negative `delta`) or down in the
     /// ledger order (`Cmd+↑`/`Cmd+↓`, `SPEC.md` §27.1), clamped to the ends;
     /// only while the list session is up. The arrangement re-derives and the

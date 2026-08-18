@@ -325,6 +325,85 @@ struct ProjectListCellTests {
         ])
     }
 
+    // MARK: Deadline Space stepping (SPEC §27.2)
+
+    @Test func spaceOnDeadlineCellSetsTodayThenAdvancesOneDay() {
+        let a = Self.makeProject(name: "alpha")
+        let model = Self.makeListModel([a])
+        let today = ProjectDeadline(parsing: "2026-08-18")!
+
+        // Unset + Space: today.
+        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today))
+        #expect(model.state.projects[a.id]?.deadline == today)
+
+        // Dated + Space: one day forward, from whatever date is set.
+        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today))
+        #expect(model.state.projects[a.id]?.deadline == ProjectDeadline(parsing: "2026-08-19"))
+
+        // Month and year boundaries roll over.
+        #expect(ProjectDeadline(parsing: "2026-08-31")?.advanced(by: 1)
+            == ProjectDeadline(parsing: "2026-09-01"))
+        #expect(ProjectDeadline(parsing: "2026-12-31")?.advanced(by: 1)
+            == ProjectDeadline(parsing: "2027-01-01"))
+        #expect(ProjectDeadline(parsing: "2028-02-29")?.advanced(by: -1)
+            == ProjectDeadline(parsing: "2028-02-28"))
+    }
+
+    @Test func shiftSpaceStepsBackClearsFromTodayAndIgnoresUnset() {
+        let a = Self.makeProject(name: "alpha")
+        let model = Self.makeListModel([a])
+        let today = ProjectDeadline(parsing: "2026-08-18")!
+
+        // Unset + Shift+Space: nothing happens.
+        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today) == false)
+        #expect(model.state.projects[a.id]?.deadline == nil)
+
+        // From a future date, each press steps back one day...
+        #expect(model.commitProjectListCellEdit("2026-08-20", column: .deadline, for: a.id))
+        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today))
+        #expect(model.state.projects[a.id]?.deadline == ProjectDeadline(parsing: "2026-08-19"))
+        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today))
+        #expect(model.state.projects[a.id]?.deadline == today)
+
+        // ...and stepping back from exactly today clears to unset, after
+        // which a further press is the no-op again.
+        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today))
+        #expect(model.state.projects[a.id]?.deadline == nil)
+        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today) == false)
+    }
+
+    @Test func deadlineSpaceStepsCommitImmediatelyOutsideAnyEditSession() {
+        let a = Self.makeProject(name: "alpha")
+        let today = ProjectDeadline(parsing: "2026-08-18")!
+
+        // Gated on the list session like every other cell operation.
+        let model = TestWorkspaceModel(Self.makeState([a]))
+        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today) == false)
+        #expect(model.state.projects[a.id]?.deadline == nil)
+
+        model.beginProjectList()
+
+        // A press mutates the stored state by itself: no edit session opens
+        // (ProjectListCellEdit is never involved), so there is nothing an
+        // Esc could discard — the stepped value is already the committed
+        // value, unlike a typed edit whose draft dies with its session.
+        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today))
+        #expect(model.state.projects[a.id]?.deadline == today)
+
+        // A typed edit session on the same cell starts from the committed
+        // stepped value, and cancelling it (discarding the draft) leaves
+        // that value in place.
+        let row = model.projectListRows.first!
+        let edit = ProjectListCellEdit(row: row, column: .deadline)
+        #expect(edit?.original == today.displayText)
+        #expect(model.state.projects[a.id]?.deadline == today)
+
+        // The pure judgment reports no change for the refused presses, so a
+        // refused press can never look like a commit.
+        let unsetBack = ProjectDeadline.stepped(nil, forward: false, today: today)
+        #expect(unsetBack.changed == false && unsetBack.value == nil)
+    }
+
     // MARK: Consecutive reorders follow the moved row/column (SPEC §27.1)
 
     @Test func consecutiveRowMovesKeepActingOnTheSameRow() {

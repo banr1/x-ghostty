@@ -441,6 +441,44 @@ struct ProjectDeadline: Codable, Equatable, Hashable, Comparable {
         self < today
     }
 
+    /// This date moved `days` forward (negative: back) on the Gregorian
+    /// calendar, rolling over month and year boundaries. `nil` only when the
+    /// arithmetic leaves the representable four-digit-year range.
+    func advanced(by days: Int) -> ProjectDeadline? {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        guard let date = Self.gregorian.date(from: components),
+              let moved = Self.gregorian.date(byAdding: .day, value: days, to: date)
+        else { return nil }
+        let result = Self.gregorian.dateComponents([.year, .month, .day], from: moved)
+        return ProjectDeadline(
+            year: result.year ?? 0, month: result.month ?? 0, day: result.day ?? 0)
+    }
+
+    /// The deadline cell's Space stepping (SPEC §27.2): what one Space
+    /// (`forward`) or Shift+Space press outside an edit does to `current`.
+    /// Forward sets `today` on an unset cell and advances a dated one by a
+    /// day; back moves a dated cell back a day, clears it to unset from
+    /// exactly `today`, and does nothing on an unset cell.
+    ///
+    /// - Returns: the resulting value and whether the press changed anything —
+    ///   `changed` is what separates "cleared to unset" from the unset no-op.
+    static func stepped(
+        _ current: ProjectDeadline?, forward: Bool, today: ProjectDeadline
+    ) -> (value: ProjectDeadline?, changed: Bool) {
+        if forward {
+            guard let current else { return (today, true) }
+            guard let advanced = current.advanced(by: 1) else { return (current, false) }
+            return (advanced, true)
+        }
+        guard let current else { return (nil, false) }
+        if current == today { return (nil, true) }
+        guard let back = current.advanced(by: -1) else { return (current, false) }
+        return (back, true)
+    }
+
     /// The canonical `YYYY-MM-DD` text form (also what the editor shows).
     var displayText: String {
         String(format: "%04d-%02d-%02d", year, month, day)
