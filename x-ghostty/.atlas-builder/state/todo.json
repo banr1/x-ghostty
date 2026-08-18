@@ -3555,7 +3555,7 @@
     {
       "id": "T-088",
       "title": "Human on-device visual verification of the list cell editing IME support (one-time, success criterion 27): 「こんにちは」 typed in the Title cell is a marked string from the first keystroke, converts with Space, commits with Enter and is saved; the Note cell does the same onto the note's first line; Enter / Escape while marked act as IME commit / cancel without moving the cursor or cancelling the edit, and the edit stays live afterwards with the usual Enter commit / Escape cancel; English input, the note editor overlay, and the double-click title rename are unchanged",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-102"
@@ -3565,7 +3565,13 @@
       },
       "batch_group": "list-ime-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "reference": "R-022 resolution (resume 2026-08-18T18:43:12+09:00, resolved_by: human)",
+          "summary": "Human on-device verification of success criterion 27 (list cell editing IME support), all items confirmed: Title and Note cells show a marked string from the first keystroke with Space conversion and Enter commit, the committed text is saved (Note cell writes the note's first line); Enter/Escape while a marked string exists act as IME commit/cancel without moving the cell cursor or cancelling the edit, and the edit stays live afterwards with the usual Enter commit / Escape cancel; English input, the note editor overlay (Cmd+E), and double-click title rename are unchanged; no visual regression in cell editing (font, row height, caret position)."
+        }
+      ]
     }
   ]
 }

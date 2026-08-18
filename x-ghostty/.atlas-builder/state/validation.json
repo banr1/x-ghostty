@@ -1,9 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "last_validated_at": "2026-08-18T17:57:31+09:00",
+  "last_validated_at": "2026-08-18T18:44:29+09:00",
   "status": "warning",
   "errors": [],
   "warnings": [
+    "109 of 202 ESSENCE.md 成功条件 map to no acceptance-check command evidence on a done must-priority Todo (ノートを持つプロジェクトを保存し復元すると、同じノート本文が復元される; ノートは 10 行を超えて保持されない; ノート編集を保存して閉じると、編集後の本文が保持される…); the must completion is unverified against those stated 成功条件 (§20.2-6, §22). Review the 成功条件 ↔ evidence mapping shown by `just status` before approving the should phase (§13.1-13).",
     "run ledger divergence: R-20260809T161812+0900-c7ee1c, R-20260816T014000+0900-0f928c, R-20260817T174949+0900-33b973, R-20260818T175105+0900-ba1727 recorded in the control plane (control_runs.jsonl) for this project but absent from the project runs.jsonl — a cycle was interrupted between the two appends; run-duration triage on runs.jsonl will under-report (§8.1, §13.5)."
   ]
 }

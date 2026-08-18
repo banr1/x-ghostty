@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "7248159217ed5bd2396b429b6f612dc80d9cdd050af748fcfe157cda9b36fbeb",
+    "last_signature": "30d5e664ed6dfb0c6d8a462d32e0d999b22b57b3d41dc5b1b217c8e284e3fbc0",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-18T18:15:15+09:00",
-    "last_checked_at": "2026-08-18T18:15:15+09:00",
+    "last_progress_at": "2026-08-18T18:45:39+09:00",
+    "last_checked_at": "2026-08-18T18:45:39+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,19 +21,19 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.4,
+    "context_usage_estimate": 0.15,
     "failed_attempts_since_reset": 0,
     "changed_files_since_reset": 6,
-    "completed_todos_since_reset": 4,
+    "completed_todos_since_reset": 5,
     "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-18T18:43:12+09:00",
-    "summary": "Human resume: R-022 の実機目視確認を実施し、成功条件 27(一覧セル編集の IME 対応)の全項目が期待どおり動作することを確認した: タイトル列・ノート列とも最初の打鍵から未確定文字列として表示され Space 変換・Enter 確定が効き確定内容が保存される、未確定中の Enter / Esc が IME の確定・取り消しとして働きセル移動や編集取り消しを起こさず取り消し後も編集が継続する、英語入力・ノート編集オーバーレイ(Cmd+E)・タイトルのダブルクリック編集は従来どおり、一覧セル編集の見た目(フォント・行高・カーソル位置)にも崩れはない。\nよって R-022 を解除し、T-088 を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。ESSENCE.md の変更は不要。\nこれで全 88 Todo が完了となる(phase は既に extended_approved で pending の should も無い)。次サイクルは残る非ゲート事項の整理と完了判定に進んでよい。",
+    "written_at": "2026-08-18T18:45:30+09:00",
+    "summary": "Consumed the 2026-08-18T18:43:12+09:00 human resume note: R-022 (on-device verification of success criterion 27, list cell editing IME support) was resolved by the human with all items confirmed, so T-088 was recorded done with type: human evidence referencing that resume. All 88 Todos are now done (must 85/85, should 3/3), phase is extended_approved, no open Recommendations or Blockers, and spec projection matches the current ESSENCE.md sha (e427ef83…). Validation is warning-only: (1) the §22 heuristic maps 109/202 成功条件 lines to no command evidence — those lines are the human visual-check criteria and sub-bullets, covered by the human-evidence resumes (R-004/R-006/R-011/R-012/R-013 series/R-022), not by commands; (2) a historical run-ledger divergence (4 interrupted cycles), informational and not reconstructible (runs.jsonl is append-only). Nothing remains for the agent to implement; the loop should latch COMPLETE at the cycle boundary.",
     "next_actions": [],
     "open_questions": [],
-    "pending_cycle": true
+    "pending_cycle": false
   }
 }
