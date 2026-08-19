@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "e6269c6d8daa71e23a664b53638f4d06ac5ea5695a8d3af65c4fbd2edebce489",
+    "last_signature": "0e9c814631e31e74b07c21b81478e3353fe90a440e63d74c42c4135972e21f3d",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-19T19:03:10+09:00",
-    "last_checked_at": "2026-08-19T19:03:10+09:00",
+    "last_progress_at": "2026-08-19T19:17:02+09:00",
+    "last_checked_at": "2026-08-19T19:17:02+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,23 +21,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 23,
-    "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 3,
+    "changed_files_since_reset": 26,
+    "completed_todos_since_reset": 4,
+    "important_decisions_since_reset": 5,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-19T19:03:00+09:00",
-    "summary": "Cycle R-20260819T185247 completed T-094 (sort bar UI) with green gates (zig build / just test / just swift-test = exit 0; swift-test 631 passed, 0 failed). The list overlay has a sort bar band above the column header: 5 chips (barOrder = manual/next/show/deadline/priority), active state marked; keyboard = Up arrow on the top table row mounts the bar (seeded with the active state), Left/Right move via ProjectSortState.movedInBar(by:) (pure, clamped), Enter applies via setProjectSortState and returns to the table, Esc/Down return without applying, Cmd-chords fall through; mouse click on a chip applies directly. The bar session is view-local @State sortBarSelection in ProjectListOverlay; TerminalWorkspaceView wires sortState/onSetSortState. Earlier this reset window: T-092 (layout remainder to trailing tiers, wide n=8 = 2+3+3) and T-093 (persisted 5-value sort state, single-track model: projectOrder IS the display order, resortProjects() on every trigger; setSortState(.manual) inherits the display order = model half of T-099 approval; Cmd+S/Cmd+Shift+S actions fully removed incl. xghostty.h tag shift). Remaining pending must Todos: T-095 (Notion cell cursor), T-096 (candidate menus), T-097 (Delete + row selection), T-098 (note-cell full edit), T-099 (Opt reorder + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates.",
+    "written_at": "2026-08-19T19:17:00+09:00",
+    "summary": "Cycle R-20260819T190311 completed T-095 (Notion-style cell cursor) with green gates (zig build / just test / just swift-test = exit 0; swift-test 629 passed, 0 failed). List overlay keys now: arrows move 4 directions, Tab/Shift+Tab wrap/stop, Cmd+arrows = edge jumps (ProjectListCellCursor.movedToEdge), Opt+arrows = row/column reorder (rebound from Cmd in the same stroke; T-099 adds the sorted-move confirmation), Enter operates on the cell via the model judgment ProjectListColumn.enterAction (title/note = seeded edit, caret at end via ProjectListCellEditorHandle.placeCaretAtEnd; visibility = immediate toggle; deadline/priority/nextTrigger = enumerateCandidates, INERT until T-096 builds the menus), typing = replace edit, edit keys = Enter commit+down (shift ignored), Tab/Shift+Tab commit+sideways, Esc cancel. Space cycling/stepping fully removed (cycled/cycledSelectionValue/cycleListCellValue/stepListDeadline/ProjectDeadline.stepped + model wrappers + overlay props); ProjectDeadline.advanced(by:) KEPT for T-096 date candidates. Earlier this reset window: T-092 (layout remainder to trailing tiers, wide n=8 = 2+3+3), T-093 (persisted 5-value sort state; single-track model: projectOrder IS the display order, resortProjects() on every trigger, setSortState(.manual) inherits display order = T-099 approval model half; Cmd+S/Shift+S actions removed incl. xghostty.h tag shift), T-094 (sort bar UI: Up from top row mounts, movedInBar moves, Enter applies, Esc/Down back, click applies). Remaining pending must: T-096 (candidate menus), T-097 (Delete + row selection), T-098 (note-cell full edit), T-099 (Opt reorder confirmation + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates. Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks).",
     "next_actions": [
-      "Next batch: T-095 (Notion cell cursor) — the largest list-notion Todo; T-096 (candidate menus) can follow or join if scope stays manageable.",
-      "T-095 removes the Space-cycle helper (ProjectNextTrigger.cycled / cycledSelectionValue) and the Enter/Shift+Enter cell movement; the deadline Space stepping (ProjectDeadline.stepped) dies with T-096 — remove their tests when the replacements land.",
-      "T-099's sorted-row-move confirmation: OK path = setProjectSortState(.manual) then the move (model half already exists).",
-      "T-100 changes the current Esc-closes-the-list behavior (Cmd+L toggle, Esc never closes) — the overlay's isEscape branch in handleKey is the place.",
-      "T-103 (SPEC.md / README.md) last — SPEC.md still documents the removed sort actions (grep 'sort_projects' hits SPEC.md only) and lacks the sort bar.",
+      "Next batch: T-096 (candidate menus) — hook into ProjectListColumn.enterAction == .enumerateCandidates in ProjectListOverlay.enterOnCursorCell (currently a break with a comment). Model layer: 10 date candidates (today..+7d via advanced(by:), next-month same day, +3-months same day, nonexistent day clamped to month end — spec S-100), priority/nextTrigger real-value candidates (no unset), menu session (Up/Down choose, Enter commits, Esc closes unchanged), XGhosttyTests for the criterion-20 candidate items.",
+      "T-097 (Delete + row selection), T-098 (note-cell full edit), T-099 (sorted Opt-move confirmation: OK = setProjectSortState(.manual) then move; Cmd+N stable-sort insertion) follow in the list-notion group.",
+      "T-100 changes Esc-closes-the-list (Cmd+L toggle, Esc never closes) — the overlay's isEscape branch in handleKey is the place.",
+      "T-103 (SPEC.md / README.md) last — SPEC.md still documents the removed sort actions and Space keys, and lacks the sort bar and Notion cell grammar.",
       "When the implementation Todos are done, raise a Human-input Recommendation bundling the T-104..T-110 on-device gates."
     ],
     "open_questions": [],

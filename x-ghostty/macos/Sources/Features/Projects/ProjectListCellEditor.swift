@@ -32,6 +32,13 @@ final class ProjectListCellEditorHandle {
     /// field editor's input context. Consumed once, on seating.
     var pendingKeyEvent: NSEvent?
 
+    /// Whether seating places the caret at the end of the seeded text
+    /// instead of leaving the field's select-all default. Set for the
+    /// Enter-opened edit (`SPEC.md` §27.2: the caret enters the existing
+    /// text — typing must extend it, not replace it); a typed edit starts
+    /// from an empty draft, where selection is moot.
+    var placeCaretAtEnd = false
+
     /// Whether the IME currently holds a marked (uncommitted) string in the
     /// cell's field editor.
     var isComposing: Bool {
@@ -102,6 +109,13 @@ struct ProjectListCellEditor: NSViewRepresentable {
             }
             coordinator.seated = true
             window.makeFirstResponder(field)
+            if handle.placeCaretAtEnd {
+                // The Enter-opened edit: collapse the select-all default so
+                // the caret sits at the end of the existing text (SPEC §27.2).
+                handle.placeCaretAtEnd = false
+                let length = field.stringValue.utf16.count
+                field.currentEditor()?.selectedRange = NSRange(location: length, length: 0)
+            }
             guard let event = handle.pendingKeyEvent else { return }
             handle.pendingKeyEvent = nil
             (field.currentEditor() as? NSTextView)?.interpretKeyEvents([event])
@@ -111,6 +125,7 @@ struct ProjectListCellEditor: NSViewRepresentable {
     static func dismantleNSView(_ field: NSTextField, coordinator: Coordinator) {
         coordinator.handle?.field = nil
         coordinator.handle?.pendingKeyEvent = nil
+        coordinator.handle?.placeCaretAtEnd = false
     }
 
     func makeCoordinator() -> Coordinator {

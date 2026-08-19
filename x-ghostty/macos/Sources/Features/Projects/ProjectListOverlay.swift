@@ -9,15 +9,19 @@ import SwiftUI
 /// dimensions, exists only while the session is up, and scrolls with the cell
 /// cursor when the rows do not fit.
 ///
-/// Cell mechanics (`SPEC.md` §27.2): Tab / Shift+Tab / Enter / Shift+Enter
-/// (and the arrows) move the cell cursor with the row-end wrap and the
-/// last-row stop; typing on a text column starts an in-place edit that Enter
-/// / Tab commit and Escape cancels (only the edit); Space cycles the
-/// selection columns — visibility toggles hide/show immediately, with the
-/// layout re-forming behind the list; Cmd+↑/↓ move the cursor row and
-/// Cmd+←/→ the cursor column, persistently; Cmd+Enter focuses a visible
-/// row's project and closes; Cmd+Opt+E toggles whole-list full-note display;
-/// Escape outside an edit closes the list.
+/// Cell mechanics (`SPEC.md` §27.2, Notion-style): the arrows move the cell
+/// cursor in all four directions, Tab / Shift+Tab move right/left with the
+/// row-end wrap and the edge stop, and Cmd+arrows jump to the edges. Enter
+/// operates on the cell (`ProjectListColumn.enterAction`): text columns
+/// start an edit with the caret in the existing text, the visibility column
+/// toggles hide/show immediately with the layout re-forming behind the
+/// list, and the value columns enumerate candidates (§27.6). Typing on a
+/// text column starts a replace edit; while editing, Enter commits and
+/// moves down, Tab / Shift+Tab commit and move right/left, Escape cancels
+/// (only the edit). Opt+↑/↓ move the cursor row and Opt+←/→ the cursor
+/// column, persistently; Cmd+Enter focuses a visible row's project and
+/// closes; Cmd+Opt+E toggles whole-list full-note display; Escape outside
+/// an edit closes the list.
 ///
 /// Judgment stays on the model — `ProjectListCellCursor` owns the movement
 /// rules, `ProjectListCellEdit` the edit session, and the `WorkspaceModel`
@@ -63,7 +67,7 @@ struct ProjectListOverlay: View {
     /// Deadline-overdue judgment for a row, for the single-stage emphasis.
     let isOverdue: (ProjectID) -> Bool
 
-    /// Toggle the row between hidden and visible, immediately (Space on the
+    /// Toggle the row between hidden and visible, immediately (Enter on the
     /// visibility column).
     let onToggle: (ProjectID) -> Void
 
@@ -77,18 +81,11 @@ struct ProjectListOverlay: View {
     /// Commit an in-place text-cell edit (draft, column, row id).
     let onCommitEdit: (String, ProjectListColumn, ProjectID) -> Void
 
-    /// Space on a cycling selection cell (priority / next trigger).
-    let onCycle: (ProjectListColumn, ProjectID) -> Void
-
-    /// Space (`true`) / Shift+Space (`false`) on the deadline cell outside
-    /// an edit (`SPEC.md` §27.2): step the date, committing immediately.
-    let onStepDeadline: (ProjectID, Bool) -> Void
-
-    /// Move a row by ±1 in the ledger order (Cmd+↑ / Cmd+↓). Returns the
+    /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓). Returns the
     /// row's new index, or `nil` when nothing moved (a clamped end).
     let onMoveRow: (ProjectID, Int) -> Int?
 
-    /// Move a column by ±1 in the column order (Cmd+← / Cmd+→). Returns the
+    /// Move a column by ±1 in the column order (Opt+← / Opt+→). Returns the
     /// column's new index, or `nil` when nothing moved.
     let onMoveColumn: (ProjectListColumn, Int) -> Int?
 
@@ -271,12 +268,31 @@ struct ProjectListOverlay: View {
             return nil
         }
 
-        // Cmd+arrows reorder: the cursor row through the ledger, the cursor
+        // Cmd+arrows jump the cursor to the edges (SPEC §27.2): first/last
+        // row, leftmost/rightmost column.
+        if modifiers == [.command], let special = event.specialKey {
+            switch special {
+            case .upArrow, .downArrow, .leftArrow, .rightArrow:
+                let move: ProjectListCellCursor.Move = switch special {
+                case .upArrow: .up
+                case .downArrow: .down
+                case .leftArrow: .left
+                default: .right
+                }
+                cursor = cursor.movedToEdge(
+                    move, rowCount: rows.count, columnCount: columns.count)
+                return nil
+            default:
+                break
+            }
+        }
+
+        // Opt+arrows reorder: the cursor row through the ledger, the cursor
         // column through the persisted column order (SPEC §27.1). The model
         // reports the moved row's/column's new index and the cursor follows
         // it, so consecutive moves keep acting on the same row/column; a
         // clamped move reports nothing and the cursor stays put.
-        if modifiers == [.command], let special = event.specialKey {
+        if modifiers == [.option], let special = event.specialKey {
             switch special {
             case .upArrow, .downArrow:
                 let delta = special == .upArrow ? -1 : 1
@@ -297,15 +313,12 @@ struct ProjectListOverlay: View {
 
         guard modifiers.subtracting([.shift]).isEmpty else { return event }
 
-        // Plain movement: Tab / Shift+Tab / Enter / Shift+Enter and the
-        // arrows, with the row-end wrap and the edge stops
-        // (`ProjectListCellCursor`). Up from the top row leaves the table
-        // and enters the sort bar, seeded with the active state
-        // (`SPEC.md` §24.5).
+        // Plain movement: Tab / Shift+Tab and the arrows, with the row-end
+        // wrap and the edge stops (`ProjectListCellCursor`). Up from the top
+        // row leaves the table and enters the sort bar, seeded with the
+        // active state (`SPEC.md` §24.5).
         if let move = Self.cursorMove(for: event, shifted: modifiers == [.shift]) {
-            // The Up *arrow* specifically — not Shift+Enter's up move —
-            // mounts the bar (SPEC §24.5).
-            if move == .up, cursor.row == 0, event.specialKey == .some(.upArrow) {
+            if move == .up, cursor.row == 0 {
                 sortBarSelection = sortState
             } else {
                 moveCursor(move)
@@ -313,12 +326,12 @@ struct ProjectListOverlay: View {
             return nil
         }
 
-        // Space: the selection columns cycle, and the deadline cell steps
-        // its date — Space forward, Shift+Space back (SPEC §27.2). On the
-        // other text columns it does nothing — typing there starts an edit,
-        // and a stray leading space is not a useful edit to start.
-        if event.charactersIgnoringModifiers == " " {
-            spaceOnCursorCell(shifted: modifiers == [.shift])
+        // Enter operates on the cursor cell (SPEC §27.2, Notion-style — it
+        // never moves the cursor): text columns start a seeded edit, the
+        // visibility column toggles hide/show, the value columns enumerate
+        // candidates.
+        if event.specialKey == .carriageReturn || event.specialKey == .enter {
+            enterOnCursorCell()
             return nil
         }
 
@@ -355,14 +368,14 @@ struct ProjectListOverlay: View {
     }
 
     /// The plain-movement reading of a key event, or `nil` when the event is
-    /// not a movement key.
+    /// not a movement key. Enter is deliberately absent: it operates on the
+    /// cell (`enterOnCursorCell`), it never moves the cursor (SPEC §27.2).
     private static func cursorMove(
         for event: NSEvent, shifted: Bool
     ) -> ProjectListCellCursor.Move? {
         switch event.specialKey {
         case .some(.tab): return shifted ? .left : .right
         case .some(.backTab): return .left
-        case .some(.carriageReturn), .some(.enter): return shifted ? .up : .down
         case .some(.rightArrow): return .right
         case .some(.leftArrow): return .left
         case .some(.downArrow): return .down
@@ -386,18 +399,34 @@ struct ProjectListOverlay: View {
             move, rowCount: rows.count, columnCount: columns.count)
     }
 
-    private func spaceOnCursorCell(shifted: Bool) {
+    /// Enter on the cursor cell (SPEC §27.2): the per-column judgment is
+    /// the model's (`ProjectListColumn.enterAction`); this dispatches it.
+    private func enterOnCursorCell() {
         guard let row = cursorRow, let column = cursorColumn else { return }
-        switch column {
-        case .visibility:
+        switch column.enterAction {
+        case .beginEdit:
+            beginSeededEdit(row: row, column: column)
+        case .toggleVisibility:
             onToggle(row.id)
-        case .priority, .nextTrigger:
-            onCycle(column, row.id)
-        case .deadline:
-            onStepDeadline(row.id, !shifted)
-        case .title, .note:
+        case .enumerateCandidates:
+            // The candidate menus (deadline dates, priority / next-trigger
+            // values, §27.6) arrive with the next slice; until then Enter is
+            // inert on these columns.
             break
         }
+    }
+
+    /// Start the Enter-opened edit (SPEC §27.2): seeded with the cell's
+    /// current text and the caret placed at its end — unlike a typed edit,
+    /// which replaces (`ProjectListCellEdit.started`).
+    private func beginSeededEdit(row: ProjectListRow, column: ProjectListColumn) {
+        guard let session = ProjectListCellEdit(row: row, column: column) else {
+            return
+        }
+        editor.pendingKeyEvent = nil
+        editor.placeCaretAtEnd = true
+        focus = nil
+        edit = session
     }
 
     /// Start an in-place edit, handing `event` — the keystroke that started
@@ -411,6 +440,7 @@ struct ProjectListOverlay: View {
             return
         }
         editor.pendingKeyEvent = event
+        editor.placeCaretAtEnd = false
         // The cell field takes first responder itself, so SwiftUI's focus
         // claim is released first — released synchronously, before the editor
         // exists, so nothing fights it mid composition.
@@ -432,6 +462,7 @@ struct ProjectListOverlay: View {
     private func endEdit() {
         edit = nil
         editor.pendingKeyEvent = nil
+        editor.placeCaretAtEnd = false
         DispatchQueue.main.async { focus = .catcher }
     }
 
@@ -723,7 +754,7 @@ struct ProjectListOverlay: View {
             Text("projects")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("type edit · space cycle · ↑ sort · ⌘n new · ⌘↩ focus · ⌘⌥e notes · esc close")
+            Text("↩ edit/toggle · type edit · ↑ sort · ⌘n new · ⌘↩ focus · ⌘⌥e notes · esc close")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }
@@ -770,21 +801,21 @@ struct ProjectListOverlay: View {
         case .visibility:
             if row.isHidden {
                 return canToggle(row.id)
-                    ? "space shows \(row.title)"
+                    ? "↩ shows \(row.title)"
                     : "no room to show — hide another project first"
             }
             return canToggle(row.id)
-                ? "space hides \(row.title)"
+                ? "↩ hides \(row.title)"
                 : "at least one project must stay visible"
         case .priority:
-            return "space cycles priority"
+            return "↩ lists priorities"
         case .nextTrigger:
-            return "space cycles next trigger"
+            return "↩ lists next triggers"
         case .deadline:
-            let base = "space today/+1d · ⇧space back · type to edit deadline"
+            let base = "↩ lists dates · type to edit deadline"
             return canFocus(row.id) ? base + " · ⌘↩ focuses \(row.title)" : base
         case .title, .note:
-            let base = "type to edit \(Self.headerLabel(of: column))"
+            let base = "↩ or type to edit \(Self.headerLabel(of: column))"
             return canFocus(row.id) ? base + " · ⌘↩ focuses \(row.title)" : base
         }
     }

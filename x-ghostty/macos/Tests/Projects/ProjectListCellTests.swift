@@ -15,11 +15,12 @@ private typealias TestProjectState = ProjectStateOf<TestPane>
 private typealias TestWorkspaceState = WorkspaceStateOf<TestPane>
 private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 
-/// Tests for the project list's cell mechanics (SPEC §27.2): the cell cursor's
-/// movement with its row-end wrap and last-row stop, text-cell edits (commit
-/// applies, cancel reverts, the note cell rewrites only line 1, invalid
-/// deadline input is unset), Space cycling on the selection columns, the
-/// column moves with persistence, and the transient full-note toggle.
+/// Tests for the project list's cell mechanics (SPEC §27.2, Notion-style):
+/// the cell cursor's movement with its row-end wrap, edge stops, and
+/// Cmd+arrow edge jumps, the per-column Enter judgment (edit / toggle /
+/// candidates), text-cell edits (commit applies, cancel reverts, the note
+/// cell rewrites only line 1, invalid deadline input is unset), the column
+/// moves with persistence, and the transient full-note toggle.
 struct ProjectListCellTests {
     private static func makeProject(
         name: String,
@@ -86,8 +87,7 @@ struct ProjectListCellTests {
     }
 
     @Test func cursorDownStopsAtTheLastRowAndUpAtTheFirst() {
-        // Enter / Shift+Enter (and ↓/↑) keep the column and stop at the edge
-        // rows.
+        // ↓/↑ keep the column and stop at the edge rows.
         let middle = ProjectListCellCursor(row: 1, column: 2)
         #expect(middle.moved(.down, rowCount: 3, columnCount: 4)
             == ProjectListCellCursor(row: 2, column: 2))
@@ -107,6 +107,58 @@ struct ProjectListCellTests {
         // Movement on the shrunken grid starts from the clamped position.
         #expect(stale.moved(.down, rowCount: 3, columnCount: 6)
             == ProjectListCellCursor(row: 2, column: 5))
+    }
+
+    @Test func cmdArrowEdgeJumpsReachTheEdgesKeepingTheOtherCoordinate() {
+        // Cmd+arrows jump straight to the first/last row or the
+        // leftmost/rightmost column (SPEC §27.2).
+        let middle = ProjectListCellCursor(row: 3, column: 2)
+        #expect(middle.movedToEdge(.up, rowCount: 6, columnCount: 6)
+            == ProjectListCellCursor(row: 0, column: 2))
+        #expect(middle.movedToEdge(.down, rowCount: 6, columnCount: 6)
+            == ProjectListCellCursor(row: 5, column: 2))
+        #expect(middle.movedToEdge(.left, rowCount: 6, columnCount: 6)
+            == ProjectListCellCursor(row: 3, column: 0))
+        #expect(middle.movedToEdge(.right, rowCount: 6, columnCount: 6)
+            == ProjectListCellCursor(row: 3, column: 5))
+
+        // Already at an edge: the jump is absorbed, nothing wraps.
+        let corner = ProjectListCellCursor(row: 0, column: 0)
+        #expect(corner.movedToEdge(.up, rowCount: 6, columnCount: 6) == corner)
+        #expect(corner.movedToEdge(.left, rowCount: 6, columnCount: 6) == corner)
+
+        // A stale cursor clamps onto the grid before jumping.
+        let stale = ProjectListCellCursor(row: 9, column: 9)
+        #expect(stale.movedToEdge(.up, rowCount: 3, columnCount: 4)
+            == ProjectListCellCursor(row: 0, column: 3))
+    }
+
+    // MARK: Per-column Enter judgment (SPEC §27.2)
+
+    @Test func enterEditsTextColumnsTogglesVisibilityAndListsCandidates() {
+        // Enter operates on the cell, per column (Notion-style): the text
+        // columns start a seeded edit, the visibility column toggles
+        // hide/show immediately, and the value columns enumerate their
+        // candidates.
+        #expect(ProjectListColumn.title.enterAction == .beginEdit)
+        #expect(ProjectListColumn.note.enterAction == .beginEdit)
+        #expect(ProjectListColumn.visibility.enterAction == .toggleVisibility)
+        #expect(ProjectListColumn.deadline.enterAction == .enumerateCandidates)
+        #expect(ProjectListColumn.priority.enterAction == .enumerateCandidates)
+        #expect(ProjectListColumn.nextTrigger.enterAction == .enumerateCandidates)
+    }
+
+    @Test func anEnterOpenedEditIsSeededWithTheExistingText() throws {
+        // Enter starts the edit with the caret in the existing content: the
+        // session's draft begins as the cell's current text (a typed edit
+        // starts empty instead — the replace judgment, covered below).
+        let a = Self.makeProject(name: "alpha", note: "first\nsecond")
+        let row = try #require(Self.makeState([a]).projectListRows.first)
+
+        let title = try #require(ProjectListCellEdit(row: row, column: .title))
+        #expect(title.draft == "alpha" && title.original == "alpha")
+        let note = try #require(ProjectListCellEdit(row: row, column: .note))
+        #expect(note.draft == "first" && note.original == "first")
     }
 
     // MARK: Row content for the cells (SPEC §27.1–27.2)
@@ -223,48 +275,6 @@ struct ProjectListCellTests {
         #expect(fresh.projects[b.id]?.note == "only line")
     }
 
-    // MARK: Selection-column cycling (SPEC §27.2)
-
-    @Test func priorityCyclesThroughDefinitionOrderAndBackToUnset() {
-        let a = Self.makeProject(name: "alpha")
-        var state = Self.makeState([a])
-
-        var seen: [ProjectPriority?] = []
-        for _ in 0..<4 {
-            let cycledPriority = state.cycleListCellValue(.priority, for: a.id)
-            #expect(cycledPriority)
-            seen.append(state.projects[a.id]?.priority)
-        }
-        #expect(seen == [.high, .medium, .low, nil])
-    }
-
-    @Test func nextTriggerCyclesThroughDefinitionOrderAndBackToUnset() {
-        let a = Self.makeProject(name: "alpha")
-        var state = Self.makeState([a])
-
-        var seen: [ProjectNextTrigger?] = []
-        for _ in 0..<4 {
-            let cycledNextTrigger = state.cycleListCellValue(.nextTrigger, for: a.id)
-            #expect(cycledNextTrigger)
-            seen.append(state.projects[a.id]?.nextTrigger)
-        }
-        #expect(seen == [.myself, .externalPerson, .event, nil])
-    }
-
-    @Test func cyclingIsDefinedOnlyForPriorityAndNextTrigger() {
-        // Visibility toggles through the session hide/show path (with the
-        // at-least-one-visible rule and relayout), never through the cycle.
-        let a = Self.makeProject(name: "alpha")
-        var state = Self.makeState([a])
-
-        let cycledVisibility = state.cycleListCellValue(.visibility, for: a.id)
-        #expect(cycledVisibility == false)
-        let cycledTitle = state.cycleListCellValue(.title, for: a.id)
-        #expect(cycledTitle == false)
-        let cycledUnknownProject = state.cycleListCellValue(.priority, for: ProjectID())
-        #expect(cycledUnknownProject == false)
-    }
-
     // MARK: Column moves persist (SPEC §27.1)
 
     @Test func columnMovesClampAtTheEndsAndRoundTrip() throws {
@@ -303,7 +313,6 @@ struct ProjectListCellTests {
 
         // Closed list: everything is inert.
         #expect(model.commitProjectListCellEdit("x", column: .title, for: a.id) == false)
-        #expect(model.cycleProjectListCell(.priority, for: a.id) == false)
         #expect(model.moveProjectListRow(b.id, by: -1) == nil)
         #expect(model.moveProjectListColumn(.note, by: -1) == nil)
         #expect(model.state.projects[a.id]?.name == "alpha")
@@ -313,8 +322,6 @@ struct ProjectListCellTests {
 
         #expect(model.commitProjectListCellEdit("gamma", column: .title, for: a.id))
         #expect(model.state.projects[a.id]?.name == "gamma")
-        #expect(model.cycleProjectListCell(.priority, for: a.id))
-        #expect(model.state.projects[a.id]?.priority == .high)
         #expect(model.moveProjectListRow(b.id, by: -1) == 0)
         #expect(model.state.projectOrder == [b.id, a.id])
         // Clamped at the top now.
@@ -325,83 +332,15 @@ struct ProjectListCellTests {
         ])
     }
 
-    // MARK: Deadline Space stepping (SPEC §27.2)
+    // MARK: Deadline day arithmetic (feeds the date candidates, §27.6)
 
-    @Test func spaceOnDeadlineCellSetsTodayThenAdvancesOneDay() {
-        let a = Self.makeProject(name: "alpha")
-        let model = Self.makeListModel([a])
-        let today = ProjectDeadline(parsing: "2026-08-18")!
-
-        // Unset + Space: today.
-        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today))
-        #expect(model.state.projects[a.id]?.deadline == today)
-
-        // Dated + Space: one day forward, from whatever date is set.
-        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today))
-        #expect(model.state.projects[a.id]?.deadline == ProjectDeadline(parsing: "2026-08-19"))
-
-        // Month and year boundaries roll over.
+    @Test func deadlineAdvanceRollsOverMonthAndYearBoundaries() {
         #expect(ProjectDeadline(parsing: "2026-08-31")?.advanced(by: 1)
             == ProjectDeadline(parsing: "2026-09-01"))
         #expect(ProjectDeadline(parsing: "2026-12-31")?.advanced(by: 1)
             == ProjectDeadline(parsing: "2027-01-01"))
         #expect(ProjectDeadline(parsing: "2028-02-29")?.advanced(by: -1)
             == ProjectDeadline(parsing: "2028-02-28"))
-    }
-
-    @Test func shiftSpaceStepsBackClearsFromTodayAndIgnoresUnset() {
-        let a = Self.makeProject(name: "alpha")
-        let model = Self.makeListModel([a])
-        let today = ProjectDeadline(parsing: "2026-08-18")!
-
-        // Unset + Shift+Space: nothing happens.
-        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today) == false)
-        #expect(model.state.projects[a.id]?.deadline == nil)
-
-        // From a future date, each press steps back one day...
-        #expect(model.commitProjectListCellEdit("2026-08-20", column: .deadline, for: a.id))
-        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today))
-        #expect(model.state.projects[a.id]?.deadline == ProjectDeadline(parsing: "2026-08-19"))
-        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today))
-        #expect(model.state.projects[a.id]?.deadline == today)
-
-        // ...and stepping back from exactly today clears to unset, after
-        // which a further press is the no-op again.
-        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today))
-        #expect(model.state.projects[a.id]?.deadline == nil)
-        #expect(model.stepProjectListDeadline(a.id, forward: false, today: today) == false)
-    }
-
-    @Test func deadlineSpaceStepsCommitImmediatelyOutsideAnyEditSession() {
-        let a = Self.makeProject(name: "alpha")
-        let today = ProjectDeadline(parsing: "2026-08-18")!
-
-        // Gated on the list session like every other cell operation.
-        let model = TestWorkspaceModel(Self.makeState([a]))
-        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today) == false)
-        #expect(model.state.projects[a.id]?.deadline == nil)
-
-        model.beginProjectList()
-
-        // A press mutates the stored state by itself: no edit session opens
-        // (ProjectListCellEdit is never involved), so there is nothing an
-        // Esc could discard — the stepped value is already the committed
-        // value, unlike a typed edit whose draft dies with its session.
-        #expect(model.stepProjectListDeadline(a.id, forward: true, today: today))
-        #expect(model.state.projects[a.id]?.deadline == today)
-
-        // A typed edit session on the same cell starts from the committed
-        // stepped value, and cancelling it (discarding the draft) leaves
-        // that value in place.
-        let row = model.projectListRows.first!
-        let edit = ProjectListCellEdit(row: row, column: .deadline)
-        #expect(edit?.original == today.displayText)
-        #expect(model.state.projects[a.id]?.deadline == today)
-
-        // The pure judgment reports no change for the refused presses, so a
-        // refused press can never look like a commit.
-        let unsetBack = ProjectDeadline.stepped(nil, forward: false, today: today)
-        #expect(unsetBack.changed == false && unsetBack.value == nil)
     }
 
     // MARK: Consecutive reorders follow the moved row/column (SPEC §27.1)
@@ -602,8 +541,10 @@ struct ProjectListCellTests {
 
         #expect(routing(.escape) == .cancel)
         #expect(routing(.escape, shifted: true) == .cancel)
+        // Enter commits and moves down whether shifted or not: Shift+Enter's
+        // up move is abolished with the Notion-style keys (SPEC §27.2).
         #expect(routing(.enter) == .commit(.down))
-        #expect(routing(.enter, shifted: true) == .commit(.up))
+        #expect(routing(.enter, shifted: true) == .commit(.down))
         #expect(routing(.tab) == .commit(.right))
         #expect(routing(.tab, shifted: true) == .commit(.left))
 

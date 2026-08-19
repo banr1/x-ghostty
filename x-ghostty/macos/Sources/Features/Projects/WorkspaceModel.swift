@@ -622,39 +622,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return true
     }
 
-    /// Space on a cycling selection cell (priority / next trigger, `SPEC.md`
-    /// §27.2), only while the list session is up. The visibility column goes
-    /// through `toggleProjectListVisibility` instead — it hides/shows with
-    /// the relayout and focus rules.
-    @discardableResult
-    func cycleProjectListCell(_ column: ProjectListColumn, for id: ProjectID) -> Bool {
-        guard projectListActive else { return false }
-        var next = state
-        guard next.cycleListCellValue(column, for: id) else { return false }
-        state = next
-        return true
-    }
-
-    /// Space / Shift+Space on the deadline cell (`SPEC.md` §27.2), only
-    /// while the list session is up. Each press commits immediately, exactly
-    /// like the selection columns' cycling — no edit session opens, and Esc
-    /// cannot revert it. Typed editing (with its commit/cancel) is untouched
-    /// and remains the way to set past dates.
-    @discardableResult
-    func stepProjectListDeadline(
-        _ id: ProjectID, forward: Bool,
-        today: ProjectDeadline = ProjectDeadline(from: Date())
-    ) -> Bool {
-        guard projectListActive else { return false }
-        var next = state
-        guard next.stepListDeadline(for: id, forward: forward, today: today)
-        else { return false }
-        state = next
-        return true
-    }
-
     /// Move row `id` one-or-more places up (negative `delta`) or down in the
-    /// ledger order (`Cmd+↑`/`Cmd+↓`, `SPEC.md` §27.1), clamped to the ends;
+    /// ledger order (`Opt+↑`/`Opt+↓`, `SPEC.md` §27.1), clamped to the ends;
     /// only while the list session is up. The arrangement re-derives and the
     /// new order persists with the ledger.
     ///
@@ -672,7 +641,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// Move `column` one-or-more places left (negative `delta`) or right in
-    /// the persisted column order (`Cmd+←`/`Cmd+→`, `SPEC.md` §27.1), clamped
+    /// the persisted column order (`Opt+←`/`Opt+→`, `SPEC.md` §27.1), clamped
     /// to the ends; only while the list session is up.
     ///
     /// - Returns: the moved column's new index — the cell cursor follows it,

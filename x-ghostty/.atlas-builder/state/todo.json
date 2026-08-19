@@ -3838,7 +3838,7 @@
     {
       "id": "T-095",
       "title": "Notion-style cell cursor: arrow keys move in all four directions, Tab / Shift+Tab move right/left with row-end wrap and edge stop, Cmd+arrows jump to the edges; Enter / Shift+Enter cell movement and Space cycling / Space date stepping are abolished; Enter operates on the cell (text columns: edit start with caret in the existing text; visibility: immediate hide/show toggle with the minimum-one protection; deadline: candidate enumeration; priority/next-trigger: candidate enumeration); typing starts a replace edit on text and deadline columns; while editing, Enter commits and moves down, Tab / Shift+Tab commit and move right/left, Esc cancels; XGhosttyTests for the criterion-20 movement and editing items",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-092",
@@ -3850,7 +3850,35 @@
       },
       "batch_group": "list-notion",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full build (zig core + macOS app) green with the Notion-style cell keys"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "XGhosttyTests green: 629 test cases passed, 0 failed (6 Space-cycle/step tests removed with the abolished features, 4 new criterion-20 tests added)"
+        },
+        {
+          "type": "test",
+          "command": "just swift-test",
+          "summary": "new criterion-20 tests passing: cmdArrowEdgeJumpsReachTheEdgesKeepingTheOtherCoordinate, enterEditsTextColumnsTogglesVisibilityAndListsCandidates (per-column ProjectListColumn.enterAction judgment), anEnterOpenedEditIsSeededWithTheExistingText, deadlineAdvanceRollsOverMonthAndYearBoundaries; withNothingMarkedTheSessionTerminatorsReadAsBefore updated (Shift+Enter now commits down)"
+        },
+        {
+          "type": "diff",
+          "summary": "Notion-style cell cursor (SPEC 27.2): arrows move 4 directions, Tab/Shift+Tab keep the row-end wrap and edge stop, Cmd+arrows jump to the edges (new ProjectListCellCursor.movedToEdge). Enter never moves - it operates on the cell via the new model judgment ProjectListColumn.enterAction (title/note: seeded edit with the caret at the end of the existing text - ProjectListCellEditorHandle.placeCaretAtEnd collapses the select-all default on seating; visibility: immediate hide/show toggle through the existing min-1-protected path; deadline/priority/nextTrigger: candidate enumeration, inert until T-096 implements the menus). Typing still starts a replace edit; while editing, Enter commits+down (Shift+Enter's up move abolished), Tab/Shift+Tab commit+right/left, Esc cancels. Space cycling and Space date stepping removed end to end: cycledSelectionValue/ProjectPriority.cycled/ProjectNextTrigger.cycled, WorkspaceStateOf.cycleListCellValue/stepListDeadline, ProjectDeadline.stepped, WorkspaceModel.cycleProjectListCell/stepProjectListDeadline, the overlay's Space branch and onCycle/onStepDeadline props (ProjectDeadline.advanced(by:) kept for the T-096 date candidates). Row/column reorder moved from Cmd+arrows to Opt+arrows (the must-14 intentional change covering both halves; T-099 adds the sorted-move confirmation). Footer/header hints updated."
+        }
+      ]
     },
     {
       "id": "T-096",

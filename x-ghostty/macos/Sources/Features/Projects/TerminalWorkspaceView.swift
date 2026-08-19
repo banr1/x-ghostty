@@ -26,9 +26,9 @@ struct TerminalWorkspaceView: View {
     /// in the model. Rename callbacks are model-only and built below.
     let onFocusProject: (ProjectID) -> Void
 
-    /// Toggle a project-list row between hidden and visible (Space, `SPEC.md`
-    /// §27.2). Hiding the focused project moves focus, which swaps
-    /// `surfaceTree`, so the controller handles it.
+    /// Toggle a project-list row between hidden and visible (Enter on the
+    /// visibility column, `SPEC.md` §27.2). Hiding the focused project moves
+    /// focus, which swaps `surfaceTree`, so the controller handles it.
     let onToggleProjectListVisibility: (ProjectID) -> Void
 
     /// Focus a project-list row and close the list (Enter, `SPEC.md` §27.3).
@@ -147,8 +147,6 @@ struct TerminalWorkspaceView: View {
                     // Cell mutations are model-only: no `surfaceTree` swap is
                     // involved, so no controller round-trip is needed.
                     onCommitEdit: { workspace.commitProjectListCellEdit($0, column: $1, for: $2) },
-                    onCycle: { workspace.cycleProjectListCell($0, for: $1) },
-                    onStepDeadline: { workspace.stepProjectListDeadline($0, forward: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },

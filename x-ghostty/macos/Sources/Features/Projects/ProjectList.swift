@@ -50,8 +50,8 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// Whether typing edits this column in place (`SPEC.md` §27.2): the text
-    /// columns are title, deadline, and note.
+    /// Whether typing starts a replace edit on this column in place
+    /// (`SPEC.md` §27.2): the text columns are title, deadline, and note.
     var isTextColumn: Bool {
         switch self {
         case .title, .deadline, .note: return true
@@ -59,10 +59,24 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// Whether Space cycles this column's value (`SPEC.md` §27.2): the
-    /// selection columns are visibility (a two-value toggle), priority, and
-    /// next trigger.
+    /// The selection columns — visibility (a two-value toggle), priority,
+    /// and next trigger — where typing never starts an edit.
     var isSelectionColumn: Bool { !isTextColumn }
+
+    /// What Enter does on this column's cell (`SPEC.md` §27.2, Notion-style
+    /// — Enter operates on the cell, it never moves the cursor): the text
+    /// columns start a seeded edit with the caret in the existing text; the
+    /// visibility column toggles hide/show immediately (under the
+    /// at-least-one-visible protection); the value columns — deadline,
+    /// priority, next trigger — enumerate their candidates below the cell
+    /// (§27.6).
+    var enterAction: ProjectListEnterAction {
+        switch self {
+        case .title, .note: return .beginEdit
+        case .visibility: return .toggleVisibility
+        case .deadline, .priority, .nextTrigger: return .enumerateCandidates
+        }
+    }
 
     /// The default column order (`SPEC.md` §27.1): visibility, title,
     /// priority, deadline, next trigger, note.
@@ -83,6 +97,17 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
         order += defaultOrder.filter { !seen.contains($0) }
         return order
     }
+}
+
+/// The per-column judgment of what Enter does on a cell (`SPEC.md` §27.2).
+enum ProjectListEnterAction: Equatable {
+    /// Start an in-place edit seeded with the cell's current text, caret in
+    /// the existing content (unlike a typed edit, which replaces).
+    case beginEdit
+    /// Toggle the row between hidden and visible immediately.
+    case toggleVisibility
+    /// Enumerate the cell's value candidates below it (§27.6).
+    case enumerateCandidates
 }
 
 // MARK: Row derivation (SPEC §27.1)
@@ -125,18 +150,20 @@ extension WorkspaceStateOf {
 /// The project list's cell cursor: a (row, column) position over the rows in
 /// ledger order and the columns in the persisted column order.
 ///
-/// Movement is the model judgment of `SPEC.md` §27.2: Tab moves right and
-/// wraps from a row's last cell to the next row's first, Shift+Tab mirrors it
-/// leftwards, Enter moves down and stops at the last row, Shift+Enter moves
-/// up and stops at the first — the arrow keys are the same four moves. The
-/// grid's corners are absorbing: there is nowhere to wrap past the last (or
-/// before the first) cell.
+/// Movement is the model judgment of `SPEC.md` §27.2 (Notion-style): the
+/// arrow keys move in all four directions, Tab moves right and wraps from a
+/// row's last cell to the next row's first, Shift+Tab mirrors it leftwards,
+/// and up/down stop at the edge rows. Enter never moves the cursor — it
+/// operates on the cell (`ProjectListColumn.enterAction`); the down/up moves
+/// remain what an edit commit walks. Cmd+arrows jump to the edges
+/// (`movedToEdge`). The grid's corners are absorbing: there is nowhere to
+/// wrap past the last (or before the first) cell.
 struct ProjectListCellCursor: Equatable {
     var row: Int
     var column: Int
 
     /// One cursor move: right/left are Tab/Shift+Tab (and →/←), down/up are
-    /// Enter/Shift+Enter (and ↓/↑).
+    /// ↓/↑ (and where a committed edit walks).
     enum Move {
         case right, left, down, up
     }
@@ -166,6 +193,22 @@ struct ProjectListCellCursor: Equatable {
             if next.row + 1 < rowCount { next.row += 1 }
         case .up:
             if next.row > 0 { next.row -= 1 }
+        }
+        return next
+    }
+
+    /// The cursor after a Cmd+arrow edge jump (`SPEC.md` §27.2): straight to
+    /// the first/last row (up/down) or the leftmost/rightmost column
+    /// (left/right), keeping the other coordinate. An empty grid leaves the
+    /// cursor unchanged.
+    func movedToEdge(_ move: Move, rowCount: Int, columnCount: Int) -> ProjectListCellCursor {
+        guard rowCount > 0, columnCount > 0 else { return self }
+        var next = clamped(rowCount: rowCount, columnCount: columnCount)
+        switch move {
+        case .up: next.row = 0
+        case .down: next.row = rowCount - 1
+        case .left: next.column = 0
+        case .right: next.column = columnCount - 1
         }
         return next
     }
@@ -254,50 +297,20 @@ extension ProjectListCellEdit {
     /// converts, Enter commits the conversion, and Escape cancels it — none of
     /// them may reach the session's own Enter-commits / Escape-cancels /
     /// Tab-moves meaning (must 78). Once nothing is marked, the session's
-    /// terminators read exactly as they did before: Enter commits and moves
-    /// down (Shift+Enter up), Tab commits and moves right (Shift+Tab left),
-    /// Escape cancels this edit alone (§27.2).
+    /// terminators read per §27.2: Enter commits and moves down (shifted or
+    /// not — Shift+Enter's up move is abolished with the Notion-style keys),
+    /// Tab commits and moves right (Shift+Tab left), Escape cancels this
+    /// edit alone.
     static func routing(
         for press: ProjectListEditKeyPress, shifted: Bool, composing: Bool
     ) -> ProjectListEditKeyRouting {
         guard !composing else { return .editor }
         switch press {
         case .escape: return .cancel
-        case .enter: return .commit(shifted ? .up : .down)
+        case .enter: return .commit(.down)
         case .tab: return .commit(shifted ? .left : .right)
         case .other: return .editor
         }
-    }
-}
-
-// MARK: Selection-column cycling (SPEC §27.2)
-
-/// The next value of a Space-cycled selection cell: unset → the cases in
-/// definition order → unset again.
-private func cycledSelectionValue<Value: CaseIterable & Equatable>(
-    after current: Value?
-) -> Value? {
-    let cases = Array(Value.allCases)
-    guard let current, let index = cases.firstIndex(of: current) else {
-        return cases.first
-    }
-    let next = cases.index(after: index)
-    return next < cases.endIndex ? cases[next] : nil
-}
-
-extension ProjectPriority {
-    /// Space in the priority cell (`SPEC.md` §27.2): unset → high → medium →
-    /// low → unset.
-    static func cycled(after current: ProjectPriority?) -> ProjectPriority? {
-        cycledSelectionValue(after: current)
-    }
-}
-
-extension ProjectNextTrigger {
-    /// Space in the next-trigger cell (`SPEC.md` §27.2): unset → myself →
-    /// external person → event → unset.
-    static func cycled(after current: ProjectNextTrigger?) -> ProjectNextTrigger? {
-        cycledSelectionValue(after: current)
     }
 }
 
@@ -356,54 +369,6 @@ extension WorkspaceStateOf {
         case .visibility, .priority, .nextTrigger:
             return false
         }
-    }
-
-    /// Space on a cycling selection cell (`SPEC.md` §27.2): priority and next
-    /// trigger step to their next value. The visibility column is *not*
-    /// handled here — its toggle is the session-level hide/show with the
-    /// at-least-one-visible and cap rules and the relayout.
-    ///
-    /// - Returns: whether a value cycled.
-    @discardableResult
-    mutating func cycleListCellValue(_ column: ProjectListColumn, for id: ProjectID) -> Bool {
-        guard var project = projects[id] else { return false }
-        switch column {
-        case .priority:
-            project.priority = ProjectPriority.cycled(after: project.priority)
-        case .nextTrigger:
-            project.nextTrigger = ProjectNextTrigger.cycled(after: project.nextTrigger)
-        case .visibility, .title, .deadline, .note:
-            return false
-        }
-        projects[id] = project
-        // Priority and next trigger are sort keys: the change re-sorts
-        // immediately while a key state is active (`SPEC.md` §24.4).
-        resortProjects()
-        return true
-    }
-
-    /// One Space (`forward`) or Shift+Space press on `id`'s deadline cell
-    /// (`SPEC.md` §27.2): applies `ProjectDeadline.stepped` to the stored
-    /// value immediately. The press belongs to no edit session — the value
-    /// is committed the moment it is applied, so there is nothing an Esc
-    /// could revert.
-    ///
-    /// - Returns: whether the press changed the deadline (an unset cell
-    ///   stepped back is the no-op).
-    @discardableResult
-    mutating func stepListDeadline(
-        for id: ProjectID, forward: Bool, today: ProjectDeadline
-    ) -> Bool {
-        guard var project = projects[id] else { return false }
-        let step = ProjectDeadline.stepped(
-            project.deadline, forward: forward, today: today)
-        guard step.changed else { return false }
-        project.deadline = step.value
-        projects[id] = project
-        // The deadline is a sort key: the stepped value re-sorts immediately
-        // while a key state is active (`SPEC.md` §24.4).
-        resortProjects()
-        return true
     }
 
     /// Move `column` by `delta` places in the persisted column order
