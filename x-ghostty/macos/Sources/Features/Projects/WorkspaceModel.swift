@@ -680,6 +680,25 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return target
     }
 
+    /// The approved row move under an active sort (`SPEC.md` §24.5, §27.1):
+    /// the confirmation's OK inherits the current display order as the
+    /// manual order — `setSortState(.manual)` stops the re-sorts, which is
+    /// the whole inheritance — and then performs the move, in one call so
+    /// the approval cannot half-apply. Refused in the manual state (manual
+    /// moves are confirmation-free and go through `moveProjectListRow`
+    /// directly).
+    ///
+    /// - Returns: the moved row's new ledger index, or `nil` when nothing
+    ///   moved. A clamped edge move still keeps the approved switch to
+    ///   manual — the user approved leaving the sort, and the order they
+    ///   see is the order they keep.
+    @discardableResult
+    func approveSortedRowMove(_ id: ProjectID, by delta: Int) -> Int? {
+        guard projectListActive, state.sortState != .manual else { return nil }
+        setProjectSortState(.manual)
+        return moveProjectListRow(id, by: delta)
+    }
+
     /// Move `column` one-or-more places left (negative `delta`) or right in
     /// the persisted column order (`Opt+←`/`Opt+→`, `SPEC.md` §27.1), clamped
     /// to the ends; only while the list session is up.

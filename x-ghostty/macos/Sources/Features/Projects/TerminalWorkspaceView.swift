@@ -160,6 +160,9 @@ struct TerminalWorkspaceView: View {
                     // confirmation happens in the overlay before this fires.
                     onDeleteCellValue: { workspace.deleteProjectListCellValue($0, for: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
+                    // The sorted-move approval is model-only: inherit the
+                    // display order as manual, then move (SPEC §24.5).
+                    onApproveSortedMove: { workspace.approveSortedRowMove($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },
                     // Applying a sort state is model-only: the ledger

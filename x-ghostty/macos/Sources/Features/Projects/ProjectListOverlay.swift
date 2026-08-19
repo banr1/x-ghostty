@@ -100,9 +100,16 @@ struct ProjectListOverlay: View {
     /// the overlay; the per-column value rule is the model's.
     let onDeleteCellValue: (ProjectListColumn, ProjectID) -> Void
 
-    /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓). Returns the
-    /// row's new index, or `nil` when nothing moved (a clamped end).
+    /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓, manual state
+    /// only — confirmation-free). Returns the row's new index, or `nil`
+    /// when nothing moved (a clamped end).
     let onMoveRow: (ProjectID, Int) -> Int?
+
+    /// The approved row move while a key sort is active (`SPEC.md` §24.5):
+    /// the confirmation's OK path — inherit the current display order as
+    /// the manual order, then move. Returns the row's new index, or `nil`
+    /// when nothing moved.
+    let onApproveSortedMove: (ProjectID, Int) -> Int?
 
     /// Move a column by ±1 in the column order (Opt+← / Opt+→). Returns the
     /// column's new index, or `nil` when nothing moved.
@@ -385,8 +392,20 @@ struct ProjectListOverlay: View {
             switch special {
             case .upArrow, .downArrow:
                 let delta = special == .upArrow ? -1 : 1
-                if let row = cursorRow, let moved = onMoveRow(row.id, delta) {
-                    cursor.row = moved
+                guard let row = cursorRow else { return nil }
+                if sortState == .manual {
+                    // Manual state: confirmation-free (SPEC §24.5).
+                    if let moved = onMoveRow(row.id, delta) {
+                        cursor.row = moved
+                    }
+                } else if confirmSortedMove() {
+                    // A key sort governs the order: moving a row by hand
+                    // needs the approval — OK inherits the current display
+                    // order as the manual order and then moves, Cancel
+                    // changes nothing (SPEC §24.5).
+                    if let moved = onApproveSortedMove(row.id, delta) {
+                        cursor.row = moved
+                    }
                 }
                 return nil
             case .leftArrow, .rightArrow:
@@ -519,6 +538,23 @@ struct ProjectListOverlay: View {
             candidateMenu = ProjectListCandidateMenu.opened(
                 on: row, column: column, today: ProjectDeadline(from: Date()))
         }
+    }
+
+    /// The sorted row-move approval dialog (SPEC §24.5): OK approves
+    /// switching to the manual order (inheriting the current display order)
+    /// so the move can happen; Cancel keeps the sort and moves nothing.
+    /// Same OK/Cancel form as the other list confirmations.
+    private func confirmSortedMove() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Switch to manual order?"
+        alert.informativeText =
+            "Rows follow the \(sortState.displayText) sort. Moving a row by "
+            + "hand keeps the current order as the manual order and turns "
+            + "the sort off."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Delete on the cursor cell (SPEC §27.2): the title and the value

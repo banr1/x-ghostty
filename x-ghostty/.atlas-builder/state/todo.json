@@ -4005,7 +4005,7 @@
     {
       "id": "T-099",
       "title": "Row/column reordering and creation under the sort state: Opt+Up / Opt+Down move the cursor row by one (manual: no confirmation; sorted: confirmation whose OK inherits the display order as manual and moves, Cancel does nothing), Opt+Left / Opt+Right move the cursor column; Cmd+N inserts below the cursor row in manual state and at the stable-sort position while sorted, with the new row's visibility (visible under 9, hidden at 9) and immediate title entry; XGhosttyTests for the criterion-20 reorder and insertion items",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-094",
@@ -4019,7 +4019,30 @@
       },
       "batch_group": "list-notion",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; new suite ProjectListSortedMoveTests 4/4 passed (approval inherits display order as manual then moves and later value changes stop re-sorting; approval refused in manual state and without the list session while plain manual moves stay free; clamped approved edge move still keeps the switch to manual; sorted Cmd+N insertion lands at the stable-sort position by value regardless of anchor, unset key sorts last)"
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "diff",
+          "summary": "WorkspaceModel.approveSortedRowMove(id:by:) — one call: setProjectSortState(.manual) (inheritance = stopping the re-sorts) then moveProjectListRow; refused in manual/no-session. ProjectListOverlay: Opt+Up/Down branch gates on sortState — manual moves via onMoveRow unchanged, sorted moves behind confirmSortedMove() NSAlert (OK/Cancel, names the active sort) calling new onApproveSortedMove callback; TerminalWorkspaceView wires it to the model. Column moves (Opt+Left/Right) untouched — no confirmation by design (only row order is sort-governed). Cmd+N sorted insertion needed no code change: insertProject already resorts; behavior pinned by test. 3 files +62/-4 plus 1 new test file"
+        }
+      ]
     },
     {
       "id": "T-100",
