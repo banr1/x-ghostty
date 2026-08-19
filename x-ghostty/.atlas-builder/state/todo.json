@@ -8,11 +8,7 @@
     "avoid_mixing_high_risk_items": true,
     "avoid_mixing_executors": true
   },
-  "active_batch": [
-    "T-111",
-    "T-112",
-    "T-113"
-  ],
+  "active_batch": [],
   "items": [
     {
       "id": "T-001",
@@ -4361,7 +4357,7 @@
     {
       "id": "T-111",
       "title": "Fix the candidate popup clipping in the project list (sent back from the R-023 on-device verification of T-105/T-107): priority, next-trigger, and date candidates opened with Enter are only visible when the row happens to be tall (e.g. full-note display with a ~5-line note) and do not appear at normal row heights, violating must items 65/77 (\"candidates enumerated below the cell\"). Render the candidate popup above the table (not clipped by the row/cell rect) so all candidates are visible regardless of row height.",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-092",
@@ -4372,12 +4368,35 @@
       },
       "batch_group": "list-clipboard",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full build green with the candidate-popup fix, the must-83 clipboard implementation, and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 676 test cases passed / 0 failed, incl. the new ProjectListClipboardTests 12/12"
+        },
+        {
+          "type": "diff",
+          "summary": "ProjectListOverlay.swift: the candidate menu is no longer rendered as a cell overlay (which the row's cornerRadius clip swallowed at normal row heights — the R-023 defect); the owning cell now publishes its bounds via anchorPreference (CandidateMenuCellAnchorKey, new PreferenceKey) and the panel renders candidateMenuView in an overlayPreferenceValue ABOVE its clipShape, hung below the cell rect (offset cell.minX / cell.maxY+2) — every candidate visible regardless of row height; the row zIndex hack was removed; the footer hint gains \"⇥ next cell\"."
+        }
+      ]
     },
     {
       "id": "T-112",
       "title": "Implement must item 83 (list cell clipboard + candidate lateral move) with model-layer tests (success criterion 20 addition): (a) while editing a list cell, Cmd+A/C/X/V and Cmd+Z / Cmd+Shift+Z act on that cell editor and never leak to the terminal behind — this also fixes the R-023 sent-back defect where Cmd+V during note-cell editing pasted into the terminal; capture the editing shortcuts ahead of every other consumer via the same local keyDown monitor route as ProjectOverlayKeys; (b) on the cell cursor, Cmd+C copies the cell value and Cmd+V applies the clipboard string per column definition (single cell only, note column all lines, unacceptable strings ignored, visibility column inert); (c) Tab / Shift+Tab while candidates are enumerated close the candidates value-unchanged and move right/left with item-65 wrapping/stops. Judgment logic in the model layer, verified from XGhosttyTests.",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-108",
@@ -4389,12 +4408,35 @@
       },
       "batch_group": "list-clipboard",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full build green with the candidate-popup fix, the must-83 clipboard implementation, and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 676 test cases passed / 0 failed, incl. the new ProjectListClipboardTests 12/12"
+        },
+        {
+          "type": "diff",
+          "summary": "New ProjectListClipboard.swift: copyText(of:column:) (per-column value spelling, note = all lines, unset = blank, visibility = nil) and pasteApplication(of:column:) (parse-or-ignore; ProjectPriority.parsed / ProjectNextTrigger.parsed accept display + raw spellings; deadline via ProjectDeadline(parsing:); blank never sets — clearing stays Delete's job; visibility inert). ProjectList.swift: ProjectListEditorShortcut (the six chords, Cmd+Shift+Z = redo). ProjectListCellEditor.swift: handle.perform(_:) drives selectAll/copy/cut/paste/undo/redo on the field editor; allowsUndo enabled on seating (session-scoped undo). ProjectListCandidates.swift: ProjectListCandidateKeyPress/-Routing with routing(for:shifted:) — Tab/Shift+Tab = .closeAndMoveCursor (no commit). ProjectListOverlay.swift: edit branch consumes the six chords ahead of every other consumer (fixes the R-023 Cmd+V-pastes-into-terminal leak); candidate branch rewired through the model routing; cell-cursor Cmd+C/Cmd+V via NSPasteboard + pasteOnCursorCell reusing the existing commit paths (onCommitEdit / onCommitCandidate, so re-sort and persistence match), over-limit note paste runs the shared confirmation (confirmOverLimitNoteSave). ShortcutCatalog.swift: 3 new project-list items. New ProjectListClipboardTests.swift: 12 tests (copy spelling per column incl. whole-note and unset-blank, paste application and round trip, parse-or-ignore incl. blank and visibility, the six-chord mapping and non-chord pass-through, candidate Tab/Shift+Tab routing without commit)."
+        }
+      ]
     },
     {
       "id": "T-113",
       "title": "Update SPEC.md and README.md for the list clipboard operations, the lateral Tab / Shift+Tab move during candidate enumeration, and the candidate-popup rendering fix (must item 76 as revised).",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-091"
@@ -4404,7 +4446,30 @@
       },
       "batch_group": "list-clipboard",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full build green with the candidate-popup fix, the must-83 clipboard implementation, and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 676 test cases passed / 0 failed, incl. the new ProjectListClipboardTests 12/12"
+        },
+        {
+          "type": "diff",
+          "summary": "SPEC.md: §27.2 candidate-menu bullets gain the Tab/Shift+Tab lateral move and the top-layer rendering note (anchor overlay, why the cell-overlay clipped); new §27.7 (cell clipboard + candidate lateral move, must 83) documenting the six editing shortcuts with event consumption, the cell-cursor copy/paste parse-or-ignore semantics, and the candidate Tab routing; §27.6 test inventory adds ProjectListClipboardTests 12. README.md: the project-list bullet documents the candidate Tab move, the six cell-edit shortcuts acting on the cell editor (never the terminal), and cell-cursor Cmd+C/Cmd+V."
+        }
+      ]
     }
   ]
 }

@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "07f959b6409d7ba9e111a509cccb980547ff9913513900fe1f525a44ed525c9f",
-    "idle_cycles_since_progress": 1,
+    "last_signature": "5c0aa06ff4957617a53c29165e6a210cc9637cbd355306c4f620da0527f6c11b",
+    "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-20T02:30:17+09:00",
-    "last_checked_at": "2026-08-20T02:33:45+09:00",
+    "last_progress_at": "2026-08-20T02:40:17+09:00",
+    "last_checked_at": "2026-08-20T02:40:17+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,18 +21,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.45,
+    "context_usage_estimate": 0.55,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 20,
-    "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 1,
+    "changed_files_since_reset": 30,
+    "completed_todos_since_reset": 11,
+    "important_decisions_since_reset": 2,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-20T02:10:42+09:00",
-    "summary": "Human resume: R-023 の実機目視確認 7 件を実施した。T-104(成功条件 10)/ T-106(成功条件 16)/ T-108(成功条件 26)/ T-109(成功条件 27)/ T-110(成功条件 28)は全項目が期待どおり動作したので、human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。T-105 と T-107 は done にせず pending のまま差し戻す。\n\n(1) T-105 差し戻し・実欠陥(候補が見えない): 優先度・締切のセルで Enter を押しても、Cmd+Opt+E の全行ノート表示中でノートが 5 行程度あって行が高いときにしか候補が見えず、通常の行高では候補が現れない。必須 65「候補がセルの下に全列挙され」・必須 77・成功条件 21 に対する不具合であり、候補ポップアップが行またはセルの矩形でクリップされていると見られる。表の上に重ねて描画し、行高に依存せず全候補が見えるようにすること。\n\n(2) T-107 差し戻し・実欠陥(打鍵の端末漏れ): 一覧のノートセル編集中に Cmd+V を押すと、セルに貼り付かず背後のターミナルへ貼り付けられる。オーバーレイが打鍵を端末へ漏らす破れであり、R-012 で導入した ProjectOverlayKeys のローカル keyDown モニタと同じ経路で、一覧オーバーレイ表示中の編集ショートカットを他のどの消費経路よりも先に捕まえること。\n\n(3) 仕様追加(ESSENCE.md 改訂済み): 実機で使った結果、現行 Essence に本文の無い新要件を 3 つ採用すると決定し、本 resume に先立って人間が update-essence で ESSENCE.md を改訂した。この編集(2b54ddf3…、改訂前は 69e997f5…)は人間自身のものでありレビュー済みとして記録する。採用した 3 点は、(a) 一覧のセル編集中に Cmd+A / Cmd+C / Cmd+X / Cmd+V / Cmd+Z / Cmd+Shift+Z がそのセルのエディタへ効き、打鍵が背後の端末へ抜けないこと、(b) セルカーソル(非編集)での Cmd+C / Cmd+V によるセル値のコピー・貼り付け(対象は単一セルのみ。行・複数セルは対象外。ノート列は全行が対象。列が受け付けない文字列は不正な締切入力と同様に無視。表示列は不変)、(c) 優先度・次トリガー・締切の候補が列挙されている間の Tab / Shift+Tab で、値を変えずに候補を閉じて右・左のセルへ移ることである。追加箇所は、必須対応事項 83(新設)、必須 70(判断ロジックへ「クリップボードの値の取り出しと適用」を追加)、必須 76(ドキュメント更新対象へ「一覧のクリップボード操作と候補列挙中の横移動」を追加)、成功条件 20(モデル層テスト 1 項目)、成功条件 21(実機確認 3 項目)、およびモチベーション節の 1 段落である。\n\n次サイクルはまず現行 ESSENCE.md から Spec/Todo を再射影すること(現 spec.json は旧 Essence 69e997f5… 由来で、必須 83 と成功条件 20/21 の追加分が未射影である。projected_from_essence_sha256 の drift を validate で確認)。そのうえで上記 (1)(2) の不具合修正と (3) の新要件を実装・テストし、必須 76 に従い SPEC.md / README.md を更新したのち、T-105 と T-107 について改めて人間の実機確認をゲートとして立てること。T-104 / T-106 / T-108 / T-109 / T-110 の再確認は不要。",
-    "next_actions": [],
+    "written_at": "2026-08-20T02:40:00+09:00",
+    "summary": "R-023 resume の指示は全て消化済み。Spec は現行 ESSENCE.md (2b54ddf3…) へ再射影済み(S-108 = 必須 83 新設、S-010/S-082/S-091 refs 更新、S-083/S-084 に成功条件 20/21 の追加分 refs)。T-104/T-106/T-108/T-109/T-110 は human 承認証跡付き done。差し戻し欠陥 2 件は修正済み: 候補ポップアップ(行の cornerRadius クリップが原因 → セルの anchorPreference + パネル最上層の overlayPreferenceValue 描画)と編集中 Cmd チョードの端末漏れ(keyDown モニタで 6 ショートカットを捕獲し field editor へ)。必須 83(セルカーソル Cmd+C/V・編集中ショートカット・候補列挙中 Tab/Shift+Tab)実装済み、ProjectListClipboardTests 12 件追加、SPEC.md §27.7 新設・README/ShortcutCatalog 更新済み(T-111/T-112/T-113 done、zig build / just test / just swift-test すべて exit 0、676 tests / 0 failed)。残る must は実機目視確認 2 件のみ: T-105(成功条件 12)と T-107(成功条件 21、新規 3 項目含む)。R-024(Human-input, stop_until_human_review)を起票済みで、ループはここで停止する。",
+    "next_actions": [
+      "R-024 の human 解消(resume)を待つ。OK なら T-105/T-107 を human 承認証跡(type: human、resume の日時とノートを reference)付きで done に記録する — その時点で全 must が done になり、must 境界/完了判定に進む",
+      "NG(欠陥報告)なら該当 Todo を pending のまま新しい修正 Todo を起票して実装する",
+      "検証 3 ゲートは zig build / just test / just swift-test(zig は /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に)。検証はフォアグラウンドで実行する(バックグラウンド Bash はターン終了でセッションごと SIGTERM され、証跡が失われる — 本サイクルで 2 度発生)"
+    ],
     "open_questions": [],
     "pending_cycle": false
   }
