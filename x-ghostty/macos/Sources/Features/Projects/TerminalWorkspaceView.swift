@@ -135,6 +135,7 @@ struct TerminalWorkspaceView: View {
                     columns: workspace.state.listColumnOrder,
                     fullNotes: workspace.projectListFullNotes,
                     pendingTitleEdit: workspace.projectListPendingTitleEdit,
+                    sortState: workspace.projectSortState,
                     canToggle: { workspace.canToggleProjectListVisibility($0) },
                     canFocus: { workspace.canFocusProjectListRow($0) },
                     isOverdue: {
@@ -151,6 +152,10 @@ struct TerminalWorkspaceView: View {
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },
+                    // Applying a sort state is model-only: the ledger
+                    // reorders and the arrangement re-forms behind the list
+                    // (SPEC §24.5); no `surfaceTree` swap is involved.
+                    onSetSortState: { workspace.setProjectSortState($0) },
                     onCreate: onCreateProjectListRow,
                     onConsumePendingTitleEdit: { workspace.clearProjectListPendingTitleEdit() })
             }

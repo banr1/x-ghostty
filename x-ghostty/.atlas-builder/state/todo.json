@@ -3799,7 +3799,7 @@
     {
       "id": "T-094",
       "title": "Sort bar UI at the top of the list table: shows the 5 states, entered with Up from the top row, Left/Right choose, Enter applies and returns to the table, Esc returns without applying, mouse click selects; choosing manual directly inherits the current display order as the manual order",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-046",
@@ -3810,7 +3810,30 @@
       },
       "batch_group": "sort-state",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full build (zig core + macOS app) green with the sort bar"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "XGhosttyTests green: 631 test cases passed, 0 failed - including the new barOrderListsTheFiveStatesManualFirst and barMovementStepsLeftRightAndClampsAtTheEnds model tests"
+        },
+        {
+          "type": "diff",
+          "summary": "Sort bar UI (SPEC 24.5): ProjectListOverlay gained a sortBar band above the column header showing the 5 states (active state marked; bar keyboard selection highlighted; mouse click applies a state directly via onSetSortState). Keyboard: Up arrow on the top table row (specifically the arrow, not Shift+Enter's up move) mounts the bar seeded with the active state; Left/Right move the selection through the model judgment ProjectSortState.movedInBar(by:) (fixed barOrder manual-next-show-deadline-priority, clamped at the ends); Enter applies via WorkspaceModel.setProjectSortState (manual selection inherits the display order per the T-093 model) and returns to the table; Esc (and Down) return without applying; Cmd-chords fall through so session shortcuts keep working. Footer shows bar-mode hints; header hint gained an up-arrow-sort entry. TerminalWorkspaceView wires sortState: workspace.projectSortState and onSetSortState -> setProjectSortState (model-only mutation)."
+        }
+      ]
     },
     {
       "id": "T-095",

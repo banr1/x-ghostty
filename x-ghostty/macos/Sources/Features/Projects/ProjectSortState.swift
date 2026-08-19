@@ -36,6 +36,22 @@ enum ProjectSortState: String, Codable, CaseIterable, Equatable {
         case .priority: return "priority"
         }
     }
+
+    // MARK: Sort bar movement (SPEC §24.5)
+
+    /// The sort bar's fixed left-to-right order: manual, next, show,
+    /// deadline, priority (the declaration order).
+    static let barOrder: [ProjectSortState] = ProjectSortState.allCases
+
+    /// The state `delta` Left/Right steps reach from this one on the sort
+    /// bar, clamped at the ends (`SPEC.md` §24.5). The movement judgment the
+    /// bar's arrow keys apply — pure, so the overlay never re-derives it.
+    func movedInBar(by delta: Int) -> ProjectSortState {
+        let order = Self.barOrder
+        guard let index = order.firstIndex(of: self) else { return self }
+        let target = min(max(index + delta, 0), order.count - 1)
+        return order[target]
+    }
 }
 
 extension ProjectNextTrigger {

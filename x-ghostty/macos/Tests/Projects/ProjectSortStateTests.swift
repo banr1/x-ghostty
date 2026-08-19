@@ -211,6 +211,28 @@ struct ProjectSortStateTests {
         #expect(manual.projectOrder == [high.id, fresh.id, medium.id])
     }
 
+    // MARK: Sort bar movement (SPEC §24.5)
+
+    @Test func barOrderListsTheFiveStatesManualFirst() {
+        #expect(ProjectSortState.barOrder
+                == [.manual, .next, .show, .deadline, .priority])
+    }
+
+    @Test func barMovementStepsLeftRightAndClampsAtTheEnds() {
+        // One step right/left along the fixed bar order.
+        #expect(ProjectSortState.manual.movedInBar(by: 1) == .next)
+        #expect(ProjectSortState.show.movedInBar(by: 1) == .deadline)
+        #expect(ProjectSortState.show.movedInBar(by: -1) == .next)
+
+        // The ends absorb: there is nothing past manual or priority.
+        #expect(ProjectSortState.manual.movedInBar(by: -1) == .manual)
+        #expect(ProjectSortState.priority.movedInBar(by: 1) == .priority)
+
+        // Larger deltas clamp rather than wrap.
+        #expect(ProjectSortState.next.movedInBar(by: 10) == .priority)
+        #expect(ProjectSortState.deadline.movedInBar(by: -10) == .manual)
+    }
+
     // MARK: Manual handover (SPEC §24.5)
 
     @Test func selectingManualInheritsTheCurrentDisplayOrder() {

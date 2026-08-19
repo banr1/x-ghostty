@@ -50,6 +50,9 @@ struct ProjectListOverlay: View {
     /// `onConsumePendingTitleEdit`.
     let pendingTitleEdit: ProjectID?
 
+    /// The active sort state the bar highlights (`SPEC.md` §24.5).
+    let sortState: ProjectSortState
+
     /// Whether Space would change anything for a row — the model refuses to
     /// hide the last visible project and to show one past the visible cap.
     let canToggle: (ProjectID) -> Bool
@@ -92,6 +95,11 @@ struct ProjectListOverlay: View {
     /// Toggle whole-list full-note display (Cmd+Opt+E inside the list).
     let onToggleFullNotes: () -> Void
 
+    /// Apply a sort state (the bar's Enter, or a mouse click on a bar chip,
+    /// `SPEC.md` §24.5). Selecting manual inherits the current display order
+    /// — the model's judgment.
+    let onSetSortState: (ProjectSortState) -> Void
+
     /// Create a new project below the given cursor row (Cmd+N inside the
     /// list, `SPEC.md` §27.4). The new row comes back via `pendingTitleEdit`.
     let onCreate: (ProjectID?) -> Void
@@ -107,6 +115,13 @@ struct ProjectListOverlay: View {
     /// The in-place edit session, or `nil`. Commit applies the draft through
     /// `onCommitEdit`; cancel just discards this value (`SPEC.md` §27.2).
     @State private var edit: ProjectListCellEdit?
+
+    /// The sort bar's keyboard selection, or `nil` while the cursor is in
+    /// the table (`SPEC.md` §24.5). Entered with Up from the top row seeded
+    /// with the active state; Left/Right move it (`movedInBar`), Enter
+    /// applies it and returns to the table, Escape returns without applying.
+    /// Pure presentation state, like `cursor`.
+    @State private var sortBarSelection: ProjectSortState?
 
     private enum FocusTarget: Hashable { case catcher }
     @FocusState private var focus: FocusTarget?
@@ -200,6 +215,33 @@ struct ProjectListOverlay: View {
             }
         }
 
+        // While the keyboard is on the sort bar it owns every plain key
+        // (`SPEC.md` §24.5): Left/Right choose, Enter applies and returns to
+        // the table, Escape (or Down) returns without applying. Cmd-chords
+        // fall through so the session shortcuts keep working.
+        if let selection = sortBarSelection {
+            guard modifiers.subtracting([.shift]).isEmpty else { return event }
+            if isEscape {
+                sortBarSelection = nil
+                return nil
+            }
+            switch event.specialKey {
+            case .some(.leftArrow):
+                sortBarSelection = selection.movedInBar(by: -1)
+            case .some(.rightArrow):
+                sortBarSelection = selection.movedInBar(by: 1)
+            case .some(.carriageReturn), .some(.enter):
+                onSetSortState(selection)
+                sortBarSelection = nil
+            case .some(.downArrow):
+                // Down is Escape's twin: back into the table, not applying.
+                sortBarSelection = nil
+            default:
+                break
+            }
+            return nil
+        }
+
         if isEscape {
             onClose()
             return nil
@@ -257,9 +299,17 @@ struct ProjectListOverlay: View {
 
         // Plain movement: Tab / Shift+Tab / Enter / Shift+Enter and the
         // arrows, with the row-end wrap and the edge stops
-        // (`ProjectListCellCursor`).
+        // (`ProjectListCellCursor`). Up from the top row leaves the table
+        // and enters the sort bar, seeded with the active state
+        // (`SPEC.md` §24.5).
         if let move = Self.cursorMove(for: event, shifted: modifiers == [.shift]) {
-            moveCursor(move)
+            // The Up *arrow* specifically — not Shift+Enter's up move —
+            // mounts the bar (SPEC §24.5).
+            if move == .up, cursor.row == 0, event.specialKey == .some(.upArrow) {
+                sortBarSelection = sortState
+            } else {
+                moveCursor(move)
+            }
             return nil
         }
 
@@ -404,6 +454,8 @@ struct ProjectListOverlay: View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
+            sortBar
+
             columnHeader
 
             ScrollViewReader { proxy in
@@ -479,6 +531,51 @@ struct ProjectListOverlay: View {
         case .nextTrigger: return "next"
         case .note: return "note"
         }
+    }
+
+    /// The sort bar (`SPEC.md` §24.5): the five states at the very top of
+    /// the table. The active state is always marked; while the keyboard is
+    /// on the bar (Up from the top row) the selection candidate carries the
+    /// stronger highlight. A mouse click applies a state directly.
+    private var sortBar: some View {
+        HStack(spacing: 6) {
+            Text("sort")
+                .opacity(0.4)
+
+            ForEach(ProjectSortState.barOrder, id: \.self) { state in
+                sortBarChip(state)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: 10, design: .monospaced))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 3)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(ghostty.config.splitDividerColor.opacity(0.3))
+                .frame(height: 1)
+        }
+    }
+
+    private func sortBarChip(_ state: ProjectSortState) -> some View {
+        let isActive = state == sortState
+        let isSelected = state == sortBarSelection
+        return Text(state.displayText)
+            .opacity(isActive ? 0.95 : 0.5)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(
+                isSelected
+                    ? Color.secondary.opacity(0.3)
+                    : isActive ? Color.secondary.opacity(0.12) : Color.clear)
+            .cornerRadius(3)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard edit == nil else { return }
+                onSetSortState(state)
+                sortBarSelection = nil
+            }
     }
 
     /// The column-label band, in the persisted column order, with the cursor
@@ -626,7 +723,7 @@ struct ProjectListOverlay: View {
             Text("projects")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("type edit · space cycle · ⌘n new · ⌘↩ focus · ⌘⌥e notes · esc close")
+            Text("type edit · space cycle · ↑ sort · ⌘n new · ⌘↩ focus · ⌘⌥e notes · esc close")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }
@@ -664,6 +761,9 @@ struct ProjectListOverlay: View {
     private var footerText: String {
         if edit != nil {
             return "↩/⇥ commit · esc cancel edit"
+        }
+        if sortBarSelection != nil {
+            return "←→ choose · ↩ apply sort · esc back to table"
         }
         guard let row = cursorRow, let column = cursorColumn else { return "" }
         switch column {
