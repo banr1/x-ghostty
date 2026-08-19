@@ -30,14 +30,10 @@
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-20T02:40:00+09:00",
-    "summary": "R-023 resume の指示は全て消化済み。Spec は現行 ESSENCE.md (2b54ddf3…) へ再射影済み(S-108 = 必須 83 新設、S-010/S-082/S-091 refs 更新、S-083/S-084 に成功条件 20/21 の追加分 refs)。T-104/T-106/T-108/T-109/T-110 は human 承認証跡付き done。差し戻し欠陥 2 件は修正済み: 候補ポップアップ(行の cornerRadius クリップが原因 → セルの anchorPreference + パネル最上層の overlayPreferenceValue 描画)と編集中 Cmd チョードの端末漏れ(keyDown モニタで 6 ショートカットを捕獲し field editor へ)。必須 83(セルカーソル Cmd+C/V・編集中ショートカット・候補列挙中 Tab/Shift+Tab)実装済み、ProjectListClipboardTests 12 件追加、SPEC.md §27.7 新設・README/ShortcutCatalog 更新済み(T-111/T-112/T-113 done、zig build / just test / just swift-test すべて exit 0、676 tests / 0 failed)。残る must は実機目視確認 2 件のみ: T-105(成功条件 12)と T-107(成功条件 21、新規 3 項目含む)。R-024(Human-input, stop_until_human_review)を起票済みで、ループはここで停止する。",
-    "next_actions": [
-      "R-024 の human 解消(resume)を待つ。OK なら T-105/T-107 を human 承認証跡(type: human、resume の日時とノートを reference)付きで done に記録する — その時点で全 must が done になり、must 境界/完了判定に進む",
-      "NG(欠陥報告)なら該当 Todo を pending のまま新しい修正 Todo を起票して実装する",
-      "検証 3 ゲートは zig build / just test / just swift-test(zig は /opt/homebrew/opt/zig@0.15/bin を PATH 先頭に)。検証はフォアグラウンドで実行する(バックグラウンド Bash はターン終了でセッションごと SIGTERM され、証跡が失われる — 本サイクルで 2 度発生)"
-    ],
+    "written_at": "2026-08-20T02:47:18+09:00",
+    "summary": "Human resume: R-024 の実機目視確認を実施し、成功条件 12(T-105)と成功条件 21(T-107)の全項目が期待どおり動作することを確認した。R-023 で差し戻した 2 欠陥の修正(候補ポップアップを表最上層へ吊るして行高によらず全候補が見えること、編集中の Cmd+A/C/X/V/Z/Shift+Z が keyDown モニタでセルの field editor に届き背後の端末へ漏れないこと)も、必須 83 の新規 3 項目(セルカーソルでの Cmd+C/V、編集中ショートカット、候補列挙中の Tab/Shift+Tab)も問題なし。見た目への注文もない。\nよって R-024 を解除し、T-105 / T-107 を human 承認の証跡(type: human、本 resume の日時と本ノートを reference)付きで done として記録すること。ESSENCE.md の変更は不要。これで全 must が完了し、pending の should も無いため、次サイクルは完了判定へ進んでよい。\nなお validation の warning(control_runs.jsonl にあるラン 4 件が project 側 runs.jsonl に欠落 — サイクル中断の痕跡)は既知の情報であり、ゲートではない。所要時間集計が過少になるだけなので、次サイクルで整理の要否を判断すること。",
+    "next_actions": [],
     "open_questions": [],
-    "pending_cycle": false
+    "pending_cycle": true
   }
 }
