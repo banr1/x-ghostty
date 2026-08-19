@@ -548,13 +548,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             && !state.projects.isEmpty
     }
 
-    /// Open the project list (`SPEC.md` §27). Any project zoom is released
-    /// first so the list sits over the overall view it describes (the Essence
-    /// leaves the zoomed-invocation behavior to the implementation). No-op
-    /// while it is already up or `canBeginProjectList` is false.
+    /// Open the project list (`SPEC.md` §27). A project zoom is deliberately
+    /// kept: opened while zoomed, the list overlays the zoom without
+    /// releasing it, and closing returns to that zoom untouched (§27.3) —
+    /// the Cmd+N-opened session included. No-op while it is already up or
+    /// `canBeginProjectList` is false.
     func beginProjectList() {
         guard !projectListActive, canBeginProjectList else { return }
-        state.zoomedProject = nil
         projectListActive = true
         // A fresh session always opens at first-lines-only (SPEC §27.2).
         projectListFullNotes = false
@@ -803,15 +803,19 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return (target, state.projects[target]?.focusedSurface)
     }
 
-    /// Whether Enter on row `id` would focus a project (`SPEC.md` §27.3):
-    /// visible rows only — a hidden project has no place on screen to focus.
+    /// Whether Cmd+Enter on row `id` would focus a project (`SPEC.md` §27.3):
+    /// every existing row while the session is up — a hidden row resolves to
+    /// a nearby visible project (`resolvedListFocusTarget`) instead of being
+    /// inert.
     func canFocusProjectListRow(_ id: ProjectID) -> Bool {
-        guard projectListActive, state.projects[id] != nil else { return false }
-        return !state.isProjectHidden(id)
+        projectListActive && state.projects[id] != nil
     }
 
-    /// Focus row `id`'s project and close the list (`SPEC.md` §27.3). A hidden
-    /// row is inert: nothing happens and the list stays up.
+    /// Focus row `id`'s project and close the list (`SPEC.md` §27.3). A
+    /// hidden row closes the list too and focuses a nearby *visible* project
+    /// (the model's resolution, `resolvedListFocusTarget`). While a zoom is
+    /// up, the zoom is not released — its target switches to the focused
+    /// project (§27.3).
     ///
     /// - Returns: the target project's stored focused surface so the caller can
     ///   swap `surfaceTree` and move keyboard focus, or `nil` when the row is
@@ -821,18 +825,26 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         _ id: ProjectID,
         savingOutgoingPaneTree outgoing: SplitTree<Pane>
     ) -> SurfaceID? {
-        guard canFocusProjectListRow(id) else { return nil }
+        guard projectListActive,
+              let target = state.resolvedListFocusTarget(for: id) else { return nil }
         projectListActive = false
 
         var next = state
         next.saveOutgoingPaneTree(outgoing)
-        next.focusedProject = id
-        // Closing the list lands in the overall view, so focus goes to the
-        // project's primary pane (SPEC §22.4).
-        next.snapFocusToPrimaryInOverallView()
+        next.focusedProject = target
+        if next.zoomedProject != nil {
+            // Zoomed: stay zoomed, the zoom target switches (§27.3). The
+            // zoomed view shows every pane, so the stored focused surface
+            // stands — no primary snap.
+            next.zoomedProject = target
+        } else {
+            // Closing the list lands in the overall view, so focus goes to
+            // the project's primary pane (SPEC §22.4).
+            next.snapFocusToPrimaryInOverallView()
+        }
         state = next
 
-        return state.projects[id]?.focusedSurface
+        return state.projects[target]?.focusedSurface
     }
 
     // MARK: Daily priority reset (SPEC §28)

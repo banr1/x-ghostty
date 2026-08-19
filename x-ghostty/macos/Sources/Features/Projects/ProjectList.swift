@@ -189,6 +189,26 @@ extension WorkspaceStateOf {
         }
     }
 
+    /// Where a list focus request on row `id` actually lands (`SPEC.md`
+    /// §27.3): a visible row focuses itself; a hidden row — which has no
+    /// place on screen — resolves to the *nearest visible* row by ledger
+    /// distance, the one above preferred on ties. `nil` for an unknown row
+    /// (a no-visible-rows ledger cannot resolve either, but the
+    /// at-least-one-visible invariant keeps that unreachable in practice).
+    func resolvedListFocusTarget(for id: ProjectID) -> ProjectID? {
+        guard projects[id] != nil else { return nil }
+        guard hiddenProjectIDs.contains(id) else { return id }
+        guard let index = projectOrder.firstIndex(of: id) else { return nil }
+        for distance in 1..<max(projectOrder.count, 2) {
+            for candidate in [index - distance, index + distance]
+            where projectOrder.indices.contains(candidate) {
+                let neighbor = projectOrder[candidate]
+                if !hiddenProjectIDs.contains(neighbor) { return neighbor }
+            }
+        }
+        return nil
+    }
+
     private static func listRow(
         id: ProjectID,
         project: ProjectStateOf<Pane>,

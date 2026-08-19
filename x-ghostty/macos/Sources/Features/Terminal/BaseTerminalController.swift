@@ -1261,10 +1261,14 @@ class BaseTerminalController: NSWindowController,
         guard let view = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(view) else { return }
 
-        // `list_projects` opens the project list (`SPEC.md` §27); everything
-        // it can do happens on its own keys (`toggleProjectListVisibility`,
-        // `focusProjectListRow`, `closeProjectList`).
-        workspace.beginProjectList()
+        // `list_projects` toggles the project list (`SPEC.md` §27.3): a
+        // second Cmd+L closes it (Escape never does — it drives the row
+        // selection). Opening keeps any zoom; closing returns to it.
+        if workspace.projectListActive {
+            closeProjectList()
+        } else {
+            workspace.beginProjectList()
+        }
     }
 
     @objc private func ghosttyDidSetProjectTitle(_ notification: Notification) {

@@ -356,8 +356,8 @@ struct ProjectListOverlay: View {
             return nil
         }
 
-        // Cmd+Enter focuses the cursor row's project (visible rows only —
-        // a hidden row is inert and the list stays up, SPEC §27.3).
+        // Cmd+Enter focuses the cursor row's project and closes the list —
+        // a hidden row resolves to a nearby visible project (SPEC §27.3).
         if modifiers == [.command],
            event.specialKey == .carriageReturn || event.specialKey == .enter {
             if let row = cursorRow { onFocus(row.id) }
@@ -837,9 +837,9 @@ struct ProjectListOverlay: View {
 
             Spacer(minLength: 0)
         }
-        // Hidden rows are dimmed as a whole: still readable, still editable,
-        // but reading as "not on screen right now".
-        .opacity(row.isHidden ? 0.5 : 1.0)
+        // Hidden rows read in the same color as visible ones (SPEC §27.1):
+        // the ledger does not gray out what is merely off screen — the
+        // ordinal gutter's "·" is the only marker.
         .font(.system(size: 12, design: .monospaced))
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
@@ -1018,6 +1018,16 @@ struct ProjectListOverlay: View {
         }
     }
 
+    /// What Cmd+Enter does for `row` (SPEC §27.3): a visible row is focused
+    /// itself; a hidden row closes the list and focuses a nearby visible
+    /// project instead.
+    private func focusHint(for row: ProjectListRow) -> String {
+        guard canFocus(row.id) else { return "" }
+        return row.isHidden
+            ? " · ⌘↩ closes and focuses a nearby project"
+            : " · ⌘↩ focuses \(row.title)"
+    }
+
     private var footerText: String {
         if let session = edit {
             return session.column.isMultilineEdit
@@ -1051,10 +1061,10 @@ struct ProjectListOverlay: View {
             return "↩ lists next triggers"
         case .deadline:
             let base = "↩ lists dates · type to edit deadline"
-            return canFocus(row.id) ? base + " · ⌘↩ focuses \(row.title)" : base
+            return base + focusHint(for: row)
         case .title, .note:
             let base = "↩ or type to edit \(Self.headerLabel(of: column))"
-            return canFocus(row.id) ? base + " · ⌘↩ focuses \(row.title)" : base
+            return base + focusHint(for: row)
         }
     }
 }

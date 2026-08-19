@@ -4047,7 +4047,7 @@
     {
       "id": "T-100",
       "title": "List toggle and focus semantics: Cmd+L toggles (again closes, Esc never closes), opening while zoomed overlays the zoom without releasing it and closing returns to it (also via Cmd+N); Cmd+Enter on a visible row focuses and closes (zoom target switches while zoomed), on a hidden row closes and focuses a nearby visible project; hidden rows drawn in the same color as visible rows; XGhosttyTests for the hidden-row focus resolution",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-079",
@@ -4062,7 +4062,30 @@
       },
       "batch_group": "list-notion",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; ProjectListTests 16/16 passed incl. 2 rewritten (beginProjectListOverlaysAZoomWithoutReleasingIt — zoom kept across begin AND end; enterOnAHiddenRowClosesTheListAndFocusesANearbyVisibleProject) and 2 new (hiddenRowFocusResolvesToTheNearestVisibleRowPreferringAbove incl. unknown-row nil; focusWhileZoomedSwitchesTheZoomTargetWithoutReleasing for both visible and hidden rows)"
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "diff",
+          "summary": "WorkspaceModel.beginProjectList no longer clears zoomedProject (list overlays the zoom; endProjectList never touched it, so close restores by construction); focusProjectListRow resolves the row through new WorkspaceStateOf.resolvedListFocusTarget (visible=self, hidden=nearest visible by ledger distance, above wins ties) and while zoomed switches zoomedProject to the target without the primary snap; canFocusProjectListRow now true for every existing row. BaseTerminalController ghosttyDidListProjects toggles: projectListActive -> closeProjectList(). ProjectListOverlay: removed the hidden-row .opacity(0.5) dimming (same color, ordinal-gutter dot is the marker), footer focus hint distinguishes hidden rows, stale Cmd+Enter comment fixed. 5 files +136/-38"
+        }
+      ]
     },
     {
       "id": "T-101",

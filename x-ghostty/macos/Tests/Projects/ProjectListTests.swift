@@ -57,7 +57,9 @@ struct ProjectListTests {
 
     // MARK: Opening the list
 
-    @Test func beginProjectListOpensOverTheOverallViewAndReleasesZoom() throws {
+    @Test func beginProjectListOverlaysAZoomWithoutReleasingIt() throws {
+        // Opened while zoomed, the list sits over the zoom and closing
+        // returns to it untouched (SPEC §27.3).
         let a = Self.makeProject(name: "a")
         let b = Self.makeProject(name: "b")
         var state = try Self.makeModel(visible: [a, b]).state
@@ -69,8 +71,11 @@ struct ProjectListTests {
         model.beginProjectList()
 
         #expect(model.projectListActive == true)
-        #expect(model.state.zoomedProject == nil)
+        #expect(model.state.zoomedProject == b.id)
         #expect(model.projectListRows.count == 2)
+
+        model.endProjectList()
+        #expect(model.state.zoomedProject == b.id)
     }
 
     @Test func beginProjectListDeclinesWhileAnotherOverlayOwnsTheKeyboard() throws {
@@ -270,18 +275,65 @@ struct ProjectListTests {
         #expect(model.projectListActive == false)
     }
 
-    @Test func enterOnAHiddenRowDoesNothing() throws {
+    @Test func enterOnAHiddenRowClosesTheListAndFocusesANearbyVisibleProject() throws {
+        // A hidden row has no place on screen: the focus request resolves to
+        // a nearby visible project and the list closes (SPEC §27.3).
         let a = Self.makeProject(name: "a")
+        let b = Self.makeProject(name: "b")
         let hidden = Self.makeProject(name: "h")
-        let model = try Self.makeModel(visible: [a], hidden: [hidden])
+        let model = try Self.makeModel(visible: [a, b], hidden: [hidden])
         model.beginProjectList()
 
-        #expect(model.canFocusProjectListRow(hidden.id) == false)
-        let focus = model.focusProjectListRow(hidden.id, savingOutgoingPaneTree: .init())
+        #expect(model.canFocusProjectListRow(hidden.id))
+        model.focusProjectListRow(hidden.id, savingOutgoingPaneTree: .init())
 
-        #expect(focus == nil)
-        #expect(model.state.focusedProject == a.id)
-        // The list stays up: an inert row must not close it.
-        #expect(model.projectListActive == true)
+        // The ledger order is [a, b, hidden]: the nearest visible row is b.
+        #expect(model.state.focusedProject == b.id)
+        #expect(model.projectListActive == false)
+    }
+
+    @Test func hiddenRowFocusResolvesToTheNearestVisibleRowPreferringAbove() throws {
+        let a = Self.makeProject(name: "a")
+        let b = Self.makeProject(name: "b")
+        let hiddenMiddle = Self.makeProject(name: "hm")
+        let hiddenEnd = Self.makeProject(name: "he")
+        var state = try Self.makeModel(visible: [a, b]).state
+        state.insertProject(hiddenMiddle, after: a.id)
+        state.setProjectHidden(hiddenMiddle.id, true)
+        state.insertProject(hiddenEnd, after: b.id)
+        state.setProjectHidden(hiddenEnd.id, true)
+        // Ledger order: [a, hm(hidden), b, he(hidden)].
+
+        // A visible row resolves to itself.
+        #expect(state.resolvedListFocusTarget(for: a.id) == a.id)
+        // Equidistant visible neighbors: the row above wins the tie.
+        #expect(state.resolvedListFocusTarget(for: hiddenMiddle.id) == a.id)
+        // A trailing hidden row walks up to the nearest visible one.
+        #expect(state.resolvedListFocusTarget(for: hiddenEnd.id) == b.id)
+        // Unknown rows resolve to nothing.
+        #expect(state.resolvedListFocusTarget(for: ProjectID()) == nil)
+    }
+
+    @Test func focusWhileZoomedSwitchesTheZoomTargetWithoutReleasing() throws {
+        let a = Self.makeProject(name: "a")
+        let b = Self.makeProject(name: "b")
+        let hidden = Self.makeProject(name: "h")
+        var state = try Self.makeModel(visible: [a, b], hidden: [hidden]).state
+        state.zoomedProject = a.id
+        let model = TestWorkspaceModel(state)
+        model.beginProjectList()
+
+        // A visible row: the zoom stays up, its target switches (SPEC §27.3).
+        model.focusProjectListRow(b.id, savingOutgoingPaneTree: .init())
+        #expect(model.state.zoomedProject == b.id)
+        #expect(model.state.focusedProject == b.id)
+        #expect(model.projectListActive == false)
+
+        // A hidden row while zoomed: the resolved visible project becomes
+        // the zoom target likewise.
+        model.beginProjectList()
+        model.focusProjectListRow(hidden.id, savingOutgoingPaneTree: .init())
+        #expect(model.state.zoomedProject == b.id)
+        #expect(model.state.focusedProject == b.id)
     }
 }
