@@ -3883,7 +3883,7 @@
     {
       "id": "T-096",
       "title": "Value-candidate menus: priority and next-trigger cells enumerate all real values (no unset) below the cell on Enter, Up/Down choose, Enter commits, Esc closes changing nothing; deadline cells enumerate the 10 date candidates (today through 7 days ahead, same day next month, same day in 3 months) as real dates like Aug 19 with nonexistent same days clamped to month end; typed arbitrary-date entry stays; model-layer candidate computation with XGhosttyTests (criterion-20 candidate items)",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-100",
@@ -3896,7 +3896,30 @@
       },
       "batch_group": "list-notion",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; new suite ProjectListCandidateTests: 8/8 passed (priority/nextTrigger menus real-values-only, 10 date candidates from 2026-08-19, month-end clamp incl. leap Feb 29 and year rollover, selection clamp, model commit, sorted re-sort on committed candidate, commit refused without list session)"
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green (pre-existing fixture warnings only)"
+        },
+        {
+          "type": "diff",
+          "summary": "NEW ProjectListCandidates.swift (ProjectListCandidateValue + ProjectListCandidateMenu.opened/moved/selectedValue; ProjectDeadline.dateCandidates/sameDayAddingMonths/monthDayText; ProjectPriority.displayText). NEW Tests/Projects/ProjectListCandidateTests.swift (8 tests). WorkspaceModel: commitProjectListCandidate routes to setProjectPriority/NextTrigger/Deadline (re-sort included), gated on projectListActive. ProjectListOverlay: candidateMenu state, modal key routing (Up/Down/Enter/Esc), dropdown below the cell with row zIndex lift, tap guards, footer hint; priorityText moved to model displayText. TerminalWorkspaceView wires onCommitCandidate. 3 files changed +121/-16 plus 2 new files"
+        }
+      ]
     },
     {
       "id": "T-097",

@@ -622,6 +622,30 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return true
     }
 
+    /// Commit a candidate-menu selection (`SPEC.md` §27.6), only while the
+    /// list session is up: the selected value lands through the same setters
+    /// as any other entry point, so a change re-sorts immediately while a
+    /// key sort state is active (SPEC §24.4). Escape's close never reaches
+    /// the model — the view just discards the menu session.
+    ///
+    /// - Returns: whether the commit was accepted (an unknown project is
+    ///   the setters' no-op, reported as accepted like an unchanged value).
+    @discardableResult
+    func commitProjectListCandidate(
+        _ value: ProjectListCandidateValue, for id: ProjectID
+    ) -> Bool {
+        guard projectListActive else { return false }
+        switch value {
+        case .priority(let priority):
+            setProjectPriority(id, to: priority)
+        case .nextTrigger(let trigger):
+            setProjectNextTrigger(id, to: trigger)
+        case .deadline(let deadline):
+            setProjectDeadline(id, to: deadline)
+        }
+        return true
+    }
+
     /// Move row `id` one-or-more places up (negative `delta`) or down in the
     /// ledger order (`Opt+↑`/`Opt+↓`, `SPEC.md` §27.1), clamped to the ends;
     /// only while the list session is up. The arrangement re-derives and the

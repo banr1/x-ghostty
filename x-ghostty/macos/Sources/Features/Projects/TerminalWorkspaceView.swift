@@ -147,6 +147,9 @@ struct TerminalWorkspaceView: View {
                     // Cell mutations are model-only: no `surfaceTree` swap is
                     // involved, so no controller round-trip is needed.
                     onCommitEdit: { workspace.commitProjectListCellEdit($0, column: $1, for: $2) },
+                    // Candidate-menu commits land through the same setters
+                    // as every other entry point (SPEC §27.6); model-only.
+                    onCommitCandidate: { workspace.commitProjectListCandidate($0, for: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },

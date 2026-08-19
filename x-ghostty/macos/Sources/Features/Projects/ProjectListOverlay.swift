@@ -81,6 +81,10 @@ struct ProjectListOverlay: View {
     /// Commit an in-place text-cell edit (draft, column, row id).
     let onCommitEdit: (String, ProjectListColumn, ProjectID) -> Void
 
+    /// Commit a candidate-menu selection (value, row id) — the Enter (or
+    /// click) on an enumerated candidate (`SPEC.md` §27.6).
+    let onCommitCandidate: (ProjectListCandidateValue, ProjectID) -> Void
+
     /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓). Returns the
     /// row's new index, or `nil` when nothing moved (a clamped end).
     let onMoveRow: (ProjectID, Int) -> Int?
@@ -112,6 +116,12 @@ struct ProjectListOverlay: View {
     /// The in-place edit session, or `nil`. Commit applies the draft through
     /// `onCommitEdit`; cancel just discards this value (`SPEC.md` §27.2).
     @State private var edit: ProjectListCellEdit?
+
+    /// The open candidate-menu session, or `nil` (`SPEC.md` §27.6). Enter
+    /// commits the selection through `onCommitCandidate`; Escape just
+    /// discards this value, like an edit's cancel. Mutually exclusive with
+    /// `edit` — both open only from the cell cursor.
+    @State private var candidateMenu: ProjectListCandidateMenu?
 
     /// The sort bar's keyboard selection, or `nil` while the cursor is in
     /// the table (`SPEC.md` §24.5). Entered with Up from the top row seeded
@@ -210,6 +220,30 @@ struct ProjectListOverlay: View {
             case .editor:
                 return event
             }
+        }
+
+        // While a candidate menu is up it owns every plain key
+        // (`SPEC.md` §27.6): Up/Down choose, Enter commits the selection,
+        // Escape closes changing nothing; every other plain key is inert.
+        // Cmd-chords fall through so the session shortcuts keep working.
+        if let menu = candidateMenu {
+            guard modifiers.subtracting([.shift]).isEmpty else { return event }
+            if isEscape {
+                candidateMenu = nil
+                return nil
+            }
+            switch event.specialKey {
+            case .some(.upArrow):
+                candidateMenu = menu.moved(by: -1)
+            case .some(.downArrow):
+                candidateMenu = menu.moved(by: 1)
+            case .some(.carriageReturn), .some(.enter):
+                onCommitCandidate(menu.selectedValue, menu.rowID)
+                candidateMenu = nil
+            default:
+                break
+            }
+            return nil
         }
 
         // While the keyboard is on the sort bar it owns every plain key
@@ -409,10 +443,11 @@ struct ProjectListOverlay: View {
         case .toggleVisibility:
             onToggle(row.id)
         case .enumerateCandidates:
-            // The candidate menus (deadline dates, priority / next-trigger
-            // values, §27.6) arrive with the next slice; until then Enter is
-            // inert on these columns.
-            break
+            // The menu's content is the model's judgment
+            // (`ProjectListCandidateMenu.opened`); the view only supplies
+            // "today" for the date candidates (SPEC §27.6).
+            candidateMenu = ProjectListCandidateMenu.opened(
+                on: row, column: column, today: ProjectDeadline(from: Date()))
         }
     }
 
@@ -495,6 +530,10 @@ struct ProjectListOverlay: View {
                         ForEach(Array(rows.enumerated()), id: \.1.id) { index, row in
                             self.row(row, index: index)
                                 .id(row.id)
+                                // The row whose cell holds the candidate
+                                // menu lifts above its neighbors so the
+                                // dropdown draws over the rows below.
+                                .zIndex(candidateMenu?.rowID == row.id ? 1 : 0)
                         }
                     }
                     .padding(6)
@@ -521,6 +560,8 @@ struct ProjectListOverlay: View {
             // future in-list create) clamps it back onto the grid.
             cursor = cursor.clamped(
                 rowCount: max(newCount, 1), columnCount: max(columns.count, 1))
+            // A menu whose row may be gone does not linger.
+            candidateMenu = nil
         }
     }
 
@@ -603,7 +644,7 @@ struct ProjectListOverlay: View {
             .cornerRadius(3)
             .contentShape(Rectangle())
             .onTapGesture {
-                guard edit == nil else { return }
+                guard edit == nil, candidateMenu == nil else { return }
                 onSetSortState(state)
                 sortBarSelection = nil
             }
@@ -661,7 +702,7 @@ struct ProjectListOverlay: View {
         .background(index == cursor.row ? Color.secondary.opacity(0.12) : Color.clear)
         .cornerRadius(4)
         .onTapGesture {
-            guard edit == nil else { return }
+            guard edit == nil, candidateMenu == nil else { return }
             cursor.row = index
         }
     }
@@ -695,10 +736,52 @@ struct ProjectListOverlay: View {
         .background(
             isCursor ? Color.secondary.opacity(isEditing ? 0.3 : 0.22) : Color.clear)
         .cornerRadius(2)
+        .overlay(alignment: .topLeading) {
+            // The candidate menu hangs below its cell (SPEC §27.6),
+            // floating over the rows underneath (see the row's zIndex).
+            if let menu = candidateMenu,
+               menu.rowID == row.id, menu.column == column {
+                candidateMenuView(menu)
+                    .offset(y: 20)
+            }
+        }
         .onTapGesture {
-            guard edit == nil else { return }
+            guard edit == nil, candidateMenu == nil else { return }
             cursor = ProjectListCellCursor(row: rowIndex, column: columnIndex)
         }
+    }
+
+    /// The dropdown of a candidate menu (`SPEC.md` §27.6): the enumerated
+    /// values below the cell, the keyboard selection highlighted. A click
+    /// commits a value directly, like the sort bar's chips.
+    private func candidateMenuView(_ menu: ProjectListCandidateMenu) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            ForEach(Array(menu.items.enumerated()), id: \.0) { index, item in
+                Text(item.displayText)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        index == menu.selection
+                            ? Color.secondary.opacity(0.3) : Color.clear)
+                    .cornerRadius(2)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onCommitCandidate(item, menu.rowID)
+                        candidateMenu = nil
+                    }
+            }
+        }
+        .font(.system(size: 12, design: .monospaced))
+        .padding(4)
+        .frame(width: 100)
+        .background(ghostty.config.backgroundColor)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(ghostty.config.splitDividerColor, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .shadow(radius: 4)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
@@ -714,7 +797,7 @@ struct ProjectListOverlay: View {
                 .truncationMode(.tail)
 
         case .priority:
-            Text(row.priority.map(Self.priorityText) ?? "")
+            Text(row.priority?.displayText ?? "")
                 .opacity(0.75)
 
         case .deadline:
@@ -738,14 +821,6 @@ struct ProjectListOverlay: View {
                 .truncationMode(.tail)
                 .fixedSize(horizontal: false, vertical: true)
                 .opacity(0.55)
-        }
-    }
-
-    private static func priorityText(_ priority: ProjectPriority) -> String {
-        switch priority {
-        case .high: return "high"
-        case .medium: return "med"
-        case .low: return "low"
         }
     }
 
@@ -792,6 +867,9 @@ struct ProjectListOverlay: View {
     private var footerText: String {
         if edit != nil {
             return "↩/⇥ commit · esc cancel edit"
+        }
+        if candidateMenu != nil {
+            return "↑↓ choose · ↩ set · esc close"
         }
         if sortBarSelection != nil {
             return "←→ choose · ↩ apply sort · esc back to table"
