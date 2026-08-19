@@ -45,6 +45,13 @@ final class ProjectListCellEditorHandle {
         guard let editor = field?.currentEditor() as? NSTextView else { return false }
         return editor.hasMarkedText()
     }
+
+    /// Insert a line break at the caret (Shift+Enter on a multi-line edit,
+    /// `SPEC.md` §27.2) — the same field-editor path Option+Return takes, so
+    /// the newline lands in the draft without ending the edit.
+    func insertNewline() {
+        (field?.currentEditor() as? NSTextView)?.insertNewlineIgnoringFieldEditor(nil)
+    }
 }
 
 struct ProjectListCellEditor: NSViewRepresentable {
@@ -56,6 +63,11 @@ struct ProjectListCellEditor: NSViewRepresentable {
     /// writes (`pendingKeyEvent`).
     let handle: ProjectListCellEditorHandle
 
+    /// Whether this edit is multi-line (the note cell, `SPEC.md` §27.2): the
+    /// field wraps, grows with its lines — the cell expands downward — and
+    /// Shift+Enter inserts a newline (`ProjectListCellEditorHandle.insertNewline`).
+    var multiline = false
+
     /// The cell font, matching the table's rows.
     static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
 
@@ -66,10 +78,20 @@ struct ProjectListCellEditor: NSViewRepresentable {
         field.drawsBackground = false
         field.focusRingType = .none
         field.font = Self.font
-        field.lineBreakMode = .byTruncatingTail
-        field.usesSingleLineMode = true
-        field.cell?.isScrollable = true
-        field.cell?.wraps = false
+        if multiline {
+            field.lineBreakMode = .byWordWrapping
+            field.usesSingleLineMode = false
+            field.cell?.isScrollable = false
+            field.cell?.wraps = true
+            field.maximumNumberOfLines = 0
+            field.setContentHuggingPriority(.required, for: .vertical)
+            field.setContentCompressionResistancePriority(.required, for: .vertical)
+        } else {
+            field.lineBreakMode = .byTruncatingTail
+            field.usesSingleLineMode = true
+            field.cell?.isScrollable = true
+            field.cell?.wraps = false
+        }
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         handle.field = field
@@ -79,6 +101,14 @@ struct ProjectListCellEditor: NSViewRepresentable {
     func updateNSView(_ field: NSTextField, context: Context) {
         handle.field = field
         context.coordinator.text = $text
+
+        // A wrapping field reports its multi-line intrinsic height only once
+        // it knows its layout width; track the live width so the cell keeps
+        // expanding as lines are added (SPEC §27.2).
+        if multiline, field.bounds.width > 0,
+           field.preferredMaxLayoutWidth != field.bounds.width {
+            field.preferredMaxLayoutWidth = field.bounds.width
+        }
 
         // Never write over a composition: the marked string lives in the field
         // editor, and replacing the field's value would discard it.

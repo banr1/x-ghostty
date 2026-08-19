@@ -19,8 +19,9 @@ private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 /// the cell cursor's movement with its row-end wrap, edge stops, and
 /// Cmd+arrow edge jumps, the per-column Enter judgment (edit / toggle /
 /// candidates), text-cell edits (commit applies, cancel reverts, the note
-/// cell rewrites only line 1, invalid deadline input is unset), the column
-/// moves with persistence, and the transient full-note toggle.
+/// cell covers and replaces the whole note, invalid deadline input is
+/// unset), the column moves with persistence, and the transient full-note
+/// toggle.
 struct ProjectListCellTests {
     private static func makeProject(
         name: String,
@@ -157,8 +158,10 @@ struct ProjectListCellTests {
 
         let title = try #require(ProjectListCellEdit(row: row, column: .title))
         #expect(title.draft == "alpha" && title.original == "alpha")
+        // The note edit is seeded with the WHOLE note, not the displayed
+        // first line (SPEC §27.2): the edit covers all lines.
         let note = try #require(ProjectListCellEdit(row: row, column: .note))
-        #expect(note.draft == "first" && note.original == "first")
+        #expect(note.draft == "first\nsecond" && note.original == "first\nsecond")
     }
 
     // MARK: Row content for the cells (SPEC §27.1–27.2)
@@ -186,7 +189,9 @@ struct ProjectListCellTests {
 
         #expect(row.editableText(for: .title) == "alpha")
         #expect(row.editableText(for: .deadline) == "2026-09-01")
-        #expect(row.editableText(for: .note) == "memo")
+        // The note edit covers the whole note (SPEC §27.2), while the cell
+        // displays only the first line.
+        #expect(row.editableText(for: .note) == "memo\nrest")
         // Selection columns are not text-editable: no edit session exists.
         #expect(row.editableText(for: .visibility) == nil)
         #expect(row.editableText(for: .priority) == nil)
@@ -259,15 +264,22 @@ struct ProjectListCellTests {
         #expect(state.projects[a.id]?.deadline == nil)
     }
 
-    @Test func noteCommitRewritesOnlyTheFirstLine() {
+    @Test func noteCommitReplacesTheWholeNote() {
+        // The note edit covers every line (SPEC §27.2): the committed draft
+        // IS the note — a one-line draft replaces a multi-line note whole.
         let a = Self.makeProject(name: "alpha", note: "old first\nsecond\nthird")
         var state = Self.makeState([a])
 
-        let committedNoteFirstLine = state.commitListCellEdit("new first", column: .note, for: a.id)
-        #expect(committedNoteFirstLine)
-        #expect(state.projects[a.id]?.note == "new first\nsecond\nthird")
+        let committedMultiline = state.commitListCellEdit(
+            "new first\nnew second", column: .note, for: a.id)
+        #expect(committedMultiline)
+        #expect(state.projects[a.id]?.note == "new first\nnew second")
 
-        // An empty note gains its first line.
+        let committedOneLine = state.commitListCellEdit("just this", column: .note, for: a.id)
+        #expect(committedOneLine)
+        #expect(state.projects[a.id]?.note == "just this")
+
+        // An empty note gains its lines.
         let b = Self.makeProject(name: "beta")
         var fresh = Self.makeState([b])
         let committedOntoEmptyNote = fresh.commitListCellEdit("only line", column: .note, for: b.id)
@@ -509,7 +521,7 @@ struct ProjectListCellTests {
         // Typing still replaces rather than appends: the original is kept for
         // the cancel path only.
         #expect(ProjectListCellEdit.started(on: row, column: .title)?.original == "alpha")
-        #expect(ProjectListCellEdit.started(on: row, column: .note)?.original == "first")
+        #expect(ProjectListCellEdit.started(on: row, column: .note)?.original == "first\nsecond")
 
         // The selection columns are still not text-editable.
         for column in [ProjectListColumn.visibility, .priority, .nextTrigger] {
@@ -552,5 +564,54 @@ struct ProjectListCellTests {
         // the field editor's, exactly as it is mid composition.
         #expect(routing(.other) == .editor)
         #expect(routing(.other, shifted: true) == .editor)
+    }
+
+    // MARK: Multi-line note editing (SPEC §27.2)
+
+    @Test func onlyTheNoteColumnEditsMultiline() {
+        #expect(ProjectListColumn.note.isMultilineEdit)
+        for column: ProjectListColumn in [
+            .visibility, .title, .priority, .deadline, .nextTrigger,
+        ] {
+            #expect(!column.isMultilineEdit)
+        }
+    }
+
+    @Test func shiftEnterInsertsANewlineOnlyOnAMultilineEdit() {
+        // The note edit: Shift+Enter is a newline insertion, plain Enter
+        // still commits and moves down (SPEC §27.2).
+        #expect(ProjectListCellEdit.routing(
+            for: .enter, shifted: true, composing: false, multiline: true)
+            == .insertNewline)
+        #expect(ProjectListCellEdit.routing(
+            for: .enter, shifted: false, composing: false, multiline: true)
+            == .commit(.down))
+
+        // A marked IME string still owns every key, shifted or not.
+        #expect(ProjectListCellEdit.routing(
+            for: .enter, shifted: true, composing: true, multiline: true)
+            == .editor)
+
+        // One-line edits are unchanged: the shift changes nothing.
+        #expect(ProjectListCellEdit.routing(
+            for: .enter, shifted: true, composing: false, multiline: false)
+            == .commit(.down))
+    }
+
+    @Test func anOverLimitNoteCommitTruncatesToTheLineCap() {
+        // The commit applies the note through `setNote`, whose cap keeps the
+        // first `maxNoteLines` lines (SPEC §21.1) — the over-limit
+        // confirmation happens in the UI before the commit reaches the model.
+        let a = Self.makeProject(name: "alpha", note: "short")
+        var state = Self.makeState([a])
+
+        let lines = (1...(TestProjectState.maxNoteLines + 5)).map(String.init)
+        let draft = lines.joined(separator: "\n")
+        #expect(TestProjectState.noteExceedsLimit(draft))
+
+        let committed = state.commitListCellEdit(draft, column: .note, for: a.id)
+        #expect(committed)
+        #expect(state.projects[a.id]?.note
+            == lines.prefix(TestProjectState.maxNoteLines).joined(separator: "\n"))
     }
 }

@@ -31,13 +31,15 @@ struct ProjectListRow: Equatable, Identifiable {
     }
 
     /// The text a cell edit of `column` starts from (`SPEC.md` §27.2): the
-    /// column's current value in its editable spelling. `nil` for the
+    /// column's current value in its editable spelling. The note edit covers
+    /// the *whole* note — every line, not the displayed first line (§27.2:
+    /// the cell shows line 1, the edit owns all of them). `nil` for the
     /// selection columns, which are not text-editable.
     func editableText(for column: ProjectListColumn) -> String? {
         switch column {
         case .title: return title
         case .deadline: return deadline?.displayText ?? ""
-        case .note: return noteFirstLine
+        case .note: return note
         case .visibility, .priority, .nextTrigger: return nil
         }
     }
@@ -62,6 +64,11 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     /// The selection columns — visibility (a two-value toggle), priority,
     /// and next trigger — where typing never starts an edit.
     var isSelectionColumn: Bool { !isTextColumn }
+
+    /// Whether this column's cell edit is multi-line (`SPEC.md` §27.2): only
+    /// the note — its edit covers every line, Shift+Enter inserts a newline
+    /// and the cell expands downward. Every other text edit is one line.
+    var isMultilineEdit: Bool { self == .note }
 
     /// What Enter does on this column's cell (`SPEC.md` §27.2, Notion-style
     /// — Enter operates on the cell, it never moves the cursor): the text
@@ -341,6 +348,9 @@ enum ProjectListEditKeyRouting: Equatable {
     /// Hand the press to the cell editor — which is also the IME's input
     /// path, so this is what "the IME keeps the key" looks like.
     case editor
+    /// Insert a newline into the draft (Shift+Enter on a multi-line edit,
+    /// `SPEC.md` §27.2) — the cell expands downward with it.
+    case insertNewline
 }
 
 extension ProjectListCellEdit {
@@ -351,17 +361,20 @@ extension ProjectListCellEdit {
     /// converts, Enter commits the conversion, and Escape cancels it — none of
     /// them may reach the session's own Enter-commits / Escape-cancels /
     /// Tab-moves meaning (must 78). Once nothing is marked, the session's
-    /// terminators read per §27.2: Enter commits and moves down (shifted or
-    /// not — Shift+Enter's up move is abolished with the Notion-style keys),
-    /// Tab commits and moves right (Shift+Tab left), Escape cancels this
-    /// edit alone.
+    /// terminators read per §27.2: Enter commits and moves down, Tab commits
+    /// and moves right (Shift+Tab left), Escape cancels this edit alone.
+    /// On a multi-line edit (the note cell) Shift+Enter is a newline
+    /// insertion instead of a commit; on a one-line edit the shift changes
+    /// nothing (Shift+Enter's up move is abolished with the Notion-style
+    /// keys).
     static func routing(
-        for press: ProjectListEditKeyPress, shifted: Bool, composing: Bool
+        for press: ProjectListEditKeyPress, shifted: Bool, composing: Bool,
+        multiline: Bool = false
     ) -> ProjectListEditKeyRouting {
         guard !composing else { return .editor }
         switch press {
         case .escape: return .cancel
-        case .enter: return .commit(.down)
+        case .enter: return multiline && shifted ? .insertNewline : .commit(.down)
         case .tab: return .commit(shifted ? .left : .right)
         case .other: return .editor
         }
@@ -390,8 +403,10 @@ extension WorkspaceStateOf {
 
     /// Apply a committed text-cell edit (`SPEC.md` §27.2): the title through
     /// the shared rename rule, the deadline through the parse-or-unset rule
-    /// (invalid input is treated as unset, §24.1), and the note by rewriting
-    /// only its first line — every later line is preserved.
+    /// (invalid input is treated as unset, §24.1), and the note by replacing
+    /// the whole note — the edit covers every line, and `setNote` applies
+    /// the line cap (the over-limit confirmation happens before the commit
+    /// reaches here, §21.1).
     ///
     /// - Returns: whether the commit was accepted (an unknown project, a
     ///   selection column, or a rejected title leaves the state untouched).
@@ -411,13 +426,7 @@ extension WorkspaceStateOf {
             resortProjects()
             return true
         case .note:
-            var lines = project.note.components(separatedBy: "\n")
-            if lines.isEmpty {
-                lines = [text]
-            } else {
-                lines[0] = text
-            }
-            project.setNote(lines.joined(separator: "\n"))
+            project.setNote(text)
             projects[id] = project
             return true
         case .visibility, .priority, .nextTrigger:

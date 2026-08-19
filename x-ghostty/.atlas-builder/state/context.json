@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "085d99b803767efc1306a9f6d2a6ef055624498c9c085a62dbc81f9cd44139f0",
+    "last_signature": "db0dd24e3e13bde96d52589700feaad72f0bd21be6b6338916090aa7f0721250",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-19T19:44:53+09:00",
-    "last_checked_at": "2026-08-19T19:44:53+09:00",
+    "last_progress_at": "2026-08-19T19:54:47+09:00",
+    "last_checked_at": "2026-08-19T19:54:47+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,22 +21,21 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.35,
+    "context_usage_estimate": 0.3,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 12,
-    "completed_todos_since_reset": 2,
+    "changed_files_since_reset": 16,
+    "completed_todos_since_reset": 3,
     "important_decisions_since_reset": 0,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-19T19:55:00+09:00",
-    "summary": "Cycle R-20260819T193039 completed T-097 (Delete + row selection) with green gates (zig build / just test / just swift-test = exit 0; new ProjectListRowSelectionTests 9/9). Model: ProjectList.swift gained ProjectListDeleteAction + ProjectListColumn.deleteAction (title/priority/deadline/nextTrigger=clearValue, note=confirmClearNote, visibility=none), WorkspaceStateOf.deleteListCellValue (title empties BYPASSING renameProject's empty-reject; sort-key columns resort; note clears all lines), ProjectListKeyboardMode (.cellCursor/.rowSelection, escaped/entered). WorkspaceModel: deleteProjectListCellValue (projectListActive-gated), closeProject(id:) for ANY row — focused delegates to closeFocusedProject, unfocused/hidden rows removed keeping focus (.switched to unchanged focused), last row .closedLast. Controller: closeProjectListRow → confirmClose (same Close Project dialog) → performCloseProjectListRow (surfaceTree swap + registerWorkspaceUndo; .closedLast → replaceSurfaceTree(.init())); TerminalView delegate closeProjectListRow wired through TerminalWorkspaceView onCloseProjectListRow → overlay onCloseRow. Overlay: mode @State; Esc toggles cell-cursor↔row-selection and NO LONGER closes the list (Essence 80; backdrop click still closes; Cmd+L toggle-close is T-100's job — until then keyboard-only closing is Cmd+Enter focus); row-selection branch owns plain keys (Up/Down move via moveCursor, Enter/Esc back, Delete → onCloseRow), Cmd-chords fall through like sort bar/menu; cell Delete = keyCode 51/117 → deleteOnCursorCell (note shows OK/Cancel NSAlert.runModal like the note editor's trim confirm); whole-row highlight 0.28 in row mode, cell cursor suppressed; footer/header hints updated. Earlier this reset window: T-096 (candidate menus — ProjectListCandidates.swift, commitProjectListCandidate, dropdown below cell). Remaining pending must: T-098 (note-cell full edit), T-099 (sorted Opt-move confirmation + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus+zoom semantics / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates. Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks).",
+    "written_at": "2026-08-19T20:10:00+09:00",
+    "summary": "Cycle R-20260819T194453 completed T-098 (note-cell full-line editing) with green gates (zig build / just test / just swift-test = exit 0; ProjectListCellTests 28/28). Model: editableText(for: .note) = whole note (seeded edit covers all lines); commitListCellEdit(.note) = setNote(text) whole replacement, cap applied by setNote; ProjectListColumn.isMultilineEdit (note only); ProjectListEditKeyRouting.insertNewline; routing(for:shifted:composing:multiline:) — Shift+Enter multiline = .insertNewline, plain Enter = commit(.down), composing owns all. View: ProjectListCellEditor gained multiline mode (wraps, usesSingleLineMode=false, maximumNumberOfLines=0, vertical hugging .required, live preferredMaxLayoutWidth in updateNSView) and handle.insertNewline() = insertNewlineIgnoringFieldEditor on the field editor (Option+Return path — newline lands in the draft without ending the edit); overlay commitEdit shows the ProjectNoteEditor-style over-limit OK/Cancel alert for note drafts (Cancel keeps the edit session); footer shows '⇧↩ newline' on note edits. 4 stale test expectations updated (line-1-only behavior superseded), 3 new tests. Earlier this reset window: T-096 (candidate menus), T-097 (Delete + row selection; Esc = cell↔row toggle, list no longer closes on Esc — Cmd+L toggle is T-100's job, backdrop click still closes). Remaining pending must: T-099 (sorted Opt-move confirmation + Cmd+N insertion), T-100 (Cmd+L toggle / zoom overlay semantics / Cmd+Enter zoom-target switch / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates. Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks). NOTE: counters at 3/5 completed todos — next cycle likely completes a 4th; plan the reset handoff accordingly.",
     "next_actions": [
-      "Next batch: T-098 (note-cell full-line editing) — the cell edit currently covers only line 1 (commitListCellEdit .note rewrites lines[0]). Change to whole-note editing: ProjectListCellEdit seeded with the FULL note (editableText(for: .note) returns noteFirstLine today — needs the full text), Shift+Enter inserts a newline in the cell editor (routing: shifted Enter while editing = newline, not commit — adjust ProjectListCellEdit.routing which today ignores shift on Enter), the cell expands downward (ProjectListCellEditor is single-line NSTextField? check — may need NSTextView or wraps), commit applies ALL lines through setNote with the 100-line confirmation (ProjectState.noteExceedsLimit + the same OK/Cancel alert as ProjectNoteEditor.commit), scroll reaches all lines. Tests: note-column editing covers all lines, commit applies all lines (S-083).",
-      "T-099 (sorted Opt-move confirmation: OK = setProjectSortState(.manual) then move, Cancel = nothing; manual moves stay confirmation-free; Cmd+N insertion position under active sort = stable-sort consequence — verify createProjectFromList already resorts) follows.",
-      "T-100 (Cmd+L toggle — controller list_projects action must endProjectList when active; Esc-never-closes is already true after T-097; zoom overlay semantics + Cmd+Enter zoom-target switch; hidden rows same color — remove the row's .opacity(0.5) dimming in ProjectListOverlay).",
-      "T-103 (SPEC.md / README.md) last — SPEC.md §27.x still documents removed Space keys/sort actions and lacks candidate menus, Delete/row selection, and the Esc/no-close change.",
+      "Next batch: T-099 (row moves under an active sort + Cmd+N insertion) — Essence 43/67/68: Opt+Up/Down while a key sort is active shows a confirmation (OK = inherit current display order as manual order via setProjectSortState(.manual), then perform the move; Cancel = nothing; manual state moves stay confirmation-free). The overlay's Opt+arrow branch calls onMoveRow directly today — gate it on sortState != .manual with an NSAlert (runModal, like deleteOnCursorCell), and the OK path needs a combined model call (set manual inheriting display order, then moveProjectListRow). Cmd+N under active sort: verify insertProject already resorts (WorkspaceState.insertProject calls resortProjects — likely already correct; test the sorted insertion position lands per stable sort, S-083 'new-project insertion position sorted: the position the stable sort assigns by value').",
+      "T-100 (Cmd+L toggle: controller list_projects action endProjectList when active; zoom kept — beginProjectList currently may clear zoom, check canBeginProjectList/beginProjectList zoom handling vs Essence 63 'zoom 中に開いた場合は zoom を解除せず重ねる'; Cmd+Enter on a visible row while zoomed switches the zoom target instead of unzooming; hidden rows same color — remove .opacity(0.5) row dimming; hidden-row Cmd+Enter = close list + focus near visible, changing canFocus/onFocus semantics from inert to resolve-to-visible).",
+      "T-101 (Cmd+/ shortcut list overlay), T-102 (Cmd+K clear_screen unbind — mirror the cmd+enter/cmd+e unbind precedent in Config.zig/keybinds), T-103 (SPEC.md / README.md — SPEC §27.x still documents Space keys/sort actions and lacks candidate menus, Delete/row selection, whole-note cell edit, Esc/no-close; README still says 10-line notes).",
       "When the implementation Todos are done, raise a Human-input Recommendation bundling the T-104..T-110 on-device gates."
     ],
     "open_questions": [],

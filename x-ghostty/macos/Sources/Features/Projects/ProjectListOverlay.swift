@@ -221,22 +221,27 @@ struct ProjectListOverlay: View {
             .intersection([.command, .shift, .option, .control])
         let isEscape = event.keyCode == 53
 
-        if edit != nil {
+        if let session = edit {
             // While editing, the cell field owns every key except the edit's
             // own terminators (SPEC §27.2): Enter / Tab commit and move,
-            // Escape cancels only this edit — unless the IME holds a marked
+            // Escape cancels only this edit, Shift+Enter inserts a newline
+            // on the multi-line note edit — unless the IME holds a marked
             // string, in which case every key is the IME's (SPEC §27.5, must
             // 78). The routing itself is the model's judgment.
             let shifted = modifiers == [.shift] || event.specialKey == .some(.backTab)
             let press = Self.editKeyPress(for: event, isEscape: isEscape)
             switch ProjectListCellEdit.routing(
-                for: press, shifted: shifted, composing: editor.isComposing
+                for: press, shifted: shifted, composing: editor.isComposing,
+                multiline: session.column.isMultilineEdit
             ) {
             case .commit(let move):
                 commitEdit(thenMove: move)
                 return nil
             case .cancel:
                 cancelEdit()
+                return nil
+            case .insertNewline:
+                editor.insertNewline()
                 return nil
             case .editor:
                 return event
@@ -575,6 +580,20 @@ struct ProjectListOverlay: View {
 
     private func commitEdit(thenMove move: ProjectListCellCursor.Move) {
         guard let session = edit else { return }
+        // The note's save-time line cap (SPEC §21.1, shared with the note
+        // editor): an over-limit draft asks first — OK truncates on commit
+        // (`setNote` applies the cap), Cancel returns to editing untouched.
+        if session.column == .note, ProjectState.noteExceedsLimit(session.draft) {
+            let alert = NSAlert()
+            alert.messageText = "Note exceeds \(ProjectState.maxNoteLines) lines"
+            alert.informativeText =
+                "Saving will keep the first \(ProjectState.maxNoteLines) lines "
+                + "and drop the rest."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
         onCommitEdit(session.draft, session.column, session.rowID)
         endEdit()
         moveCursor(move)
@@ -825,7 +844,8 @@ struct ProjectListOverlay: View {
                     text: Binding(
                         get: { edit?.draft ?? "" },
                         set: { edit?.draft = $0 }),
-                    handle: editor)
+                    handle: editor,
+                    multiline: column.isMultilineEdit)
             } else {
                 cellText(row: row, column: column)
             }
@@ -963,8 +983,10 @@ struct ProjectListOverlay: View {
     }
 
     private var footerText: String {
-        if edit != nil {
-            return "↩/⇥ commit · esc cancel edit"
+        if let session = edit {
+            return session.column.isMultilineEdit
+                ? "⇧↩ newline · ↩/⇥ commit · esc cancel edit"
+                : "↩/⇥ commit · esc cancel edit"
         }
         if candidateMenu != nil {
             return "↑↓ choose · ↩ set · esc close"

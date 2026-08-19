@@ -3966,7 +3966,7 @@
     {
       "id": "T-098",
       "title": "Note-column full-line editing: the cell edit covers the whole note (max 100 lines), Shift+Enter inserts newlines with the cell expanding downward and scrolling to reach all lines, Enter commits through the 100-line confirmation when over, only line 1 shows after commit; Cmd+Opt+E inside the list stays the full-note display toggle; XGhosttyTests that the note-column edit covers and commits all lines",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-093",
@@ -3977,7 +3977,30 @@
       },
       "batch_group": "list-notion",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; ProjectListCellTests 28/28 passed incl. 3 new (onlyTheNoteColumnEditsMultiline, shiftEnterInsertsANewlineOnlyOnAMultilineEdit, anOverLimitNoteCommitTruncatesToTheLineCap) and 4 updated to the whole-note behavior (seeded edit = full note, editableText(.note) = all lines, noteCommitReplacesTheWholeNote, typed-edit original = full note)"
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "diff",
+          "summary": "ProjectList.swift: editableText(.note) returns the whole note; commitListCellEdit(.note) = setNote(text) whole replacement (cap applied by setNote); ProjectListColumn.isMultilineEdit (note only); ProjectListEditKeyRouting.insertNewline; routing gains multiline: param — Shift+Enter on multiline = .insertNewline, plain Enter commits, composing still owns all keys. ProjectListCellEditor: multiline mode (wraps, no single-line, maximumNumberOfLines 0, vertical hugging, live preferredMaxLayoutWidth) + handle.insertNewline() via insertNewlineIgnoringFieldEditor. ProjectListOverlay: edit branch passes multiline and handles .insertNewline; commitEdit shows the shared 100-line OK/Cancel confirmation for over-limit note drafts (Cancel returns to editing); editor instantiated with multiline; footer shows ⇧↩ newline hint. 4 files +159/-37"
+        }
+      ]
     },
     {
       "id": "T-099",
