@@ -16,9 +16,10 @@ private typealias TestWorkspaceState = WorkspaceStateOf<TestPane>
 private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 
 /// Tests for the next trigger (SPEC §24.6, success condition 24's model
-/// half): the five-valued who-moves-this-next field — unset by default,
+/// half): the four-valued who-moves-this-next field — unset by default,
 /// persisted and restored like the priority, shown by the note overview's
-/// content, and untouched by the daily priority reset.
+/// content, untouched by the daily priority reset, and migrating the
+/// abolished "team member" value to "external" on load.
 struct ProjectNextTriggerTests {
     private static func makeProject(
         name: String,
@@ -72,8 +73,8 @@ struct ProjectNextTriggerTests {
         let project = Self.makeProject(name: "alpha")
         let model = try Self.makeModel(visible: [project])
 
-        model.setProjectNextTrigger(project.id, to: .teamMember)
-        #expect(model.projectNextTrigger(of: project.id) == .teamMember)
+        model.setProjectNextTrigger(project.id, to: .externalPerson)
+        #expect(model.projectNextTrigger(of: project.id) == .externalPerson)
 
         model.setProjectNextTrigger(project.id, to: nil)
         #expect(model.projectNextTrigger(of: project.id) == nil)
@@ -117,6 +118,24 @@ struct ProjectNextTriggerTests {
         let decoded = try JSONDecoder().decode(TestProjectState.self, from: corrupted)
         #expect(decoded.nextTrigger == nil)
         #expect(decoded.name == "odd")
+    }
+
+    @Test func nextTriggerIsFourValuedAndASavedTeamMemberMigratesToExternal() throws {
+        // Success condition 20: the value set is exactly self / external /
+        // event (unset is the optional's absence)...
+        #expect(ProjectNextTrigger.allCases == [.myself, .externalPerson, .event])
+
+        // ...and a save written before "team member" was abolished migrates
+        // to "external" on load instead of falling back to unset.
+        var object = try #require(
+            try JSONSerialization.jsonObject(
+                with: JSONEncoder().encode(
+                    Self.makeProject(name: "legacy", nextTrigger: .event))) as? [String: Any])
+        object["nextTrigger"] = "teamMember"
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try JSONDecoder().decode(TestProjectState.self, from: legacy)
+        #expect(decoded.nextTrigger == .externalPerson)
+        #expect(decoded.name == "legacy")
     }
 
     // MARK: Overview content (SPEC §21.3, §24 — success condition 24)

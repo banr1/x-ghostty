@@ -3572,6 +3572,450 @@
           "summary": "Human on-device verification of success criterion 27 (list cell editing IME support), all items confirmed: Title and Note cells show a marked string from the first keystroke with Space conversion and Enter commit, the committed text is saved (Note cell writes the note's first line); Enter/Escape while a marked string exists act as IME commit/cancel without moving the cell cursor or cancelling the edit, and the edit stays live afterwards with the usual Enter commit / Escape cancel; English input, the note editor overlay (Cmd+E), and double-click title rename are unchanged; no visual regression in cell editing (font, row height, caret position)."
         }
       ]
+    },
+    {
+      "id": "T-089",
+      "title": "Model: raise the note cap from 10 to 100 lines with an explicit over-limit judgment — saving within 100 lines keeps the text as-is, an over-100-line save request is judged over-limit as a separate model-layer decision, and applying the truncation keeps the first 100 lines; decode normalization moves to 100 lines; update the existing 10-line tests and add XGhosttyTests for the criterion-4 items (within-100 saved as-is, over-100 judged over with truncation keeping the first 100)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-001",
+        "S-012"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-100",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectState.swift",
+            "macos/Tests/Projects/ProjectNoteTests.swift"
+          ],
+          "summary": "maxNoteLines 10 -> 100; new ProjectState.noteExceedsLimit(_:) as the explicit save-time over-limit judgment (newline-unified line count > 100, so CRLF pastes cannot dodge it); normalizedNote unchanged as the storage truncation (first 100 lines) applied at init/setNote/decode. ProjectNoteTests updated to the 100-line semantics and extended with noteWithinLimitIsNotJudgedOver, noteOverLimitIsJudgedOverAndTruncationKeepsFirstOneHundred, and overLimitJudgmentCountsCRLFLineEndings."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED, 619 test cases passed, including the updated ProjectNoteTests (normalizedNoteKeepsExactlyOneHundredLines, setProjectNoteCapsAtOneHundredLines, endNoteEditingCapsAtOneHundredLines, endNoteEditingTruncatesOversizedPasteToFirstOneHundredLines, decodeCapsOversizedNote to line 100) and the three new over-limit judgment tests."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Success-criterion 1 gate: full app build exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Success-criterion 2 gate: the Zig core test suite exited 0."
+        }
+      ]
+    },
+    {
+      "id": "T-090",
+      "title": "Note save confirmation: when a save operation (note editor overlay Cmd+Enter, and any other note save path) finds the text over 100 lines, show a confirmation — OK truncates to the first 100 lines and saves, Cancel returns to editing without saving; within 100 lines saves silently as before; editing input and paste are never limited or silently truncated",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-001",
+        "S-037",
+        "S-003"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "notes-100",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectNoteEditor.swift",
+            "macos/Sources/Features/Projects/WorkspaceModel.swift"
+          ],
+          "summary": "ProjectNoteEditor.commit() — the single funnel for Cmd+Enter and the backdrop-click save — now consults ProjectState.noteExceedsLimit(draft): over-limit drafts raise an NSAlert (OK = truncate to the first 100 lines and save via the existing normalization; Cancel = return to editing with the draft untouched); within-limit saves stay silent. Editing input/paste is never limited. The editor panel is now a fixed-height scrolling view (20 visible lines) instead of being sized to the cap, so the full 100-line text stays reachable by scroll (must 12)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED, 619 test cases passed; the model-layer judgment behind the dialog is covered by the new ProjectNoteTests (the dialog itself is GUI, gated by success criterion 10 / T-104 human verification)."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build including the SwiftUI overlay change exited 0."
+        }
+      ]
+    },
+    {
+      "id": "T-091",
+      "title": "Next trigger reduced to 4 values (self / external / event / unset): abolish \"team member\", merge it into \"external\" with saved values migrating on load, update the cell's value set and any user-visible wording, and add XGhosttyTests for the 4-value set and the load migration (criterion-20 item)",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-096",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "next-trigger-4",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "diff",
+          "files": [
+            "macos/Sources/Features/Projects/ProjectState.swift",
+            "macos/Sources/Features/Projects/ProjectList.swift",
+            "macos/Tests/Projects/ProjectNextTriggerTests.swift",
+            "macos/Tests/Projects/ProjectListCellTests.swift"
+          ],
+          "summary": "ProjectNextTrigger reduced to myself / externalPerson / event (unset stays the optional's absence): the teamMember case is removed, a custom Decodable init migrates a persisted \"teamMember\" to .externalPerson on load while unknown values still collapse to unset, and displayText drops \"team\". The Space-cycle helper (alive until T-095 abolishes it) follows CaseIterable, so the cycle is now unset -> me -> external -> event -> unset. Tests updated and extended with nextTriggerIsFourValuedAndASavedTeamMemberMigratesToExternal (asserts allCases == [myself, externalPerson, event] and the legacy-save migration)."
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED, 619 test cases passed, including the updated ProjectNextTriggerTests (save/restore for every value, unknown-value-to-unset, the new 4-value + migration test) and the updated ProjectListCellTests cycle test."
+        },
+        {
+          "type": "command",
+          "command": "/opt/homebrew/opt/zig@0.15/bin/zig build",
+          "exit_code": 0,
+          "summary": "Full app build exited 0."
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core test suite exited 0 (no core-side impact expected or observed)."
+        }
+      ]
+    },
+    {
+      "id": "T-092",
+      "title": "Layout remainder redistribution: wide type attaches the indivisible remainder to the later rows (earlier rows fewer, wider slots; n=8 is 2+3+3 from the top), tall type is the transpose with fewer slots in the left columns, pedestal follows the wide/tall rule per orientation; recompute the exact-match collapsing (n=3 wide 1+2 and pedestal 2+1 now differ and both remain); update the criterion-15 XGhosttyTests accordingly",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-058",
+        "S-059",
+        "S-071"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "layout-remainder",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-093",
+      "title": "Sort-state model: replace the disposable sort actions with a persisted 5-value sort state (manual / next / show / deadline / priority, default manual) governing the display order and ordinals even while the list is closed; fixed key directions (next: self-external-event-unset, show: visible-hidden, deadline: nearest first unset last, priority: high-medium-low-unset), stable with ties keeping the previous display order, over all rows including hidden; immediate re-sort on cell-value change, creation, load, and the morning priority reset (manual state: reset never reorders); manual handover inheriting the current display order (bar selection and Opt-move approval); remove the Cmd+S / Cmd+Shift+S sort actions; layout application consumes the display order; XGhosttyTests for the criterion-11, criterion-20, and criterion-22 sort items",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-044",
+        "S-045",
+        "S-047",
+        "S-053",
+        "S-061",
+        "S-080",
+        "S-087",
+        "S-089",
+        "S-083",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "sort-state",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-094",
+      "title": "Sort bar UI at the top of the list table: shows the 5 states, entered with Up from the top row, Left/Right choose, Enter applies and returns to the table, Esc returns without applying, mouse click selects; choosing manual directly inherits the current display order as the manual order",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-046",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "sort-state",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-095",
+      "title": "Notion-style cell cursor: arrow keys move in all four directions, Tab / Shift+Tab move right/left with row-end wrap and edge stop, Cmd+arrows jump to the edges; Enter / Shift+Enter cell movement and Space cycling / Space date stepping are abolished; Enter operates on the cell (text columns: edit start with caret in the existing text; visibility: immediate hide/show toggle with the minimum-one protection; deadline: candidate enumeration; priority/next-trigger: candidate enumeration); typing starts a replace edit on text and deadline columns; while editing, Enter commits and moves down, Tab / Shift+Tab commit and move right/left, Esc cancels; XGhosttyTests for the criterion-20 movement and editing items",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-092",
+        "S-094",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-notion",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-096",
+      "title": "Value-candidate menus: priority and next-trigger cells enumerate all real values (no unset) below the cell on Enter, Up/Down choose, Enter commits, Esc closes changing nothing; deadline cells enumerate the 10 date candidates (today through 7 days ahead, same day next month, same day in 3 months) as real dates like Aug 19 with nonexistent same days clamped to month end; typed arbitrary-date entry stays; model-layer candidate computation with XGhosttyTests (criterion-20 candidate items)",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-100",
+        "S-092",
+        "S-082",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-notion",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-097",
+      "title": "Delete and row selection: Delete on the cell cursor clears the cell value per column (title emptied; priority/deadline/next-trigger unset; note asks confirmation and deletes all lines on OK; visibility does nothing); Esc on the cell cursor enters row selection (whole-row highlight, Up/Down move, Enter back to the cell cursor, Esc release), and Delete during row selection deletes the project through the same confirmation as close, hidden rows included — making the loss paths exactly Cmd+W / close_project / row-selection Delete; XGhosttyTests for the criterion-20 delete and row-selection items",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-103",
+        "S-104",
+        "S-035",
+        "S-082",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-notion",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-098",
+      "title": "Note-column full-line editing: the cell edit covers the whole note (max 100 lines), Shift+Enter inserts newlines with the cell expanding downward and scrolling to reach all lines, Enter commits through the 100-line confirmation when over, only line 1 shows after commit; Cmd+Opt+E inside the list stays the full-note display toggle; XGhosttyTests that the note-column edit covers and commits all lines",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-093",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-notion",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-099",
+      "title": "Row/column reordering and creation under the sort state: Opt+Up / Opt+Down move the cursor row by one (manual: no confirmation; sorted: confirmation whose OK inherits the display order as manual and moves, Cancel does nothing), Opt+Left / Opt+Right move the cursor column; Cmd+N inserts below the cursor row in manual state and at the stable-sort position while sorted, with the new row's visibility (visible under 9, hidden at 9) and immediate title entry; XGhosttyTests for the criterion-20 reorder and insertion items",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-094",
+        "S-095",
+        "S-047",
+        "S-082",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-notion",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-100",
+      "title": "List toggle and focus semantics: Cmd+L toggles (again closes, Esc never closes), opening while zoomed overlays the zoom without releasing it and closing returns to it (also via Cmd+N); Cmd+Enter on a visible row focuses and closes (zoom target switches while zoomed), on a hidden row closes and focuses a nearby visible project; hidden rows drawn in the same color as visible rows; XGhosttyTests for the hidden-row focus resolution",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-079",
+        "S-080",
+        "S-081",
+        "S-082",
+        "S-083",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-notion",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-101",
+      "title": "Shortcut-list overlay on Cmd+/: enumerates the effective shortcuts including upstream-derived ones grouped by scene (overall view, zoom, project list, note editing, overview, ...), view-only, invocable from any scene, toggled closed by Esc or Cmd+/ returning to the pre-invocation state including in-progress edits, never permanently occupying terminal area",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-105",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "shortcut-list",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-102",
+      "title": "Unbind the default Cmd+K clear_screen assignment, keeping the action itself reassignable in the config",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-106",
+        "S-010"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "key-changes",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-103",
+      "title": "Update SPEC.md and README.md for this revision: the list's operation grammar (Enter editing, Delete, row selection, edge moves, Opt reordering), the sort state and sort bar, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, the layout remainder distribution, and the key changes including Cmd+K and Cmd+/",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-091"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "docs",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-104",
+      "title": "Human on-device verification (one-time, success criterion 10): note editor Cmd+A/C/X/V and Cmd+Z / Cmd+Shift+Z as before, and saving an over-100-line paste shows the confirmation — OK truncates to the first 100 lines and saves, Cancel returns to editing without saving",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-052"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "notes-100-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-105",
+      "title": "Human on-device verification (one-time, success criterion 12): priority/deadline set in list cells and shown in the label band, overview shows them with the note, overdue subtly emphasized, choosing priority / deadline in the sort bar reorders with Cmd+1-9 following, appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-054"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "sort-state-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-106",
+      "title": "Human on-device verification (one-time, success criterion 16): layout-type selection incl. the 8-project wide layout stacking 2+3+3 from the top with wider slots in the upper rows, auto re-layout, restart persistence, no project-boundary resize, appearance",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-072"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "layout-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-107",
+      "title": "Human on-device verification (one-time, success criterion 21): the revised project list — same-color hidden rows, arrow/Tab/Cmd-arrow movement, Enter editing with commit-down / Tab-right / Esc cancel and replace-edit typing, visibility Enter toggle, candidate menus (priority / next trigger / 10 date candidates), the sort bar with immediate re-sort and Opt-move confirmation, Opt column moves with persistence, Delete cell clearing and row-selection delete, Shift+Enter note editing, Cmd+N insertion, Cmd+Enter focus semantics incl. hidden rows and zoom, Cmd+L toggle behavior, full-note toggle, scrolling, appearance",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-084"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "list-notion-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-108",
+      "title": "Human on-device verification (one-time, success criterion 26): Cmd+E note overlay, Cmd+Opt+E overview, Cmd+Opt+N / Cmd+Opt+D / Cmd+Opt+Shift+D do nothing, Cmd+E does not start search_selection, and Cmd+K does not clear the screen",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-099"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "key-changes-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-109",
+      "title": "Human on-device verification (one-time, success criterion 27 re-check under the revised note-cell semantics): list-cell IME input in Title and Note cells with the committed string landing on the note (full-line note editing), IME Enter/Esc not misfiring cell movement or edit cancel, English input and the other edit paths unchanged",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-102"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "list-ime-human",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-110",
+      "title": "Human on-device verification (one-time, success criterion 28): Cmd+/ opens the shortcut list grouped by scene incl. upstream shortcuts, opens from the overall view / zoom / project list / note editor, closes with Esc or Cmd+/ back to the pre-invocation state incl. in-progress edits, appearance fits the terminal",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-107"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "shortcut-list-human",
+      "risk_level": "normal",
+      "evidence": []
     }
   ]
 }

@@ -1,16 +1,18 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "e427ef83c1ffe56783c2835ea4370c558f66bc3e5e4f8d81b219425a19f4948a",
-  "projected_at": "2026-08-18T03:35:00+09:00",
+  "projected_from_essence_sha256": "69e997f5c046d2f2b8589a0c6e6784d80d509e11ed3d17a16528247f22295fb0",
+  "projected_at": "2026-08-19T18:10:00+09:00",
   "items": [
     {
       "id": "S-001",
-      "title": "Per-project note model: hand-written note held per project (not per pane), max 10 lines, with retention/restore/display-set judgment logic in the model layer verifiable from XGhosttyTests",
+      "title": "Per-project note model: hand-written note held per project (not per pane), max 100 lines with an explicit over-limit judgment and confirmed truncation at save time (within 100 lines saves silently; editing input/paste itself is unlimited), with retention/restore/display-set judgment logic in the model layer verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "プロジェクトごとに、人間が手書きする短いノートを保持できる。",
-        "ノートは最大 10 行とし、10 行を超えて保持しない。",
+        "ノートは最大 100 行とする。保存操作の時点で 100 行を超えている場合は確認を表示し、",
+        "OK なら先頭 100 行へ切り詰めて保存し、Cancel なら保存せず編集へ戻る。100 行以内は",
+        "従来どおり黙って保存する。編集中の入力・貼り付け自体は制限しない。",
         "ノートはプロジェクトに属し、プロジェクト内のペイン(split)には属さない。",
         "ノートの保持・復元・表示対象の判断ロジックはモデル層に置き、`XGhosttyTests` から",
         "検証可能にする。"
@@ -95,7 +97,7 @@
     },
     {
       "id": "S-010",
-      "title": "No regression of existing project features (enumeration, zoom, ordinal jump, hide/show, rename, close) or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter fullscreen, primary-only overall view, no-op pane ops in the overall view, focus snapping to primary on zoom release, unconditional close confirmation, terminated-state last pane, note-editor Cmd+A/C/X/V and Cmd+Z/Shift+Z routed to the editor, Cmd+S / Cmd+Shift+S sort assignments, the group-to-project rename, remote-path split, hidden shelf abolished in favour of the project list, Cmd+L project list and Cmd+Opt+L layout selection, daily priority reset, moving note operations from Cmd+N / Cmd+Opt+N to Cmd+E / Cmd+Opt+E, unbinding Cmd+E search_selection (feature kept), Cmd+Opt+H back to immediate hide of the focused project, abolishing Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) with creation only via the list, replacing the 11 registered layouts by layout types (shape x orientation) with auto-apply on visible-count change, abolishing project-level layout resize/equalize (pane resize while zoomed remains), list Enter moving down a cell with focus moved to Cmd+Enter, and moving the priority/deadline entry point from the note overlay to the list",
+      "title": "No regression of existing project features (enumeration, zoom, ordinal jump, hide/show, rename, close) or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter fullscreen, primary-only overall view, no-op pane ops in the overall view, focus snapping to primary on zoom release, unconditional close confirmation, terminated-state last pane, note-editor Cmd+A/C/X/V and Cmd+Z/Shift+Z routed to the editor, the group-to-project rename, remote-path split, hidden shelf abolished in favour of the project list, Cmd+L project list and Cmd+Opt+L layout selection, daily priority reset, moving note operations from Cmd+N / Cmd+Opt+N to Cmd+E / Cmd+Opt+E, unbinding Cmd+E search_selection (feature kept), Cmd+Opt+H back to immediate hide, abolishing Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) with creation only via the list, layout types (shape x orientation) with auto-apply, abolishing project-level layout resize/equalize (pane resize while zoomed remains), moving the priority/deadline entry point to the list, Notion-style list cell operations (Enter starts editing, arrows/Tab move, Space cycling and Space stepping abolished, Delete deletes, row selection; focus stays Cmd+Enter), abolishing the Cmd+S / Cmd+Shift+S sort actions in favour of a sort state, moving row/column reordering from Cmd+arrows to Opt+arrows with Cmd+arrows as edge moves, Cmd+L toggling (no zoom release while zoomed, Esc does not close), hidden-row Cmd+Enter changed from no-op to close-and-focus-nearest-visible, layout remainder shifted to the later rows (3+3+2 to 2+3+3), the next trigger reduced to 4 values (team member merged into external), hidden rows shown in the same color, the note cap raised to 100 lines with an over-limit confirmation, Cmd+K clear_screen unbound, and Cmd+/ assigned to the shortcut list",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -106,21 +108,28 @@
         "に変えること、全体ビューでのペイン系操作の no-op 化、zoom 解除時に focus を",
         "プライマリーペインへ寄せること、プロジェクトを閉じる操作の確認を常時化すること、",
         "最後のペインのシェル exit でプロジェクトを閉じず終了済み状態で残すこと、ノート編集",
-        "オーバーレイ中の Cmd+A / C / X / V をエディタのテキスト編集に向けること、`Cmd+S` /",
-        "`Cmd+Shift+S` へのソートアクションの割り当て、「グループ」→「プロジェクト」への",
-        "全面改名(文言・action 名・識別子・ディレクトリ名)、リモートペインの split 先を",
-        "リモート同パスにすること、hidden シェルフの廃止と復帰導線のプロジェクト一覧への",
-        "一本化、`Cmd+L` のプロジェクト一覧とレイアウト選択の `Cmd+Opt+L`、ノート編集",
-        "オーバーレイ中の Cmd+Z / Cmd+Shift+Z をエディタの取り消し・やり直しに向けること、",
-        "優先度の毎朝リセット、`Cmd+N` / `Cmd+Opt+N` のノート操作を `Cmd+E` / `Cmd+Opt+E` へ",
-        "移すこと、`Cmd+E` の `search_selection` 既定割り当ての解除(機能自体は残す)、",
-        "`Cmd+Opt+H` を hide 選択画面から focused プロジェクトの即時 hide へ戻すこと、",
-        "`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)の廃止と新規作成の",
-        "プロジェクト一覧への一本化、登録レイアウト 11 種のレイアウト型(形 × 向き)への",
-        "置き換えと表示数変化時の自動適用、プロジェクト単位のレイアウト resize/equalize の",
-        "廃止(zoom 中のペイン resize は存続)、一覧の Enter を下セル移動に変え focus を",
-        "`Cmd+Enter` に移すこと、優先度・締切の設定入口をノート編集オーバーレイから一覧へ",
-        "移すこと。"
+        "オーバーレイ中の Cmd+A / C / X / V をエディタのテキスト編集に向けること、",
+        "「グループ」→「プロジェクト」への全面改名(文言・action 名・識別子・ディレクトリ名)、",
+        "リモートペインの split 先をリモート同パスにすること、hidden シェルフの廃止と",
+        "復帰導線のプロジェクト一覧への一本化、`Cmd+L` のプロジェクト一覧とレイアウト選択の",
+        "`Cmd+Opt+L`、ノート編集オーバーレイ中の Cmd+Z / Cmd+Shift+Z をエディタの取り消し・",
+        "やり直しに向けること、優先度の毎朝リセット、`Cmd+N` / `Cmd+Opt+N` のノート操作を",
+        "`Cmd+E` / `Cmd+Opt+E` へ移すこと、`Cmd+E` の `search_selection` 既定割り当ての解除",
+        "(機能自体は残す)、`Cmd+Opt+H` を hide 選択画面から focused プロジェクトの即時",
+        "hide へ戻すこと、`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)の廃止と",
+        "新規作成のプロジェクト一覧への一本化、登録レイアウト 11 種のレイアウト型",
+        "(形 × 向き)への置き換えと表示数変化時の自動適用、プロジェクト単位のレイアウト",
+        "resize/equalize の廃止(zoom 中のペイン resize は存続)、優先度・締切の設定入口を",
+        "ノート編集オーバーレイから一覧へ移すこと、一覧セル操作の Notion 流儀化(`Enter` の",
+        "編集開始への変更・矢印 / Tab による移動・`Space` 循環と `Space` 送りの廃止・",
+        "`Delete` による削除・行選択。focus は従来どおり `Cmd+Enter`)、`Cmd+S` /",
+        "`Cmd+Shift+S` のソートアクションの廃止とソートの状態化、一覧の行・列並べ替えの",
+        "`Cmd+矢印` から `Opt+矢印` への移動と `Cmd+矢印` の端移動化、`Cmd+L` のトグル化",
+        "(zoom 中に zoom を解除しないこと・`Esc` で一覧が閉じないこと)、hidden 行での",
+        "`Cmd+Enter` の挙動変更(no-op から「閉じて近傍の visible へ focus」へ)、レイアウト",
+        "余り配分の後半寄せ(3+3+2 → 2+3+3)、次トリガーの 4 値化(チームメンバーの廃止と",
+        "外部への統合)、hidden 行の同色表示、ノート上限の 100 行化と超過時確認、`Cmd+K` の",
+        "clear_screen 既定割り当ての解除、`Cmd+/` のショートカット一覧への割り当て。"
       ]
     },
     {
@@ -136,7 +145,7 @@
     },
     {
       "id": "S-012",
-      "title": "Success gates: zig build / just test / just swift-test exit 0, and XGhosttyTests contains passing tests for note save/restore, 10-line cap, save-and-close keeps the edited text, discard-and-close keeps the pre-open text, visible-only display set, zoom release on overview entry, and no focus movement or note editing during overview",
+      "title": "Success gates: zig build / just test / just swift-test exit 0, and XGhosttyTests contains passing tests for note save/restore, notes within 100 lines saved as-is, an over-100-line save request judged over-limit with the truncation application keeping the first 100 lines, save-and-close keeps the edited text, discard-and-close keeps the pre-open text, visible-only display set, zoom release on overview entry, and no focus movement or note editing during overview",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -145,7 +154,8 @@
         "`just swift-test` が exit 0 で終わる。",
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
         "ノートを持つプロジェクトを保存し復元すると、同じノート本文が復元される",
-        "ノートは 10 行を超えて保持されない",
+        "100 行以内のノートはそのまま保存される",
+        "100 行を超える保存要求は超過と判定され、切り詰めの適用で先頭 100 行が残る",
         "ノート編集を保存して閉じると、編集後の本文が保持される",
         "ノート編集を破棄して閉じると、開く前の本文が保持される",
         "一望モードの表示対象集合が visible なプロジェクトのみと一致し、hidden な",
@@ -407,12 +417,13 @@
     },
     {
       "id": "S-035",
-      "title": "The only path that loses a group and its information (notes etc.) is an explicit close through the confirmation dialog; app quit and restart restore all groups as before",
+      "title": "The only paths that lose a project and its information (notes etc.) are the explicit close operations through the confirmation dialog: Cmd+W, close_project, and Delete on a selected row in the list; app quit and restart restore all projects as before",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "プロジェクトとその情報(ノート等)が失われる経路は、確認ダイアログを経た明示的な",
-        "close 操作のみとする。アプリ終了・再起動では従来どおり全プロジェクトが復元される。"
+        "close 操作(`Cmd+W`・`close_project`・一覧の行選択での `Delete`)のみとする。",
+        "アプリ終了・再起動では従来どおり全プロジェクトが復元される。"
       ]
     },
     {
@@ -429,12 +440,12 @@
     },
     {
       "id": "S-037",
-      "title": "A paste that pushes the note over 10 lines is truncated to the first 10 lines on save, same as manual input (the item-2 cap behavior is unchanged)",
+      "title": "A paste that pushes the note over 100 lines is treated the same as manual input: it goes through the item-2 confirmation and is never silently truncated",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "貼り付けにより 10 行を超えた場合も、従来の手入力と同様、保存時に先頭 10 行へ",
-        "切り詰める(2 項の挙動を変えない)。"
+        "貼り付けにより 100 行を超えた場合も手入力と同様に扱う(2 項の確認を経る。黙って",
+        "切り詰めない)。"
       ]
     },
     {
@@ -499,43 +510,52 @@
     },
     {
       "id": "S-044",
-      "title": "Action sorting all project rows including hidden by priority (high, medium, low, then unset; stable within ties), bound to Cmd+S",
+      "title": "Sort is a state governing the list order: 5 values (manual / next / show / deadline / priority), default manual, persisted across restarts, and — being a state — governing the order (including ordinals) even while the list is closed",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "hidden を含む全プロジェクトの行を優先度順(high → medium → low → 未設定。同順位内は",
-        "現在の相対順を維持)に並び替えるアクションを `Cmd+S` に割り当てる。"
+        "ソートは一覧の並びを規定する状態とする。状態は「手動 / next / show / deadline /",
+        "priority」の 5 値で、既定は手動とする。ソート状態は永続化され、アプリ再起動後も",
+        "維持される。ソートは状態なので、一覧を開いていない間も並び(序数を含む)を規定し",
+        "続ける。"
       ]
     },
     {
       "id": "S-045",
-      "title": "Action sorting all project rows including hidden by deadline (nearest first, unset last, stable within the same day), bound to Cmd+Shift+S",
+      "title": "Sort key directions are fixed: next = self, external, event, unset; show = visible then hidden; deadline = nearest (oldest) first with unset last; priority = high, medium, low, unset. All are stable sorts (ties keep the previous display order) over all rows including hidden; ordinals (Cmd+1-9) are the visible rows of the display order counted from the top",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "hidden を含む全プロジェクトの行を締切順(近い順。未設定は末尾、同日内は現在の",
-        "相対順を維持)に並び替えるアクションを `Cmd+Shift+S` に割り当てる。"
+        "各ソートキーの向きは固定とする。next は自分 → 外部 → イベント → 未設定、show は",
+        "表示 → 非表示、deadline は日付の近い(古い)順で未設定は末尾、priority は",
+        "high → medium → low → 未設定。いずれも安定ソート(同順位内は直前の表示順を維持)",
+        "とし、対象は hidden を含む全行とする。序数(Cmd+1〜9)は表示順の visible な行を",
+        "上から数えた順とする。"
       ]
     },
     {
       "id": "S-046",
-      "title": "Sorting happens only on explicit action execution, never automatically on priority/deadline change; the sorted order persists until the next sort or manual reorder, ordinals (Cmd+1-9) follow it, and sorting works whether or not the list is open",
+      "title": "A sort bar at the top of the table selects among the 5 states: with the cell cursor on the top row, Up enters the bar, Left/Right choose, Enter applies and returns to the table, Esc returns without applying; mouse clicks also select; choosing manual directly in the bar inherits the current display order as the manual order",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "ソートは明示的なアクション実行時のみ行い、優先度・締切の変更によって自動では",
-        "並び替えない。ソート後の並びは次のソートまたは手動の並べ替えまで維持され、序数",
-        "ジャンプ(Cmd+1〜9)はソート後の並びに追従する。ソートは一覧を開いていなくても効く。"
+        "一覧の表の最上部にソートバーを置き、5 値から選択できる。キーボードでは、セル",
+        "カーソルが最上行にあるとき `↑` でソートバーへ乗り、`←→` で選び、`Enter` で適用して",
+        "表へ戻る。`Esc` は適用せず表へ戻る。マウスのクリックでも選べる。ソートバーで手動を",
+        "直接選んだ場合は、現在の表示順を手動順として引き継ぐ。"
       ]
     },
     {
       "id": "S-047",
-      "title": "Sorting targets all rows including hidden; the ordinal is the visible rows counted from the top; no next-trigger sort is provided",
+      "title": "While a sort is active (non-manual), cell-value changes, creation, load, and the morning priority reset re-sort immediately; Opt+Up / Opt+Down while sorted asks for confirmation — OK inherits the current display order as the manual order, returns the sort state to manual, and performs the move; Cancel does nothing; manual-state moves need no confirmation; the disposable sort actions (the Cmd+S / Cmd+Shift+S assignments) are abolished",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "ソートの対象は hidden を含む全行とし、visible な行を上から数えた順が序数になる。",
-        "次トリガー順のソートは設けない。"
+        "ソート有効中(手動以外)は、セル値の変更・新規作成・読み込み・優先度の毎朝リセット",
+        "で即座に再ソートする。ソート有効中に `Opt+↑` / `Opt+↓` で行を動かそうとしたときは",
+        "確認を表示し、OK なら現在の表示順を手動順として引き継いでソート状態を手動へ戻した",
+        "上で入替を実行し、Cancel なら何もしない。手動状態では確認なしで入れ替わる。",
+        "使い捨てのソートアクション(`Cmd+S` / `Cmd+Shift+S` への割り当て)は廃止する。"
       ]
     },
     {
@@ -590,19 +610,20 @@
     },
     {
       "id": "S-052",
-      "title": "Human performs a one-time on-device verification that Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the note editor as standard, that Cmd+Z / Cmd+Shift+Z undo and redo the note body, and that an over-10-line paste is truncated to the first 10 lines on save",
+      "title": "Human performs a one-time on-device verification that Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the note editor as standard, that Cmd+Z / Cmd+Shift+Z undo and redo the note body, and that saving an over-100-line paste shows the confirmation — OK truncates to the first 100 lines and saves, Cancel returns to editing without saving",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "ノート編集オーバーレイの実機確認として、Cmd+A / Cmd+C / Cmd+X / Cmd+V が",
         "エディタに対して標準どおり効き、`Cmd+Z` / `Cmd+Shift+Z` がノート本文の取り消し・",
-        "やり直しとして効き、10 行を超える貼り付けが保存時に先頭 10 行へ切り詰められる",
-        "ことを人間が一度だけ目視確認し、確認が取れる。"
+        "やり直しとして効き、100 行を超える貼り付けの保存時に確認が表示され、OK で先頭",
+        "100 行に切り詰めて保存され、Cancel では保存されず編集に戻ることを人間が一度だけ",
+        "目視確認し、確認が取れる。"
       ]
     },
     {
       "id": "S-053",
-      "title": "Success gates (priority/deadline): XGhosttyTests contains passing tests for priority/deadline save-restore, invalid deadline treated as unset, priority sort over all rows including hidden (high, medium, low, unset; stable), deadline sort over all rows including hidden (nearest first, unset last, stable), post-sort ordinals equal to visible rows counted from the top, and model-layer overdue judgment",
+      "title": "Success gates (priority/deadline): XGhosttyTests contains passing tests for priority/deadline save-restore, invalid deadline treated as unset, priority sort over all rows including hidden (high, medium, low, unset; ties keep the previous display order), deadline sort over all rows including hidden (nearest first, unset last, ties keep the previous display order), post-sort ordinals equal to visible rows counted from the top, and model-layer overdue judgment",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -610,16 +631,16 @@
         "優先度・締切を保存し復元すると同じ値が復元される",
         "不正な締切入力は未設定として扱われる",
         "優先度ソートが hidden を含む全行を high → medium → low → 未設定の順に並べ、",
-        "同順位内は元の相対順を維持する",
+        "同順位内は直前の表示順を維持する",
         "締切ソートが hidden を含む全行を締切の近い順に並べ、未設定を末尾に置き、",
-        "同日内は元の相対順を維持する",
+        "同日内は直前の表示順を維持する",
         "ソート後の序数が visible な行を上から数えた順になる",
         "締切超過の判定がモデル層で行われる"
       ]
     },
     {
       "id": "S-054",
-      "title": "Human performs a one-time on-device visual verification of the priority/deadline layer; not complete until confirmed (priority and deadline set in list cells and shown in the label band after save, overview shows priority/deadline with the note, overdue projects subtly emphasized, Cmd+S / Cmd+Shift+S reorder and Cmd+1-9 follow, appearance fits the terminal)",
+      "title": "Human performs a one-time on-device visual verification of the priority/deadline layer; not complete until confirmed (priority and deadline set in list cells and shown in the label band after save, overview shows priority/deadline with the note, overdue projects subtly emphasized, choosing priority / deadline in the sort bar reorders with Cmd+1-9 following, appearance fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -628,8 +649,8 @@
         "一覧のセルで優先度と締切を設定でき、保存後ラベル帯に表示される",
         "一望モードでノートと併せて優先度・締切が表示される",
         "締切超過のプロジェクトが控えめに強調されて見える",
-        "`Cmd+S` で優先度順、`Cmd+Shift+S` で締切順に並びが変わり、Cmd+1〜9 が",
-        "新しい並びに追従する",
+        "ソートバーで priority / deadline を選ぶと並びが変わり、Cmd+1〜9 が新しい並びに",
+        "追従する",
         "表示の見た目(印・締切・強調)がターミナルに馴染む"
       ]
     },
@@ -664,16 +685,17 @@
     },
     {
       "id": "S-058",
-      "title": "Layout type = shape (wide / tall / pedestal) x orientation (row-major / column-major). Wide: rows = the integer nearest sqrt(n), projects distributed from the top row as evenly as possible, row heights and in-row widths equal. Tall: its transpose. Pedestal: n-1 on top and 1 full-width at the bottom. For wide/tall the orientation changes only the ordinal progression, not the shape; for pedestal, row-major places the top part by the wide rule and column-major by the tall rule",
+      "title": "Layout type = shape (wide / tall / pedestal) x orientation (row-major / column-major). Wide: rows = the integer nearest sqrt(n), projects distributed as evenly as possible with the indivisible remainder attached to the later rows (earlier rows hold fewer, wider slots; e.g. n=8 is 2+3+3 from the top), row heights and in-row widths equal. Tall: its transpose (earlier columns hold fewer slots). Pedestal: n-1 on top and 1 full-width at the bottom. For wide/tall the orientation changes only the ordinal progression, not the shape; for pedestal, row-major places the top part by the wide rule and column-major by the tall rule",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "レイアウト型は形(横長型・縦長型・台座型)と向き(行送り・列送り)の組み合わせと",
-        "する。横長型は行数を √n に最も近い整数とするグリッドに、プロジェクトを上の行から",
-        "できるだけ均等に配り、行の高さと行内の幅を等分する。縦長型はその転置とする。",
-        "台座型は n−1 個を上部に配置し、1 個を最下段に全幅横長で置く。横長型・縦長型では",
-        "向きは序数の進み方だけを変え、形は変えない。台座型では、行送りは上部を横長型の",
-        "規則で、列送りは縦長型の規則で配置する。"
+        "する。横長型は行数を √n に最も近い整数とするグリッドに、プロジェクトをできるだけ",
+        "均等に、割り切れない余りは後半の行に付くように配る(前半の行ほど枠数が少なく、",
+        "1 枠が広い。例: n=8 は上から 2+3+3)。行の高さと行内の幅は等分する。縦長型はその",
+        "転置とする(左の列ほど枠数が少ない)。台座型は n−1 個を上部に配置し、1 個を最下段に",
+        "全幅横長で置く。横長型・縦長型では向きは序数の進み方だけを変え、形は変えない。",
+        "台座型では、行送りは上部を横長型の規則で、列送りは縦長型の規則で配置する。"
       ]
     },
     {
@@ -701,13 +723,13 @@
     },
     {
       "id": "S-061",
-      "title": "Layout application assigns visible projects, in list row order, to slots following the chosen type's orientation (row-major: top row first, left to right; column-major: left column first, top to bottom; the pedestal bottom slot last); ordinals (Cmd+1-9) follow the applied arrangement",
+      "title": "Layout application assigns visible projects, in the list's display order, to slots following the chosen type's orientation (row-major: top row first, left to right; column-major: left column first, top to bottom; the pedestal bottom slot last); ordinals (Cmd+1-9) follow the applied arrangement",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "レイアウト適用時、visible なプロジェクトは一覧の行順のまま、選んだ型の向きに従って",
-        "スロットへ割り当てる(行送りは上の行から左→右、列送りは左の列から上→下、台座型の",
-        "最下段は最後)。序数(Cmd+1〜9)は適用後の配置に追従する。"
+        "レイアウト適用時、visible なプロジェクトは一覧の表示順のまま、選んだ型の向きに",
+        "従ってスロットへ割り当てる(行送りは上の行から左→右、列送りは左の列から上→下、",
+        "台座型の最下段は最後)。序数(Cmd+1〜9)は適用後の配置に追従する。"
       ]
     },
     {
@@ -811,21 +833,22 @@
     },
     {
       "id": "S-071",
-      "title": "Success gates (layout types): XGhosttyTests contains passing tests for slot computation of wide/tall/pedestal x row/column-major for every visible count 1-9, the per-count choice set equal to the exact-match-collapsed set (e.g. n=9 keeps wide and tall separate, n=3 pedestal collapses into wide/row-major), row-major left-to-right per row and column-major top-to-bottom per column assignment of the list's visible rows with ordinals following, persistence and restore of the type selection with wide/row-major as the default when nothing is saved, and auto-apply of the remembered type after visible-count-changing operations (toggle, Cmd+Opt+H, new, close) but no change after count-preserving operations",
+      "title": "Success gates (layout types): XGhosttyTests contains passing tests for slot computation of wide/tall/pedestal x row/column-major for every visible count 1-9 with the remainder attached to the later rows (e.g. n=8 is 2+3+3 from the top, tall as the transpose with fewer slots in the left columns), the per-count choice set equal to the exact-match-collapsed set (e.g. n=9 keeps wide and tall separate; n=3 wide (1+2) and pedestal (2+1) differ so both remain independent choices), row-major left-to-right per row and column-major top-to-bottom per column assignment of the display order's visible rows with ordinals following, persistence and restore of the type selection with wide/row-major as the default when nothing is saved, and auto-apply of the remembered type after visible-count-changing operations (toggle, Cmd+Opt+H, new, close) but no change after count-preserving operations",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
         "visible 数 1〜9 の各々について、横長型・縦長型・台座型 × 行送り・列送りの",
-        "スロット計算が定義どおりである(横長型は行数 = √n に最も近い整数のグリッドに",
-        "上の行からできるだけ均等に配り、行高・行内幅は等分。縦長型はその転置。台座型は",
-        "n−1 個を行送りなら横長型・列送りなら縦長型の規則で上部に配置し、1 個を最下段に",
-        "全幅)",
+        "スロット計算が定義どおりである(横長型は行数 = √n に最も近い整数のグリッドに、",
+        "できるだけ均等に、割り切れない余りは後半の行に付くように配り — 前半の行ほど",
+        "枠数が少なく、例: n=8 は上から 2+3+3 — 行高・行内幅は等分。縦長型はその転置で",
+        "左の列ほど枠数が少ない。台座型は n−1 個を行送りなら横長型・列送りなら縦長型の",
+        "規則で上部に配置し、1 個を最下段に全幅)",
         "各 visible 数の選択肢が、配置と序数の進み方が完全一致するものを 1 つに畳んだ",
-        "集合と一致する(例:n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれず、",
-        "n=3 の台座型は横長型・行送りと一致して畳まれる)",
-        "行送りは上の行から左→右、列送りは左の列から上→下に、一覧の行順の visible な行が",
-        "割り当てられ、序数がそれに追従する",
+        "集合と一致する(例: n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれない。",
+        "n=3 は横長型(1+2)と台座型(2+1)が一致しないため、それぞれ独立の選択肢になる)",
+        "行送りは上の行から左→右、列送りは左の列から上→下に、一覧の表示順の visible な",
+        "行が割り当てられ、序数がそれに追従する",
         "型の選択が永続化され、復元される。保存が無いときは横長型・行送りになる",
         "visible 数が変わる操作(表示トグル・`Cmd+Opt+H`・新規作成・close)の後、",
         "記憶している型で新しい数の配置が導かれる。変わらない操作では配置が変わらない"
@@ -833,7 +856,7 @@
     },
     {
       "id": "S-072",
-      "title": "Human performs a one-time on-device visual verification of layout types; not complete until confirmed (Cmd+Opt+L lists only the types for the current visible count, arrows + Enter apply, Esc changes nothing, project count unchanged; hiding one of 6 tall-type projects re-lays out 5 in tall type automatically; the type survives restart; with one visible project Cmd+Opt+L shows nothing to choose; project boundaries cannot be resized while pane boundaries while zoomed can; the selection screen fits the terminal)",
+      "title": "Human performs a one-time on-device visual verification of layout types; not complete until confirmed (Cmd+Opt+L lists only the types for the current visible count, arrows + Enter apply, Esc changes nothing, project count unchanged; hiding one of 6 tall-type projects re-lays out 5 in tall type automatically; the 8-project wide layout stacks 2+3+3 from the top with wider slots in the upper rows; the type survives restart; with one visible project Cmd+Opt+L shows nothing to choose; project boundaries cannot be resized while pane boundaries while zoomed can; the selection screen fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -843,6 +866,7 @@
         "適用され、Esc で何も変わらずに閉じる。プロジェクト数は変わらない",
         "6 プロジェクトで縦長型を選んだ後に 1 つ隠すと、5 プロジェクトが縦長型で",
         "自動的に組み直される",
+        "8 プロジェクトの横長型が上から 2+3+3 に並び、上の行ほど 1 枠が広い",
         "アプリを再起動しても選んだ型が維持されている",
         "visible が 1 つのとき `Cmd+Opt+L` は選ぶものが無い旨を示す",
         "プロジェクト境界のリサイズができず、zoom 中のペイン境界のリサイズは従来どおり",
@@ -924,80 +948,98 @@
     },
     {
       "id": "S-079",
-      "title": "Cmd+L opens a project-list overlay tabulating every project including hidden ones; default column order Visibility, Title, Priority, Deadline, Next trigger, Note (first line); unset fields blank; the overlay takes about 80% of the window width and height, appears only when invoked, and the terminal returns to full view on close; when rows do not fit it scrolls and follows the cell cursor (zoomed invocation left to the implementation)",
+      "title": "Cmd+L toggles the project-list overlay: Cmd+L again closes it, Esc does not; opened while zoomed it overlays the zoom without releasing it and closing returns to the zoom (also when opened via Cmd+N); the list tabulates every project including hidden ones with default column order Visibility, Title, Priority, Deadline, Next trigger, Note (first line); unset fields blank; the overlay takes about 80% of the window width and height, appears only when invoked, and the terminal returns to full view on close; when rows do not fit it scrolls and follows the cell cursor",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+L` でプロジェクト一覧オーバーレイが開き、hidden を含む全プロジェクトを表形式で",
-        "列挙する。列は既定順で「表示・タイトル・優先度・締切・次トリガー・ノート」とし、",
-        "ノート列は 1 行目を表示する。未設定の項目は空欄とする。オーバーレイはウィンドウの",
-        "幅・高さそれぞれ 8 割程度を占め、呼び出したときだけ表示され、閉じれば端末が全面に",
-        "戻る。行が収まらないときはスクロールし、セルカーソルに追従する(zoom 中に呼び出した",
-        "場合の挙動は定めず、実装に任せる)。"
+        "`Cmd+L` でプロジェクト一覧オーバーレイをトグルする。表示中に再度 `Cmd+L` で閉じ、",
+        "`Esc` では閉じない。zoom 中に開いた場合は zoom を解除せず zoom 画面の上に重ね、",
+        "閉じると元の zoom 状態に戻る(`Cmd+N` 経由で開いた場合も同様)。一覧は hidden を",
+        "含む全プロジェクトを表形式で列挙する。列は既定順で「表示・タイトル・優先度・締切・",
+        "次トリガー・ノート」とし、ノート列は 1 行目を表示する。未設定の項目は空欄とする。",
+        "オーバーレイはウィンドウの幅・高さそれぞれ 8 割程度を占め、呼び出したときだけ",
+        "表示され、閉じれば端末が全面に戻る。行が収まらないときはスクロールし、セルカーソルに",
+        "追従する。"
       ]
     },
     {
       "id": "S-080",
-      "title": "The list rows form a single order not partitioned by visible/hidden; ordinals (Cmd+1-9) are the visible rows counted from the top; row order and column order are persisted",
+      "title": "The list rows form a single order not partitioned by visible/hidden; the manual order, column order, and sort state are persisted; hidden rows are not grayed out and show in the same color as visible rows; ordinals (Cmd+1-9) are the visible rows of the display order counted from the top",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧の行の並びは visible / hidden で区画分けせず単一の並びとし、序数(Cmd+1〜9)は",
-        "visible な行を上から数えた順とする。行順・列順は永続化される。"
+        "一覧の行の並びは visible / hidden で区画分けせず単一の並びとし、手動順・列順・",
+        "ソート状態は永続化される。hidden な行もグレーアウトせず、visible な行と同じ色で",
+        "表示する。序数(Cmd+1〜9)は表示順の visible な行を上から数えた順とする。"
       ]
     },
     {
       "id": "S-081",
-      "title": "Cmd+Enter in the list focuses the cursor row's project and closes the list; disabled (nothing happens) on a hidden row",
+      "title": "Cmd+Enter in the list: on a visible row it focuses that project and closes the list (while zoomed, the zoom is kept and its target switches to that row's project); on a hidden row it closes the list and focuses a visible project near that row (how \"near\" is chosen is left to the implementation)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧で `Cmd+Enter` を押すとカーソル行のプロジェクトへ focus して一覧を閉じる。",
-        "hidden な行では無効(何も起きない)。"
+        "一覧で `Cmd+Enter` を押すと、visible な行ではそのプロジェクトへ focus して一覧を",
+        "閉じる(zoom 中は zoom を解除せず、zoom 対象がその行のプロジェクトへ切り替わる)。",
+        "hidden な行では一覧を閉じ、その行に近い visible なプロジェクトへ focus する",
+        "(「近い」の選び方は実装に任せる)。"
       ]
     },
     {
       "id": "S-082",
-      "title": "Judgment logic for the list's row content, order, cell-edit commit and cancel, the deadline cell's Space-advance date calculation, toggle eligibility, focus eligibility, and the new row's visibility state lives in the model layer, verifiable from XGhosttyTests",
+      "title": "Judgment logic for the list's row content and order, sort-state application and release, cell-edit commit and cancel, value-candidate enumeration (priority, next trigger, date candidates), Delete deletion (cell values and rows), row-selection transitions, edge moves, toggle eligibility, focus eligibility, and the new row's visibility state and insertion position lives in the model layer, verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧の行の内容・並び・セル編集の確定と取り消し・締切の Space 送りの日付計算・",
-        "トグル可否・focus 可否・新規行の表示状態の判断ロジックはモデル層に置き、",
-        "`XGhosttyTests` から検証可能にする。"
+        "一覧の行の内容・並び・ソート状態の適用と解除・セル編集の確定と取り消し・値候補の",
+        "列挙(優先度・次トリガー・日付候補)・Delete による削除(セル値・行)・行選択の",
+        "遷移・端移動・トグル可否・focus 可否・新規行の表示状態と挿入位置の判断ロジックは",
+        "モデル層に置き、`XGhosttyTests` から検証可能にする。"
       ]
     },
     {
       "id": "S-083",
-      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects incl. hidden in a single unpartitioned order, ordinals = visible rows counted from the top skipping hidden, default column order Visibility/Title/Priority/Deadline/Next trigger/Note, row/column reordering with persistence and restore, cell-cursor movement (Tab / Shift+Tab / Enter / Shift+Enter, wrap at row end, stop at last row), text-column commit applying the value and Esc reverting, note-column edit rewriting only line 1 and keeping the rest, Space cycling of selection columns with the visibility toggle applying hide/show immediately, invalid deadline cell input treated as unset, new-project insertion right below the cursor row visible when the visible count < 9 and hidden at 9, and a focus request on a hidden row doing nothing, Space on an unset deadline cell setting today and advancing one day on a dated cell, Shift+Space stepping back one day and clearing from today with unset a no-op, and each Space press committing immediately outside any edit session",
+      "title": "Success gates (project list): XGhosttyTests contains passing tests for rows matching all projects incl. hidden in a single unpartitioned order; ordinals = the display order's visible rows counted from the top skipping hidden; default column order Visibility/Title/Priority/Deadline/Next trigger/Note; row (manual order) and column reordering with persistence and restore; sort-state persistence and restore with manual as the default; each sort key (next / show / deadline / priority) ordering by its fixed direction with ties keeping the previous display order (stable); immediate reorder on cell-value change and creation while a sort is active; manual-move approval inheriting the current display order as the manual order and returning the sort state to manual, likewise when manual is chosen directly in the sort bar; cell-cursor movement (arrows, Tab / Shift+Tab wrap at row ends, stop at edges, Cmd+arrows edge moves); text-column Enter edit start, commit applying the value and moving down, Esc cancel, and typing starting a replace edit; note-column editing covering all lines with commit applying all lines; visibility-column Enter toggling hide/show immediately and refused at one visible; priority/next-trigger candidate enumeration of real values only (no unset) with selection committing; date candidates being the 10 choices (today through 7 days ahead, same day next month, same day in 3 months) with nonexistent same days clamped to month end and selection committing; invalid typed deadline input treated as unset; Delete cell-value deletion per column definition (title emptied, priority/deadline/next-trigger unset, visibility unchanged) with note full-line deletion applied only through confirmation approval; row-selection transitions (Esc from the cell cursor to row selection, Enter back, Esc release) and row-selection Delete being a close-equivalent deletion; new-project insertion position (manual: right below the cursor row / sorted: the position the stable sort assigns by value) and the new row's visibility (visible under 9 visible, hidden at 9); a focus request on a hidden row resolving to a focus on a visible project; and the next trigger being 4-valued with a saved \"team member\" migrating to \"external\" on load",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
         "一覧の行が hidden を含む全プロジェクトと一致し、並びは区画分けされない単一の",
-        "行順である",
-        "序数が visible な行を上から数えた順と一致し、hidden な行を飛ばす",
+        "並びである",
+        "序数が表示順の visible な行を上から数えた順と一致し、hidden な行を飛ばす",
         "既定の列順が表示・タイトル・優先度・締切・次トリガー・ノートである",
-        "行順・列順の入れ替えと、その永続化・復元",
-        "セルカーソルの移動(Tab / Shift+Tab / Enter / Shift+Enter、行末の折り返し、",
-        "最終行での停止)が定義どおりである",
-        "テキスト列の編集確定で値が反映され、Esc の取り消しで元の値に戻る",
-        "ノート列の編集が 1 行目だけを書き換え、2 行目以降を保持する",
-        "選択式の列が Space で定義どおり循環し、表示列のトグルが即時に hide/show を",
-        "反映する",
-        "締切セルへの不正な日付入力は未設定として扱われる",
-        "新規作成でカーソル行の直下に行が挿入され、visible 数が 9 未満なら visible、",
-        "9 なら hidden になる",
-        "hidden な行への focus 要求は何もしない",
-        "未設定の締切セルへの Space で今日が設定され、日付のあるセルでは 1 日進む",
-        "Shift+Space で 1 日戻り、今日からさらに戻すと未設定になる。未設定では何も",
-        "起きない",
-        "Space 送りの各押下は編集セッションに属さず、即時に確定値となる"
+        "行(手動順)・列順の入替と、その永続化・復元",
+        "ソート状態の永続化・復元。既定は手動である",
+        "各ソートキー(next / show / deadline / priority)が定義の固定の向きどおりに",
+        "並べ、同順位内は直前の表示順を維持する(安定)",
+        "ソート有効中のセル値の変更・新規作成で並びが即座に更新される",
+        "手動入替の承認で、現在の表示順が手動順として引き継がれ、ソート状態が手動へ戻る。",
+        "ソートバーで手動を直接選んだ場合も表示順を引き継ぐ",
+        "セルカーソルの移動(矢印・Tab / Shift+Tab の行末折り返し・端での停止・",
+        "`Cmd+矢印` の端移動)が定義どおりである",
+        "テキスト列の Enter による編集開始、編集確定での値の反映と下移動、Esc の取り消し、",
+        "文字打ちによる置き換え編集開始が定義どおりである",
+        "ノート列の編集が全行を対象とし、確定で全行が反映される",
+        "表示列の Enter トグルが即時に hide/show を反映し、visible が 1 のときは拒否される",
+        "優先度・次トリガーの候補列挙が実値のみ(未設定を含まない)で、選択で確定する",
+        "日付候補が今日〜7 日後・翌月同日・3 ヶ月後同日の 10 択で、実在しない同日は月末へ",
+        "丸められ、選択で確定する",
+        "締切セルへの不正な日付文字入力は未設定として扱われる",
+        "Delete のセル値削除が列ごとの定義どおり(タイトル空・優先度/締切/次トリガー",
+        "未設定・表示は不変)であり、ノートの全行削除は確認の承認を経てのみ適用される",
+        "行選択の遷移(セルカーソルの Esc で行選択・Enter で復帰・Esc で解除)と、",
+        "行選択の Delete が close 相当の削除になること",
+        "新規作成の挿入位置(手動: カーソル行の直下 / ソート有効: 安定ソートの帰結として",
+        "値に応じた位置)と、新規行の表示状態(visible 数 9 未満なら visible、9 なら",
+        "hidden)",
+        "hidden な行への focus 要求が visible なプロジェクトへの focus に解決される",
+        "次トリガーが 4 値であり、保存済みの「チームメンバー」が読み込みで「外部」へ",
+        "移行する"
       ]
     },
     {
       "id": "S-084",
-      "title": "Human performs a one-time on-device visual verification of the project list; not complete until confirmed (Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; Tab / Shift+Tab / Enter / Shift+Enter move the cell cursor, typing starts an edit, Enter / Tab commit, Esc cancels; Space toggles the visibility column and the layout behind re-forms immediately, surviving Esc; Cmd+arrows move rows/columns and the order survives reopen; Cmd+Opt+E toggles full-note display; Cmd+N inside the list inserts a new project below the cursor row ready for title entry and Cmd+N outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes while a hidden row does nothing; the list scrolls following the cursor; appearance fits the terminal; each Space press in the deadline cell steps today then +1 day, Shift+Space steps back and clears from today, and typed entry still works)",
+      "title": "Human performs a one-time on-device visual verification of the project list; not complete until confirmed (Cmd+L opens ~80% of the window with all projects incl. hidden in 6 columns; hidden rows show in the same color as visible rows; arrows and Tab / Shift+Tab move the cell cursor and Cmd+arrows jump to the edges; Enter starts editing, Enter while editing commits and moves down, Tab commits and moves right, Esc cancels, typing starts a replace edit; Enter on a visibility cell toggles hide/show in place with the layout re-forming immediately and surviving close; priority/next-trigger cells enumerate candidates below on Enter selectable with arrows and Enter; the deadline cell enumerates 10 real-date candidates like Aug 19 on Enter and typing still sets arbitrary dates; the sort bar sits at the table top, entered with Up from the top row, chosen with Left/Right and Enter, reordering with Cmd+1-9 following; changing priority etc. while sorted reorders rows immediately; Opt+Up/Down while sorted asks confirmation with OK returning to manual and moving and Cancel doing nothing; Opt+Left/Right moves columns with manual order, column order, and sort state surviving reopen; Delete clears cell values with a confirmation on the note cell; Esc from the cell cursor enters row selection where Delete deletes through the close confirmation, hidden rows included; Shift+Enter in note-cell editing inserts newlines with the cell expanding to reach all lines; Cmd+N inside the list creates a project (manual: below the cursor row, sorted: at the sort position) ready for title entry and outside opens the list in the same state; Cmd+Enter on a visible row focuses and closes while a hidden row closes and focuses a nearby visible project; Cmd+L while zoomed overlays without releasing zoom with Cmd+Enter switching the zoom target; Cmd+L again closes while Esc does not; Cmd+Opt+E toggles full-note display; the list scrolls following the cursor; appearance fits the terminal)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1005,21 +1047,37 @@
         "取れる。確認が取れるまで完了とはしない。",
         "`Cmd+L` で一覧が開き、ウィンドウの幅・高さそれぞれ 8 割程度を占め、hidden を",
         "含む全プロジェクトが 6 列で見える",
-        "Tab / Shift+Tab / Enter / Shift+Enter でセルカーソルが動き、文字を打つと編集が",
-        "始まり、Enter / Tab で確定、Esc で取り消せる",
-        "Space で表示列がその場で切り替わり、背後のレイアウトが即座に組み直される。",
-        "Esc で閉じても反映が残る",
-        "`Cmd+↑↓` で行が、`Cmd+←→` で列が動き、閉じて開き直しても順序が残っている",
-        "`Cmd+Opt+E` で全行のノートが全行表示になり、もう一度押すと 1 行表示に戻る",
-        "一覧の中で `Cmd+N` を押すと新規プロジェクトがカーソル行の直下に作られ、",
-        "そのままタイトルを入力できる。一覧の外で `Cmd+N` を押すと一覧が開き、同じ状態に",
-        "なる",
+        "hidden な行が visible な行と同じ色で見える(グレーアウトされない)",
+        "矢印キーと Tab / Shift+Tab でセルカーソルが動き、`Cmd+矢印` で端へ飛ぶ",
+        "`Enter` で編集が始まり、編集中の `Enter` で確定して下へ移り、`Tab` で確定して",
+        "右へ移り、`Esc` で取り消せる。文字を打つと既存内容が置き換わって編集が始まる",
+        "表示セルの `Enter` でその場で hide/show が切り替わり、背後のレイアウトが即座に",
+        "組み直される。閉じても反映が残る",
+        "優先度・次トリガーのセルで `Enter` により候補が下に列挙され、`↑↓` と `Enter`",
+        "で選べる",
+        "締切セルで `Enter` により `Aug 19` のような実日付の 10 候補が列挙され、選ぶと",
+        "設定される。文字入力での任意日付の設定も従来どおりできる",
+        "ソートバーが表の最上部に見え、最上行から `↑` で乗り、`←→` と `Enter` で選べ、",
+        "選ぶと並びが変わり Cmd+1〜9 が追従する",
+        "ソート有効中に優先度等を変えると、行が即座に並び直る",
+        "ソート有効中の `Opt+↑↓` で確認が出て、OK で手動に戻って入れ替わり、Cancel で",
+        "何も起きない",
+        "`Opt+←→` で列が動き、閉じて開き直しても手動順・列順・ソート状態が残っている",
+        "セルの `Delete` で値が消え、ノートセルでは確認が出る。セルカーソルの `Esc` で",
+        "行選択になり、`Delete` で close と同じ確認を経て削除できる(hidden な行でも)",
+        "ノートセルの編集で `Shift+Enter` により改行でき、セルが下に展開して全行に",
+        "到達できる",
+        "一覧の中で `Cmd+N` を押すと新規プロジェクトが作られ(手動ではカーソル行の直下、",
+        "ソート有効中はソート順の位置)、そのままタイトルを入力できる。一覧の外で",
+        "`Cmd+N` を押すと一覧が開き、同じ状態になる",
         "visible な行で `Cmd+Enter` するとそのプロジェクトに focus して一覧が閉じ、",
-        "hidden な行では何も起きない",
+        "hidden な行では一覧が閉じて近くの visible なプロジェクトに focus する",
+        "zoom 中に `Cmd+L` すると zoom を解除せず一覧が重なり、閉じると元の zoom に戻る。",
+        "visible な行で `Cmd+Enter` すると zoom 対象がそのプロジェクトへ切り替わる",
+        "再度 `Cmd+L` で一覧が閉じ、`Esc` では閉じない",
+        "`Cmd+Opt+E` で全行のノートが全行表示になり、もう一度押すと 1 行表示に戻る",
         "行が収まらない数のときにスクロールし、カーソルに追従する",
-        "一覧の見た目がターミナルに馴染む",
-        "締切セルで Space を押すたびに今日 → +1 日と進み、Shift+Space で戻り、今日から",
-        "戻すと空欄に戻る。文字入力での設定も従来どおりできる"
+        "一覧の見た目がターミナルに馴染む"
       ]
     },
     {
@@ -1045,11 +1103,12 @@
     },
     {
       "id": "S-087",
-      "title": "The automatic reset never reorders projects (sorting stays explicit-action-only)",
+      "title": "The automatic reset's effect on the ordering follows the sort state: in the manual state it never reorders; while a sort is active the re-sort happens as a consequence of the state (item 43)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "自動リセットによって並び替えは行わない(ソートは従来どおり明示アクション時のみ)。"
+        "自動リセットの並びへの影響はソート状態に従う。手動状態では並び替えを行わず、",
+        "ソート有効中は状態の帰結として再ソートされる(43 項)。"
       ]
     },
     {
@@ -1064,7 +1123,7 @@
     },
     {
       "id": "S-089",
-      "title": "Success gates (priority reset): XGhosttyTests contains passing tests for deciding from the last-reset date and the current time whether the local 06:00 boundary was crossed, the reset clearing priority on all projects including hidden while leaving deadlines and notes, no second reset within the same workday, and the reset not changing the ordering",
+      "title": "Success gates (priority reset): XGhosttyTests contains passing tests for deciding from the last-reset date and the current time whether the local 06:00 boundary was crossed, the reset clearing priority on all projects including hidden while leaving deadlines and notes, no second reset within the same workday, and the reset leaving the ordering unchanged in the manual state while re-sorting while a sort is active",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1073,7 +1132,7 @@
         "リセットで hidden を含む全プロジェクトの優先度が未設定になり、締切・ノートは",
         "変わらない",
         "同じ作業日内では 2 回目のリセットが起きない",
-        "リセットによって並び順は変わらない"
+        "手動状態ではリセットによって並び順は変わらず、ソート有効中は再ソートされる"
       ]
     },
     {
@@ -1090,73 +1149,89 @@
     },
     {
       "id": "S-091",
-      "title": "Update SPEC.md and README.md to match the implemented remote split, project-list cell editing and reordering, deadline Space stepping, next trigger, note-editor undo/redo, priority reset, key changes, and the list cell editing IME support",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, the project list's operation grammar (Enter editing, Delete, row selection, edge moves, reordering), the sort state, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, undo/redo, the priority reset, the layout remainder distribution, the list cell editing IME support, the shortcut list, and the key changes including Cmd+K and Cmd+/",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧のセル編集と",
-        "並べ替え・締切の Space 送り・次トリガー・Undo/Redo・優先度リセット・キー変更・",
-        "一覧セル編集の IME 対応の仕様に合わせて更新する。"
+        "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧の操作文法",
+        "(Enter 編集・Delete・行選択・端移動・並べ替え)・ソート状態・日付候補・次トリガー",
+        "(4 値)・ノートの 100 行化と超過時確認・Undo/Redo・優先度リセット・レイアウト余り",
+        "配分・一覧セル編集の IME 対応・ショートカット一覧・キー変更(`Cmd+K` / `Cmd+/` を",
+        "含む)の仕様に合わせて更新する。"
       ]
     },
     {
       "id": "S-092",
-      "title": "The list has a cell cursor moved by Tab (right) / Shift+Tab (left) / Enter (down) / Shift+Enter (up) and the arrow keys; Tab at row end wraps to the next row start, Enter on the last row stops; text columns (Title, Deadline, Note) start editing on typing, Enter / Tab commit and move, Esc cancels only that edit; selection columns (Visibility, Priority, Next trigger) cycle with Space (Visibility is a two-value toggle applying hide/show immediately); Esc while not editing closes the list",
+      "title": "Notion-style cell cursor: arrows move in all four directions and Tab / Shift+Tab move right/left (wrapping at row ends, stopping at the edges); Enter / Shift+Enter cell movement is abolished — Enter operates on the cell. Text columns (Title, Note): Enter starts editing with the caret in the existing text, and typing starts a replace edit. The deadline column: Enter enumerates date candidates (item 77) and typing starts a replace edit like a text column. While editing, Enter commits and moves down, Tab / Shift+Tab commit and move right/left, Esc cancels back to the cell cursor. The visibility column: Enter toggles hide/show immediately (minimum-one-visible protection per item 47). Priority / next-trigger columns: Enter enumerates all value candidates (real values only, no unset) below the cell, Up/Down choose, Enter commits, Esc closes changing nothing; Space value cycling is abolished. Cursor behavior when a commit or value change triggers a re-sort that moves the row is left to the implementation",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧はセルカーソルを持ち、`Tab` 右 / `Shift+Tab` 左 / `Enter` 下 / `Shift+Enter` 上",
-        "(矢印キーも同じ)で移動する。行末の `Tab` は次の行の先頭へ折り返し、最終行の",
-        "`Enter` はそこで止まる。テキスト列(タイトル・締切・ノート)は文字を打つと編集が",
-        "始まり、`Enter` / `Tab` で確定して移動、`Esc` でその編集だけを取り消す。選択式の列",
-        "(表示・優先度・次トリガー)は `Space` で値が循環する(表示は 2 値のトグルで、",
-        "hide/show は即時反映)。編集していないときの `Esc` は一覧を閉じる。"
+        "一覧はセルカーソルを持ち、矢印キーで上下左右、`Tab` / `Shift+Tab` で右・左",
+        "(行末は折り返し、端では停止)に移動する。`Enter` / `Shift+Enter` によるセル移動は",
+        "廃止する。`Enter` はセルの操作とする。テキスト列(タイトル・ノート)では",
+        "`Enter` で編集が始まり(既存本文にカーソルが入る)、文字を打った場合は既存内容を",
+        "置き換えて編集が始まる。締切列では `Enter` は日付候補の列挙とし(77 項)、文字を",
+        "打った場合はテキスト列と同様に既存内容を置き換えて編集が始まる。編集中の `Enter`",
+        "は確定して下のセルへ、`Tab` / `Shift+Tab` は確定して右・左のセルへ移動し、`Esc` は",
+        "編集を取り消してセルカーソルへ戻る。",
+        "表示列では `Enter` は表示のトグルとし、即時に hide/show を反映する(visible 最低",
+        "1 の保護は 47 項のとおり)。優先度・次トリガー列では `Enter` で値の候補(実値のみ。",
+        "未設定は含めない)がセルの下に全列挙され、`↑↓` で選び `Enter` で確定、`Esc` で",
+        "何も変えずに閉じる。`Space` による値の循環は廃止する。確定・値変更が再ソート",
+        "(43 項)を引き起こして行が移動した場合のカーソルの追従は定めず、実装に任せる。"
       ]
     },
     {
       "id": "S-093",
-      "title": "Editing the Note column rewrites only line 1 of the note and keeps lines 2+; inside the list Cmd+Opt+E toggles full-note display for all rows (view-only, all rows at once, not persisted); multi-line editing is done in the Cmd+E overlay",
+      "title": "Note-column editing covers the full note (max 100 lines): Shift+Enter inserts newlines while editing, the cell expands downward and scrolls to reach all lines, Enter commits (through the item-2 confirmation when over 100 lines), and after commit only line 1 is displayed as before; inside the list Cmd+Opt+E toggles full-note display for all rows (view-only, all rows at once, not persisted); multi-line editing also remains available in the Cmd+E overlay",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧のノート列の編集はノートの 1 行目だけを書き換え、2 行目以降は保持する。",
-        "`Cmd+Opt+E` は一覧の中では全行のノートを全行表示するトグルとし(閲覧のみ・行ごと",
-        "ではなく一括・状態は永続化しない)、複数行の編集は `Cmd+E` のオーバーレイで行う。"
+        "一覧のノート列の編集はノート全行(最大 100 行)を対象とする。編集中は",
+        "`Shift+Enter` で改行でき、セルは下に展開し、収まらない場合はスクロールで全行に",
+        "到達できる。`Enter` で確定する(100 行超過時は 2 項の確認を経る)。確定後は",
+        "従来どおり 1 行目のみ表示する。`Cmd+Opt+E` は一覧の中では全行のノートを全行表示",
+        "するトグルとし(閲覧のみ・一括・状態は永続化しない)、複数行の編集は `Cmd+E` の",
+        "オーバーレイでも従来どおりできる。"
       ]
     },
     {
       "id": "S-094",
-      "title": "In the list, Cmd+Up / Cmd+Down move the cursor row up/down by one and Cmd+Left / Cmd+Right move the cursor column left/right by one",
+      "title": "In the list, Cmd+Up / Cmd+Down / Cmd+Left / Cmd+Right move the cell cursor to the edges (top row, bottom row, leftmost column, rightmost column); row/column reordering is Opt+Up / Opt+Down (cursor row by one) and Opt+Left / Opt+Right (cursor column by one); row moves while a sort is active follow the item-43 confirmation",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "一覧で `Cmd+↑` / `Cmd+↓` はカーソル行を上下に 1 つ動かし、`Cmd+←` / `Cmd+→` は",
-        "カーソル列を左右に 1 つ動かす。"
+        "一覧で `Cmd+↑` / `Cmd+↓` / `Cmd+←` / `Cmd+→` はセルカーソルを端(最上行・最下行・",
+        "最左列・最右列)まで移動する。行・列の並べ替えは `Opt+↑` / `Opt+↓`(カーソル行を",
+        "上下に 1 つ)/ `Opt+←` / `Opt+→`(カーソル列を左右に 1 つ)とする。行の入替は、",
+        "ソート有効中は 43 項の確認に従う。"
       ]
     },
     {
       "id": "S-095",
-      "title": "Cmd+N creates a new project: inside the list it inserts a new project right below the cursor row, starts a new shell like normal creation, and moves the cursor to the new row's Title cell for immediate title entry; outside the list it opens the list in the same state; the new row is visible when the visible count < 9 and hidden at 9; Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) are abolished and the list is the only creation path",
+      "title": "Cmd+N creates a new project: inside the list it is inserted right below the cursor row in the manual state, and while a sort is active it lands at the position the stable sort assigns by value; either way a new shell starts like normal creation and the cursor moves to the new row's Title cell for immediate title entry; outside the list it opens the list in the same state; the new row is visible when the visible count < 9 and hidden at 9; Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) stay abolished and the list is the only creation path",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "`Cmd+N` は新規プロジェクト作成とする。一覧の中で押すとカーソル行の直下に新規",
-        "プロジェクトが挿入され、通常の新規作成と同様に新しいシェルが起動し、カーソルは",
-        "新しい行のタイトル列に移りその場でタイトルを入力できる。一覧の外で押すと一覧が",
+        "`Cmd+N` は新規プロジェクト作成とする。一覧の中で押すと新規プロジェクトが作られ、",
+        "手動状態ではカーソル行の直下に挿入され、ソート有効中は安定ソートの帰結として値に",
+        "応じた位置に置かれる。いずれも通常の新規作成と同様に新しいシェルが起動し、カーソルは",
+        "新しい行のタイトル列に移り、その場でタイトルを入力できる。一覧の外で押すと一覧が",
         "開いて同じ状態になる。新規行は visible 数が 9 未満なら visible、9 なら hidden と",
-        "する。`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)は廃止し、新規",
-        "プロジェクトの作成導線は一覧のみとする。"
+        "する。`Cmd+Opt+D` / `Cmd+Opt+Shift+D`(`new_project_split`)は廃止済みのままとし、",
+        "新規プロジェクトの作成導線は一覧のみとする。"
       ]
     },
     {
       "id": "S-096",
-      "title": "Per-project next trigger (self / team member / external person / event / unset), default unset; set and changed in the list cell, persisted like priority and restored after restart; never shown in the label band",
+      "title": "The next trigger is 4-valued (self / external / event / unset): \"team member\" is abolished and merged into \"external\", with saved \"team member\" values migrating to \"external\" on load; default unset; set and changed in the list cell, persisted like priority and restored after restart; never shown in the label band",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "プロジェクトごとに次トリガー(自分 / チームメンバー / 組織外部人 / イベント /",
-        "未設定)を設定できる。既定は未設定。一覧のセルで設定・変更し、優先度と同様に",
-        "永続化され、アプリ再起動後に復元される。プロジェクトのラベル帯には表示しない。"
+        "次トリガーは「自分 / 外部 / イベント / 未設定」の 4 値とする(「チームメンバー」は",
+        "廃止し「外部」へ統合する。保存済みの「チームメンバー」は読み込み時に「外部」へ",
+        "移行する)。既定は未設定。一覧のセルで設定・変更し、優先度と同様に永続化され、",
+        "アプリ再起動後に復元される。プロジェクトのラベル帯には表示しない。"
       ]
     },
     {
@@ -1185,7 +1260,7 @@
     },
     {
       "id": "S-099",
-      "title": "Human performs a one-time on-device visual verification of the key changes; not complete until confirmed (Cmd+E opens the note overlay and Cmd+Opt+E enters overview; Cmd+Opt+N, Cmd+Opt+D, Cmd+Opt+Shift+D do nothing; Cmd+E does not start search_selection)",
+      "title": "Human performs a one-time on-device visual verification of the key changes; not complete until confirmed (Cmd+E opens the note overlay and Cmd+Opt+E enters overview; Cmd+Opt+N, Cmd+Opt+D, Cmd+Opt+Shift+D do nothing; Cmd+E does not start search_selection; Cmd+K does not clear the screen)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1193,26 +1268,27 @@
         "確認が取れるまで完了とはしない。",
         "`Cmd+E` でノート編集オーバーレイが開き、`Cmd+Opt+E` で一望モードに入る",
         "`Cmd+Opt+N`、`Cmd+Opt+D`、`Cmd+Opt+Shift+D` を押しても何も起きない",
-        "`Cmd+E` で選択文字列の検索が起動しない"
+        "`Cmd+E` で選択文字列の検索が起動しない",
+        "`Cmd+K` を押しても画面クリアが起きない"
       ]
     },
     {
       "id": "S-100",
-      "title": "Deadline cells accept Space stepping in addition to typed entry: outside an edit, Space sets today when unset and advances the date one day otherwise; Shift+Space steps back one day and clears back to unset from today, doing nothing when already unset; each press applies immediately like the selection columns and is not reverted by Esc; typed editing with commit/cancel stays, and past dates are set by typing",
+      "title": "Deadline cells enumerate date candidates on Enter: 10 choices — today, tomorrow, ... 7 days ahead (8), plus the same day next month and the same day in 3 months — each shown as a real date like Aug 19, with nonexistent same days (e.g. the month after Jan 31) clamped to month end; Up/Down choose, Enter commits, Esc closes changing nothing; \"unset\" is not among the candidates; arbitrary dates (past dates included) are still set by typing, clearing to unset is done with Delete (item 79), and Space / Shift+Space date stepping is abolished",
       "status": "active",
       "priority": "must",
       "essence_refs": [
-        "締切セルでは、文字入力に加えて Space 送りで日付を設定できる。編集していない状態で",
-        "`Space` を押すと、未設定なら今日が設定され、日付があればその日付から 1 日進む。",
-        "`Shift+Space` は 1 日戻し、今日の状態からさらに戻すと未設定に戻る。未設定の状態",
-        "での `Shift+Space` は何もしない。各押下は選択式の列と同様に即時反映され、`Esc`",
-        "でも取り消されない。文字入力(タイプによる編集と確定・取り消し)は従来どおり残し、",
-        "過去日の設定は文字入力で行う。"
+        "締切セルでは、`Enter` で日付候補がセルの下に全列挙される。候補は今日・明日・…・",
+        "7 日後の 8 択に翌月同日・3 ヶ月後同日を加えた 10 択とし、各候補は `Aug 19` の",
+        "ような実日付で表示する。実在しない同日(例: 1/31 の翌月)は月末へ丸める。`↑↓` で",
+        "選び `Enter` で確定、`Esc` で何も変えずに閉じる。候補に「未設定」は含めない。",
+        "任意の日付(過去日を含む)の設定は従来どおり文字入力で行い、未設定へ戻すのは",
+        "`Delete`(79 項)で行う。`Space` / `Shift+Space` による日付送りは廃止する。"
       ]
     },
     {
       "id": "S-101",
-      "title": "Cell editing of the list's text columns (Title, Note) accepts Japanese IME input — marked-text display, conversion, commit — on a par with the note editor overlay and the double-click title rename: the very first keystroke that starts the edit also goes through the IME and becomes part of the marked string instead of being committed raw, and while a marked string is up, Space / Enter / Escape act as IME operations (convert / commit / cancel) without misfiring the cell's value cycling, cursor movement, edit commit, or edit cancel",
+      "title": "Cell editing of the list's text columns (Title, Note) accepts Japanese IME input — marked-text display, conversion, commit — on a par with the note editor overlay and the double-click title rename: the very first keystroke that starts the edit also goes through the IME and becomes part of the marked string instead of being committed raw, and while a marked string is up, Space / Enter / Escape act as IME operations (convert / commit / cancel) without misfiring candidate selection, cell movement, edit commit, or edit cancel",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1220,13 +1296,13 @@
         "文字列の表示・変換・確定)を、ノート編集オーバーレイおよびタイトルのダブルクリック",
         "編集と同等に受け付ける。編集開始の最初の 1 打鍵も IME を経由して未確定文字列の",
         "一部となり、素通しで確定されない。未確定文字列がある間の Space / Enter / Esc は",
-        "IME の操作(変換・確定・取り消し)として効き、セルの値循環・セル移動・編集確定・",
+        "IME の操作(変換・確定・取り消し)として効き、候補選択・セル移動・編集確定・",
         "編集取り消しを誤発火させない。"
       ]
     },
     {
       "id": "S-102",
-      "title": "Human performs a one-time on-device visual verification of the list cell editing IME support; not complete until confirmed (typing 「こんにちは」 in the Title cell shows a marked string from the first keystroke, converts with Space and commits with Enter into the saved cell; the Note cell does the same and the committed string lands on the note's first line; Enter / Escape while a marked string is up act as IME commit / cancel without moving the cursor or cancelling the edit, and after an IME cancel the cell edit is still live with Enter committing and Escape cancelling as before; English input, the note editor overlay, and the double-click title rename still work)",
+      "title": "Human performs a one-time on-device visual verification of the list cell editing IME support; not complete until confirmed (typing 「こんにちは」 in the Title cell shows a marked string from the first keystroke, converts with Space and commits with Enter into the saved cell; the Note cell does the same and the committed string lands on the note; Enter / Escape while a marked string is up act as IME commit / cancel without moving the cursor or cancelling the edit, and after an IME cancel the cell edit is still live with Enter committing and Escape cancelling as before; English input, the note editor overlay, and the double-click title rename still work)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1235,12 +1311,75 @@
         "一覧のタイトル列で「こんにちは」とタイプすると、最初の打鍵から未確定文字列と",
         "して表示され、Space での変換と Enter での確定ができ、確定した「こんにちは」が",
         "セルに反映され保存される",
-        "ノート列でも同様に日本語入力・変換・確定ができ、確定文字列がノートの 1 行目に",
-        "反映される",
+        "ノート列でも同様に日本語入力・変換・確定ができ、確定文字列がノートに反映される",
         "未確定文字列がある間の Enter / Esc はセル移動・編集取り消しを起こさず IME の",
         "確定・取り消しとして効き、IME 取り消し後もセル編集は継続していて、従来どおり",
         "Enter で確定・Esc で編集取り消しができる",
         "英語入力・ノート編集オーバーレイ・タイトルのダブルクリック編集は従来どおり効く"
+      ]
+    },
+    {
+      "id": "S-103",
+      "title": "Delete on the cell cursor deletes the cell's value: Title is emptied; priority, deadline, and next trigger become unset; the Note shows a confirmation — OK deletes all lines, Cancel does nothing; the visibility column does nothing",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "セルカーソルで `Delete` を押すと、そのセルの値を削除する。タイトルは空にし、",
+        "優先度・締切・次トリガーは未設定にする。ノートは確認を表示し、OK なら全行削除・",
+        "Cancel なら何もしない。表示列では何もしない。"
+      ]
+    },
+    {
+      "id": "S-104",
+      "title": "Esc on the cell cursor enters row selection with the whole row highlighted: Up/Down move the selected row, Enter returns to that row's cell cursor, Esc releases row selection back to the cell cursor; Delete during row selection deletes that row's project through the same confirmation dialog as the project-close operation (item 28), effective on hidden rows too",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "セルカーソルで `Esc` を押すとその行の行選択状態になり、行全体がハイライトされる。",
+        "行選択中は `↑↓` で選択行が動き、`Enter` でその行のセルカーソルへ戻り、`Esc` で",
+        "行選択を解除してセルカーソルへ戻る。行選択中に `Delete` を押すと、プロジェクトを",
+        "閉じる操作と同じ確認ダイアログ(28 項)を経て、その行のプロジェクトを削除する。",
+        "hidden な行にも効く。"
+      ]
+    },
+    {
+      "id": "S-105",
+      "title": "Cmd+/ toggles a shortcut-list overlay enumerating the effective shortcuts including upstream-derived ones, grouped by scene (overall view, zoom, project list, note editing, overview, ...); view-only, invocable from any scene, closed by Esc or Cmd+/ again returning to the pre-invocation state including in-progress edits; never permanently occupies terminal area",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+/` でショートカット一覧オーバーレイをトグル表示する。上流由来を含む有効な",
+        "ショートカットを、場面ごと(全体ビュー・zoom・プロジェクト一覧・ノート編集・",
+        "一望など)にグループ化して列挙する。閲覧専用で、どの場面からでも呼び出せ、`Esc`",
+        "または再度 `Cmd+/` で閉じると呼び出す前の状態(編集途中の内容を含む)に戻る。",
+        "端末領域を恒久的に占有しない。"
+      ]
+    },
+    {
+      "id": "S-106",
+      "title": "Remove the default clear_screen assignment of Cmd+K; the action itself remains and can be reassigned in the config",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`Cmd+K` の clear_screen 既定割り当てを解除する。action 自体は残し、設定で",
+        "再割り当てできる。"
+      ]
+    },
+    {
+      "id": "S-107",
+      "title": "Human performs a one-time on-device visual verification of the shortcut list after its implementation is in place; not complete until confirmed (Cmd+/ opens the list with effective shortcuts including upstream-derived ones grouped by scene; it opens from the overall view, zoom, the project list, and the note editor overlay; Esc or Cmd+/ again closes back to the pre-invocation state including in-progress edits; appearance fits the terminal)",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ショートカット一覧の実装が揃った後、人間が実機で一度だけ以下を目視確認し、",
+        "確認が取れる。確認が取れるまで完了とはしない。",
+        "`Cmd+/` で一覧が開き、上流由来を含む有効なショートカットが場面ごとに",
+        "グループ化されて見える",
+        "全体ビュー・zoom 中・プロジェクト一覧・ノート編集オーバーレイのいずれからも",
+        "開ける",
+        "`Esc` または再度 `Cmd+/` で閉じると、呼び出す前の状態(編集途中の内容を含む)に",
+        "戻る",
+        "見た目がターミナルに馴染む"
       ]
     }
   ]

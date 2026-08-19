@@ -295,7 +295,7 @@ extension ProjectPriority {
 
 extension ProjectNextTrigger {
     /// Space in the next-trigger cell (`SPEC.md` §27.2): unset → myself →
-    /// team member → external person → event → unset.
+    /// external person → event → unset.
     static func cycled(after current: ProjectNextTrigger?) -> ProjectNextTrigger? {
         cycledSelectionValue(after: current)
     }

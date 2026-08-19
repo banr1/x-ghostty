@@ -1124,8 +1124,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         beginNoteEditing(id)
     }
 
-    /// Close the note editor, saving `text` (normalized to the 10-line cap by
-    /// `setProjectNote`) to the project being edited. This is the Cmd+Enter
+    /// Close the note editor, saving `text` (normalized to the line cap by
+    /// `setProjectNote`; the over-limit confirmation happens in the editor
+    /// before this is called). This is the Cmd+Enter
     /// (and backdrop-click) path; Escape goes through `cancelNoteEditing`.
     func endNoteEditing(saving text: String) {
         defer { noteEditingProject = nil }

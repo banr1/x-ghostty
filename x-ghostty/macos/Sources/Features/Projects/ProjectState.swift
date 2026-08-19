@@ -15,10 +15,13 @@ import Foundation
 /// real `SurfaceView` requires a live XGhostty app, which unit tests do not
 /// have.
 struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable where Pane.ID == UUID {
-    /// The maximum number of lines a note may hold. Text beyond this is
-    /// dropped at every entry point — `init`, `setNote`, and decode — so an
-    /// over-long note is never retained anywhere.
-    static var maxNoteLines: Int { 10 }
+    /// The maximum number of lines a note may hold in storage. Editing input
+    /// and paste are never limited; the save operation decides: an over-limit
+    /// draft is judged by `noteExceedsLimit` so the UI can ask for
+    /// confirmation, and only a confirmed save applies the truncation. The
+    /// storage entry points — `init`, `setNote`, and decode — still normalize,
+    /// so an over-long note is never retained anywhere.
+    static var maxNoteLines: Int { 100 }
 
     let id: ProjectID
     var name: String
@@ -159,6 +162,18 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         let lines = unified.components(separatedBy: "\n")
         guard lines.count > maxNoteLines else { return unified }
         return lines.prefix(maxNoteLines).joined(separator: "\n")
+    }
+
+    /// The save-time over-limit judgment (`SPEC.md` §21.1): whether saving
+    /// `raw` would exceed `maxNoteLines` and therefore needs the user's
+    /// confirmation before the truncation is applied. Counts lines after the
+    /// same newline unification as `normalizedNote`, so a CRLF paste cannot
+    /// dodge the judgment. Within the limit, a save stays silent.
+    static func noteExceedsLimit(_ raw: String) -> Bool {
+        let unified = raw
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        return unified.components(separatedBy: "\n").count > maxNoteLines
     }
 
     // MARK: Primary pane (SPEC §22)
@@ -332,14 +347,17 @@ enum ProjectPriority: String, Codable, CaseIterable, Equatable {
 
 // MARK: Next trigger (SPEC §24.6)
 
-/// Who or what moves a project next: the human's own action, a team member,
-/// someone outside the organization, or an external event. "Unset" — the
-/// default — is the absence of a value (`ProjectState.nextTrigger == nil`),
-/// mirroring the priority. Human-written workspace information, distinct from
-/// any terminal-observed live state.
+/// Who or what moves a project next: the human's own action, anyone else
+/// (team members and people outside the organization alike), or an external
+/// event. "Unset" — the default — is the absence of a value
+/// (`ProjectState.nextTrigger == nil`), mirroring the priority. Human-written
+/// workspace information, distinct from any terminal-observed live state.
+///
+/// Four values by design (`SPEC.md` §24.6): the former "team member" value is
+/// abolished and merged into "external", and a save still carrying it is
+/// migrated to `.externalPerson` on load.
 enum ProjectNextTrigger: String, Codable, CaseIterable, Equatable {
     case myself
-    case teamMember
     case externalPerson
     case event
 
@@ -349,10 +367,27 @@ enum ProjectNextTrigger: String, Codable, CaseIterable, Equatable {
     var displayText: String {
         switch self {
         case .myself: return "me"
-        case .teamMember: return "team"
         case .externalPerson: return "external"
         case .event: return "event"
         }
+    }
+
+    /// Decode with the load migration (`SPEC.md` §24.6): a persisted
+    /// `teamMember` — written before the value was abolished — reads back as
+    /// `.externalPerson`; unknown values still fail decode, which the project
+    /// record's lenient decode turns into unset.
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        if raw == "teamMember" {
+            self = .externalPerson
+            return
+        }
+        guard let value = ProjectNextTrigger(rawValue: raw) else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "unknown next trigger: \(raw)"))
+        }
+        self = value
     }
 }
 

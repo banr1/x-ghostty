@@ -118,11 +118,11 @@ struct ProjectListCellTests {
             note: "first\nsecond\nthird",
             priority: .high,
             deadline: deadline,
-            nextTrigger: .teamMember)
+            nextTrigger: .externalPerson)
         let state = Self.makeState([a])
 
         let row = try #require(state.projectListRows.first)
-        #expect(row.nextTrigger == .teamMember)
+        #expect(row.nextTrigger == .externalPerson)
         #expect(row.note == "first\nsecond\nthird")
         #expect(row.noteFirstLine == "first")
     }
@@ -243,12 +243,12 @@ struct ProjectListCellTests {
         var state = Self.makeState([a])
 
         var seen: [ProjectNextTrigger?] = []
-        for _ in 0..<5 {
+        for _ in 0..<4 {
             let cycledNextTrigger = state.cycleListCellValue(.nextTrigger, for: a.id)
             #expect(cycledNextTrigger)
             seen.append(state.projects[a.id]?.nextTrigger)
         }
-        #expect(seen == [.myself, .teamMember, .externalPerson, .event, nil])
+        #expect(seen == [.myself, .externalPerson, .event, nil])
     }
 
     @Test func cyclingIsDefinedOnlyForPriorityAndNextTrigger() {

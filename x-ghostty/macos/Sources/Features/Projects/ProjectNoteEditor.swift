@@ -7,11 +7,12 @@ import SwiftUI
 /// `WorkspaceModel.noteEditingProject` is set, and removes it entirely when the
 /// editor closes, so the terminal returns to the full area.
 ///
-/// The editor shows the full note — the model caps notes at
-/// `ProjectState.maxNoteLines` lines, and the editor is sized to fit that many
-/// lines. Cmd+Enter (or a backdrop click) saves the draft and closes;
-/// Escape discards the draft and closes without confirmation, keeping the
-/// text the note had when the editor opened.
+/// The editor reaches the full note by scrolling (the model caps stored notes
+/// at `ProjectState.maxNoteLines` lines). Cmd+Enter (or a backdrop click)
+/// saves the draft and closes — through the over-limit confirmation when the
+/// draft exceeds the cap (`SPEC.md` §21.1); Escape discards the draft and
+/// closes without confirmation, keeping the text the note had when the editor
+/// opened.
 ///
 /// Standard text-editing chords (Cmd+A/C/X/V) act on the editor while the
 /// overlay is shown (`SPEC.md` §21.2): the Edit menu's key equivalents are
@@ -51,8 +52,23 @@ struct ProjectNoteEditor: View {
     /// open into the project layer's own undo entries.
     @State private var history = NoteEditHistory("")
 
-    /// Commit the note draft (every save path funnels here).
+    /// Commit the note draft (every save path funnels here). A draft within
+    /// the line cap saves silently; an over-limit draft asks for confirmation
+    /// (`SPEC.md` §21.1) — OK truncates to the first `maxNoteLines` lines and
+    /// saves, Cancel returns to editing with the draft untouched. Editing
+    /// input and paste themselves are never limited or silently truncated.
     private func commit() {
+        if ProjectState.noteExceedsLimit(draft) {
+            let alert = NSAlert()
+            alert.messageText = "Note exceeds \(ProjectState.maxNoteLines) lines"
+            alert.informativeText =
+                "Saving will keep the first \(ProjectState.maxNoteLines) lines "
+                + "and drop the rest."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
         onEnd(draft)
     }
 
@@ -205,9 +221,10 @@ struct ProjectNoteEditor: View {
         .system(size: 12, design: .monospaced)
     }
 
-    /// Tall enough to show the model's full line cap at once, so the edit
-    /// overlay always shows the entire note.
+    /// A fixed visible height; the editor scrolls to reach the full text
+    /// (`SPEC.md` §21.3) — with the cap at 100 lines, sizing to the cap would
+    /// overflow the window.
     private var editorHeight: CGFloat {
-        CGFloat(ProjectState.maxNoteLines) * 17
+        20 * 17
     }
 }

@@ -2,8 +2,9 @@ import Foundation
 import Testing
 @testable import XGhostty
 
-/// Tests for the per-project note model: normalization (the 10-line cap),
-/// the `WorkspaceModel.setProjectNote` mutation path, and persistence via the
+/// Tests for the per-project note model: normalization (the 100-line cap),
+/// the save-time over-limit judgment behind the truncation confirmation, the
+/// `WorkspaceModel.setProjectNote` mutation path, and persistence via the
 /// `WorkspaceState` Codable round trip. Pane trees stay empty, matching the
 /// other project-model tests.
 struct ProjectNoteTests {
@@ -19,15 +20,15 @@ struct ProjectNoteTests {
         #expect(ProjectState.normalizedNote(text) == text)
     }
 
-    @Test func normalizedNoteKeepsExactlyTenLines() throws {
-        let ten = (1...10).map { "line \($0)" }.joined(separator: "\n")
-        #expect(ProjectState.normalizedNote(ten) == ten)
+    @Test func normalizedNoteKeepsExactlyOneHundredLines() throws {
+        let hundred = (1...100).map { "line \($0)" }.joined(separator: "\n")
+        #expect(ProjectState.normalizedNote(hundred) == hundred)
     }
 
-    @Test func normalizedNoteDropsLinesBeyondTen() throws {
-        let twelve = (1...12).map { "line \($0)" }.joined(separator: "\n")
-        let expected = (1...10).map { "line \($0)" }.joined(separator: "\n")
-        #expect(ProjectState.normalizedNote(twelve) == expected)
+    @Test func normalizedNoteDropsLinesBeyondOneHundred() throws {
+        let oversized = (1...120).map { "line \($0)" }.joined(separator: "\n")
+        let expected = (1...100).map { "line \($0)" }.joined(separator: "\n")
+        #expect(ProjectState.normalizedNote(oversized) == expected)
     }
 
     @Test func normalizedNoteUnifiesLineEndings() throws {
@@ -35,16 +36,42 @@ struct ProjectNoteTests {
     }
 
     @Test func initCapsOversizedNote() throws {
-        let twelve = (1...12).map { "line \($0)" }.joined(separator: "\n")
+        let oversized = (1...120).map { "line \($0)" }.joined(separator: "\n")
         let project = ProjectState(
-            id: ProjectID(), name: "g", paneTree: .init(), note: twelve, createdAt: Date())
+            id: ProjectID(), name: "g", paneTree: .init(), note: oversized, createdAt: Date())
         #expect(project.note.components(separatedBy: "\n").count == ProjectState.maxNoteLines)
     }
 
     @Test func setNoteCapsOversizedNote() throws {
         var project = ProjectState(id: ProjectID(), name: "g", paneTree: .init(), createdAt: Date())
-        project.setNote((1...15).map { "line \($0)" }.joined(separator: "\n"))
+        project.setNote((1...150).map { "line \($0)" }.joined(separator: "\n"))
         #expect(project.note.components(separatedBy: "\n").count == ProjectState.maxNoteLines)
+    }
+
+    // MARK: Save-time over-limit judgment (SPEC §21.1)
+
+    @Test func noteWithinLimitIsNotJudgedOver() throws {
+        let hundred = (1...100).map { "line \($0)" }.joined(separator: "\n")
+        #expect(!ProjectState.noteExceedsLimit(hundred))
+        #expect(!ProjectState.noteExceedsLimit(""))
+        #expect(!ProjectState.noteExceedsLimit("one line"))
+    }
+
+    @Test func noteOverLimitIsJudgedOverAndTruncationKeepsFirstOneHundred() throws {
+        // Success condition 4: an over-100-line save request is judged over,
+        // and applying the truncation keeps the first 100 lines.
+        let oversized = (1...101).map { "line \($0)" }.joined(separator: "\n")
+        #expect(ProjectState.noteExceedsLimit(oversized))
+
+        let expected = (1...100).map { "line \($0)" }.joined(separator: "\n")
+        #expect(ProjectState.normalizedNote(oversized) == expected)
+    }
+
+    @Test func overLimitJudgmentCountsCRLFLineEndings() throws {
+        // A CRLF paste is unified before counting, so it cannot dodge the
+        // judgment: 101 CRLF-separated lines are over the 100-line cap.
+        let crlf = (1...101).map { "line \($0)" }.joined(separator: "\r\n")
+        #expect(ProjectState.noteExceedsLimit(crlf))
     }
 
     // MARK: WorkspaceModel.setProjectNote
@@ -59,15 +86,15 @@ struct ProjectNoteTests {
         #expect(model.state.projects[ids.1]?.note == "")
     }
 
-    @Test func setProjectNoteCapsAtTenLines() throws {
+    @Test func setProjectNoteCapsAtOneHundredLines() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoProjectState()
         let model = WorkspaceModel(state)
 
-        model.setProjectNote(ids.0, to: (1...20).map { "line \($0)" }.joined(separator: "\n"))
+        model.setProjectNote(ids.0, to: (1...120).map { "line \($0)" }.joined(separator: "\n"))
 
         let stored = try #require(model.state.projects[ids.0]?.note)
         #expect(stored.components(separatedBy: "\n").count == ProjectState.maxNoteLines)
-        #expect(stored.hasSuffix("line 10"))
+        #expect(stored.hasSuffix("line 100"))
     }
 
     @Test func setProjectNoteUnknownProjectIsNoOp() throws {
@@ -130,7 +157,7 @@ struct ProjectNoteTests {
         var object = try #require(
             try JSONSerialization.jsonObject(with: data) as? [String: Any])
         var projects = try #require(object["projects"] as? [String: [String: Any]])
-        let oversized = (1...30).map { "line \($0)" }.joined(separator: "\n")
+        let oversized = (1...130).map { "line \($0)" }.joined(separator: "\n")
         projects[ids.0.rawValue.uuidString]?["note"] = oversized
         object["projects"] = projects
 
@@ -139,7 +166,7 @@ struct ProjectNoteTests {
 
         let restored = try #require(decoded.projects[ids.0]?.note)
         #expect(restored.components(separatedBy: "\n").count == ProjectState.maxNoteLines)
-        #expect(restored.hasSuffix("line 10"))
+        #expect(restored.hasSuffix("line 100"))
     }
 
     // MARK: Note editing session (edit_project_note, SPEC §21.2)
@@ -193,12 +220,12 @@ struct ProjectNoteTests {
         #expect(model.noteEditingProject == nil)
     }
 
-    @Test func endNoteEditingCapsAtTenLines() throws {
+    @Test func endNoteEditingCapsAtOneHundredLines() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoProjectState()
         let model = WorkspaceModel(state)
         model.beginNoteEditing(ids.0)
 
-        model.endNoteEditing(saving: (1...25).map { "line \($0)" }.joined(separator: "\n"))
+        model.endNoteEditing(saving: (1...125).map { "line \($0)" }.joined(separator: "\n"))
 
         let stored = try #require(model.state.projects[ids.0]?.note)
         #expect(stored.components(separatedBy: "\n").count == ProjectState.maxNoteLines)
@@ -206,15 +233,16 @@ struct ProjectNoteTests {
     }
 
     /// A paste that pushes the draft past the cap behaves like manual input
-    /// (SPEC §21.2): the save truncates to the first `maxNoteLines` lines.
-    /// Pasteboard payloads may carry CRLF/CR endings, which the normalization
-    /// unifies before capping, so a CRLF paste cannot evade the line cap.
-    @Test func endNoteEditingTruncatesOversizedPasteToFirstTenLines() throws {
+    /// (SPEC §21.2): the confirmed save truncates to the first `maxNoteLines`
+    /// lines. Pasteboard payloads may carry CRLF/CR endings, which the
+    /// normalization unifies before capping, so a CRLF paste cannot evade the
+    /// line cap.
+    @Test func endNoteEditingTruncatesOversizedPasteToFirstOneHundredLines() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoProjectState()
         let model = WorkspaceModel(state)
         model.beginNoteEditing(ids.0)
 
-        let pasted = (1...14).map { "pasted \($0)" }.joined(separator: "\r\n")
+        let pasted = (1...140).map { "pasted \($0)" }.joined(separator: "\r\n")
         model.endNoteEditing(saving: pasted)
 
         let stored = try #require(model.state.projects[ids.0]?.note)
