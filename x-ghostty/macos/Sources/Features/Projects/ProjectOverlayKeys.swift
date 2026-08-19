@@ -51,9 +51,12 @@ struct OverlayKeyDownMonitor: ViewModifier {
 
 extension View {
     /// Installs a local keyDown monitor while this view is on screen
-    /// (`OverlayKeyDownMonitor`). The overlay sessions are mutually
-    /// exclusive on the model (`WorkspaceModel.overlaySessionActive`), so at
-    /// most one overlay's monitor is installed at a time.
+    /// (`OverlayKeyDownMonitor`). The modal overlay sessions are mutually
+    /// exclusive on the model (`WorkspaceModel.overlaySessionActive`); the
+    /// one stacking exception is the shortcut list (`SPEC.md` §30), which
+    /// opens above them — while it is up, the overlay underneath yields
+    /// every event untouched (its `shortcutListActive` guard) so the
+    /// shortcut list's later-installed monitor handles it.
     func overlayKeyDownMonitor(
         _ handler: @escaping (NSEvent) -> NSEvent?
     ) -> some View {

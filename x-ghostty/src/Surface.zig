@@ -5363,6 +5363,12 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .toggle_shortcut_list => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .toggle_shortcut_list,
+            {},
+        ),
+
         .close_project => return try self.rt_app.performAction(
             .{ .surface = self },
             .close_project,

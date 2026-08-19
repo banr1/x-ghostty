@@ -324,6 +324,11 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
+            selector: #selector(ghosttyDidToggleShortcutList(_:)),
+            name: XGhostty.Notification.ghosttyToggleShortcutList,
+            object: nil)
+        center.addObserver(
+            self,
             selector: #selector(ghosttyDidSetProjectTitle(_:)),
             name: XGhostty.Notification.ghosttySetProjectTitle,
             object: nil)
@@ -1269,6 +1274,19 @@ class BaseTerminalController: NSWindowController,
         } else {
             workspace.beginProjectList()
         }
+    }
+
+    @objc private func ghosttyDidToggleShortcutList(_ notification: Notification) {
+        // The triggering surface must be within our workspace (not just the
+        // currently focused project's tree, to survive the async focus window).
+        guard let view = notification.object as? XGhostty.SurfaceView else { return }
+        guard isInWorkspace(view) else { return }
+
+        // `toggle_shortcut_list` (Cmd+/, `SPEC.md` §30): the read-only
+        // shortcut list stacks above the active scene; closing restores it
+        // untouched. The overlays' own key handlers re-match the chord while
+        // the surface is not first responder.
+        workspace.toggleShortcutList()
     }
 
     @objc private func ghosttyDidSetProjectTitle(_ notification: Notification) {

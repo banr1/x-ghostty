@@ -504,6 +504,9 @@ extension XGhostty {
             case XGHOSTTY_ACTION_LIST_PROJECTS:
                 return listProjects(app, target: target)
 
+            case XGHOSTTY_ACTION_TOGGLE_SHORTCUT_LIST:
+                toggleShortcutList(app, target: target)
+
             case XGHOSTTY_ACTION_SET_PROJECT_TITLE:
                 setProjectTitle(app, target: target, v: action.action.set_project_title)
 
@@ -1013,6 +1016,27 @@ extension XGhostty {
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyToggleNoteOverview,
+                    object: surfaceView)
+
+            default:
+                assertionFailure()
+            }
+        }
+
+        private static func toggleShortcutList(
+            _ app: xghostty_app_t,
+            target: xghostty_target_s) {
+            switch target.tag {
+            case XGHOSTTY_TARGET_APP:
+                XGhostty.logger.warning("toggle shortcut list does nothing with an app target")
+                return
+
+            case XGHOSTTY_TARGET_SURFACE:
+                guard let surface = target.target.surface else { return }
+                guard let surfaceView = self.surfaceView(from: surface) else { return }
+
+                NotificationCenter.default.post(
+                    name: Notification.ghosttyToggleShortcutList,
                     object: surfaceView)
 
             default:

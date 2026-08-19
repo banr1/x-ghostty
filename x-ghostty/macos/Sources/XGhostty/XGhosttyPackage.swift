@@ -445,6 +445,11 @@ extension XGhostty.Notification {
     /// that had focus; the project-list overlay opens (`SPEC.md` §27.1).
     static let ghosttyListProjects = Notification.Name("com.mitchellh.xghostty.listProjects")
 
+    /// Posted when `toggle_shortcut_list` is requested. The sending object is the
+    /// surface that had focus; the read-only shortcut-list overlay toggles
+    /// (`SPEC.md` §30).
+    static let ghosttyToggleShortcutList = Notification.Name("com.mitchellh.xghostty.toggleShortcutList")
+
     /// Close the calling surface.
     static let ghosttyCloseSurface = Notification.Name("com.mitchellh.xghostty.closeSurface")
 

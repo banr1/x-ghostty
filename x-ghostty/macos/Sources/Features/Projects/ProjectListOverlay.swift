@@ -131,6 +131,19 @@ struct ProjectListOverlay: View {
     /// clear it so a later re-render does not re-open the edit.
     let onConsumePendingTitleEdit: () -> Void
 
+    /// Whether the shortcut-list overlay stacks above this list (`SPEC.md`
+    /// §30). While it does, every key is the shortcut list's: this overlay's
+    /// monitor yields untouched so the event reaches the shortcut list's
+    /// monitor (installed later), and the session state here — an
+    /// in-progress cell edit included — stays for when it closes.
+    let shortcutListActive: Bool
+
+    /// Toggle the shortcut-list overlay (Cmd+/ inside the list, `SPEC.md`
+    /// §30). The surface's binding path is inert while the list owns the
+    /// keyboard, so the default `toggle_shortcut_list` chord is re-matched
+    /// here.
+    let onToggleShortcutList: () -> Void
+
     /// The keyboard cell cursor. Pure presentation state; the movement rules
     /// live on `ProjectListCellCursor`.
     @State private var cursor = ProjectListCellCursor(row: 0, column: 0)
@@ -227,6 +240,19 @@ struct ProjectListOverlay: View {
         let modifiers = event.modifierFlags
             .intersection([.command, .shift, .option, .control])
         let isEscape = event.keyCode == 53
+
+        // While the shortcut list stacks above (SPEC §30), every key is its:
+        // yield untouched so its later-installed monitor sees the event.
+        if shortcutListActive { return event }
+
+        // Cmd+/ opens the shortcut list from any list state — mid-edit
+        // included, which is exactly the "restores in-progress edits" face
+        // (SPEC §30). Only an IME composition outranks it (§27.5).
+        if modifiers == [.command], !editor.isComposing,
+           event.charactersIgnoringModifiers == "/" {
+            onToggleShortcutList()
+            return nil
+        }
 
         if let session = edit {
             // While editing, the cell field owns every key except the edit's

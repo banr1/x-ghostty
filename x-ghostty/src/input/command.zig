@@ -631,6 +631,7 @@ fn actionCommands(action: Action.Key) []const Command {
         .set_primary,
         .choose_project_layout,
         .list_projects,
+        .toggle_shortcut_list,
         .close_project,
         => comptime &.{},
 

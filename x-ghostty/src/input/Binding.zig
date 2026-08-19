@@ -683,6 +683,13 @@ pub const Action = union(enum) {
     /// Escape closes. This is the only way back from hidden.
     list_projects,
 
+    /// Toggle the shortcut-list overlay: a read-only enumeration of the
+    /// effective shortcuts, including upstream-derived ones, grouped by
+    /// scene (overall view, zoom, project list, note editing, overview).
+    /// It opens above whatever is on screen and closing it restores the
+    /// prior state, including in-progress edits.
+    toggle_shortcut_list,
+
     /// Close the current project, terminating the processes of all of its
     /// panes. This might trigger a close confirmation popup.
     close_project,
@@ -1352,6 +1359,7 @@ pub const Action = union(enum) {
             .set_primary,
             .choose_project_layout,
             .list_projects,
+            .toggle_shortcut_list,
             .close_project,
             .inspector,
             => .surface,

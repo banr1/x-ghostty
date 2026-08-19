@@ -115,6 +115,10 @@ struct ProjectNoteOverviewKeyCatcher: View {
     /// `toggle_note_overview` chord is re-matched here.
     let onToggle: () -> Void
 
+    /// Open the shortcut list over the overview (Cmd+/, `SPEC.md` §30) —
+    /// re-matched here for the same reason as `onToggle`.
+    let onShortcutList: () -> Void
+
     @FocusState private var catcherFocused: Bool
     @State private var keyboardSink = ""
 
@@ -135,6 +139,12 @@ struct ProjectNoteOverviewKeyCatcher: View {
             Button { onToggle() } label: { Color.clear }
                 .buttonStyle(PlainButtonStyle())
                 .keyboardShortcut("e", modifiers: [.command, .option])
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+
+            Button { onShortcutList() } label: { Color.clear }
+                .buttonStyle(PlainButtonStyle())
+                .keyboardShortcut("/", modifiers: [.command])
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }

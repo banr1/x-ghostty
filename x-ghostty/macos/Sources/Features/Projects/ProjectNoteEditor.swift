@@ -44,6 +44,17 @@ struct ProjectNoteEditor: View {
     /// Discard the draft and close the editor (Escape).
     let onCancel: () -> Void
 
+    /// Whether the shortcut-list overlay stacks above this editor (`SPEC.md`
+    /// §30). While it does, every key is the shortcut list's: this monitor
+    /// yields untouched, and the draft stays for when it closes.
+    let shortcutListActive: Bool
+
+    /// Toggle the shortcut-list overlay (Cmd+/ inside the editor, `SPEC.md`
+    /// §30). The surface's binding path is inert while the editor owns the
+    /// keyboard, so the default `toggle_shortcut_list` chord is re-matched
+    /// here.
+    let onToggleShortcutList: () -> Void
+
     @State private var draft: String = ""
     @FocusState private var editorFocused: Bool
 
@@ -106,10 +117,22 @@ struct ProjectNoteEditor: View {
         // chords are taken before any dispatch and performed on the focused
         // text view directly.
         .overlayKeyDownMonitor { event in
+            // While the shortcut list stacks above (SPEC §30), every key is
+            // its: yield untouched so its later-installed monitor sees the
+            // event, and the draft stays for when it closes.
+            if shortcutListActive { return event }
+
             let modifiers = event.modifierFlags
                 .intersection([.command, .shift, .option, .control])
             guard let chord = event.charactersIgnoringModifiers?.lowercased()
             else { return event }
+
+            // Cmd+/ opens the shortcut list over the editor, keeping the
+            // mid-edit draft (SPEC §30).
+            if chord == "/", modifiers == [.command] {
+                onToggleShortcutList()
+                return nil
+            }
 
             // Undo/redo run on the session history rather than the responder
             // chain's undo manager (`SPEC.md` §21.2): that one belongs to the

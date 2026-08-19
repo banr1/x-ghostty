@@ -106,7 +106,9 @@ struct TerminalWorkspaceView: View {
                     projectName: project.name,
                     note: project.note,
                     onEnd: { workspace.endNoteEditing(saving: $0) },
-                    onCancel: { workspace.cancelNoteEditing() })
+                    onCancel: { workspace.cancelNoteEditing() },
+                    shortcutListActive: workspace.shortcutListActive,
+                    onToggleShortcutList: { workspace.toggleShortcutList() })
             }
 
             // Note overview interaction layer: while the viewing-only mode is
@@ -116,7 +118,8 @@ struct TerminalWorkspaceView: View {
             if workspace.noteOverviewActive {
                 ProjectNoteOverviewKeyCatcher(
                     onExit: { workspace.endNoteOverview() },
-                    onToggle: { workspace.toggleNoteOverview() })
+                    onToggle: { workspace.toggleNoteOverview() },
+                    onShortcutList: { workspace.toggleShortcutList() })
             }
 
             // Layout-type selector (`SPEC.md` §26.2): presented while the
@@ -170,7 +173,18 @@ struct TerminalWorkspaceView: View {
                     // (SPEC §24.5); no `surfaceTree` swap is involved.
                     onSetSortState: { workspace.setProjectSortState($0) },
                     onCreate: onCreateProjectListRow,
-                    onConsumePendingTitleEdit: { workspace.clearProjectListPendingTitleEdit() })
+                    onConsumePendingTitleEdit: { workspace.clearProjectListPendingTitleEdit() },
+                    shortcutListActive: workspace.shortcutListActive,
+                    onToggleShortcutList: { workspace.toggleShortcutList() })
+            }
+
+            // Shortcut list (`SPEC.md` §30): read-only, stacked above every
+            // other layer — it opens over the terminal, a zoom, the list,
+            // the note editor, or the overview, and closing it restores
+            // that scene untouched. Rendered last so it is topmost.
+            if workspace.shortcutListActive {
+                ShortcutListOverlay(
+                    onClose: { workspace.endShortcutList() })
             }
 
         }
@@ -200,6 +214,24 @@ struct TerminalWorkspaceView: View {
             // Closing the layout selector hands keyboard focus back to the
             // terminal, exactly like the overlays above.
             if !active {
+                DispatchQueue.main.async {
+                    if let surface = lastFocusedSurface?.value {
+                        surface.window?.makeFirstResponder(surface)
+                    }
+                }
+            }
+        }
+        .onChange(of: workspace.shortcutListActive) { active in
+            // Closing the shortcut list hands keyboard focus back to the
+            // terminal ONLY when no other overlay is underneath: closed over
+            // the list / note editor / overview, the scene beneath kept its
+            // own focus (sink field or text view) the whole time and must
+            // get its keyboard back untouched (SPEC §30).
+            if !active,
+               workspace.noteEditingProject == nil,
+               !workspace.noteOverviewActive,
+               !workspace.layoutSelectionActive,
+               !workspace.projectListActive {
                 DispatchQueue.main.async {
                     if let surface = lastFocusedSurface?.value {
                         surface.window?.makeFirstResponder(surface)

@@ -64,6 +64,14 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// the overlay once it has seated the cursor, never persisted.
     @Published private(set) var projectListPendingTitleEdit: ProjectID?
 
+    /// Whether the read-only shortcut-list overlay (`toggle_shortcut_list`,
+    /// Cmd+/, `SPEC.md` §30) is up. Transient UI state like
+    /// `noteOverviewActive`; never persisted. Deliberately NOT part of
+    /// `overlaySessionActive`: the shortcut list stacks above whatever scene
+    /// is active (terminal, zoom, project list, note editor, overview) and
+    /// closing it restores that scene untouched — it locks nothing.
+    @Published private(set) var shortcutListActive = false
+
     /// Whether any workspace-modal overlay session (note overview, layout
     /// selection, project list) currently owns the interaction: while one is
     /// up, focus moves and note editing are no-ops, and no other
@@ -567,6 +575,20 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         projectListActive = false
         projectListFullNotes = false
         projectListPendingTitleEdit = nil
+    }
+
+    /// Toggle the read-only shortcut-list overlay (`toggle_shortcut_list`,
+    /// Cmd+/, `SPEC.md` §30). Always possible: the overlay stacks above the
+    /// active scene and touches nothing underneath, so there is no guard —
+    /// unlike the modal overlay sessions.
+    func toggleShortcutList() {
+        shortcutListActive.toggle()
+    }
+
+    /// Close the shortcut list (the Escape path, `SPEC.md` §30). The scene
+    /// underneath — an in-progress edit included — is untouched.
+    func endShortcutList() {
+        shortcutListActive = false
     }
 
     /// Insert a newly created project into the ledger right below `anchor`

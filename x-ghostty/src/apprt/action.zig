@@ -362,6 +362,11 @@ pub const Action = union(Key) {
     /// C ABI compatibility; see the note above.
     list_projects,
 
+    /// Toggle the read-only shortcut-list overlay enumerating the effective
+    /// shortcuts grouped by scene. It is up to the apprt to show it.
+    /// Appended last to preserve C ABI compatibility; see the note above.
+    toggle_shortcut_list,
+
     /// Sync with: xghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -438,6 +443,7 @@ pub const Action = union(Key) {
         set_primary,
         choose_project_layout,
         list_projects,
+        toggle_shortcut_list,
 
         test "xghostty.h Action.Key" {
             try lib.checkXGhosttyHEnum(Key, "XGHOSTTY_ACTION_");

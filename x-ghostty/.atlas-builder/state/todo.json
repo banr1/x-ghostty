@@ -4090,7 +4090,7 @@
     {
       "id": "T-101",
       "title": "Shortcut-list overlay on Cmd+/: enumerates the effective shortcuts including upstream-derived ones grouped by scene (overall view, zoom, project list, note editing, overview, ...), view-only, invocable from any scene, toggled closed by Esc or Cmd+/ returning to the pre-invocation state including in-progress edits, never permanently occupying terminal area",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-105",
@@ -4101,12 +4101,35 @@
       },
       "batch_group": "shortcut-list",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; new ShortcutCatalogTests 7/7 (scene coverage/order, ⌘/ in every scene, upstream-derived entries present, fork entries present, removed defaults absent incl. ⌘K, chord uniqueness+non-empty, display names) and ShortcutListSessionTests 2/2 (toggle/end; stacking over an active project-list session leaves it untouched) all executed and passed"
+        },
+        {
+          "type": "diff",
+          "summary": "New action toggle_shortcut_list end-to-end: Binding.zig action enum + .surface scope, command.zig no-palette list, apprt/action.zig union+Key (appended last), xghostty.h XGHOSTTY_ACTION_TOGGLE_SHORTCUT_LIST (appended last, checkXGhosttyHEnum green), Surface.zig dispatch, Config.zig default cmd+/ (grep: no prior slash binding). Swift: XGhosttyPackage notification, XGhostty.App dispatch case+helper, BaseTerminalController observer+handler -> workspace.toggleShortcutList(). Model: WorkspaceModel.shortcutListActive (stacking, NOT in overlaySessionActive) + toggle/end; new ShortcutCatalog.swift (scene->items static catalog, model-layer testable). View: new ShortcutListOverlay.swift (read-only panel, monitor consumes all keys, Esc/⌘⁄ close). Stacking: ProjectListOverlay + ProjectNoteEditor monitors yield while shortcutListActive and re-match Cmd+/ themselves (list: not while IME composing); ProjectNoteOverviewKeyCatcher hidden ⌘/ button; TerminalWorkspaceView presents topmost + conditional focus return; ProjectOverlayKeys doc updated. 13 files changed + 3 new"
+        }
+      ]
     },
     {
       "id": "T-102",
       "title": "Unbind the default Cmd+K clear_screen assignment, keeping the action itself reassignable in the config",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-106",
@@ -4117,7 +4140,36 @@
       },
       "batch_group": "key-changes",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED (full XGhosttyTests suite green after the unbind)"
+        },
+        {
+          "type": "command",
+          "command": "grep -c \"unicode = 'k' }, .mods = .{ .super = true }\" src/config/Config.zig",
+          "exit_code": 0,
+          "summary": "0 matches: no default super+k binding remains; grep clear_screen src/input/Binding.zig:435 and command.zig:232 confirm the action and its palette entry remain user-bindable"
+        },
+        {
+          "type": "diff",
+          "summary": "Config.zig darwin defaults: removed the putFlags(cmd+k -> clear_screen, performable) block, replaced by a comment following the cmd+enter=toggle_fullscreen / cmd+e=search_selection removal precedent (action itself untouched)"
+        }
+      ]
     },
     {
       "id": "T-103",

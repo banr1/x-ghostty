@@ -5872,12 +5872,12 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = 'q' }, .mods = .{ .super = true } },
                 .{ .quit = {} },
             );
-            try self.set.putFlags(
-                alloc,
-                .{ .key = .{ .unicode = 'k' }, .mods = .{ .super = true } },
-                .{ .clear_screen = {} },
-                .{ .performable = true },
-            );
+            // This fork deliberately leaves Cmd+K unbound: the upstream
+            // clear_screen default cleared the terminal on a chord the
+            // author never means as "clear". The action itself remains and
+            // can be reassigned in the config (same treatment as the
+            // cmd+enter=toggle_fullscreen and cmd+e=search_selection
+            // defaults removed elsewhere in this fork).
             try self.set.put(
                 alloc,
                 .{ .key = .{ .unicode = 'a' }, .mods = .{ .super = true } },
@@ -6008,6 +6008,14 @@ pub const Keybinds = struct {
                 alloc,
                 .{ .key = .{ .unicode = 'l' }, .mods = .{ .super = true, .alt = true } },
                 .{ .choose_project_layout = {} },
+            );
+            // Plain Cmd+/ has no other default binding (grep confirms no
+            // slash binding and no menu key equivalent). It toggles the
+            // read-only shortcut-list overlay, reachable from any scene.
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .unicode = '/' }, .mods = .{ .super = true } },
+                .{ .toggle_shortcut_list = {} },
             );
             try self.set.put(
                 alloc,
