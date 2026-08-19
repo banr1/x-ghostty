@@ -49,6 +49,12 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// when nothing is saved.
     var listColumnOrder: [ProjectListColumn]
 
+    /// The sort state governing the row order (`SPEC.md` §24.4). Persisted;
+    /// manual when nothing is saved. Read freely; change it through
+    /// `setSortState` (and re-sort through `resortProjects()`), which keep
+    /// the row order consistent with the state.
+    var sortState: ProjectSortState
+
     /// All projects keyed by id. Invariant: every leaf in `canonicalProjectTree`
     /// has a matching entry here (`SPEC.md` §14.1). The converse holds only for
     /// *visible* projects: hiding removes a project's leaf from the canonical tree
@@ -87,6 +93,7 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         lastPriorityResetWorkday: Workday? = nil,
         layoutType: ProjectLayoutType = .default,
         listColumnOrder: [ProjectListColumn] = ProjectListColumn.defaultOrder,
+        sortState: ProjectSortState = .manual,
         version: Int = Self.currentVersion
     ) {
         self.version = version
@@ -99,6 +106,7 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         self.lastPriorityResetWorkday = lastPriorityResetWorkday
         self.layoutType = layoutType
         self.listColumnOrder = listColumnOrder
+        self.sortState = sortState
         // A caller that hands over a tree but no hidden set means "these are
         // the visible ones": everything the tree does not place starts hidden,
         // matching how the old tree-as-truth model read such a state.
@@ -109,6 +117,7 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
             }
         }
         normalizeLedger()
+        resortProjects()
         relayout()
     }
 
@@ -227,6 +236,10 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         if wasAtCap {
             hiddenProjectIDs.insert(project.id)
         }
+        // Creation is a re-sort trigger (`SPEC.md` §24.4): while a key state
+        // is active the new row lands at the stable-sort position its values
+        // dictate; in manual it stays where it was inserted.
+        resortProjects()
         relayout()
     }
 
@@ -245,6 +258,9 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     mutating func setProjectHidden(_ id: ProjectID, _ hidden: Bool) {
         guard projects[id] != nil else { return }
         if hidden { hiddenProjectIDs.insert(id) } else { hiddenProjectIDs.remove(id) }
+        // Visibility is the "show" sort key, and a cell-value change is a
+        // re-sort trigger (`SPEC.md` §24.4).
+        resortProjects()
         relayout()
     }
 
@@ -351,7 +367,7 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// their current relative order (the standard-library sort does not
     /// document stability, and the stable-tie rule is a spec requirement, so
     /// it is enforced by construction here).
-    private func stableOrderedProjectIDs(key: (ProjectID) -> Int) -> [ProjectID] {
+    func stableOrderedProjectIDs(key: (ProjectID) -> Int) -> [ProjectID] {
         projectOrder.enumerated()
             .sorted { a, b in
                 let ka = key(a.element)
@@ -365,10 +381,8 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// Apply `order` — a permutation of every row — as the new ledger order
     /// (SPEC §24.4) and relayout: ordinals are the visible rows counted from
     /// the top, so they follow the sort, and the arrangement follows the
-    /// ordinals. The sort actions and the list's manual row moves are the only
-    /// callers — reordering happens exclusively through an explicit act,
-    /// never as a side effect of a priority or deadline change — and the
-    /// applied order persists until the next such act.
+    /// ordinals. Called by `resortProjects()` (the sort state's re-sort
+    /// trigger) and the list's manual row moves.
     ///
     /// - Returns: whether the order changed (`order` must be a permutation
     ///   of `projectOrder`).
@@ -437,14 +451,16 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// Apply restore semantics to a decoded/saved workspace (`SPEC.md` §12.3):
     /// the ledger is normalized (permutation of the projects, hidden set over
     /// live projects, at most `maxVisibleProjects` visible, at least one
-    /// visible), nothing comes back zoomed, the arrangement is re-derived
-    /// from the ledger and the remembered layout type, and `focusedProject`
-    /// is validated against the visible projects — falling back to the first
-    /// visible row.
+    /// visible), nothing comes back zoomed, the persisted sort state
+    /// re-sorts the rows (load is a re-sort trigger, `SPEC.md` §24.4), the
+    /// arrangement is re-derived from the ledger and the remembered layout
+    /// type, and `focusedProject` is validated against the visible projects —
+    /// falling back to the first visible row.
     static func restoring(_ saved: Self) -> Self {
         var restored = saved
         restored.zoomedProject = nil
         restored.normalizeLedger()
+        restored.resortProjects()
         restored.relayout()
 
         let focusValid = restored.focusedProject.map { id in
@@ -478,6 +494,7 @@ extension WorkspaceStateOf: Codable {
         case lastPriorityResetWorkday
         case layoutType
         case listColumnOrder
+        case sortState
     }
 
     /// Pre-rename key spellings ("group" vocabulary). Workspaces saved before
@@ -537,11 +554,17 @@ extension WorkspaceStateOf: Codable {
         self.layoutType = (try? c.decodeIfPresent(ProjectLayoutType.self, forKey: .layoutType)) ?? .default
         let columns = (try? c.decodeIfPresent([ProjectListColumn].self, forKey: .listColumnOrder)) ?? nil
         self.listColumnOrder = ProjectListColumn.normalizedOrder(columns ?? ProjectListColumn.defaultOrder)
+        // No saved sort state (or a corrupt one) means manual (`SPEC.md`
+        // §24.4) — the default that never reorders anything.
+        self.sortState = (try? c.decodeIfPresent(ProjectSortState.self, forKey: .sortState)) ?? .manual
         self.zoomedProject = nil
 
         // Runtime-only state is always reset on decode (`SPEC.md` §12.2) and
         // the arrangement is a projection of the ledger, so it is rebuilt.
+        // Load is a re-sort trigger (§24.4): an active sort state re-asserts
+        // its order over whatever the save carried.
         normalizeLedger()
+        resortProjects()
         relayout()
     }
 
@@ -560,5 +583,6 @@ extension WorkspaceStateOf: Codable {
         try c.encodeIfPresent(lastPriorityResetWorkday, forKey: .lastPriorityResetWorkday)
         try c.encode(layoutType, forKey: .layoutType)
         try c.encode(listColumnOrder, forKey: .listColumnOrder)
+        try c.encode(sortState, forKey: .sortState)
     }
 }

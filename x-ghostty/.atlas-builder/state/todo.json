@@ -3702,7 +3702,7 @@
     {
       "id": "T-092",
       "title": "Layout remainder redistribution: wide type attaches the indivisible remainder to the later rows (earlier rows fewer, wider slots; n=8 is 2+3+3 from the top), tall type is the transpose with fewer slots in the left columns, pedestal follows the wide/tall rule per orientation; recompute the exact-match collapsing (n=3 wide 1+2 and pedestal 2+1 now differ and both remain); update the criterion-15 XGhosttyTests accordingly",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-058",
@@ -3714,12 +3714,40 @@
       },
       "batch_group": "layout-remainder",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full build (zig core + macOS app) green after the change"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green (includes Binding/action parse tests and the xghostty.h enum-sync test after the sort-action removal)"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "XGhosttyTests green: 629 test cases passed, 0 failed"
+        },
+        {
+          "type": "test",
+          "command": "just swift-test",
+          "summary": "criterion-15 tests updated and passing: tierCountsAttachTheLeftoverToTheTrailingTiers ([1],[2],[1,2],[2,2],[2,3],[3,3],[2,2,3],[2,3,3],[3,3,3]), wideSlotsMatchTheDefinitionForEveryCount, tallIsTheExactTransposeOfWide, pedestalStacksTheTopRuleOverAFullWidthBottom, choiceSetsCollapseExactMatchesPerCount (n=3: wide 1+2 and pedestal 2+1 both remain; the orientation pairs collapse instead), wideOrientationChangesOnlyTheOrdinalProgression (n=5 pin)"
+        },
+        {
+          "type": "diff",
+          "summary": "ProjectLayoutType.tierCounts: leftover now attaches to the trailing tiers ($0 >= tiers - extra), so wide leading rows hold fewer/wider slots and tall leading columns hold fewer slots; pedestal follows per orientation unchanged. Tests: ProjectLayoutTypeTests expected distributions/pins rewritten; ProjectLayoutSelectionTests representative example switched to wideColumn->wideRow at n=3 (pedestalRow no longer collapses)."
+        }
+      ]
     },
     {
       "id": "T-093",
       "title": "Sort-state model: replace the disposable sort actions with a persisted 5-value sort state (manual / next / show / deadline / priority, default manual) governing the display order and ordinals even while the list is closed; fixed key directions (next: self-external-event-unset, show: visible-hidden, deadline: nearest first unset last, priority: high-medium-low-unset), stable with ties keeping the previous display order, over all rows including hidden; immediate re-sort on cell-value change, creation, load, and the morning priority reset (manual state: reset never reorders); manual handover inheriting the current display order (bar selection and Opt-move approval); remove the Cmd+S / Cmd+Shift+S sort actions; layout application consumes the display order; XGhosttyTests for the criterion-11, criterion-20, and criterion-22 sort items",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-044",
@@ -3738,7 +3766,35 @@
       },
       "batch_group": "sort-state",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full build (zig core + macOS app) green after the change"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green (includes Binding/action parse tests and the xghostty.h enum-sync test after the sort-action removal)"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "XGhosttyTests green: 629 test cases passed, 0 failed"
+        },
+        {
+          "type": "test",
+          "command": "just swift-test",
+          "summary": "new ProjectSortStateTests (11 cases, criterion-20 sort items): manual default, save/restore persistence, corrupt-value->manual, load re-asserts an active state, next key myself->external->event->unset stable, show key visible->hidden stable, immediate re-sort on cell-value change / visibility change / creation, manual never re-sorts, manual selection inherits the display order. ProjectPriorityDeadlineTests ported to sort state (criterion-11 ordinals/stable ties). ProjectPriorityResetTests: resetDoesNotReorderProjectsInTheManualState + resetResortsAsAConsequenceOfAnActiveSortState (criterion-22). All passed."
+        },
+        {
+          "type": "diff",
+          "summary": "Sort became a persisted 5-value state (ProjectSortState: manual/next/show/deadline/priority, default manual) in WorkspaceState (Codable, corrupt->manual). Single-track order model: projectOrder IS the display order; resortProjects() re-applies the active key's stable ordering on every trigger - cell edits (commitListCellEdit/cycleListCellValue/stepListDeadline), model setters (priority/deadline/nextTrigger), visibility changes (setProjectHidden), creation (insertProject), load (decode + restoring), and the morning priority reset; ties keep the previous display order, covering hidden rows. setSortState(.manual) inherits the display order (rows stop being re-sorted). Layout/ordinals already consume projectOrder. Removed the disposable Cmd+S/Cmd+Shift+S sort actions end to end: Config.zig defaults, Binding.zig enum+scope+parse tests, command.zig palette exclusion list, action.zig union+Key, include/xghostty.h tags (enum-sync test green), Surface.zig dispatch, XGhostty.App dispatch+helper, notification names, BaseTerminalController observers/handlers, WorkspaceModel canSortProjects/sortProjectsByPriority/sortProjectsByDeadline -> projectSortState/setProjectSortState."
+        }
+      ]
     },
     {
       "id": "T-094",

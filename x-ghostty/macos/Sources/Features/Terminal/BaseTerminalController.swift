@@ -314,16 +314,6 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
-            selector: #selector(ghosttyDidSortProjectsByPriority(_:)),
-            name: XGhostty.Notification.ghosttySortProjectsByPriority,
-            object: nil)
-        center.addObserver(
-            self,
-            selector: #selector(ghosttyDidSortProjectsByDeadline(_:)),
-            name: XGhostty.Notification.ghosttySortProjectsByDeadline,
-            object: nil)
-        center.addObserver(
-            self,
             selector: #selector(ghosttyDidChooseProjectLayout(_:)),
             name: XGhostty.Notification.ghosttyChooseProjectLayout,
             object: nil)
@@ -1251,28 +1241,6 @@ class BaseTerminalController: NSWindowController,
         // (SPEC §22.4). Keyboard focus is untouched — the pane is focused
         // already — and the mark overlay re-renders via the state change.
         workspace.setPrimaryToFocusedPane()
-    }
-
-    @objc private func ghosttyDidSortProjectsByPriority(_ notification: Notification) {
-        // The triggering surface must be within our workspace (not just the
-        // currently focused project's tree, to survive the async focus window).
-        guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard isInWorkspace(view) else { return }
-
-        // The model applies the priority ordering to the real layout
-        // (SPEC §24.4); focus is id-keyed and untouched, and the ordinals
-        // follow the new traversal order automatically.
-        workspace.sortProjectsByPriority()
-    }
-
-    @objc private func ghosttyDidSortProjectsByDeadline(_ notification: Notification) {
-        // The triggering surface must be within our workspace (not just the
-        // currently focused project's tree, to survive the async focus window).
-        guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard isInWorkspace(view) else { return }
-
-        // Same as the priority sort, consuming the deadline ordering.
-        workspace.sortProjectsByDeadline()
     }
 
     @objc private func ghosttyDidChooseProjectLayout(_ notification: Notification) {

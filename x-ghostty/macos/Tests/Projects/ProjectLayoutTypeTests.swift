@@ -39,11 +39,12 @@ struct ProjectLayoutTypeTests {
 
     // MARK: The distribution rule (SPEC §26.1)
 
-    @Test func tierCountsDealFromTheTopAsEvenlyAsPossible() {
-        // Rows (wide) / columns (tall) = the integer nearest √n; the leftover
-        // projects go one each to the leading tiers.
+    @Test func tierCountsAttachTheLeftoverToTheTrailingTiers() {
+        // Rows (wide) / columns (tall) = the integer nearest √n; the
+        // indivisible leftover goes one each to the *trailing* tiers, so the
+        // leading tiers hold fewer, wider slots — n=8 is 2+3+3 from the top.
         let expected: [[Int]] = [
-            [1], [2], [2, 1], [2, 2], [3, 2], [3, 3], [3, 2, 2], [3, 3, 2], [3, 3, 3],
+            [1], [2], [1, 2], [2, 2], [2, 3], [3, 3], [2, 2, 3], [2, 3, 3], [3, 3, 3],
         ]
         for (n, tiers) in zip(1...9, expected) {
             #expect(ProjectLayoutType.tierCounts(n) == tiers, "n=\(n)")
@@ -102,9 +103,9 @@ struct ProjectLayoutTypeTests {
     @Test func wideOrientationChangesOnlyTheOrdinalProgression() {
         // The two wide orientations place the same slot set; only the ordinal
         // sequence differs (row-major: top row left→right; column-major: left
-        // column top→bottom). Concrete pin at n=3 (rows 2+1): row-major runs
-        // top-left, top-right, bottom; column-major runs top-left, bottom,
-        // top-right.
+        // column top→bottom). Concrete pin at n=5 (rows 2+3): row-major runs
+        // the top pair then the bottom trio; column-major starts down the
+        // left column (top-left, bottom-left) before moving right.
         for n in 1...9 {
             let row = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
                 .slotFrames(forVisibleCount: n)
@@ -113,12 +114,14 @@ struct ProjectLayoutTypeTests {
             #expect(Set(row.map { "\($0)" }) == Set(column.map { "\($0)" }), "n=\(n)")
         }
 
-        let column3 = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-            .slotFrames(forVisibleCount: 3)
-        #expect(Self.approxAll(column3, [
+        let column5 = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
+            .slotFrames(forVisibleCount: 5)
+        #expect(Self.approxAll(column5, [
             CGRect(x: 0, y: 0, width: 0.5, height: 0.5),
-            CGRect(x: 0, y: 0.5, width: 1, height: 0.5),
+            CGRect(x: 0, y: 0.5, width: 1.0 / 3, height: 0.5),
             CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
+            CGRect(x: 1.0 / 3, y: 0.5, width: 1.0 / 3, height: 0.5),
+            CGRect(x: 2.0 / 3, y: 0.5, width: 1.0 / 3, height: 0.5),
         ]))
     }
 
@@ -170,12 +173,18 @@ struct ProjectLayoutTypeTests {
         // pedestal (1 on top of 1) is exactly the stacked tall pair.
         #expect(ProjectLayoutType.choices(forVisibleCount: 2) == [wideRow, tallRow])
 
-        // n=3: the Essence's own example — pedestal/row-major (2 over 1
-        // full-width) coincides with wide/row-major and collapses into it.
+        // n=3: the Essence's own example — wide (1 over 2, the leftover on
+        // the trailing row) and pedestal/row-major (2 over 1 full-width) no
+        // longer coincide, so both remain independent choices. What *does*
+        // collapse at n=3 is orientation: the full-width tier pins the
+        // progression, so wide row-/column-major are identical (as are the
+        // tall pair).
         let three = ProjectLayoutType.choices(forVisibleCount: 3)
-        #expect(three == [wideRow, wideColumn, tallRow, tallColumn, pedestalColumn])
-        #expect(!three.contains(pedestalRow))
-        #expect(pedestalRow.representative(forVisibleCount: 3) == wideRow)
+        #expect(three == [wideRow, tallRow, pedestalRow, pedestalColumn])
+        #expect(three.contains(pedestalRow))
+        #expect(wideColumn.representative(forVisibleCount: 3) == wideRow)
+        #expect(tallColumn.representative(forVisibleCount: 3) == tallRow)
+        #expect(pedestalRow.representative(forVisibleCount: 3) == pedestalRow)
 
         // n=9: the Essence's other example — the 3×3 grid is one shape, but
         // the two ordinal progressions stay apart (wide/row-major absorbs
@@ -225,12 +234,15 @@ struct ProjectLayoutTypeTests {
             .tree(over: r.map(\.id))
         #expect(tallRow.root == SplitTree(gridColumns: [[r[0], r[2]], [r[1], r[3]]]).root)
 
-        // Wide/column-major at n=3 (rows 2+1): row 1 top-left, row 2 the
-        // full-width bottom, row 3 top-right.
-        let three = Self.refs(3)
+        // Wide/column-major at n=5 (rows 2+3, the leftover on the trailing
+        // row): the progression runs down the left column first — row 1
+        // top-left, row 2 bottom-left, row 3 top-right, rows 4–5 the rest of
+        // the bottom row.
+        let five = Self.refs(5)
         let wideColumn = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-            .tree(over: three.map(\.id))
-        #expect(wideColumn.root == SplitTree(gridRows: [[three[0], three[2]], [three[1]]]).root)
+            .tree(over: five.map(\.id))
+        #expect(wideColumn.root == SplitTree(
+            gridRows: [[five[0], five[2]], [five[1], five[3], five[4]]]).root)
     }
 
     @Test func pedestalAssignsTheBottomSlotLast() {

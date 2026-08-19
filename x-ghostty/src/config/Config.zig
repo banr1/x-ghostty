@@ -5994,19 +5994,6 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = 'p' }, .mods = .{ .super = true } },
                 .{ .set_primary = {} },
             );
-            // Neither plain Cmd+S nor Cmd+Shift+S has another default
-            // binding (upstream binds neither), so the project sort actions
-            // take them.
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true } },
-                .{ .sort_projects_by_priority = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = 's' }, .mods = .{ .super = true, .shift = true } },
-                .{ .sort_projects_by_deadline = {} },
-            );
             // Plain Cmd+L has no other default binding (grep confirms no
             // 'l' super binding and no menu key equivalent). It goes to the
             // project list, which is the only way back from hidden and so

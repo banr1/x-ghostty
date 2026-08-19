@@ -339,6 +339,9 @@ extension WorkspaceStateOf {
         case .deadline:
             project.deadline = ProjectDeadline(parsing: text)
             projects[id] = project
+            // The deadline is a sort key: a committed change re-sorts
+            // immediately while a key state is active (`SPEC.md` §24.4).
+            resortProjects()
             return true
         case .note:
             var lines = project.note.components(separatedBy: "\n")
@@ -373,6 +376,9 @@ extension WorkspaceStateOf {
             return false
         }
         projects[id] = project
+        // Priority and next trigger are sort keys: the change re-sorts
+        // immediately while a key state is active (`SPEC.md` §24.4).
+        resortProjects()
         return true
     }
 
@@ -394,6 +400,9 @@ extension WorkspaceStateOf {
         guard step.changed else { return false }
         project.deadline = step.value
         projects[id] = project
+        // The deadline is a sort key: the stepped value re-sorts immediately
+        // while a key state is active (`SPEC.md` §24.4).
+        resortProjects()
         return true
     }
 
@@ -429,9 +438,11 @@ extension WorkspaceStateOf {
     /// project — hidden ones included — loses its priority, and the current
     /// workday is stamped so the reset cannot run twice within it.
     ///
-    /// Deliberately narrow: deadlines and notes are untouched, and nothing here
-    /// writes `canonicalProjectTree`, so the reset can never reorder projects
-    /// (§28.3 — reordering stays exclusive to the explicit sort actions).
+    /// Deliberately narrow: deadlines, notes, and next triggers are
+    /// untouched. The reset's effect on the row order follows the sort state
+    /// (§28.3): in manual it never reorders — the re-sort below is a no-op —
+    /// and while a key state is active the cleared priorities re-sort as any
+    /// value change would (§24.4).
     ///
     /// - Returns: whether the reset actually ran.
     @discardableResult
@@ -443,6 +454,7 @@ extension WorkspaceStateOf {
         for id in projects.keys where projects[id]?.priority != nil {
             projects[id]?.priority = nil
         }
+        resortProjects()
         return true
     }
 }

@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "ca47e421e9be3f8cdda2f6c9fcc31e8f930d058a324cd87d81c97918be3acd10",
+    "last_signature": "1ecc2b6cce1bf7129bb55e364445142d4a3b10e0fcc5dfe92e500de1475248a9",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-19T18:28:22+09:00",
-    "last_checked_at": "2026-08-19T18:28:22+09:00",
+    "last_progress_at": "2026-08-19T18:52:46+09:00",
+    "last_checked_at": "2026-08-19T18:52:46+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,21 +21,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.4,
+    "context_usage_estimate": 0.35,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 7,
-    "completed_todos_since_reset": 3,
-    "important_decisions_since_reset": 1,
-    "major_spec_rewrite_since_reset": true,
+    "changed_files_since_reset": 22,
+    "completed_todos_since_reset": 2,
+    "important_decisions_since_reset": 2,
+    "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-19T18:28:00+09:00",
-    "summary": "Consumed the 2026-08-19 human update (ESSENCE.md revision 69e997f5, attested via resume): re-projected Spec (34 rewritten, 5 new — S-103..S-107; abolished requirements repurposed in place: S-044..S-047 = sort state, S-100 = date candidates) and decomposed the work into T-089..T-110 (T-104..T-110 are human gates for revised criteria 10/12/16/21/26/27/28). Implemented and completed with green gates (zig build / just test / just swift-test = exit 0, 619 tests): T-089 note cap 100 + ProjectState.noteExceedsLimit save-time judgment, T-090 note-editor over-limit confirmation (NSAlert in commit(); editor now a fixed-height scrolling panel), T-091 next trigger 4-valued with teamMember->externalPerson load migration. Remaining pending must Todos: T-092 (layout remainder 2+3+3), T-093 (sort-state model — widest dependency), T-094 (sort bar), T-095 (Notion cell cursor), T-096 (candidate menus), T-097 (Delete + row selection), T-098 (note-cell full edit), T-099 (Opt reorder + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs).",
+    "written_at": "2026-08-19T18:53:00+09:00",
+    "summary": "Cycle R-20260819T182823 completed T-092 + T-093 with green gates (zig build / just test / just swift-test = exit 0; swift-test 629 passed, 0 failed). T-092: layout remainder attaches to trailing tiers (wide n=8 = 2+3+3 from the top; tall = transpose; pedestal per orientation); n=3 collapsing changed — wide 1+2 and pedestal 2+1 both remain, orientation pairs collapse instead. T-093: sort is a persisted 5-value state (ProjectSortState in ProjectSortState.swift; WorkspaceState.sortState, default manual). Single-track model: projectOrder IS the display order; resortProjects() re-applies the active key's stable ordering on every trigger (cell edits, priority/deadline/nextTrigger setters, setProjectHidden, insertProject, decode/restoring, priority reset); model API = projectSortState / setProjectSortState(_:); setSortState(.manual) inherits the display order (this is the model half of the T-099 row-move approval). The Cmd+S/Cmd+Shift+S sort actions are fully removed across zig (Config/Binding/command/action/Surface + xghostty.h tags — enum shifted, enum-sync test green) and swift (App dispatch, notifications, controller handlers; canSortProjects/sortProjectsBy* deleted). Remaining pending must Todos: T-094 (sort bar UI), T-095 (Notion cell cursor), T-096 (candidate menus), T-097 (Delete + row selection), T-098 (note-cell full edit), T-099 (Opt reorder + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates.",
     "next_actions": [
-      "Next batch: T-093 (sort-state model) — it unblocks T-094/T-099 and parts of T-095; alternatively T-092 (layout remainder) is independent and small.",
+      "Next batch: T-094 (sort bar UI — consumes projectSortState/setProjectSortState) and/or T-095 (Notion cell cursor) in the list-notion group.",
       "T-095 removes the Space-cycle helper (ProjectNextTrigger.cycled / cycledSelectionValue) and the Enter/Shift+Enter cell movement; the deadline Space stepping (ProjectDeadline.stepped) dies with T-096 — remove their tests when the replacements land.",
-      "T-103 (SPEC.md / README.md) last, after the behavior settles.",
+      "T-099's sorted-row-move confirmation: OK path = setProjectSortState(.manual) then the move (model half already exists).",
+      "T-103 (SPEC.md / README.md) last, after the behavior settles — SPEC.md still documents the removed sort actions (grep 'sort_projects' hits SPEC.md only).",
       "When the implementation Todos are done, raise a Human-input Recommendation bundling the T-104..T-110 on-device gates."
     ],
     "open_questions": [],

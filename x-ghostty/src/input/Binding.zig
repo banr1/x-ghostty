@@ -667,20 +667,6 @@ pub const Action = union(enum) {
     /// always exactly one primary per project).
     set_primary,
 
-    /// Reorder the visible projects' layout by priority: high → medium → low →
-    /// unset, projects with equal priority keeping their current relative
-    /// order. Hidden projects are unaffected. Sorting happens only when this
-    /// action runs — changing a priority never reorders by itself — and the
-    /// resulting order persists until the next sort.
-    sort_projects_by_priority,
-
-    /// Reorder the visible projects' layout by deadline: nearest date first,
-    /// unset last, projects with the same date keeping their current relative
-    /// order. Hidden projects are unaffected. Sorting happens only when this
-    /// action runs — changing a deadline never reorders by itself — and the
-    /// resulting order persists until the next sort.
-    sort_projects_by_deadline,
-
     /// Open the layout-selection overlay listing the built-in registered
     /// layouts (equal-split for 4–9 projects and X+1 for X = 4–8). Arrow
     /// keys choose, Enter applies the layout to the visible projects in
@@ -1364,8 +1350,6 @@ pub const Action = union(enum) {
             .edit_project_note,
             .toggle_note_overview,
             .set_primary,
-            .sort_projects_by_priority,
-            .sort_projects_by_deadline,
             .choose_project_layout,
             .list_projects,
             .close_project,
@@ -3483,14 +3467,6 @@ test "parse: project split actions" {
     {
         const binding = try parseSingle("a=set_primary");
         try testing.expect(binding.action == .set_primary);
-    }
-    {
-        const binding = try parseSingle("a=sort_projects_by_priority");
-        try testing.expect(binding.action == .sort_projects_by_priority);
-    }
-    {
-        const binding = try parseSingle("a=sort_projects_by_deadline");
-        try testing.expect(binding.action == .sort_projects_by_deadline);
     }
     {
         const binding = try parseSingle("a=choose_project_layout");

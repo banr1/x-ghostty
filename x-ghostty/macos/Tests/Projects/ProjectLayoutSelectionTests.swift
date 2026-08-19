@@ -72,9 +72,10 @@ struct ProjectLayoutSelectionTests {
         #expect(model.currentLayoutTypeChoice == .default)
 
         // …and a saved spelling that collapses at this count highlights its
-        // kept representative (pedestal/row-major == wide/row-major at n=3).
+        // kept representative (wide/column-major == wide/row-major at n=3:
+        // the full-width top tier pins the progression).
         var state = model.state
-        state.layoutType = ProjectLayoutType(shape: .pedestal, orientation: .rowMajor)
+        state.layoutType = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
         state.relayout()
         let collapsed = TestWorkspaceModel(state)
         #expect(collapsed.currentLayoutTypeChoice == .default)
@@ -166,13 +167,12 @@ struct ProjectLayoutSelectionTests {
         let (model, ids) = Self.makeModel(4)
         model.beginLayoutSelection()
 
-        // No focus moves, no note editing, no sorting, no hide, no other
-        // overlay while the selector is up.
+        // No focus moves, no note editing, no hide, no other overlay while
+        // the selector is up.
         #expect(model.switchFocusedProject(to: ids[1], savingOutgoingPaneTree: .init()) == nil)
         #expect(model.gotoProjectIndexTarget(2) == nil)
         model.beginNoteEditing(ids[0])
         #expect(model.noteEditingProject == nil)
-        #expect(!model.canSortProjects)
         #expect(!model.canHideFocusedProject)
         model.toggleNoteOverview()
         #expect(!model.noteOverviewActive)
@@ -180,7 +180,6 @@ struct ProjectLayoutSelectionTests {
         // Everything works again once the selector closes.
         model.cancelLayoutSelection()
         #expect(model.gotoProjectIndexTarget(2) == ids[1])
-        #expect(model.canSortProjects)
     }
 
     @Test func restoreStateAndTeardownEndTheSession() {

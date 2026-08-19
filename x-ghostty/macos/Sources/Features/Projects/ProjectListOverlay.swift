@@ -172,7 +172,7 @@ struct ProjectListOverlay: View {
 
     /// One keyDown event, observed before any dispatch. Returns `nil` to
     /// consume, or the event to let normal dispatch continue (menu key
-    /// equivalents like the sort chords stay reachable that way).
+    /// equivalents stay reachable that way).
     private func handleKey(_ event: NSEvent) -> NSEvent? {
         let modifiers = event.modifierFlags
             .intersection([.command, .shift, .option, .control])

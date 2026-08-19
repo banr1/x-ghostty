@@ -437,14 +437,6 @@ extension XGhostty.Notification {
     /// focus; the focused pane becomes its project's primary pane (zoom-only, `SPEC.md` §22.4).
     static let ghosttySetPrimary = Notification.Name("com.mitchellh.xghostty.setPrimary")
 
-    /// Posted when `sort_projects_by_priority` is requested. The sending object is the surface
-    /// that had focus; the visible projects' layout reorders by priority (`SPEC.md` §24.4).
-    static let ghosttySortProjectsByPriority = Notification.Name("com.mitchellh.xghostty.sortProjectsByPriority")
-
-    /// Posted when `sort_projects_by_deadline` is requested. The sending object is the surface
-    /// that had focus; the visible projects' layout reorders by deadline (`SPEC.md` §24.4).
-    static let ghosttySortProjectsByDeadline = Notification.Name("com.mitchellh.xghostty.sortProjectsByDeadline")
-
     /// Posted when `choose_project_layout` is requested. The sending object is the surface
     /// that had focus; the layout-selection overlay opens (`SPEC.md` §26.2).
     static let ghosttyChooseProjectLayout = Notification.Name("com.mitchellh.xghostty.chooseProjectLayout")

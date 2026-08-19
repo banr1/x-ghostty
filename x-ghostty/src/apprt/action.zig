@@ -352,16 +352,6 @@ pub const Action = union(Key) {
     /// C ABI compatibility; see the note above.
     set_primary,
 
-    /// Reorder the visible projects' layout by priority (high → medium → low →
-    /// unset, stable ties). It is up to the apprt to apply it. Appended last
-    /// to preserve C ABI compatibility; see the note above.
-    sort_projects_by_priority,
-
-    /// Reorder the visible projects' layout by deadline (nearest first, unset
-    /// last, stable ties). It is up to the apprt to apply it. Appended last
-    /// to preserve C ABI compatibility; see the note above.
-    sort_projects_by_deadline,
-
     /// Open the layout-selection overlay listing the built-in registered
     /// layouts. It is up to the apprt to show it. Appended last to preserve
     /// C ABI compatibility; see the note above.
@@ -429,7 +419,10 @@ pub const Action = union(Key) {
         // Project-layer actions, appended for C ABI compatibility. Keep this
         // order in sync with the union above and with `xghostty_action_tag_e`
         // in include/xghostty.h. (`new_project` replaced `new_project_split`
-        // in place, keeping every later tag value stable.)
+        // in place, keeping every later tag value stable; the retired sort
+        // actions were removed outright — the sort is a persisted state now,
+        // not an action — shifting the two tags after them, with the header
+        // updated in lockstep.)
         new_project,
         goto_project,
         toggle_project_zoom,
@@ -443,8 +436,6 @@ pub const Action = union(Key) {
         edit_project_note,
         toggle_note_overview,
         set_primary,
-        sort_projects_by_priority,
-        sort_projects_by_deadline,
         choose_project_layout,
         list_projects,
 

@@ -4,10 +4,12 @@ import Foundation
 /// arrangement from the visible rows of the project list. Shape × orientation:
 ///
 /// - **wide** — rows = the integer nearest √n; the projects are dealt to the
-///   rows from the top as evenly as possible; row heights and in-row widths
-///   are equal.
-/// - **tall** — the transpose: columns = nearest √n, dealt from the left,
-///   equal column widths and in-column heights.
+///   rows as evenly as possible, the leftover attaching to the trailing rows
+///   (n=8 is 2+3+3 from the top — the top rows hold fewer, wider slots); row
+///   heights and in-row widths are equal.
+/// - **tall** — the transpose: columns = nearest √n, the leftover attaching
+///   to the trailing columns (the left columns hold fewer slots), equal
+///   column widths and in-column heights.
 /// - **pedestal** — n−1 projects on top (by the wide rule for row-major, by
 ///   the tall rule for column-major) plus one full-width project as the
 ///   bottom row.
@@ -64,16 +66,19 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
     // MARK: Distribution rules
 
     /// The wide-shape row distribution (`SPEC.md` §26.1): the row count is the
-    /// integer nearest √n, and the projects are dealt to the rows from the top
-    /// as evenly as possible — the leftover projects go one each to the top
-    /// rows (4 = 2+2, 5 = 3+2, 6 = 3+3, 7 = 3+2+2, 8 = 3+3+2, 9 = 3+3+3).
-    /// The tall shape uses the same numbers as its column distribution.
+    /// integer nearest √n, and the projects are dealt to the rows as evenly as
+    /// possible — the indivisible leftover goes one each to the *trailing*
+    /// rows, so the leading rows hold fewer, wider slots (4 = 2+2, 5 = 2+3,
+    /// 6 = 3+3, 7 = 2+2+3, 8 = 2+3+3, 9 = 3+3+3). Sorted rows put the
+    /// important projects on top, and the top rows are the wide ones. The
+    /// tall shape uses the same numbers as its column distribution (the
+    /// leading — leftmost — columns hold fewer slots).
     static func tierCounts(_ n: Int) -> [Int] {
         guard n > 0 else { return [] }
         let tiers = max(1, Int(Double(n).squareRoot().rounded()))
         let base = n / tiers
         let extra = n % tiers
-        return (0..<tiers).map { $0 < extra ? base + 1 : base }
+        return (0..<tiers).map { $0 >= tiers - extra ? base + 1 : base }
     }
 
     // MARK: Slots

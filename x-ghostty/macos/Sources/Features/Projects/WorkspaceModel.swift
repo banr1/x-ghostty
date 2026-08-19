@@ -66,7 +66,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Whether any workspace-modal overlay session (note overview, layout
     /// selection, project list) currently owns the interaction: while one is
-    /// up, focus moves, note editing, and sorting are no-ops, and no other
+    /// up, focus moves and note editing are no-ops, and no other
     /// overlay may open. The note *editor* is not in this set — it locks less
     /// (see the individual guards).
     private var overlaySessionActive: Bool {
@@ -1144,19 +1144,23 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     // MARK: Priority & deadline (SPEC §24)
 
     /// Set (or unset, with `nil`) the priority of project `id` (SPEC §24.1).
-    /// No-op when the project is unknown or the value is unchanged.
+    /// No-op when the project is unknown or the value is unchanged. A change
+    /// re-sorts immediately while a key sort state is active (SPEC §24.4).
     func setProjectPriority(_ id: ProjectID, to priority: ProjectPriority?) {
         guard var project = state.projects[id], project.priority != priority else { return }
         project.priority = priority
         state.projects[id] = project
+        state.resortProjects()
     }
 
     /// Set (or unset, with `nil`) the deadline of project `id` (SPEC §24.1).
-    /// No-op when the project is unknown or the value is unchanged.
+    /// No-op when the project is unknown or the value is unchanged. A change
+    /// re-sorts immediately while a key sort state is active (SPEC §24.4).
     func setProjectDeadline(_ id: ProjectID, to deadline: ProjectDeadline?) {
         guard var project = state.projects[id], project.deadline != deadline else { return }
         project.deadline = deadline
         state.projects[id] = project
+        state.resortProjects()
     }
 
     /// Save-time boundary for deadline text input (SPEC §24.1): parse
@@ -1181,11 +1185,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Set (or unset, with `nil`) the next trigger of project `id`
     /// (SPEC §24.6). No-op when the project is unknown or the value is
-    /// unchanged.
+    /// unchanged. A change re-sorts immediately while a key sort state is
+    /// active (SPEC §24.4).
     func setProjectNextTrigger(_ id: ProjectID, to trigger: ProjectNextTrigger?) {
         guard var project = state.projects[id], project.nextTrigger != trigger else { return }
         project.nextTrigger = trigger
         state.projects[id] = project
+        state.resortProjects()
     }
 
     /// The priority of project `id`, or `nil` for unset / an unknown project.
@@ -1292,48 +1298,30 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.primaryMarkPaneIDs
     }
 
-    // MARK: Sort actions (SPEC §24.4)
+    // MARK: Sort state (SPEC §24.4–24.5)
 
-    /// Whether a sort action (`sort_projects_by_priority` /
-    /// `sort_projects_by_deadline`) can reorder anything: at least two ledger
-    /// rows, and not while the note overview or the layout selector is up —
-    /// the overview is viewing-only, and the selector's listed choices must
-    /// not have the arrangement reshuffled under them. The *project list* is
-    /// deliberately not in this set: sorting works with or without the list
-    /// open (SPEC §24.4), and the open list re-renders its rows live. Callers
-    /// use this both to perform the action and to answer the keybind's
-    /// performability check, so the two always agree.
-    var canSortProjects: Bool {
-        !noteOverviewActive && !layoutSelectionActive
-            && state.projectOrder.count >= 2
+    /// The sort state governing the row order (SPEC §24.4): manual / next /
+    /// show / deadline / priority, manual by default, persisted. Forwarded
+    /// from the state so the sort bar, render paths, and tests share one
+    /// judgment.
+    var projectSortState: ProjectSortState {
+        state.sortState
     }
 
-    /// Reorder the ledger by priority (`sort_projects_by_priority`, SPEC
-    /// §24.4): high → medium → low → unset over *every* row, hidden ones
-    /// included, equal priorities keeping their current relative order. The
-    /// ordering judgment and the stable-tie rule live in
-    /// `priorityOrderedProjectIDs`; this applies it to the row order, and the
-    /// arrangement plus ordinals follow (the visible rows counted from the
-    /// top). The order persists until the next sort or manual reorder —
-    /// priority changes never reorder by themselves.
+    /// Select a sort state (the sort bar's Enter, SPEC §24.5). A key state
+    /// applies its stable ordering immediately — over every row, hidden ones
+    /// included — and keeps governing the order until the state changes:
+    /// every later key-value change, creation, load, and priority reset
+    /// re-sorts on its own. Selecting manual inherits the current display
+    /// order as the manual order (the rows simply stop being re-sorted);
+    /// this is also the model half of the sorted row-move approval
+    /// (SPEC §27.3): approve by selecting manual, then move the row.
     ///
-    /// - Returns: whether the order changed.
+    /// - Returns: whether the row order changed (a state change that leaves
+    ///   the order intact returns false).
     @discardableResult
-    func sortProjectsByPriority() -> Bool {
-        guard canSortProjects else { return false }
-        return state.applyProjectOrder(state.priorityOrderedProjectIDs())
-    }
-
-    /// Reorder the ledger by deadline (`sort_projects_by_deadline`, SPEC
-    /// §24.4): nearest date first, unset last, same-date rows keeping their
-    /// current relative order. Same contract as
-    /// `sortProjectsByPriority`, consuming `deadlineOrderedProjectIDs`.
-    ///
-    /// - Returns: whether the order changed.
-    @discardableResult
-    func sortProjectsByDeadline() -> Bool {
-        guard canSortProjects else { return false }
-        return state.applyProjectOrder(state.deadlineOrderedProjectIDs())
+    func setProjectSortState(_ newState: ProjectSortState) -> Bool {
+        state.setSortState(newState)
     }
 
     /// The pane-count badge per project — the total pane count, only in the

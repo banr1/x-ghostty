@@ -240,9 +240,9 @@ struct ProjectPriorityDeadlineTests {
         #expect(model.projectPriority(of: hiddenHigh.id) == .high)
     }
 
-    // MARK: Sort actions (SPEC §24.4)
+    // MARK: Sort state application (SPEC §24.4–24.5)
 
-    @Test func prioritySortActionReordersTheRealLayout() throws {
+    @Test func prioritySortStateReordersTheRealLayout() throws {
         let unset = Self.makeProject(name: "unset")
         let low = Self.makeProject(name: "low")
         let medium1 = Self.makeProject(name: "medium-1")
@@ -255,18 +255,19 @@ struct ProjectPriorityDeadlineTests {
         model.setProjectPriority(high.id, to: .high)
         model.setProjectPriority(medium2.id, to: .medium)
 
-        // The action applies the priority ordering to the real layout —
-        // including the stable tie (medium1 stays before medium2 through the
-        // actual reorder), and the ordinals (Cmd+1–9) follow the new
-        // traversal order.
-        #expect(model.sortProjectsByPriority())
+        // Selecting the priority state applies its ordering to the real
+        // layout — including the stable tie (medium1 stays before medium2
+        // through the actual reorder), and the ordinals (Cmd+1–9) follow the
+        // new traversal order.
+        #expect(model.setProjectSortState(.priority))
+        #expect(model.projectSortState == .priority)
         #expect(model.state.visibleProjectIDs
                 == [high.id, medium1.id, medium2.id, low.id, unset.id])
         #expect(model.state.ordinal(of: high.id) == 1)
         #expect(model.state.visibleProjectID(ordinal: 5) == unset.id)
     }
 
-    @Test func deadlineSortActionReordersTheRealLayout() throws {
+    @Test func deadlineSortStateReordersTheRealLayout() throws {
         let unset = Self.makeProject(name: "unset")
         let december = Self.makeProject(name: "december")
         let september1 = Self.makeProject(name: "september-1")
@@ -282,13 +283,13 @@ struct ProjectPriorityDeadlineTests {
 
         // Nearest first, unset last, the same-day tie stable through the
         // actual reorder.
-        #expect(model.sortProjectsByDeadline())
+        #expect(model.setProjectSortState(.deadline))
         #expect(model.state.visibleProjectIDs
                 == [august.id, september1.id, september2.id, december.id, unset.id])
         #expect(model.state.ordinal(of: august.id) == 1)
     }
 
-    @Test func sortActionLeavesHiddenProjectsAndFocusUntouched() throws {
+    @Test func sortStateLeavesHiddenSetAndFocusUntouched() throws {
         let low = Self.makeProject(name: "low")
         let high = Self.makeProject(name: "high")
         let hiddenHigh = Self.makeProject(name: "hidden-high")
@@ -298,62 +299,17 @@ struct ProjectPriorityDeadlineTests {
         model.setProjectPriority(high.id, to: .high)
         model.setProjectPriority(hiddenHigh.id, to: .high)
 
-        // The sort permutes only the visible projects' slots: the hidden project
-        // gains no canonical leaf, and focus is id-keyed so it stays on the
-        // same project in its new slot.
+        // The sort reorders rows, never visibility: the hidden project stays
+        // hidden (gaining no canonical leaf), and focus is id-keyed so it
+        // stays on the same project in its new slot.
         let focusedBefore = model.state.focusedProject
-        #expect(model.sortProjectsByPriority())
+        #expect(model.setProjectSortState(.priority))
         #expect(model.state.visibleProjectIDs == [high.id, low.id])
         #expect(model.state.hiddenProjectIDs == [hiddenHigh.id])
         #expect(model.state.focusedProject == focusedBefore)
     }
 
-    @Test func sortIsExplicitOnlyAndTheOrderPersistsUntilTheNextSort() throws {
-        let alpha = Self.makeProject(name: "alpha")
-        let beta = Self.makeProject(name: "beta")
-        let gamma = Self.makeProject(name: "gamma")
-        let model = try Self.makeModel(visible: [alpha, beta, gamma])
-
-        model.setProjectPriority(beta.id, to: .high)
-        #expect(model.sortProjectsByPriority())
-        #expect(model.state.visibleProjectIDs == [beta.id, alpha.id, gamma.id])
-
-        // Changing a priority or a deadline never reorders by itself: the
-        // sorted layout persists until the next explicit sort action.
-        model.setProjectPriority(gamma.id, to: .high)
-        model.setProjectDeadline(alpha.id, to: Self.deadline(2026, 8, 20))
-        #expect(model.state.visibleProjectIDs == [beta.id, alpha.id, gamma.id])
-
-        #expect(model.sortProjectsByPriority())
-        #expect(model.state.visibleProjectIDs == [beta.id, gamma.id, alpha.id])
-    }
-
-    @Test func sortDeclinesForSingleProjectAndDuringNoteOverview() throws {
-        let only = Self.makeProject(name: "only")
-        let single = try Self.makeModel(visible: [only])
-        // Nothing to reorder: the keybind's performability check declines.
-        #expect(!single.canSortProjects)
-        #expect(!single.sortProjectsByPriority())
-
-        let alpha = Self.makeProject(name: "alpha")
-        let beta = Self.makeProject(name: "beta")
-        let model = try Self.makeModel(visible: [alpha, beta])
-        model.setProjectPriority(beta.id, to: .high)
-        #expect(model.toggleNoteOverview())
-
-        // The note overview is viewing-only: the sort declines and the
-        // layout stays put until the overview is closed.
-        #expect(!model.canSortProjects)
-        #expect(!model.sortProjectsByDeadline())
-        #expect(model.state.visibleProjectIDs == [alpha.id, beta.id])
-
-        model.endNoteOverview()
-        #expect(model.canSortProjects)
-        #expect(model.sortProjectsByPriority())
-        #expect(model.state.visibleProjectIDs == [beta.id, alpha.id])
-    }
-
-    @Test func sortWorksWhileTheProjectListIsOpen() throws {
+    @Test func sortStateWorksWhileTheProjectListIsOpen() throws {
         let low = Self.makeProject(name: "low")
         let high = Self.makeProject(name: "high")
         let model = try Self.makeModel(visible: [low, high])
@@ -361,10 +317,9 @@ struct ProjectPriorityDeadlineTests {
         model.setProjectPriority(high.id, to: .high)
         model.beginProjectList()
 
-        // SPEC §24.4: sorting works with or without the list open. The list
-        // session stays up and re-renders the reordered rows live.
-        #expect(model.canSortProjects)
-        #expect(model.sortProjectsByPriority())
+        // The sort state governs the order with or without the list open.
+        // The list session stays up and re-renders the reordered rows live.
+        #expect(model.setProjectSortState(.priority))
         #expect(model.state.visibleProjectIDs == [high.id, low.id])
         #expect(model.projectListActive)
         #expect(model.projectListRows.map(\.id) == [high.id, low.id])
@@ -380,7 +335,7 @@ struct ProjectPriorityDeadlineTests {
         model.setProjectPriority(visibleMedium.id, to: .medium)
         model.setProjectPriority(hiddenHigh.id, to: .high)
 
-        #expect(model.sortProjectsByPriority())
+        #expect(model.setProjectSortState(.priority))
 
         // The hidden row sorts to the top of the ledger, but the ordinals
         // (Cmd+1–9) are the *visible* rows counted from the top, skipping it

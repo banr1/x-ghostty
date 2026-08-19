@@ -139,7 +139,7 @@ struct ProjectPriorityResetTests {
         #expect(model.state.isProjectHidden(hidden.id))
     }
 
-    @Test func resetDoesNotReorderProjects() throws {
+    @Test func resetDoesNotReorderProjectsInTheManualState() throws {
         let calendar = Self.calendar
         // Priorities that a priority sort would visibly rearrange.
         let a = Self.makeProject(name: "a", priority: .low)
@@ -148,12 +148,38 @@ struct ProjectPriorityResetTests {
         let model = try Self.makeModel(
             visible: [a, b, c],
             lastReset: Workday(containing: try Self.date(2026, 8, 15, 21), calendar: calendar))
+        #expect(model.projectSortState == .manual)
         let before = model.state.visibleProjectIDs
 
         #expect(model.applyDailyPriorityReset(
             now: try Self.date(2026, 8, 16, 7), calendar: calendar) == true)
 
         #expect(model.state.visibleProjectIDs == before)
+        #expect(model.state.visibleProjectIDs == [a.id, b.id, c.id])
+    }
+
+    @Test func resetResortsAsAConsequenceOfAnActiveSortState() throws {
+        // SPEC §28.3: the reset's effect on the order follows the sort state.
+        // Under the priority key the cleared priorities all tie, so the
+        // stable re-sort keeps the pre-reset display order — and the order
+        // keeps being governed by the state afterwards: the next priority
+        // set re-sorts immediately.
+        let calendar = Self.calendar
+        let a = Self.makeProject(name: "a", priority: .low)
+        let b = Self.makeProject(name: "b", priority: .high)
+        let c = Self.makeProject(name: "c", priority: .medium)
+        let model = try Self.makeModel(
+            visible: [a, b, c],
+            lastReset: Workday(containing: try Self.date(2026, 8, 15, 21), calendar: calendar))
+        model.setProjectSortState(.priority)
+        #expect(model.state.visibleProjectIDs == [b.id, c.id, a.id])
+
+        #expect(model.applyDailyPriorityReset(
+            now: try Self.date(2026, 8, 16, 7), calendar: calendar) == true)
+        #expect(model.state.projects.values.allSatisfy { $0.priority == nil })
+        #expect(model.state.visibleProjectIDs == [b.id, c.id, a.id])
+
+        model.setProjectPriority(a.id, to: .high)
         #expect(model.state.visibleProjectIDs == [a.id, b.id, c.id])
     }
 
