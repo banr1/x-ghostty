@@ -3924,7 +3924,7 @@
     {
       "id": "T-097",
       "title": "Delete and row selection: Delete on the cell cursor clears the cell value per column (title emptied; priority/deadline/next-trigger unset; note asks confirmation and deletes all lines on OK; visibility does nothing); Esc on the cell cursor enters row selection (whole-row highlight, Up/Down move, Enter back to the cell cursor, Esc release), and Delete during row selection deletes the project through the same confirmation as close, hidden rows included — making the loss paths exactly Cmd+W / close_project / row-selection Delete; XGhosttyTests for the criterion-20 delete and row-selection items",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-103",
@@ -3938,7 +3938,30 @@
       },
       "batch_group": "list-notion",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "just swift-test (PATH=/opt/homebrew/opt/zig@0.15/bin)",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED; new suite ProjectListRowSelectionTests: 9/9 passed (per-column deleteAction judgment; Delete clears title/priority/deadline/nextTrigger/note and refuses visibility; sort-key deletion re-sorts under active sort; delete refused without list session; Esc/Enter mode transitions; closeProject removes unfocused and hidden rows keeping focus, delegates focused row to closeFocusedProject, last row = .closedLast, unknown id = nil)"
+        },
+        {
+          "type": "command",
+          "command": "zig build",
+          "exit_code": 0,
+          "summary": "full macOS app build green"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green (pre-existing fixture warnings only)"
+        },
+        {
+          "type": "diff",
+          "summary": "ProjectList.swift: ProjectListDeleteAction + ProjectListColumn.deleteAction, WorkspaceStateOf.deleteListCellValue (title empties bypassing rename empty-reject; sort-key columns resort; note clears all lines; visibility refused), ProjectListKeyboardMode (escaped/entered transitions). WorkspaceModel: deleteProjectListCellValue (list-session-gated), closeProject(id:) for any row (focused delegates to closeFocusedProject, unfocused/hidden rows removed keeping focus). BaseTerminalController: closeProjectListRow with the same close_project confirmation dialog + undo; TerminalView delegate + wiring. ProjectListOverlay: row-selection mode (Esc enters/releases, Enter returns, Up/Down move, Delete closes row via controller; Esc no longer closes the list — Cmd+L toggle arrives with T-100, backdrop click still closes), cell-cursor Delete with per-column judgment and the note OK/Cancel confirmation, whole-row highlight, footer/header hints. 6 files changed +312/-11 plus 1 new test file"
+        }
+      ]
     },
     {
       "id": "T-098",

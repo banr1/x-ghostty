@@ -1810,6 +1810,47 @@ class BaseTerminalController: NSWindowController,
         createProjectFromList(after: anchorID)
     }
 
+    /// Close a project-list row's project (row-selection Delete, `SPEC.md`
+    /// §27.2). A close-equivalent deletion: the same confirmation dialog as
+    /// `close_project` (§23.1) guards it, hidden rows included. The list
+    /// stays up — the sheet takes the keyboard only while it is presented —
+    /// so several rows can be deleted in a sitting.
+    func closeProjectListRow(_ id: ProjectID) {
+        guard workspace.projectListActive,
+              let project = workspace.state.projects[id] else { return }
+
+        let paneCount = project.paneTree.reduce(into: 0) { count, _ in count += 1 }
+        let pane = paneCount == 1 ? "pane" : "panes"
+        confirmClose(
+            messageText: "Close Project “\(project.name)”?",
+            informativeText: "This will close \(paneCount) \(pane) and terminate their processes.",
+            confirmButtonTitle: "Close Project"
+        ) { [weak self] in
+            self?.performCloseProjectListRow(id)
+        }
+    }
+
+    /// Apply a confirmed row-selection Delete. Closing the focused row moves
+    /// focus like `close_project` (the model's judgment); the `surfaceTree`
+    /// swap is then a real switch, otherwise a harmless no-op. Keyboard focus
+    /// stays with the open list either way. The last project's close
+    /// delegates to the window close (§18.5), exactly like
+    /// `performCloseFocusedProject`.
+    private func performCloseProjectListRow(_ id: ProjectID) {
+        let before = workspace.state
+        switch workspace.closeProject(id) {
+        case .switched:
+            surfaceTree = workspace.focusedPaneTree
+            registerWorkspaceUndo("Close Project", undo: before, redo: workspace.state)
+
+        case .closedLast:
+            replaceSurfaceTree(.init())
+
+        case nil:
+            break
+        }
+    }
+
     /// Close the project list (Escape, `SPEC.md` §27.3). Toggles made during
     /// the session are real mutations and stay.
     ///

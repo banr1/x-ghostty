@@ -32,9 +32,15 @@ protocol TerminalViewDelegate: AnyObject {
     /// Focus a project-list row and close the list (Enter, `SPEC.md` §27.3).
     func focusProjectListRow(_ id: ProjectID)
 
-    /// Close the project list (Escape, `SPEC.md` §27.3), returning keyboard
+    /// Close the project list (`SPEC.md` §27.3), returning keyboard
     /// focus to the project that is focused after the session's toggles.
     func closeProjectList()
+
+    /// Close a project-list row's project (row-selection Delete, `SPEC.md`
+    /// §27.2): a close-equivalent deletion behind the same confirmation as
+    /// `close_project`, hidden rows included. The controller owns the
+    /// dialog, the surface teardown, and the undo.
+    func closeProjectListRow(_ id: ProjectID)
 
     /// Create a new project below the list's cursor row (`Cmd+N` inside the
     /// list, `SPEC.md` §27.4). Needs a fresh `SurfaceView` (a live shell), so
@@ -118,6 +124,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         onToggleProjectListVisibility: { delegate?.toggleProjectListVisibility($0) },
                         onFocusProjectListRow: { delegate?.focusProjectListRow($0) },
                         onCloseProjectList: { delegate?.closeProjectList() },
+                        onCloseProjectListRow: { delegate?.closeProjectListRow($0) },
                         onCreateProjectListRow: { delegate?.createProjectListRow(after: $0) },
                         onChooseLayoutType: { delegate?.chooseLayoutType($0) })
                         .environmentObject(ghostty)

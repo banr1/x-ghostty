@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "e69b347a03406dc55225567b2784b2cc530cbcc7448ec9e005975d27c7a36a98",
+    "last_signature": "085d99b803767efc1306a9f6d2a6ef055624498c9c085a62dbc81f9cd44139f0",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-19T19:30:38+09:00",
-    "last_checked_at": "2026-08-19T19:30:38+09:00",
+    "last_progress_at": "2026-08-19T19:44:53+09:00",
+    "last_checked_at": "2026-08-19T19:44:53+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -23,20 +23,20 @@
   "counters": {
     "context_usage_estimate": 0.35,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 5,
-    "completed_todos_since_reset": 1,
+    "changed_files_since_reset": 12,
+    "completed_todos_since_reset": 2,
     "important_decisions_since_reset": 0,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-19T19:30:00+09:00",
-    "summary": "Cycle R-20260819T191703 completed T-096 (value-candidate menus) with green gates (zig build / just test / just swift-test = exit 0; new ProjectListCandidateTests 8/8). Model: ProjectListCandidates.swift — ProjectListCandidateValue (.priority/.nextTrigger/.deadline, displayText shared with the cells; ProjectPriority.displayText now lives on the model), ProjectListCandidateMenu.opened(on:column:today:) (real values only, no unset; deadline = ProjectDeadline.dateCandidates: today..+7d + sameDayAddingMonths(1)/(3) with month-end clamp; monthDayText = 'Aug 19'), moved(by:) clamps, selectedValue. WorkspaceModel.commitProjectListCandidate (projectListActive-gated, routes to setProjectPriority/NextTrigger/Deadline so active-sort re-sort comes free). Overlay: candidateMenu @State, modal plain-key routing placed before the sort-bar branch (Up/Down/Enter/Esc; Cmd-chords fall through), dropdown via cell .overlay(topLeading)+offset(y:20) with zIndex lift on the menu row, click-to-commit, rows.count change closes the menu, footer '↑↓ choose · ↩ set · esc close'. Enter on deadline/priority/nextTrigger cells is now LIVE (was inert since T-095). Remaining pending must: T-097 (Delete + row selection), T-098 (note-cell full edit), T-099 (sorted Opt-move confirmation + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates. Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks).",
+    "written_at": "2026-08-19T19:55:00+09:00",
+    "summary": "Cycle R-20260819T193039 completed T-097 (Delete + row selection) with green gates (zig build / just test / just swift-test = exit 0; new ProjectListRowSelectionTests 9/9). Model: ProjectList.swift gained ProjectListDeleteAction + ProjectListColumn.deleteAction (title/priority/deadline/nextTrigger=clearValue, note=confirmClearNote, visibility=none), WorkspaceStateOf.deleteListCellValue (title empties BYPASSING renameProject's empty-reject; sort-key columns resort; note clears all lines), ProjectListKeyboardMode (.cellCursor/.rowSelection, escaped/entered). WorkspaceModel: deleteProjectListCellValue (projectListActive-gated), closeProject(id:) for ANY row — focused delegates to closeFocusedProject, unfocused/hidden rows removed keeping focus (.switched to unchanged focused), last row .closedLast. Controller: closeProjectListRow → confirmClose (same Close Project dialog) → performCloseProjectListRow (surfaceTree swap + registerWorkspaceUndo; .closedLast → replaceSurfaceTree(.init())); TerminalView delegate closeProjectListRow wired through TerminalWorkspaceView onCloseProjectListRow → overlay onCloseRow. Overlay: mode @State; Esc toggles cell-cursor↔row-selection and NO LONGER closes the list (Essence 80; backdrop click still closes; Cmd+L toggle-close is T-100's job — until then keyboard-only closing is Cmd+Enter focus); row-selection branch owns plain keys (Up/Down move via moveCursor, Enter/Esc back, Delete → onCloseRow), Cmd-chords fall through like sort bar/menu; cell Delete = keyCode 51/117 → deleteOnCursorCell (note shows OK/Cancel NSAlert.runModal like the note editor's trim confirm); whole-row highlight 0.28 in row mode, cell cursor suppressed; footer/header hints updated. Earlier this reset window: T-096 (candidate menus — ProjectListCandidates.swift, commitProjectListCandidate, dropdown below cell). Remaining pending must: T-098 (note-cell full edit), T-099 (sorted Opt-move confirmation + Cmd+N insertion), T-100 (Cmd+L toggle / Cmd+Enter focus+zoom semantics / hidden same color), T-101 (Cmd+/ shortcut list), T-102 (Cmd+K unbind), T-103 (SPEC/README docs); T-104..T-110 are human gates. Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks).",
     "next_actions": [
-      "Next batch: T-097 (Delete + row selection) — model: per-column Delete judgment (title→empty needs its own mutation, NOT renameProject which rejects empty; priority/deadline/nextTrigger→nil; note→confirmation then clear all lines; visibility→no-op), row-selection state machine (Esc from cell cursor → row selection, Up/Down move, Enter back, Esc release, Delete → close-equivalent confirmation, hidden rows included). Wire the row Delete to the existing close_project confirmation dialog.",
-      "T-098 (note-cell full edit: Shift+Enter newline, cell expands downward, commit applies all lines with the 100-line confirmation) and T-099 (sorted Opt-move confirmation: OK = setProjectSortState(.manual) then move; Cmd+N stable-sort insertion) follow in the list-notion group.",
-      "T-100 changes Esc-closes-the-list (Cmd+L toggle, Esc never closes) — the overlay's isEscape branch in handleKey is the place; design together with T-097's row-selection Esc (Esc from cell cursor enters row selection instead of closing).",
-      "T-103 (SPEC.md / README.md) last — SPEC.md §27.x still documents removed Space keys/sort actions and now also lacks the candidate menus (code comments cite §27.6 anticipating the renumbering).",
+      "Next batch: T-098 (note-cell full-line editing) — the cell edit currently covers only line 1 (commitListCellEdit .note rewrites lines[0]). Change to whole-note editing: ProjectListCellEdit seeded with the FULL note (editableText(for: .note) returns noteFirstLine today — needs the full text), Shift+Enter inserts a newline in the cell editor (routing: shifted Enter while editing = newline, not commit — adjust ProjectListCellEdit.routing which today ignores shift on Enter), the cell expands downward (ProjectListCellEditor is single-line NSTextField? check — may need NSTextView or wraps), commit applies ALL lines through setNote with the 100-line confirmation (ProjectState.noteExceedsLimit + the same OK/Cancel alert as ProjectNoteEditor.commit), scroll reaches all lines. Tests: note-column editing covers all lines, commit applies all lines (S-083).",
+      "T-099 (sorted Opt-move confirmation: OK = setProjectSortState(.manual) then move, Cancel = nothing; manual moves stay confirmation-free; Cmd+N insertion position under active sort = stable-sort consequence — verify createProjectFromList already resorts) follows.",
+      "T-100 (Cmd+L toggle — controller list_projects action must endProjectList when active; Esc-never-closes is already true after T-097; zoom overlay semantics + Cmd+Enter zoom-target switch; hidden rows same color — remove the row's .opacity(0.5) dimming in ProjectListOverlay).",
+      "T-103 (SPEC.md / README.md) last — SPEC.md §27.x still documents removed Space keys/sort actions and lacks candidate menus, Delete/row selection, and the Esc/no-close change.",
       "When the implementation Todos are done, raise a Human-input Recommendation bundling the T-104..T-110 on-device gates."
     ],
     "open_questions": [],

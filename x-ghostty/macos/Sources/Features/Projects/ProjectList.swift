@@ -110,6 +110,60 @@ enum ProjectListEnterAction: Equatable {
     case enumerateCandidates
 }
 
+/// The per-column judgment of what Delete does on a cell (`SPEC.md` §27.2):
+/// the title empties and the value columns unset immediately; the note —
+/// the one cell whose loss is many lines of handwriting — asks for
+/// confirmation first; the visibility column has no value to delete.
+enum ProjectListDeleteAction: Equatable {
+    /// Clear the cell's value immediately (`deleteListCellValue`).
+    case clearValue
+    /// Ask for confirmation; OK deletes every note line, Cancel does nothing.
+    case confirmClearNote
+    /// Delete does nothing on this column.
+    case none
+}
+
+extension ProjectListColumn {
+    /// What Delete does on this column's cell (`SPEC.md` §27.2).
+    var deleteAction: ProjectListDeleteAction {
+        switch self {
+        case .title, .priority, .deadline, .nextTrigger: return .clearValue
+        case .note: return .confirmClearNote
+        case .visibility: return .none
+        }
+    }
+}
+
+// MARK: Row selection (SPEC §27.2)
+
+/// The list's keyboard interaction mode (`SPEC.md` §27.2): the cell cursor,
+/// or the whole-row selection Escape enters from it. In row selection the
+/// up/down moves carry the selected row (the cursor's row), Enter returns to
+/// the cell cursor on that row, Escape releases likewise, and Delete closes
+/// the row's project through the same confirmation as `close_project` —
+/// hidden rows included.
+enum ProjectListKeyboardMode: Equatable {
+    case cellCursor
+    case rowSelection
+
+    /// Escape's transition (`SPEC.md` §27.2): the cell cursor enters row
+    /// selection; row selection releases back to the cell cursor. The list
+    /// itself never closes on Escape — Cmd+L is the toggle.
+    var escaped: ProjectListKeyboardMode {
+        switch self {
+        case .cellCursor: return .rowSelection
+        case .rowSelection: return .cellCursor
+        }
+    }
+
+    /// Enter's transition: row selection returns to the cell cursor on the
+    /// selected row. In cell-cursor mode Enter is not a mode change — it
+    /// operates on the cell (`ProjectListColumn.enterAction`).
+    var entered: ProjectListKeyboardMode {
+        .cellCursor
+    }
+}
+
 // MARK: Row derivation (SPEC §27.1)
 
 extension WorkspaceStateOf {
@@ -367,6 +421,52 @@ extension WorkspaceStateOf {
             projects[id] = project
             return true
         case .visibility, .priority, .nextTrigger:
+            return false
+        }
+    }
+
+    /// Apply a Delete on `column`'s cell (`SPEC.md` §27.2): the title
+    /// empties — deliberately bypassing the rename rule's empty-reject,
+    /// which protects against *accidental* emptiness, not this explicit
+    /// deletion — the value columns unset (each is a sort key, so the
+    /// change re-sorts immediately while a key state is active, §24.4),
+    /// and the note loses every line. The note's confirmation is the
+    /// caller's (`ProjectListColumn.deleteAction`); this is the mutation
+    /// an approved deletion applies. The visibility column has no value
+    /// to delete.
+    ///
+    /// - Returns: whether anything was deleted (an unknown project or the
+    ///   visibility column leaves the state untouched).
+    @discardableResult
+    mutating func deleteListCellValue(
+        _ column: ProjectListColumn, for id: ProjectID
+    ) -> Bool {
+        guard var project = projects[id] else { return false }
+        switch column {
+        case .title:
+            project.name = ""
+            projects[id] = project
+            return true
+        case .priority:
+            project.priority = nil
+            projects[id] = project
+            resortProjects()
+            return true
+        case .deadline:
+            project.deadline = nil
+            projects[id] = project
+            resortProjects()
+            return true
+        case .nextTrigger:
+            project.nextTrigger = nil
+            projects[id] = project
+            resortProjects()
+            return true
+        case .note:
+            project.setNote("")
+            projects[id] = project
+            return true
+        case .visibility:
             return false
         }
     }

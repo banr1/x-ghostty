@@ -18,10 +18,15 @@ import SwiftUI
 /// list, and the value columns enumerate candidates (§27.6). Typing on a
 /// text column starts a replace edit; while editing, Enter commits and
 /// moves down, Tab / Shift+Tab commit and move right/left, Escape cancels
-/// (only the edit). Opt+↑/↓ move the cursor row and Opt+←/→ the cursor
+/// (only the edit). Delete clears the cursor cell's value per the model's
+/// per-column rule (the note confirms first). Escape outside an edit enters
+/// whole-row selection — Up/Down move the selected row, Enter/Escape return
+/// to the cells, Delete closes the row's project behind the close_project
+/// confirmation (hidden rows included) — the list itself never closes on
+/// Escape. Opt+↑/↓ move the cursor row and Opt+←/→ the cursor
 /// column, persistently; Cmd+Enter focuses a visible row's project and
-/// closes; Cmd+Opt+E toggles whole-list full-note display; Escape outside
-/// an edit closes the list.
+/// closes; Cmd+Opt+E toggles whole-list full-note display; a backdrop
+/// click closes the list.
 ///
 /// Judgment stays on the model — `ProjectListCellCursor` owns the movement
 /// rules, `ProjectListCellEdit` the edit session, and the `WorkspaceModel`
@@ -74,9 +79,14 @@ struct ProjectListOverlay: View {
     /// Focus the row's project and close (Cmd+Enter on a visible row).
     let onFocus: (ProjectID) -> Void
 
-    /// Close the list (Escape outside an edit / backdrop click). Edits
-    /// committed and toggles made during the session stay.
+    /// Close the list (backdrop click). Edits committed and toggles made
+    /// during the session stay.
     let onClose: () -> Void
+
+    /// Close a row's project (row-selection Delete, `SPEC.md` §27.2). The
+    /// controller runs the same confirmation dialog as `close_project`;
+    /// hidden rows included.
+    let onCloseRow: (ProjectID) -> Void
 
     /// Commit an in-place text-cell edit (draft, column, row id).
     let onCommitEdit: (String, ProjectListColumn, ProjectID) -> Void
@@ -84,6 +94,11 @@ struct ProjectListOverlay: View {
     /// Commit a candidate-menu selection (value, row id) — the Enter (or
     /// click) on an enumerated candidate (`SPEC.md` §27.6).
     let onCommitCandidate: (ProjectListCandidateValue, ProjectID) -> Void
+
+    /// Delete a cell's value (column, row id) — Delete on the cell cursor
+    /// (`SPEC.md` §27.2). The note's confirmation already happened here in
+    /// the overlay; the per-column value rule is the model's.
+    let onDeleteCellValue: (ProjectListColumn, ProjectID) -> Void
 
     /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓). Returns the
     /// row's new index, or `nil` when nothing moved (a clamped end).
@@ -112,6 +127,12 @@ struct ProjectListOverlay: View {
     /// The keyboard cell cursor. Pure presentation state; the movement rules
     /// live on `ProjectListCellCursor`.
     @State private var cursor = ProjectListCellCursor(row: 0, column: 0)
+
+    /// Cell cursor vs whole-row selection (`SPEC.md` §27.2). The transitions
+    /// are the model's (`ProjectListKeyboardMode`): Escape enters row
+    /// selection from the cell cursor and releases back, Enter returns to
+    /// the cells; the selected row is the cursor's row.
+    @State private var mode = ProjectListKeyboardMode.cellCursor
 
     /// The in-place edit session, or `nil`. Commit applies the draft through
     /// `onCommitEdit`; cancel just discards this value (`SPEC.md` §27.2).
@@ -273,8 +294,37 @@ struct ProjectListOverlay: View {
             return nil
         }
 
+        // Whole-row selection (SPEC §27.2): the mode Escape toggles from the
+        // cell cursor. It owns every plain key — Up/Down move the selected
+        // row, Enter returns to the cells, Escape releases, Delete closes
+        // the row's project behind the close_project confirmation (hidden
+        // rows included). Cmd-chords fall through, like the other sessions.
+        if mode == .rowSelection {
+            guard modifiers.subtracting([.shift]).isEmpty else { return event }
+            if isEscape {
+                mode = mode.escaped
+                return nil
+            }
+            switch event.specialKey {
+            case .some(.upArrow):
+                moveCursor(.up)
+            case .some(.downArrow):
+                moveCursor(.down)
+            case .some(.carriageReturn), .some(.enter):
+                mode = mode.entered
+            default:
+                if Self.isDeleteKey(event), let row = cursorRow {
+                    onCloseRow(row.id)
+                }
+            }
+            return nil
+        }
+
+        // Escape on the cell cursor enters row selection (SPEC §27.2); the
+        // list itself never closes on Escape — Cmd+L is the toggle.
         if isEscape {
-            onClose()
+            guard !rows.isEmpty else { return nil }
+            mode = mode.escaped
             return nil
         }
 
@@ -369,6 +419,13 @@ struct ProjectListOverlay: View {
             return nil
         }
 
+        // Delete on the cursor cell (SPEC §27.2): the per-column judgment is
+        // the model's (`ProjectListColumn.deleteAction`).
+        if Self.isDeleteKey(event) {
+            deleteOnCursorCell()
+            return nil
+        }
+
         // Any other printable character starts an in-place edit on a text
         // column (SPEC §27.2). The keystroke is *not* seeded into the draft:
         // it is replayed into the new editor's input context, so an IME
@@ -399,6 +456,14 @@ struct ProjectListOverlay: View {
         case .some(.tab), .some(.backTab): return .tab
         default: return .other
         }
+    }
+
+    /// Whether the event is the Delete key (SPEC §27.2) — the main delete
+    /// (backspace, key code 51) or forward delete (117), matched by key code
+    /// because the delete character is a control character the special-key
+    /// reading does not cover uniformly.
+    private static func isDeleteKey(_ event: NSEvent) -> Bool {
+        event.keyCode == 51 || event.keyCode == 117
     }
 
     /// The plain-movement reading of a key event, or `nil` when the event is
@@ -448,6 +513,31 @@ struct ProjectListOverlay: View {
             // "today" for the date candidates (SPEC §27.6).
             candidateMenu = ProjectListCandidateMenu.opened(
                 on: row, column: column, today: ProjectDeadline(from: Date()))
+        }
+    }
+
+    /// Delete on the cursor cell (SPEC §27.2): the title and the value
+    /// columns clear immediately, the visibility column is untouched, and
+    /// the note — many lines of handwriting — asks for confirmation first
+    /// (OK deletes every line, Cancel does nothing). The judgment is the
+    /// model's (`ProjectListColumn.deleteAction`); the dialog is the same
+    /// OK/Cancel form as the note editor's over-limit confirmation.
+    private func deleteOnCursorCell() {
+        guard let row = cursorRow, let column = cursorColumn else { return }
+        switch column.deleteAction {
+        case .clearValue:
+            onDeleteCellValue(column, row.id)
+        case .confirmClearNote:
+            let alert = NSAlert()
+            alert.messageText = "Delete note for “\(row.title)”?"
+            alert.informativeText = "This will delete every line of the note."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            onDeleteCellValue(column, row.id)
+        case .none:
+            break
         }
     }
 
@@ -699,7 +789,12 @@ struct ProjectListOverlay: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
         .contentShape(Rectangle())
-        .background(index == cursor.row ? Color.secondary.opacity(0.12) : Color.clear)
+        // The whole-row highlight: stronger while this row is the row
+        // selection (SPEC §27.2), the usual quiet cursor-row wash otherwise.
+        .background(
+            index == cursor.row
+                ? Color.secondary.opacity(mode == .rowSelection ? 0.28 : 0.12)
+                : Color.clear)
         .cornerRadius(4)
         .onTapGesture {
             guard edit == nil, candidateMenu == nil else { return }
@@ -715,7 +810,10 @@ struct ProjectListOverlay: View {
         row: ProjectListRow, rowIndex: Int,
         column: ProjectListColumn, columnIndex: Int
     ) -> some View {
-        let isCursor = rowIndex == cursor.row && columnIndex == cursor.column
+        // In row selection the whole row carries the highlight; no single
+        // cell reads as the cursor (SPEC §27.2).
+        let isCursor = mode == .cellCursor
+            && rowIndex == cursor.row && columnIndex == cursor.column
         let isEditing = isCursor && edit != nil
 
         Self.columnFrame(column, Group {
@@ -829,7 +927,7 @@ struct ProjectListOverlay: View {
             Text("projects")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("↩ edit/toggle · type edit · ↑ sort · ⌘n new · ⌘↩ focus · ⌘⌥e notes · esc close")
+            Text("↩ edit/toggle · ⌫ delete · ↑ sort · esc rows · ⌘n new · ⌘↩ focus · ⌘⌥e notes")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }
@@ -870,6 +968,10 @@ struct ProjectListOverlay: View {
         }
         if candidateMenu != nil {
             return "↑↓ choose · ↩ set · esc close"
+        }
+        if mode == .rowSelection {
+            let name = cursorRow.map { " \($0.title)" } ?? ""
+            return "↑↓ move · ⌫ closes\(name) · ↩/esc back to cells"
         }
         if sortBarSelection != nil {
             return "←→ choose · ↩ apply sort · esc back to table"

@@ -646,6 +646,22 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return true
     }
 
+    /// Apply a Delete on a cell (`SPEC.md` §27.2), only while the list
+    /// session is up. The per-column value rule lives on the state
+    /// (`deleteListCellValue`); the note's confirmation is the view's
+    /// (`ProjectListColumn.deleteAction`) — this is what an approved
+    /// deletion applies.
+    @discardableResult
+    func deleteProjectListCellValue(
+        _ column: ProjectListColumn, for id: ProjectID
+    ) -> Bool {
+        guard projectListActive else { return false }
+        var next = state
+        guard next.deleteListCellValue(column, for: id) else { return false }
+        state = next
+        return true
+    }
+
     /// Move row `id` one-or-more places up (negative `delta`) or down in the
     /// ledger order (`Opt+↑`/`Opt+↓`, `SPEC.md` §27.1), clamped to the ends;
     /// only while the list session is up. The arrangement re-derives and the
@@ -939,6 +955,32 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state = next
 
         return .switched(target: targetID, focus: state.projects[targetID]?.focusedSurface)
+    }
+
+    /// Close project `id` — any ledger row, visible or hidden (the list's
+    /// row-selection Delete, `SPEC.md` §27.2, which is a close-equivalent
+    /// deletion behind the same confirmation as `close_project`).
+    ///
+    /// The focused row delegates to `closeFocusedProject` and reports its
+    /// outcome. An unfocused row (hidden ones included) simply leaves the
+    /// ledger; focus does not move, reported as `.switched` to the unchanged
+    /// focused project so the caller runs one outcome path.
+    ///
+    /// Confirmation and terminating the closed project's surfaces remain the
+    /// caller's responsibility, exactly as with `closeFocusedProject`.
+    ///
+    /// - Returns: `nil` when `id` is unknown (or no project is focused, a
+    ///   state the UI cannot reach).
+    @discardableResult
+    func closeProject(_ id: ProjectID) -> CloseProjectOutcome? {
+        guard state.projects[id] != nil else { return nil }
+        if state.focusedProject == id { return closeFocusedProject() }
+        guard let focusedID = state.focusedProject else { return nil }
+
+        var next = state
+        next.removeProject(id)
+        state = next
+        return .switched(target: focusedID, focus: state.projects[focusedID]?.focusedSurface)
     }
 
     /// The hidden project to reveal when the last visible project is closed: the

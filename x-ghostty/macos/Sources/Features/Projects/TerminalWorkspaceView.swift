@@ -35,11 +35,16 @@ struct TerminalWorkspaceView: View {
     /// Swaps `surfaceTree` like `onFocusProject`, so the controller handles it.
     let onFocusProjectListRow: (ProjectID) -> Void
 
-    /// Close the project list (Escape / backdrop click, `SPEC.md` §27.3). The
+    /// Close the project list (backdrop click, `SPEC.md` §27.3). The
     /// controller handles it so keyboard focus returns to whichever project is
     /// focused *after* the session's toggles, not to the surface that was
     /// focused when the list opened.
     let onCloseProjectList: () -> Void
+
+    /// Close a project-list row's project (row-selection Delete, `SPEC.md`
+    /// §27.2). The controller owns the close-equivalent confirmation dialog,
+    /// the surface teardown, and the undo.
+    let onCloseProjectListRow: (ProjectID) -> Void
 
     /// Create a new project below the list's cursor row (`Cmd+N` inside the
     /// list, `SPEC.md` §27.4). Needs a fresh `SurfaceView`, so the controller
@@ -144,12 +149,16 @@ struct TerminalWorkspaceView: View {
                     onToggle: onToggleProjectListVisibility,
                     onFocus: onFocusProjectListRow,
                     onClose: onCloseProjectList,
+                    onCloseRow: onCloseProjectListRow,
                     // Cell mutations are model-only: no `surfaceTree` swap is
                     // involved, so no controller round-trip is needed.
                     onCommitEdit: { workspace.commitProjectListCellEdit($0, column: $1, for: $2) },
                     // Candidate-menu commits land through the same setters
                     // as every other entry point (SPEC §27.6); model-only.
                     onCommitCandidate: { workspace.commitProjectListCandidate($0, for: $1) },
+                    // Cell-value deletion is model-only; the note's
+                    // confirmation happens in the overlay before this fires.
+                    onDeleteCellValue: { workspace.deleteProjectListCellValue($0, for: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },
