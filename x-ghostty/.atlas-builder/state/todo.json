@@ -4174,7 +4174,7 @@
     {
       "id": "T-103",
       "title": "Update SPEC.md and README.md for this revision: the list's operation grammar (Enter editing, Delete, row selection, edge moves, Opt reordering), the sort state and sort bar, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, the layout remainder distribution, and the key changes including Cmd+K and Cmd+/",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-091"
@@ -4184,7 +4184,30 @@
       },
       "batch_group": "docs",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full build green after the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED (full XGhosttyTests suite)"
+        },
+        {
+          "type": "diff",
+          "summary": "SPEC.md: new '## 30. ショートカット一覧仕様' (action/reachability, stacking monitor protocol, ShortcutCatalog model, test inventory) matching the SPEC §30 refs already in code; §9.1/§10.5 action+keybind tables (sort actions removed, toggle_shortcut_list + Cmd+/ added, Cmd+K unbind documented); §12.1 sortState persisted; §21 note cap 10→100 with the over-limit OK/Cancel confirmation and scroll-to-reach editor, tests 44; §24 rewritten around the sort STATE (24.1 candidate-menu/Delete entry points, 24.3 four fixed-direction orderings, 24.4 ProjectSortState + sort bar + approveSortedRowMove, 24.5 suites 18+13, 24.6 next trigger 4-valued with teamMember→external load migration, tests 7); §26 remainder rear distribution (2+3+3) + n=3 collapse example inverted; §27 rewritten to the Notion grammar (intro, 27.1 same-color hidden rows + Opt-arrow reordering, 27.2 Enter operations / candidate menus / whole-note multiline edit / Delete / row selection, 27.3 hidden-row Cmd+Enter resolution + Cmd+L toggle + zoom overlay, 27.4 sorted insertion, 27.5 multiline routing, 27.6 six-suite inventory); stale Space-toggle / Esc-closes / Cmd+arrow-move / hidden-close mentions fixed across §7/§9/§11/§18/§19 blocks. README.md: notes 100-line cap + confirmation, next trigger 3+unset values, sort-state paragraph replacing Cmd+S/Cmd+Shift+S, project-list bullet rewritten to the Notion grammar incl. zoom-overlay + hidden-row focus + Cmd+L toggle, new Shortcut list bullet with Cmd+K unbind note; Building section already listed all three verification commands (verified)."
+        }
+      ]
     },
     {
       "id": "T-104",

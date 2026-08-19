@@ -336,14 +336,15 @@ shelf は廃止し、**hidden プロジェクトの唯一の復帰導線を `Cmd
 ```text
 - 一覧は hidden を含む全プロジェクトを 1 つの表に並べる(§27.1)
 - hidden 行は序数欄が空(序数は visible にしか付かない、§7.3)
-- Space で hide/show を即時トグル(§27.2)
-- hidden 行の Enter は無効(画面上に focus 先が無いため、§27.3)
+- 表示セルの Enter で hide/show を即時トグル(§27.2)
+- hidden 行の Cmd+Enter は近傍の visible なプロジェクトへの focus に
+  解決される(§27.3)
 ```
 
 `show_project:<project-id-or-name>` action(§11.8)はモデルプリミティブとして
 そのまま残る。show は台帳の hidden フラグを外すだけで、復帰位置は行順と
-レイアウト型からの再導出(`relayout()`、§26.3)が決める。一覧の Space
-トグルの show 経路も同じ(ただし focus は動かさない、§27.2)。
+レイアウト型からの再導出(`relayout()`、§26.3)が決める。一覧の表示セル
+トグル(Enter)の show 経路も同じ(ただし focus は動かさない、§27.2)。
 
 ### 7.3 プロジェクト番号（1～9）と表示上限
 
@@ -357,7 +358,7 @@ visible project は**台帳の visible な行を上から数えた順**(§27.1�
 導出される(§26.3)ため、canonical tree の葉走査順とも一致する。
 
 枚数変化時(hide / close / show / 新規作成)や行移動(move_project・一覧の
-`Cmd+↑↓`)・ソート(§24.4)の後、序数は自動的に再計算・再配置される。
+`Opt+↑↓`)・再ソート(§24.4)の後、序数は自動的に再計算・再配置される。
 
 ```text
 canon: [project-A | project-B | project-C]  (3 visible)
@@ -386,7 +387,7 @@ visible project が既に 9 個のとき:
 
 - `new_project` ... 作成自体は拒否しない — 新規行は **hidden として**挿入される
   (§27.4。登録総数に上限は無く、同時に画面へ並ぶ数だけが 9 まで)
-- `show_project`（`show_project:<name>` action、およびプロジェクト一覧の Space トグル §27.2） ... quietly no-op（行は hidden のまま残る）
+- `show_project`（`show_project:<name>` action、およびプロジェクト一覧の表示セルトグル §27.2） ... quietly no-op（行は hidden のまま残る）
 - `goto_project` index form（`goto_project:1`～`goto_project:9`）... 無効な index は no-op、performability gate あり
 - `goto_project` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
 
@@ -473,12 +474,11 @@ toggle_note_overview
 
 set_primary
 
-sort_projects_by_priority
-sort_projects_by_deadline
-
 choose_project_layout
 
 list_projects
+
+toggle_shortcut_list
 
 close_project
 ```
@@ -486,8 +486,13 @@ close_project
 2026-08-18 改訂で廃止した action:`new_project_split`(方向付き分割作成 →
 `new_project` の一覧経由作成に一本化、§27.4)、`resize_project` /
 `equalize_projects`(プロジェクト境界の手動操作 → レイアウト型の投影に置換、
-§26)。いずれも parser・C ABI(`xghostty.h` の action enum)から削除済みで、
+§26)。2026-08-19 改訂で `sort_projects_by_priority` /
+`sort_projects_by_deadline`(使い捨てのソートアクション)も廃止した —
+ソートは action ではなく**状態**であり、一覧のソートバーで選ぶ(§24.4)。
+いずれも parser・C ABI(`xghostty.h` の action enum)から削除済みで、
 keybind に書けば設定エラーになる(後方互換は保証しない方針、必須対応事項 58)。
+同改訂で `toggle_shortcut_list`(ショートカット一覧オーバーレイのトグル、
+§30)を追加した。
 
 ### 9.2 既存actionとの対応
 
@@ -559,10 +564,9 @@ Cmd+Opt+R             -> rename_project
 Cmd+E                 -> edit_project_note
 Cmd+Opt+E             -> toggle_note_overview
 Cmd+P                 -> set_primary
-Cmd+S                 -> sort_projects_by_priority
-Cmd+Shift+S           -> sort_projects_by_deadline
 Cmd+L                 -> list_projects
 Cmd+Opt+L             -> choose_project_layout
+Cmd+/                 -> toggle_shortcut_list
 ```
 
 `Cmd+Opt+Enter` は既存 split zoom と衝突しない形で「上位レイヤーのzoom」として覚えやすい。
@@ -572,8 +576,11 @@ Cmd+Opt+L             -> choose_project_layout
 (action 自体は残り、ユーザー keybind で復活できる)。
 `set_primary`(§22.4)は zoom 中に focused ペインをプライマリーへ指定する。素の
 `Cmd+P` に既存割り当てはない(コマンドパレットは `Cmd+Shift+P`)。
-ソート 2 action の仕様は §24.4。素の `Cmd+S` / `Cmd+Shift+S` にも既存割り当てが
-ないことを確認済み(上流はどちらの chord も未使用)。
+旧 `Cmd+S` / `Cmd+Shift+S` のソートアクションは 2026-08-19 改訂で廃止した —
+ソートは一覧のソートバーで選ぶ状態になった(§24.4)。
+`toggle_shortcut_list`(§30)は閲覧専用のショートカット一覧をトグルする。素の
+`Cmd+/` に既存割り当てはない(config デフォルトにもメニュー key equivalent にも
+slash chord は無いことを確認済み)。
 `hide_project`(§25)は focused プロジェクトの**即時 hide**(2026-08-18 改訂で
 hide 選択画面を廃止し即時に戻した)。`list_projects`(§27)は hidden を含む
 全プロジェクトの台帳オーバーレイを開き、hidden プロジェクトの唯一の
@@ -586,6 +593,10 @@ hide 選択画面を廃止し即時に戻した)。`list_projects`(§27)は hidd
 また、上流デフォルトの `cmd+enter=toggle_fullscreen` は解除済み:`Cmd+Enter` は
 ノート編集オーバーレイの保存確定(§21.2)に予約する。fullscreen は
 `Ctrl+Cmd+F`・Window メニュー・緑ボタンから引き続き到達できる。
+上流デフォルトの `cmd+k=clear_screen` も 2026-08-19 改訂で解除した
+(必須対応事項 82):作者が「クリア」の意味で押さない chord で画面が消える
+事故を避ける。`clear_screen` action 自体は残り、ユーザー keybind で
+再割り当てできる(コマンドパレットからも従来どおり実行できる)。
 
 ## 11. 状態遷移仕様
 
@@ -835,10 +846,12 @@ close_surface 経路)。
 ### 12.1 保存するもの
 
 ```text
-- projectOrder(台帳の行順、hidden を含む)
+- projectOrder(台帳の行順 = 手動順、hidden を含む)
 - hiddenProjectIDs(visibility 列 — 2026-08-18 改訂で永続へ昇格)
 - layoutType(記憶しているレイアウト型)
 - listColumnOrder(一覧の列順)
+- sortState(ソート状態 — 手動 / next / show / deadline / priority、§24.4。
+  レガシー保存は手動として decode)
 - projects(names / paneTree / note / priority / deadline / nextTrigger /
   primary フラグ / createdAt)
 - lastPriorityResetWorkday(§28.2)
@@ -1063,7 +1076,7 @@ Cmd+Opt+Shift+D
 - zoom中 new_project_split は zoom解除して隣にproject作成
 - hide_project は process を殺さない
 - hidden になったプロジェクトが復帰導線から visible に戻せる
-  (当初は右上の hidden shelf。現在はプロジェクト一覧の Space トグル、§7.2/§27)
+  (当初は右上の hidden shelf。現在はプロジェクト一覧の表示セルトグル、§7.2/§27)
 ```
 
 ### Phase 6: restore
@@ -1165,9 +1178,9 @@ keybind = cmd+opt+r=rename_project
 
 ### 18.1 hidden project がある状態で close_project
 
-hidden な project を一覧から直接 close する機能は持たない。
-close 対象は visible focused project のみ(一覧で Space により visible に
-戻してから close する)。
+hidden な project も一覧の**行選択 Delete** で close できる(2026-08-19
+改訂・§27.2:`close_project` と同じ確認を経る)。`close_project` action の
+対象は従来どおり visible focused project のみ。
 
 ### 18.2 focused project を hide
 
@@ -1253,7 +1266,8 @@ close 対象は visible focused project のみ(一覧で Space により visible
 - focused label emphasized
 - unfocused label dimmed
 - label double-click starts rename
-- the project list (Cmd+L) lists hidden projects too, and Space shows them again
+- the project list (Cmd+L) lists hidden projects too, and the visibility
+  cell's Enter shows them again
 - close_project dialog has only Cancel / Close Project
 ```
 
@@ -1287,7 +1301,7 @@ project UI:
 hidden UI:
   常設表示なし（§7.2）
   プロジェクト一覧（Cmd+L、§27）が hidden を含む全プロジェクトを列挙
-  一覧の Space で即show（ただし visible が 9 個では no-op）
+  一覧の表示セル Enter で即show（ただし visible が 9 個では no-op）
 
 表示上限:
   visible project 最大 9 個
@@ -1342,14 +1356,19 @@ truth、tree は投影**になった(§4.1)— それでもプロジェクトが
 ```swift
 // ProjectState に追加
 var note: String = ""            // 常に正規化済み
-static let maxNoteLines = 10
+static var maxNoteLines: Int { 100 }
 ```
 
 - ノートは**プロジェクトに属する**。ペイン(split)には属さない。
+- 上限は **100 行**(2026-08-19 改訂で 10 行から引き上げ。必須対応事項 2)。
+  編集中の入力・貼り付け自体は制限しない — 上限は保存操作の境界であり、
+  超過時の扱いは §21.2 の確認フローが決める。
 - 正規化 `ProjectState.normalizedNote`: 改行を `\n` に統一し、
-  `maxNoteLines`(10 行)を超える行を捨てる。init / `setNote` / decode の
+  `maxNoteLines`(100 行)を超える行を捨てる。init / `setNote` / decode の
   3 経路すべてで適用されるため、レガシー保存(note キーなし → `""`)や
-  改竄された保存(10 行超)も読み込み時に再正規化される。
+  改竄された保存(100 行超)も読み込み時に再正規化される。
+  `ProjectState.noteExceedsLimit(_:)` が超過判定の単一点で、エディタと
+  一覧のノートセル(§27.2)が確認を出すかどうかはこの判定に従う。
 - 永続化はプロジェクト名と同一経路(workspace state の Codable →
   `invalidateRestorableState`)。再起動後、同じプロジェクトへ復元される。
 - `WorkspaceModel.setProjectNote(_:to:)` が唯一の書込み口。正規化後に変化が
@@ -1364,9 +1383,14 @@ static let maxNoteLines = 10
   でないプロジェクトも直接編集でき、プロジェクト focus は変更しない。rename 編集中の
   帯ではグリフを出さない。一望モード中は捕捉層がマウスを遮断し、モデル側の
   `beginNoteEditing` ガードも no-op にする(§21.3)。
-- 複数行 `TextEditor` は 10 行ぶんの高さを確保し、**編集中は常に全文が
-  見える**。
-- **Cmd+Enter は保存して閉じる**(背景クリックも同じ保存経路)。実装上、
+- 複数行 `TextEditor` は固定高で表示し、**スクロールで全文に到達できる**
+  (上限が 100 行になった 2026-08-19 改訂で「常に全文が見える」から変更 —
+  100 行ぶんの高さはウィンドウに収まらない)。
+- **Cmd+Enter は保存して閉じる**(背景クリックも同じ保存経路)。保存は
+  `commit()` に一本化され、ドラフトが 100 行を超えている場合は**確認を表示**
+  する(必須対応事項 2・33):OK なら先頭 100 行に切り詰めて保存して閉じ、
+  Cancel なら保存せず編集に戻る(ドラフトは無傷)。100 行以内は従来どおり
+  黙って保存する。実装上、
   `TextEditor` がフォーカスを持つ間も届くよう、§21.3 の捕捉層と同じ隠し
   `keyboardShortcut` ボタンで受ける。この chord を空けるため、本 fork は
   上流の `cmd+enter=toggle_fullscreen` デフォルトを解除している(§10.5)。
@@ -1405,9 +1429,10 @@ static let maxNoteLines = 10
   - 記録は**値の変化がある場合のみ**(`record` は同値を無視)。undo の結果を
     エディタへ書き戻したときの変更通知が履歴を汚さないのは、この冪等性による。
     新しい編集を記録した時点で redo スタックは捨てられる。
-- **貼り付けで 10 行を超えた場合も保存時に先頭 10 行へ切り詰める**(手入力と
-  同じ §21.1 の正規化経路。CRLF / CR の行末は正規化で `\n` に統一されるため、
-  ペースト由来の行末でもキャップは回避されない)。
+- **貼り付けで 100 行を超えた場合も手入力と同じ扱い**:編集中は無制限に
+  受け付け、保存時に上の確認フローを通る(黙って切り詰めない。必須対応事項
+  33)。CRLF / CR の行末は正規化で `\n` に統一されるため、ペースト由来の
+  行末でも行数の数え方は変わらない。
 - **ノート本文専用**:優先度・締切はプロジェクト一覧のセルで設定する
   (§24.1, §27.2)。旧 metaRow(優先度 picker + 締切フィールド)は
   2026-08-18 改訂で削除した — このオーバーレイが保存するのはノート本文のみ。
@@ -1445,16 +1470,18 @@ static let maxNoteLines = 10
 - undo 復元(`restoreState`)・全プロジェクト削除はモードを終了させる
   (復元された zoom が「zoom 解除済み」不変条件と矛盾しないように)。
 
-### 21.4 テスト(ProjectNoteTests 41 件 / ProjectNoteUndoTests 8 件)
+### 21.4 テスト(ProjectNoteTests 44 件 / ProjectNoteUndoTests 8 件)
 
 ```text
-- 正規化: 10 行上限(init / setNote / decode)、改行統一、レガシー decode
+- 正規化: 100 行上限(init / setNote / decode)、改行統一、レガシー decode
+- 超過判定: noteExceedsLimit — 100 行以内 false / 超過 true(切り詰めの
+  適用で先頭 100 行が残る)
 - setProjectNote: 保存・上限・未知プロジェクト no-op・クリア
 - Codable round trip でノート本文復元
 - 編集セッション: begin は focused を対象 / begin(id) は非 focused でも
   開き focus を変えない(ヘッダー帯マウス導線) / end(Cmd+Enter)は保存して
   閉じる / cancel(Esc)は破棄して閉じ開く前の本文を保持 /
-  超過ペースト(CRLF 行末含む)は保存時に先頭 10 行へ切り詰め /
+  超過ドラフト(CRLF 行末含む)の切り詰め適用は先頭 100 行(確認の OK 経路)/
   プロジェクト消滅でクリア
 - 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /
   focusedProject 不変 / 再トグル・endNoteOverview で退出 /
@@ -1729,11 +1756,11 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 
 ## 24. 優先度・締切・次トリガー仕様
 
-プロジェクトごとの優先度・締切・次トリガー(§24.6)を保持・表示し、明示的な
-ソートアクションで台帳の行順を並び替える層。保持・復元・ソート順・締切超過判定は
-すべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。設定・変更の入口は
-**プロジェクト一覧のセル**(§27.2)であり、ノート編集オーバーレイからは設定
-しない(2026-08-18 改訂で入口を移設。必須対応事項 36)。
+プロジェクトごとの優先度・締切・次トリガー(§24.6)を保持・表示し、永続的な
+**ソート状態**(§24.4)で台帳の行順を規定する層。保持・復元・ソート順・締切
+超過判定はすべてモデル層に置き、`XGhosttyTests` から検証する(§24.5)。設定・
+変更の入口は**プロジェクト一覧のセル**(§27.2)であり、ノート編集オーバーレイ
+からは設定しない(2026-08-18 改訂で入口を移設。必須対応事項 36)。
 
 ### 24.1 データモデルと入力境界
 
@@ -1762,13 +1789,15 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   無変化は no-op)。保存時境界 `setProjectDeadline(parsing:)`:空入力は意図的な
   クリア(true を返す)、不正入力は**未設定へ**拒否(false。前の値には
   戻さない)。
-- **設定入口はプロジェクト一覧のセル**(§27.2):優先度・次トリガーは `Space`
-  循環、締切はテキストセル編集に加えて **Space 送り**(`Space` = 今日 /
-  +1 日、`Shift+Space` = -1 日・今日から未設定へ。§27.2、必須 77)で設定・
-  変更する(セル確定が `setProjectDeadline(parsing:)` を通るため、セルの
-  挙動と保存時判断は乖離しえない)。ノート編集オーバーレイ(§21.2)は
-  ノート本文専用で、優先度・締切のコントロールを持たない(2026-08-18 改訂で
-  旧 metaRow を削除。必須対応事項 36)。
+- **設定入口はプロジェクト一覧のセル**(§27.2):優先度・次トリガーは
+  `Enter` の**候補メニュー**(実値のみ全列挙、↑↓ で選び Enter 確定)、締切は
+  `Enter` の**日付候補**(今日〜7 日後・翌月同日・3 ヶ月後同日の 10 択、
+  §27.2)またはテキスト編集で設定・変更する。旧 `Space` 循環・`Space` 送りは
+  2026-08-19 改訂で廃止した(Notion 流儀への統一、必須 65・77)。未設定へ
+  戻すのは `Delete`(§27.2)。セル確定が `setProjectDeadline(parsing:)` を
+  通るため、セルの挙動と保存時判断は乖離しえない。ノート編集オーバーレイ
+  (§21.2)はノート本文専用で、優先度・締切のコントロールを持たない
+  (2026-08-18 改訂で旧 metaRow を削除。必須対応事項 36)。
 
 ### 24.2 締切超過の判定と表示
 
@@ -1790,33 +1819,42 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 ### 24.3 ソート順序付け(純関数)
 
 - `priorityOrderedProjectIDs()`:high → medium → low → 未設定。
-- `deadlineOrderedProjectIDs()`:近い日付順、未設定は末尾。
+- `deadlineOrderedProjectIDs()`:近い(古い)日付順、未設定は末尾。
+- `nextTriggerOrderedProjectIDs()`:自分 → 外部 → イベント → 未設定。
+- `visibilityOrderedProjectIDs()`:表示 → 非表示。
 - 共通契約:入力は台帳の**全行**(`projectOrder`。hidden を含む —
   2026-08-18 改訂で visible-only から全行へ。必須対応事項 40〜43)、純関数で
-  副作用なし、**安定性は構成で保証**(stdlib の sort は安定性を文書化しない
-  ため、enumerated + offset の明示タイブレーク)。同順位・同日は現在の相対順を
-  維持する。次トリガー順のソートは設けない(必須対応事項 43)。
+  副作用なし、**安定性は構成で保証**(共通実装 `stableOrderedProjectIDs` が
+  enumerated + offset の明示タイブレークを持つ。stdlib の sort は安定性を
+  文書化しないため)。同順位・同日は現在の相対順を維持する。**各キーの向きは
+  固定**で、昇順・降順の切り替えは存在しない(必須対応事項 41)。
 
-### 24.4 ソートアクション(sort_projects_by_priority / sort_projects_by_deadline)
+### 24.4 ソート状態(ProjectSortState・ソートバー)
 
-- `sort_projects_by_priority`(既定 `Cmd+S`)/ `sort_projects_by_deadline`
-  (既定 `Cmd+Shift+S`)。§10.5 のとおり両 chord とも既存割り当てなし。
-- 実行:`sortProjectsByPriority()` / `sortProjectsByDeadline()` が §24.3 の
-  順序を**台帳の行順 `projectOrder` へ適用**する(2026-08-18 改訂:leaf の
-  載せ替えではなく台帳の並び替え)。hidden を含む全行が並び替わり、
-  `relayout()` が visible 行の新しい順で配置を再導出する(§26.3)。
-- 帰結(いずれも構成から従う):
-  - 序数(Cmd+1〜9)は**ソート後の並びの visible 行を上から数えた順**になり
-    自動追従する。
-  - focus は id ベースなので不変。
-  - **一覧を開いていなくても効き**、開いていれば行が live に並び替わる
-    (必須対応事項 42)。
-  - **明示実行時のみソート**:優先度・締切の setter は台帳の行順に触れない
-    ため、値の変更・毎朝リセット(§28)で自動再ソートは起きない。
-  - ソート後の並びは次のソートまたは手動の行移動(§27.1)まで持続する。
-  - zoom 中も実行可(台帳は表示非依存。zoom 解除時に新しい並びが見える)。
+2026-08-19 改訂:使い捨てのソートアクション(旧 `Cmd+S` / `Cmd+Shift+S`)を
+廃止し、ソートを**一覧の並びを規定する永続状態**にした(必須対応事項 40〜43)。
 
-### 24.5 テスト(ProjectPriorityDeadlineTests、20 件)
+- `ProjectSortState`:String-raw の Codable enum — **手動 / next / show /
+  deadline / priority** の 5 値、既定は手動。`WorkspaceState.sortState` として
+  永続化される(§12.1。レガシー保存は手動として decode)。
+- **行順モデルは単線**:`projectOrder` が常に表示順そのものである。キー状態が
+  有効な間は、並びに影響しうるすべての契機 — セル値の変更・新規作成・
+  読み込み・毎朝の優先度リセット(§28)— が `resortProjects()` で §24.3 の
+  安定順序を `projectOrder` へ**その場で再適用**する。安定ソートなので同順位は
+  直前の表示順を維持し、**手動を選ぶと現在の表示順がそのまま手動順として
+  引き継がれる**(再ソートが止まるだけ。`setSortState(.manual)`)。
+- **状態なので一覧を開いていない間も並びを規定し続ける**:序数(Cmd+1〜9)は
+  表示順の visible 行を上から数えた順で、再ソートに自動追従する(配置は
+  `relayout()` の再導出、§26.3)。focus は id ベースなので不変。
+- **選択 UI はソートバー**(§27.2):一覧の表の最上部。セルカーソルが最上行に
+  あるとき `↑` で乗り、`←→` で 5 値から選び、`Enter` で適用して表へ戻る。
+  `Esc`(または `↓`)は適用せず表へ戻る。マウスのクリックでも選べる。
+- **ソート有効中の手動行移動は確認つき**(必須対応事項 43):`Opt+↑↓` を
+  押すと確認を表示し、OK なら `approveSortedRowMove` — 現在の表示順を手動順
+  として引き継いでソート状態を手動へ戻した上で入替を実行する。Cancel なら
+  何もしない。手動状態では確認なしで入れ替わる(§27.2)。
+
+### 24.5 テスト(ProjectPriorityDeadlineTests 18 件 / ProjectSortStateTests 13 件)
 
 ```text
 - 既定: 新規プロジェクトは優先度・締切とも未設定
@@ -1826,35 +1864,42 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   クリア / parser は実在日付のみ受理(閏日含む)/ today 導出は時刻を捨てる
 - 超過: 締切日より厳密に後のみ / 未設定は非超過 / hidden も判定対象
 - 順序付け: 優先度順(安定タイ)/ 締切順(未設定末尾・同日安定)/
+  next 順(自分→外部→イベント→未設定)/ show 順(表示→非表示)/
   hidden を含む全行・無副作用
-- ソートアクション: 台帳の行順の並び替え(優先度・締切とも)/ ソート後の
-  序数が visible 行を上から数えた順 / focus 不変 / 明示実行のみで次の
-  ソートまで持続
-- setter: 不正締切は unset へ / 未知プロジェクト setter no-op
+- ソート状態: 永続化 round trip・既定は手動・レガシー保存は手動 /
+  キー状態の適用で全行が固定の向きに並ぶ / セル値変更・新規作成・
+  読み込み・毎朝リセットで即座に再ソート / 手動選択・承認付き行移動は
+  現在の表示順を手動順として引き継ぐ / ソート後の序数が visible 行を
+  上から数えた順 / focus 不変
 ```
 
 ### 24.6 次トリガー(ProjectNextTrigger)
 
 - プロジェクトごとの**次トリガー = プロジェクトを次に動かす主体**。
   `ProjectNextTrigger`:String-raw の Codable enum
-  (`myself` 自分 / `teamMember` チームメンバー / `externalPerson` 組織外部人 /
-  `event` イベント)。未設定は値の不在(Optional)で、既定は未設定
-  (必須対応事項 71)。
+  (`myself` 自分 / `externalPerson` 外部 / `event` イベント)。未設定は値の
+  不在(Optional)で、既定は未設定 — 実質 **4 値**(必須対応事項 71)。
+- **「チームメンバー」は 2026-08-19 改訂で廃止し「外部」へ統合した**
+  (必須対応事項 71):「外部」は自分以外の人(チームメンバー・組織外の人を
+  含む)。保存済みの `teamMember` は decode 時に `.externalPerson` へ
+  **移行**して読む(未知値は従来どおり decode 失敗 → プロジェクトレコードの
+  寛容 decode が unset にする)。
 - 書込み口は `setProjectNextTrigger`(未知プロジェクト・無変化は no-op)。
-  設定・変更は一覧のセルの `Space` 循環(§27.2)。
+  設定・変更は一覧のセルの `Enter` 候補メニュー(§27.2。旧 `Space` 循環は
+  廃止)。
 - 永続化は優先度と同じ ProjectState レコード(`encodeIfPresent`、不正保存は
   unset として decode)。
 - **表示は一望モードのみ**:ノート・優先度・締切と併せて表示する(§21.3)。
   **ラベル帯には表示しない**(§24.2 の meta 表示は優先度・締切のみ)。
-  読み出しは `displayText` の**素の値**(me / team / external / event)—
+  読み出しは `displayText` の**素の値**(me / external / event)—
   `next:` prefix は付けない(2026-08-18 の人間実機確認で除去。一望モードでは
   ノートの隣、一覧では `next` 列ヘッダの下にあり、値だけで自明)。
 - 毎朝の優先度リセット(§28)は次トリガーに**触れない**(締切・ノートと同様)。
 - 人間が書き込む情報であり、端末が観測するライブ状態(非対応事項の将来候補)
   とは別物。
-- テスト:ProjectNextTriggerTests(6 件)— round trip 復元・既定未設定・
+- テスト:ProjectNextTriggerTests(7 件)— round trip 復元・既定未設定・
   一望モードの表示内容に含まれる・リセット生存・不正保存の unset decode・
-  setter no-op。
+  `teamMember` 保存の外部への読み込み移行・setter no-op。
 
 ## 25. 即時 hide 仕様
 
@@ -1908,11 +1953,13 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 - `ProjectLayoutType` = `Shape`(`wide` 横長型 / `tall` 縦長型 / `pedestal`
   台座型)× `Orientation`(`rowMajor` 行送り / `columnMajor` 列送り)。
   ユーザー定義レイアウトは存在しない(非対応事項)。
-- **横長型**:行数 = √n に最も近い整数のグリッドに、上の行からできるだけ
-  均等に配る(余りは上の行から 1 つずつ)— 4 = 2+2、5 = 3+2、6 = 3+3、
-  7 = 3+2+2、8 = 3+3+2、9 = 3+3+3。行高・行内幅は等分。
-- **縦長型**:横長型の転置。列数 = √n に最も近い整数、左の列から均等に配り、
-  列幅・列内高を等分。
+- **横長型**:行数 = √n に最も近い整数のグリッドに、できるだけ均等に、
+  **割り切れない余りは後半の行に付くように**配る(2026-08-19 改訂で前半寄せ
+  から変更。必須対応事項 49)— 4 = 2+2、5 = 2+3、6 = 3+3、7 = 2+2+3、
+  8 = 2+3+3、9 = 3+3+3。**前半の行ほど枠数が少なく、1 枠が広い**:ソートで
+  上位に来る重要なプロジェクトほど広い枠を得る。行高・行内幅は等分。
+- **縦長型**:横長型の転置。列数 = √n に最も近い整数、余りは後半の列に付き
+  (左の列ほど枠数が少ない)、列幅・列内高を等分。
 - **台座型**:n−1 個を上部に(行送りは横長型・列送りは縦長型の規則で)配置し、
   1 個を最下段に全幅で置く。
 - **向きは序数の進み方**:行送りは上の行から左→右、列送りは左の列から上→下。
@@ -1926,8 +1973,9 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 
 - 各 visible 数(1〜9)の選択肢は `choices(forVisibleCount:)`:形 3 × 向き 2 の
   6 通りから、**配置と序数の進み方が完全一致するものを 1 つに畳んだ**集合
-  (例:n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれず、n=3 の
-  台座型・行送りは横長型・行送りと一致して畳まれる。n=1 は 1 択)。
+  (例:n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれない。n=3 は
+  横長型(1+2)と台座型(2+1)が余りの後半寄せで一致しなくなり、それぞれ
+  独立の選択肢になる。n=1 は 1 択)。
 - `choose_project_layout`(既定 `Cmd+Opt+L`、§10.5)が選択オーバーレイ
   `ProjectLayoutSelector` を開く。performability は `canBeginLayoutSelection`
   (visible プロジェクト 1 つ以上 + 他のオーバーレイなし)で、不成立時は
@@ -1971,11 +2019,13 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 
 ```text
 - スロット計算: visible 数 1〜9 の各々で横長・縦長・台座 × 行送り・列送りの
-  スロットが定義どおり(√n 行配分・転置・台座の最下段全幅・等分)
+  スロットが定義どおり(√n 行配分・余りは後半の行/列・転置・台座の最下段
+  全幅・等分。n=8 の横長は上から 2+3+3)
 - 割り当て順: 行送りは上の行から左→右、列送りは左の列から上→下、台座の
   最下段は最後 — 序数がそれに追従する
 - 畳み込み: 配置と序数の進み方が完全一致する選択肢は 1 つに畳まれる
-  (n=9 の横長/縦長は畳まれない、n=3 の台座・行送りは横長・行送りへ畳まれる)
+  (n=9 の横長/縦長は畳まれない、n=3 の横長(1+2)と台座(2+1)は
+  一致しないため独立の選択肢)
 - 永続化: 型の round trip 復元 / 保存が無ければ横長型・行送り
 - 自動適用: visible 数が変わる操作の後、記憶している型で新しい数の配置が
   導かれる / 変わらない操作では配置が変わらない(ProjectLedgerTests)
@@ -1986,13 +2036,18 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 ## 27. プロジェクト一覧仕様(台帳)
 
 hidden を含む**全プロジェクト**を載せた一覧は、全体像を把握し統括管理する
-**台帳(source of truth)**である(2026-08-18 改訂の主従逆転)。行順・列順・
-各行の visibility は永続状態であり、画面配置はそこからレイアウト型(§26)で
-導かれる投影にすぎない。一覧は hidden プロジェクトの**唯一の復帰導線**であり
-(hidden シェルフは廃止、§7.2)、新規プロジェクト作成の**唯一の導線**でもある
-(§27.4)。行の内容・並び・セル編集の確定と取り消し・締切の Space 送りの
-日付計算・トグル可否・focus 可否・新規行の表示状態・編集中のキー振り分けの
-判断はすべてモデル層(`ProjectList.swift` / `WorkspaceState.swift`)に置き、
+**台帳(source of truth)**である(2026-08-18 改訂の主従逆転)。行順(手動順)・
+列順・各行の visibility・ソート状態(§24.4)は永続状態であり、画面配置は
+そこからレイアウト型(§26)で導かれる投影にすぎない。一覧は hidden
+プロジェクトの**唯一の復帰導線**であり(hidden シェルフは廃止、§7.2)、
+新規プロジェクト作成の**唯一の導線**でもある(§27.4)。セルの操作文法は
+2026-08-19 改訂で **Notion 流儀**に統一した(必須対応事項 65〜80):`Enter` は
+セルの操作、移動は矢印と Tab、削除は `Delete`、行の選択と削除は行選択。
+行の内容・並び・ソート状態の適用と解除・セル編集の確定と取り消し・値候補の
+列挙(優先度・次トリガー・日付候補)・Delete の削除規則・行選択の遷移・
+端移動・トグル可否・focus 可否・新規行の表示状態と挿入位置・編集中のキー
+振り分けの判断はすべてモデル層(`ProjectList.swift` /
+`ProjectListCandidates.swift` / `WorkspaceState.swift`)に置き、
 `XGhosttyTests` から検証する(§27.6)。
 
 ### 27.1 台帳と一覧の形(projectOrder / ProjectListRow / ProjectListColumn)
@@ -2012,9 +2067,13 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
 - `ProjectListRow` は行の純粋導出(`projectListRows`):タイトル・序数
   (hidden は nil)・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
   まま運び、空欄に描くのは view の仕事。ノート列は通常 1 行目のみを表示し、
-  全行表示トグル(§27.2)が全文を描く。
-- 行順の入れ替えは `moveProjectRow(_:to:)`(一覧では `Cmd+↑`/`Cmd+↓`、端で
-  クランプ)、列順の入れ替えは `moveListColumn(_:by:)`(`Cmd+←`/`Cmd+→`)。
+  全行表示トグル(§27.2)が全文を描く。**hidden な行も visible な行と同じ色で
+  描く**(2026-08-19 改訂でグレーアウトを廃止。序数欄の `·` が hidden の
+  印)。
+- 行順の入れ替えは `moveProjectRow(_:to:)`(一覧では `Opt+↑`/`Opt+↓`、端で
+  クランプ。ソート有効中は §24.4 の確認つき)、列順の入れ替えは
+  `moveListColumn(_:by:)`(`Opt+←`/`Opt+→`)。2026-08-19 改訂で `Cmd+矢印`
+  から `Opt+矢印` へ移した(`Cmd+矢印` は端移動へ、§27.2。必須対応事項 67)。
   どちらも永続化され、閉じて開き直しても残る。セッションラッパー
   (`moveProjectListRow` / `moveProjectListColumn`)は**移動後の index を返し**
   (クランプで動かなければ nil)、セルカーソルはその報告に追従する — 連続で
@@ -2026,76 +2085,109 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   (`columnFrame`):タイトル・ノートは固定列の残り幅を等分する可変幅、
   表示・優先度・締切・次トリガーは各列の最長値が収まる固定幅。
 
-### 27.2 セル機構(カーソル・編集・Space・全行ノート)
+### 27.2 セル機構(カーソル・Enter 操作・候補メニュー・Delete・行選択)
 
-- **セルカーソル**(`ProjectListCellCursor`):`Tab` 右 / `Shift+Tab` 左 /
-  `Enter` 下 / `Shift+Enter` 上(矢印キーも同じ)。行末の `Tab` は次の行の
-  先頭へ折り返し、最終行の `Enter` はそこで止まる(グリッドの角は吸収)。
-- **テキスト列**(タイトル・締切・ノート)は文字を打つと編集が始まる
-  (`ProjectListCellEdit.started(on:column:)`:編集開始時の `original` と
-  **空のドラフト** — 打鍵は draft に注がず編集フィールドの input context へ
-  流し直す。IME 対応の要、§27.5)。`Enter` /
-  `Tab` で確定して移動、`Esc` は**その編集だけ**を取り消して元の値に戻す。
-  ただし IME が未確定文字列を保持している間はこの 3 つも IME のものになる
-  (§27.5)。
-  確定は `commitListCellEdit`:タイトルは rename と同じ正規化(§9.1)、
-  締切は §24.1 の保存時境界(不正入力は未設定へ)、**ノート列の確定は 1 行目
-  だけを書き換え、2 行目以降は保持する**(複数行編集は `Cmd+E` の
-  オーバーレイの役割、§21.2)。
-- **選択式の列**(表示・優先度・次トリガー)は `Space` で値が循環する
-  (`cycledSelectionValue`。優先度:未設定→high→medium→low→未設定、
-  次トリガー:未設定→自分→チームメンバー→組織外部人→イベント→未設定)。
-  **表示列は 2 値のトグルで即時反映**:`setProjectHidden` が台帳を書き、
-  `relayout()` が背後の配置を即座に組み直す(§26.3)。確定ステップは無く、
-  Esc で一覧を閉じてもトグルは残る。可否は `canToggleProjectVisibility`:
-  hidden → visible は表示上限 9(§7.3)、visible → hidden は**最低 1 つは
-  visible に残す**(§25 と同じ規則)。
-- **締切セルの Space 送り**(2026-08-18 改訂・必須 77):編集していない状態の
-  締切セルでの `Space` は**編集開始ではなく日送り** — 未設定なら今日を設定し、
-  日付があればその日付から 1 日進める。`Shift+Space` は 1 日戻し、**ちょうど
-  今日**の状態からさらに戻すと未設定に戻る。未設定での `Shift+Space` は何も
-  しない。判断は純関数 `ProjectDeadline.stepped(_:forward:today:)`
-  (日付演算は `advanced(by:)`、月末・年末を繰り上げ)、変異は
-  `stepListDeadline`。各押下は選択式の列と同様に**即時確定**で編集セッションに
-  属さず(`ProjectListCellEdit` は関与しない)、`Esc` でも取り消されない。
-  文字入力(タイプによる編集・確定・取り消し)は従来どおり残り、**過去日の
-  設定は文字入力で行う**(必須 65 のテキスト列規則は締切セルでは必須 77 が
-  特定化する)。
+2026-08-19 改訂の Notion 流儀(必須対応事項 65〜80):**`Enter` はセル移動
+ではなくセルの操作**であり、移動は矢印と Tab が担う。
+
+- **セルカーソル**(`ProjectListCellCursor`):矢印で上下左右、`Tab` 右 /
+  `Shift+Tab` 左(行末は次の行の先頭へ折り返し、端では停止)。
+  `Cmd+↑`/`Cmd+↓`/`Cmd+←`/`Cmd+→` は**端移動**(最上行・最下行・最左列・
+  最右列へ。`movedToEdge`)。旧 `Enter`/`Shift+Enter` によるセル移動は
+  廃止した。最上行で `↑` を押すと**ソートバー**に乗る(§24.4)。
+- **`Enter` のセル操作**(`ProjectListColumn.enterAction`):
+  - **テキスト列**(タイトル・ノート)— 既存本文にカーソルが入った編集を
+    開始する。文字を打った場合は既存内容を**置き換える**編集が始まる
+    (`ProjectListCellEdit.started(on:column:)`:編集開始時の `original` と
+    **空のドラフト** — 打鍵は draft に注がず編集フィールドの input context へ
+    流し直す。IME 対応の要、§27.5)。編集中の `Enter` は確定して下のセルへ、
+    `Tab` / `Shift+Tab` は確定して右・左へ、`Esc` は**その編集だけ**を取り
+    消して元の値に戻す。IME が未確定文字列を保持している間はこれらも IME の
+    ものになる(§27.5)。確定は `commitListCellEdit`:タイトルは rename と
+    同じ正規化(§9.1)。
+  - **ノート列の編集はノート全行(最大 100 行)を対象とする**(2026-08-19
+    改訂で 1 行目のみの書き換えから変更。必須対応事項 66):編集中は
+    `Shift+Enter` で改行でき、セルは下に展開し、収まらない場合はスクロールで
+    全行に到達できる。確定は全行の置き換えで、100 行超過時は §21.2 と同じ
+    確認を経る(OK = 先頭 100 行へ切り詰めて保存 / Cancel = 編集に戻る)。
+    確定後は従来どおり 1 行目のみ表示する。複数行編集は `Cmd+E` の
+    オーバーレイ(§21.2)でも従来どおりできる。
+  - **表示列** — その場で hide/show をトグルし即時反映:`setProjectHidden` が
+    台帳を書き、`relayout()` が背後の配置を即座に組み直す(§26.3)。可否は
+    `canToggleProjectVisibility`:hidden → visible は表示上限 9(§7.3)、
+    visible → hidden は**最低 1 つは visible に残す**(§25 と同じ規則)。
+  - **優先度・次トリガー列** — **候補メニュー**がセルの下に開く
+    (`ProjectListCandidateMenu`):実値のみの全列挙(優先度は
+    high/medium/low、次トリガーは自分/外部/イベント。**未設定は含めない**)。
+    `↑↓` で選び `Enter` で確定(`commitProjectListCandidate` — 通常の setter と
+    同じ書込み口)、`Esc` は何も変えずに閉じる。旧 `Space` 循環は廃止した。
+  - **締切列** — `Enter` で**日付候補**がセルの下に開く:今日・明日・…・
+    7 日後の 8 択に翌月同日・3 ヶ月後同日を加えた **10 択**
+    (`dateCandidates(from:)`)。各候補は `Aug 19` のような実日付で表示し、
+    実在しない同日(例: 1/31 の翌月)は**月末へ丸める**。`↑↓` で選び `Enter`
+    で確定、`Esc` で閉じる。候補に「未設定」は含めない — 未設定へ戻すのは
+    `Delete`。任意の日付(過去日を含む)は従来どおり文字入力で設定する
+    (テキスト列と同様に、文字を打つと置き換え編集が始まる。確定は §24.1 の
+    保存時境界 — 不正入力は未設定へ)。旧 `Space`/`Shift+Space` の日付送りは
+    廃止した(必須対応事項 77)。
+- **`Delete` のセル値削除**(`ProjectListDeleteAction`、必須対応事項 79):
+  タイトルは空に、優先度・締切・次トリガーは未設定に。ノートは確認を表示し、
+  OK なら**全行削除**・Cancel なら何もしない。表示列では何もしない。変異は
+  `deleteProjectListCellValue`(通常の setter と同じ書込み口)。
+- **行選択**(`ProjectListKeyboardMode`、必須対応事項 80):セルカーソルで
+  `Esc` を押すとその行の行選択状態になり、行全体がハイライトされる。
+  `↑↓` で選択行が動き、`Enter` でその行のセルカーソルへ戻り、`Esc` で解除して
+  セルカーソルへ戻る。行選択中の `Delete` はプロジェクトを閉じる操作と同じ
+  確認ダイアログ(§23)を経てその行のプロジェクトを削除する — **hidden な
+  行にも効く**(`closeProject(id:)`)。**一覧そのものは `Esc` では閉じない**
+  (閉じるのは `Cmd+L`、§27.3)。
 - **全行ノート表示**(`Cmd+Opt+E`、一覧の中でのみ):全行のノートを全行表示に
   するトグル。閲覧のみ・行ごとではなく一括・状態は透過的(セッション開始時は
   常に 1 行表示、永続化しない)。一望モードの `toggle_note_overview` とは
   別物(オーバーレイセッションは相互排他なので chord は衝突しない)。
-- 編集していないときの `Esc` は一覧を閉じる(§27.3)。
 
-### 27.3 Cmd+Enter / Escape とセッション
+### 27.3 Cmd+Enter / Cmd+L とセッション
 
-- **focus は `Cmd+Enter`**(2026-08-18 改訂で Enter を下セル移動に譲った)。
-  `canFocusProjectListRow(id)`:**visible な行のみ** true。hidden な行には
-  画面上の focus 先が無いので `Cmd+Enter` は完全な no-op で、一覧も開いたまま
-  残る。
-- `focusProjectListRow(id)`:セッションを閉じ、対象を `focusedProject` にし、
-  全体ビューに着地するので focus はそのプロジェクトの**プライマリーペイン**へ
-  寄る(§22.4)。undo は登録しない(focus 変更のため)。
-- Escape(`closeProjectList`)は編集中でなければ一覧を閉じる。トグル・確定済み
-  セル編集・行/列移動はすべて実変更として残る。focus は「いま focused な
-  プロジェクト」へ戻す。
+- **focus は `Cmd+Enter`**(2026-08-18 改訂で Enter を譲り、いまはセル操作が
+  `Enter`、§27.2)。`canFocusProjectListRow(id)` は**存在する全行**で true
+  (2026-08-19 改訂で hidden 行の no-op を廃止)。行の解決はモデルの
+  `resolvedListFocusTarget(for:)`:**visible な行は自分自身**、**hidden な
+  行は台帳距離で最も近い visible な行**(同距離なら上の行が勝つ)、未知の
+  行は nil。
+- `focusProjectListRow(id)`:セッションを閉じ、解決された対象を
+  `focusedProject` にする。全体ビューでは focus はそのプロジェクトの
+  **プライマリーペイン**へ寄る(§22.4)。**zoom 中は zoom を解除せず、
+  `zoomedProject` が解決された対象へ切り替わる**(2026-08-19 改訂。
+  プライマリー寄せは起きない)。undo は登録しない(focus 変更のため)。
+- **`Cmd+L` はトグル**(2026-08-19 改訂・必須対応事項 63):表示中に再度
+  `Cmd+L` で閉じ(`closeProjectList`)、**`Esc` では閉じない**(`Esc` は
+  行選択の遷移、§27.2)。バックドロップのクリックでも閉じる。閉じても
+  トグル・確定済みセル編集・行/列移動・ソート状態はすべて実変更として残る。
+  focus は「いま focused なプロジェクト」へ戻す。
+- **zoom 中に開いた場合は zoom を解除せず、zoom 画面の上に重なる**
+  (2026-08-19 改訂で「先に zoom を解除」を廃止):`beginProjectList` は
+  `zoomedProject` に触れず、閉じると元の zoom 状態に戻る(`Cmd+N` 経由で
+  開いた場合も同様)。
 - セッション状態 `projectListActive` は transient(永続化しない)。
   `canBeginProjectList` は「プロジェクトが 1 つ以上あり、ノートエディタも他の
-  オーバーレイも出ていない」— 各オーバーレイはキーボードを単独で占有する。
-  `beginProjectList` は**先に zoom を解除**する(一覧は全体ビューを説明する
-  ものなので)。`restoreState` / `removeAllProjects` はセッションを終了する。
+  オーバーレイも出ていない」— 各オーバーレイはキーボードを単独で占有する
+  (唯一の例外は上に重なるショートカット一覧、§30)。
+  `restoreState` / `removeAllProjects` はセッションを終了する。
 
 ### 27.4 新規プロジェクト作成(new_project / Cmd+N)
 
 - `new_project` action(既定 `Cmd+N`)が**唯一の作成導線**
   (`new_project_split` と `Cmd+Opt+D` / `Cmd+Opt+Shift+D` は廃止、§9.1。
   メニューの作成項目も同じ経路)。
-- **一覧の中**:カーソル行の直下に新規プロジェクトを挿入
+- **一覧の中**:手動状態ではカーソル行の直下に新規プロジェクトを挿入
   (`insertProject(_:after:)`)し、通常の新規作成と同様に新しいシェルを起動
   (fresh `SurfaceView`、`ProjectNameGenerator` 名、初期ペインがプライマリー)。
-  カーソルは新しい行のタイトル列に移り、**その場でタイトル編集が始まる**
-  (`pendingTitleEdit`)。
-- **一覧の外**:一覧を開いて同じ状態にする(挿入位置はカーソル初期行の直下)。
+  **ソート有効中は安定ソートの帰結として値に応じた位置**に置かれる
+  (挿入後の `resortProjects()`、§24.4。新規行は全値未設定なので各キーの
+  未設定域の末尾側に落ちる。必須対応事項 68)。カーソルは新しい行のタイトル列に
+  移り、**その場でタイトル編集が始まる**(`pendingTitleEdit`)。
+- **一覧の外**:一覧を開いて同じ状態にする(手動状態の挿入位置はカーソル
+  初期行の直下)。zoom 中なら zoom は解除されない(§27.3)。
 - **新規行の表示状態はモデル判断**:挿入前の visible 数が 9 未満なら visible、
   9 なら hidden(表示上限 §7.3 を作成でも守る)。visible での挿入は
   `relayout()` が配置を即座に組み直す。
@@ -2125,13 +2217,14 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   従来どおり。
 
 編集中のキー振り分けはモデル層の純判断
-(`ProjectListCellEdit.routing(for:shifted:composing:)`):
+(`ProjectListCellEdit.routing(for:shifted:composing:multiline:)`):
 
 ```text
 composing == true  … 全キー .editor(Space = 変換、Enter = 確定、
-                     Esc = 取り消しは IME のもの。セルの値循環・セル移動・
+                     Esc = 取り消しは IME のもの。候補メニュー・セル移動・
                      編集確定・編集取り消しを誤発火させない)
-composing == false … Esc = .cancel / Enter = .commit(下、Shift で上) /
+composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
+                     Shift なら .insertNewline — ノートセルの改行、§27.2) /
                      Tab = .commit(右、Shift で左) / その他 = .editor
 ```
 
@@ -2141,10 +2234,10 @@ composing == false … Esc = .cancel / Enter = .commit(下、Shift で上) /
 `Esc` は従来どおり確定・取り消しとして効く。`updateNSView` は合成中に
 `stringValue` を書き戻さない(未確定文字列を破壊しないため)。
 
-締切セルの Space 送り(§27.2)は編集していない状態の話なので、この規則とは
-競合しない。
+候補メニュー(§27.2)は編集していない状態から `Enter` で開くもので、編集
+セッション(`ProjectListCellEdit`)とは相互排他 — この規則とは競合しない。
 
-### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 27 件 / ProjectListTests 14 件)
+### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 28 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 9 件 / ProjectListSortedMoveTests 4 件)
 
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
@@ -2153,23 +2246,32 @@ composing == false … Esc = .cancel / Enter = .commit(下、Shift で上) /
   配置が台帳の全変更と復元で再導出される / 挿入はアンカー行の直下・上限では
   hidden / 連続 N 回の行・列入替の結果順と、返る index が常に移動対象の
   現在位置(カーソル追従)・端のクランプは nil
-- セルカーソル: Tab/Shift+Tab/Enter/Shift+Enter の移動 / 行末の折り返し /
-  最終行での停止
-- セル編集: テキスト列の確定で値が反映・Esc の取り消しで元の値 / ノート列は
-  1 行目だけを書き換え 2 行目以降を保持 / 不正な締切入力は未設定 /
-  選択式列の Space 循環 / 表示列のトグルは即時反映・最後の visible と
-  表示上限で拒否
-- 締切 Space 送り: 未設定 + Space = 今日・日付 + Space = +1 日(月末・年末
-  繰り上げ)/ Shift+Space = -1 日・ちょうど今日から戻すと未設定・未設定では
-  no-op / 各押下は編集セッション外の即時確定(セッション gating・typed edit
-  との独立)
+- セルカーソル: 矢印・Tab/Shift+Tab の移動 / 行末の折り返し・端での停止 /
+  Cmd+矢印の端移動
+- セル編集: テキスト列の確定で値が反映・Esc の取り消しで元の値 /
+  ノート列の編集は全行を対象とし確定で全行が反映される / 不正な締切入力は
+  未設定 / 表示列の Enter トグルは即時反映・最後の visible と表示上限で拒否
+- 候補メニュー: 優先度・次トリガーの候補列挙が実値のみ(未設定を含まない)で
+  選択で確定 / 日付候補が今日〜7 日後・翌月同日・3 ヶ月後同日の 10 択・
+  実在しない同日は月末へ丸め・選択で確定
+- Delete: セル値削除が列ごとの定義どおり(タイトル空・優先度/締切/次トリガー
+  未設定・表示は不変)/ ノートの全行削除は確認の承認を経てのみ
+- 行選択: Esc で行選択・Enter で復帰・Esc で解除の遷移 / 行選択の Delete が
+  close 相当の削除(hidden 行にも効く)
+- ソート連動: ソート有効中のセル値変更・新規作成で並びが即座に更新 /
+  手動入替の承認で表示順を手動順として引き継ぎソート状態が手動へ戻る /
+  ソートバーで手動を直接選んだ場合も表示順を引き継ぐ(ProjectListSortedMoveTests)
 - IME(§27.5): 打鍵で始まる編集の draft は空(打鍵は編集フィールドへ再生)・
   original は従来どおり保持・選択式列は非編集 / 未確定文字列がある間は
   Esc/Enter/Tab/その他すべてが .editor / 未確定が無ければ Esc = 取り消し・
-  Enter = 確定して下(Shift で上)・Tab = 確定して右(Shift で左)
-- focus: Cmd+Enter は visible 行で focus して閉じる / hidden 行は何も起きず
-  一覧が残る
-- セッション: begin は zoom 解除・他オーバーレイ中は拒否 / Esc で閉じても
+  Enter = 確定して下(multiline + Shift は改行)・Tab = 確定して右(Shift で左)
+- focus: Cmd+Enter は visible 行で自分自身・hidden 行は台帳距離で最も近い
+  visible 行(同距離は上が勝つ)・未知の行は nil に解決 / zoom 中は zoom を
+  解除せず zoom 対象が切り替わる
+- 新規作成: 手動はカーソル行の直下 / ソート有効中は安定ソートの帰結の位置 /
+  visible 数 9 未満なら visible・9 なら hidden
+- セッション: begin は zoom を保持(一覧が zoom に重なり、閉じると戻る)・
+  他オーバーレイ中は拒否 / Cmd+L トグルで閉じ Esc では閉じない / 閉じても
   実変更は残る / 全行ノートトグルは transient
 ```
 
@@ -2378,6 +2480,75 @@ struct PaneLocationTracker {
 - 破棄後に新しい報告が来ればリモート判定が復活する
 - reset(child exit)でレポートを忘れる
 - ローカルのレポートは柵の影響を受けない
+```
+
+## 30. ショートカット一覧仕様
+
+`Cmd+/` でトグルする**閲覧専用のショートカット一覧オーバーレイ**
+(2026-08-19 改訂・必須対応事項 81)。上流由来を含む有効なショートカットを
+**場面ごと**にグループ化して列挙し、増えたショートカットを一覧できる場所を
+与える。端末領域を恒久的に占有しない。
+
+### 30.1 action と到達性(toggle_shortcut_list / Cmd+/)
+
+- `toggle_shortcut_list` action(既定 `Cmd+/`、§10.5)。素の `Cmd+/` に既存
+  割り当てはない。
+- **どの場面からでも呼び出せる**:端末が focused な場面(全体ビュー・zoom)は
+  keybind 経路(action → 通知 → `BaseTerminalController` →
+  `WorkspaceModel.toggleShortcutList()`)。オーバーレイが keyboard を占有して
+  いる場面では surface の keybind 経路が死んでいるため、各オーバーレイが
+  chord を**自前で再照合**する — プロジェクト一覧とノート編集はローカル
+  keyDown モニタ内(一覧は IME 合成中を除く)、一望モードは隠し
+  `keyboardShortcut` ボタン(§21.3 の再トグルと同じ機構)。
+
+### 30.2 スタッキング(他のオーバーレイの上に重なる)
+
+- セッション状態は `WorkspaceModel.shortcutListActive`(transient、永続化
+  しない)。**他のオーバーレイセッションと相互排他ではない**(意図的に
+  `overlaySessionActive` に含めない):ショートカット一覧はいま画面にある
+  もの — 素の端末・zoom・プロジェクト一覧・ノート編集・一望 — の**上に
+  重なり**、閉じるとその場面を**編集途中の内容を含めて**無傷のまま戻す
+  (必須対応事項 81 の「呼び出す前の状態に戻る」)。
+- 実装機構:表示中はショートカット一覧自身のローカル keyDown モニタが
+  `Esc` と再押しの `Cmd+/` で閉じ、**それ以外の全キーを消費**する(下の
+  場面の編集フィールド・端末にはキーが届かず、状態が凍結される)。下に
+  重なっているオーバーレイのモニタは `shortcutListActive` の間**先頭で
+  yield** し(モニタは設置順に呼ばれるため、先に設置された下側が譲ることで
+  後から設置された一覧側へイベントが渡る)、バックドロップはクリックを
+  吸収する(閲覧専用)。
+- 閉じたときの first responder:下にオーバーレイが残っていればそのまま
+  (下の sink / テキストビューが focus を保持し続けている)。何も無ければ
+  端末 surface へ戻す。
+
+### 30.3 カタログ(ShortcutCatalog — モデル層)
+
+- 表示内容の判断は `ShortcutCatalog`(`ShortcutScene` / `ShortcutItem` /
+  `ShortcutGroup`)に置き、`XGhosttyTests` から検証する(§30.4)。場面は
+  **全体ビュー / zoom / プロジェクト一覧 / ノート編集 / 一望**の 5 グループ
+  (宣言順 = 表示順)。
+- カタログは**有効なデフォルトを列挙する静的な値**であり、config の動的
+  内省ではない(本 fork は keybind の後方互換を保証せず、一覧はデフォルトを
+  文書化する)。fork 固有の chord と上流由来の chord(コピー/ペースト・
+  検索・スクロール等)の両方を含み、**解除済みのデフォルト(Cmd+Enter
+  fullscreen・Cmd+E search・Cmd+K clear)は載せない**。`Cmd+/` 自身は全
+  グループに載る(どの場面からでも呼べることの文書化)。
+- ビュー(`ShortcutListOverlay`)は中央パネル + グループ見出し + 行
+  (chord / ラベル)を描くだけで、判断を持たない。収まらないときは
+  スクロールする。
+
+### 30.4 テスト(ShortcutCatalogTests 7 件 / ShortcutListSessionTests 2 件)
+
+```text
+- グループが 5 場面を宣言順で網羅する
+- 全グループに ⌘/ が載る(どの場面からでも呼べる)
+- 上流由来の chord が載る(全体ビューのコピー/ペースト・検索、zoom の分割・
+  ペイン移動)
+- fork 固有の chord が載る(⌘L・⌘E・⌘⌥E・⌘1–9・⌘P・⌘↩ ほか)
+- 解除済みデフォルトは載らない(⌘K・fullscreen・clear screen)
+- 表示衛生: 空 chord / 空ラベル無し・グループ内 chord 重複無し・
+  場面表示名が非空
+- セッション: toggle/end の遷移 / 一覧セッションの上に重ねても下の
+  セッションが無傷で残る(スタッキング)
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

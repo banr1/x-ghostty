@@ -6,11 +6,11 @@
     "stop_after_infra_fails": 2
   },
   "progress": {
-    "last_signature": "8b04c66867ebdd6bde01187dbf72cb57894464c42e9c49ba4d440cc1c22e8a11",
+    "last_signature": "ae3c64849ae97a9dcf8de8cdbfdba4c52cb48270dee4e4d1167c2b26ad21ca78",
     "idle_cycles_since_progress": 0,
     "infra_fails_since_ok": 0,
-    "last_progress_at": "2026-08-19T20:35:43+09:00",
-    "last_checked_at": "2026-08-19T20:35:43+09:00",
+    "last_progress_at": "2026-08-19T20:53:44+09:00",
+    "last_checked_at": "2026-08-19T20:53:44+09:00",
     "usage_limited_since_ok": 0
   },
   "reset_policy": {
@@ -21,23 +21,22 @@
     "reset_after_decisions": 5
   },
   "counters": {
-    "context_usage_estimate": 0.55,
+    "context_usage_estimate": 0.45,
     "failed_attempts_since_reset": 0,
-    "changed_files_since_reset": 18,
-    "completed_todos_since_reset": 2,
+    "changed_files_since_reset": 20,
+    "completed_todos_since_reset": 3,
     "important_decisions_since_reset": 1,
     "major_spec_rewrite_since_reset": false,
     "high_risk_change_completed": false
   },
   "handoff": {
-    "written_at": "2026-08-19T20:36:00+09:00",
-    "summary": "Cycle R-20260819T201128 completed T-101 (Cmd+/ shortcut-list overlay) and T-102 (Cmd+K clear_screen default unbind) with green gates (zig build / just test / just swift-test = exit 0; new ShortcutCatalogTests 7 + ShortcutListSessionTests 2 all executed and passed, verified by name in the xcodebuild output). T-101 shape: toggle_shortcut_list action end-to-end (src/input/Binding.zig enum + .surface scope, src/input/command.zig no-palette list, src/apprt/action.zig union+Key appended last, include/xghostty.h XGHOSTTY_ACTION_TOGGLE_SHORTCUT_LIST appended last, src/Surface.zig dispatch, src/config/Config.zig default cmd+/); Swift: XGhosttyPackage.swift ghosttyToggleShortcutList notification, XGhostty.App.swift case+helper, BaseTerminalController.swift observer + ghosttyDidToggleShortcutList -> workspace.toggleShortcutList(); model: WorkspaceModel.shortcutListActive (STACKING overlay, deliberately NOT in overlaySessionActive) + toggleShortcutList()/endShortcutList(); new files ShortcutCatalog.swift (scene-grouped static catalog: overallView/zoom/projectList/noteEditor/noteOverview, upstream chords included, testable) and ShortcutListOverlay.swift (read-only panel; its monitor closes on Esc/Cmd+/ and consumes every other key). Stacking protocol: ProjectListOverlay + ProjectNoteEditor monitors yield first-line while shortcutListActive and re-match Cmd+/ themselves (list: only while !editor.isComposing); ProjectNoteOverviewKeyCatcher got a hidden Cmd+/ button; TerminalWorkspaceView renders the shortcut overlay last (topmost) and returns focus to the terminal on close only when no overlay/note session is beneath; ProjectOverlayKeys.swift doc updated. T-102: removed the putFlags(cmd+k -> clear_screen) darwin default in Config.zig with a comment following the cmd+enter/cmd+e precedent; action + palette entry remain (Binding.zig:435, command.zig:232). IMPORTANT for T-103: code comments cite the shortcut list as SPEC.md §30 — that section does NOT exist yet; SPEC.md currently ends at '## 29. リモート split 仕様' (§28 is the priority reset), so T-103 must add '## 30. ショートカット一覧仕様'. REMAINING pending: T-103 (docs, last atlas-builder todo) then the Human-input Recommendation bundling human gates T-104..T-110 (Essence success criteria 10/12/16/21/26/27/28 checklists; executor human, priority must — do NOT idle-loop on them). Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks); exit codes via zsh pipestatus, never $? after a pipe.",
+    "written_at": "2026-08-19T21:10:00+09:00",
+    "summary": "Cycle R-20260819T203544 completed T-103 (SPEC.md / README.md docs pass) with green gates (zig build / just test / just swift-test = exit 0) — ALL atlas-builder must Todos are now done (103/110). SPEC.md gained '## 30. ショートカット一覧仕様' (matches the §30 refs in the T-101 code comments), reconciled action/keybind inventories (§9.1/§10.5: sort actions out, toggle_shortcut_list + Cmd+/ in, Cmd+K unbind documented), §12.1 sortState, §21 100-line cap + confirmation, §24 sort-state rewrite (ProjectSortState/sort bar/approveSortedRowMove, 4-valued next trigger + teamMember→external migration), §26 rear remainder (2+3+3) + inverted n=3 collapse example, §27 Notion-grammar rewrite with the six-suite test inventory; README.md updated to match (100-line notes, sort state, Notion list grammar, Shortcut list + Cmd+K unbind). Raised R-023 (Human-input Recommendation, status proposed, requires_human_approval + stop_until_human_review) bundling the seven human on-device gates T-104..T-110 = Essence success criteria 10/12/16/21/26/27/28, with per-gate checklists in the body. should-stop latches on human_input_required (R-023): the loop stops after this cycle. NEXT SESSION: the stop is by design — do NOT re-raise or re-diagnose it. If the human resolved R-023 with all-OK, mark T-104..T-110 done citing the human's resume note as evidence (via stage-projection → apply-projection), and expect the loop to hit the must boundary (must_complete_awaiting_phase_approval) — that phase decision is also the human's, never yours. If the resume note reports NG items, project fix Todos referencing the named T-10x, implement, and re-raise a fresh Human-input Recommendation for the re-check. Build: PATH prefix /opt/homebrew/opt/zig@0.15/bin (zig 0.15.2; system zig 0.16 breaks); exit codes via zsh pipestatus; Bash python on state paths is guard-denied even for reads (use Read tool / state status); human-facing resume wording goes through a Write-tool tmp file, never a Bash heredoc.",
     "next_actions": [
-      "T-103 (SPEC.md / README.md) in one pass. SPEC.md: add '## 30. ショートカット一覧仕様' (Cmd+/ toggle, scene-grouped catalog incl. upstream chords, stacking read-only overlay restoring prior state incl. mid-edit drafts, ShortcutCatalog/ShortcutListOverlay/WorkspaceModel.shortcutListActive; must match the §30 refs already in code comments); purge superseded grammar (§24.x/§27.x: Space cycling/stepping, Cmd+S sort actions, Enter/Shift+Enter cell movement, Esc-closes-list, line-1-only note cell, hidden dimming) and cover: sort bar/sort state (§24.5 exists — verify), candidate menus, Delete/row selection, whole-note cell edit + Shift+Enter, sorted-move confirmation, Cmd+L toggle + zoom overlay, hidden same color, hidden-row Cmd+Enter resolution, Cmd+K unbind (note editor Cmd+Enter comment in Config.zig already documents the removal precedent), layout remainder rear distribution, IME cell editing, 100-line note cap. Update §27.6-style test inventory numbers with the real suites incl. ShortcutCatalogTests 7 + ShortcutListSessionTests 2.",
-      "README.md: Building section must list zig build / just test / just swift-test; fix the stale '10 lines' note cap (now 100); mention Cmd+/ shortcut list and Cmd+K unbind in the usage/keybinding text if present. Keep both docs project-voiced — no Atlas Builder vocabulary.",
-      "After T-103: apply-projection a recommendations bundle adding ONE Human-input Recommendation (status proposed, requires_human_approval true, non-empty reason) bundling T-104..T-110 on-device gates. Write the human-facing wording to a tmp file with the Write tool first — Bash heredocs containing resume-like phrases hit the guard (lessons.jsonl).",
-      "Then end the turn; the loop stops on the Recommendation for the human's on-device verification round.",
-      "Reminder: mutate todo/spec/recommendations ONLY via stage-projection -> patch tmp bundle (python, separate Bash call) -> apply-projection from CONTROL_ROOT; context.json via Write/Edit tool; reflection via append-reflection --file; state/*.json reads via Read tool or state status (Bash python on state paths is guard-denied even for reads)."
+      "Wait for the human to resolve R-023 (on-device verification of T-104..T-110). This cycle's stop is intended (human_input_required) — no further autonomous work is runnable until resume.",
+      "After an all-OK resume: mark T-104..T-110 done with the resume note as evidence (stage-projection → patch bundle → apply-projection from CONTROL_ROOT), then let the loop stop at the must boundary for the human's phase decision.",
+      "After an NG resume: add fix Todos (spec refs from the affected T-10x's spec array), implement and verify with the three gates, then raise a new Human-input Recommendation for the re-check of only the NG items.",
+      "Reminder: context.json via Write/Edit tool; reflection via append-reflection --file; todo/spec/recommendations only via apply-projection; never run resume/loop-owned commands."
     ],
     "open_questions": [],
     "pending_cycle": false

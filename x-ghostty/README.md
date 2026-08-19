@@ -29,11 +29,13 @@ its window management with a single model:
   (Cmd+1-9). The project list (see below) is the ledger that holds every
   project; the on-screen arrangement is derived from it. See
   [SPEC.md](SPEC.md) for the design.
-- **Notes.** Each project holds a short handwritten note (up to 10 lines),
-  persisted with the project and restored across restarts. `Cmd+E` opens a
-  note editor overlay for the focused project (`Cmd+Enter` saves and closes,
-  Esc discards and closes; to keep `Cmd+Enter` free for this, the upstream
-  `cmd+enter` fullscreen default is unbound — fullscreen remains on
+- **Notes.** Each project holds a short handwritten note (up to 100 lines),
+  persisted with the project and restored across restarts. Editing and
+  pasting are never limited; if a save would exceed 100 lines a confirmation
+  appears — OK keeps the first 100 lines, Cancel returns to editing. `Cmd+E`
+  opens a note editor overlay for the focused project (`Cmd+Enter` saves and
+  closes, Esc discards and closes; to keep `Cmd+Enter` free for this, the
+  upstream `cmd+enter` fullscreen default is unbound — fullscreen remains on
   `Ctrl+Cmd+F` and the Window menu; the upstream `cmd+e` search-selection
   default is likewise removed, though the action stays available for user
   keybinds); clicking the note glyph at the right
@@ -59,18 +61,23 @@ its window management with a single model:
 - **Priorities, deadlines & next triggers.** Each project can carry a priority
   (high/medium/low, unset by default), a date-only deadline (invalid dates are
   rejected to unset), and a next trigger — who or what moves the project next
-  (self / team member / external person / event, unset by default). All three
+  (self / external / event, unset by default; "external" covers everyone but
+  yourself, team members included). All three
   are set in the project list's cells and persisted with the project. The
   project's header band shows a subtle priority mark (`!!!`/`!!`/`!`) and the
   deadline (never the next trigger); the note overview shows all three
   alongside the note; a past-due deadline gets a single-stage subtle emphasis.
-  `Cmd+S` reorders the project list's rows by priority and `Cmd+Shift+S` by
-  deadline — every row is sorted, hidden ones included, sorting happens only
-  when invoked (never automatically), it works whether or not the list is
-  open, and the `Cmd+1-9` ordinals follow the visible rows of the new order.
+  **Sorting is a state, not an action**: a sort bar at the top of the project
+  list picks one of manual / next / show / deadline / priority (manual by
+  default, persisted across restarts). While a key sort is active the ledger
+  re-sorts immediately on every value change, creation, load, and the morning
+  reset — every row, hidden ones included, with a fixed direction per key and
+  stable ties — whether or not the list is open, and the `Cmd+1-9` ordinals
+  follow the visible rows of the order. Picking manual (directly, or by
+  confirming a row move while sorted) inherits the current display order.
   Priority means "today's focus", so it clears itself every morning: at local
   06:00 every project's priority — hidden ones included — goes back to unset,
-  once per day, silently, without reordering anything. Deadlines, notes, and
+  once per day, silently. Deadlines, notes, and
   next triggers are left alone. See SPEC.md §24 and §28.
 - **Deletion protection.** Closing a project always asks for confirmation,
   whether or not anything is running in it. When a project's last pane's shell
@@ -83,36 +90,55 @@ its window management with a single model:
   selection screen — and the remaining projects re-lay themselves out with
   the remembered layout type. At least one project always stays visible, so
   hiding the last visible project is refused. See SPEC.md §25.
-- **Project list.** `Cmd+L` opens the ledger: a table covering roughly 80% of
-  the window that lists *every* project, hidden ones included, in one
-  unpartitioned row order with six columns — visibility, title, priority,
-  deadline, next trigger, and the note's first line. This row order is the
-  source of truth: the on-screen arrangement is derived from it, and the
-  `Cmd+1-9` ordinals are its visible rows counted from the top. The list has
-  a cell cursor (Tab / Shift+Tab / Enter / Shift+Enter, or arrows); typing in
-  a text cell starts an edit that Enter / Tab commit and Esc cancels — text
-  cells are ordinary macOS text input, so an input method composes from the
-  very first keystroke and, while an uncommitted string is up, Space / Enter /
-  Esc convert, commit, and cancel the composition instead of moving the cursor
-  or ending the edit; Space
-  cycles a selection cell — on the visibility column it hides or shows the
-  project on the spot, immediately re-laying out the terminals behind the
-  list (the change sticks even if you then press Esc). On the deadline cell
-  Space steps the date instead: today first, then one day forward per press,
-  with Shift+Space stepping back and clearing the cell when it reaches
-  today — each press takes effect immediately (typing a date still works,
-  and is how past dates are set). `Cmd+↑`/`Cmd+↓` move
-  the cursor's row and `Cmd+←`/`Cmd+→` its column — the cursor follows the
-  moved row or column, so repeated presses keep moving the same one — and
-  both orders persist
-  across restarts. `Cmd+Opt+E` toggles showing every row's full note.
-  `Cmd+N` — inside or outside the list — creates a new project right below
-  the cursor row, ready for its title to be typed; the list is the only
-  creation path. `Cmd+Enter` on a visible row focuses that project and
-  closes the list (on a hidden row it does nothing), Esc closes it, and the
-  table scrolls to follow the cursor. This is also the only way back for a
-  hidden project: there is no always-on hidden-project shelf, so nothing
-  permanently occupies terminal space. See SPEC.md §27.
+- **Project list.** `Cmd+L` toggles the ledger: a table covering roughly 80%
+  of the window that lists *every* project, hidden ones included (drawn in
+  the same color as visible rows), in one unpartitioned row order with six
+  columns — visibility, title, priority, deadline, next trigger, and the
+  note's first line. This row order is the source of truth: the on-screen
+  arrangement is derived from it, and the `Cmd+1-9` ordinals are its visible
+  rows counted from the top. Cell operations follow the Notion idiom. The
+  cell cursor moves with the arrows and Tab / Shift+Tab (row-end wrap, edge
+  stop); `Cmd+arrows` jump it to the edges. Enter operates on the cell: text
+  cells start an edit with the caret in the existing text (typing instead
+  replaces the content), the visibility cell hides or shows the project on
+  the spot — immediately re-laying out the terminals behind the list — and
+  the priority / next-trigger / deadline cells enumerate candidates below
+  the cell (real values only; the deadline offers ten real dates — today
+  through seven days out, same day next month, and in three months, rounded
+  to month-end when the day doesn't exist), chosen with `↑↓` and Enter.
+  While editing, Enter commits and moves down, Tab commits and moves right,
+  Esc cancels the edit; in the note cell the edit covers the whole note
+  (Shift+Enter inserts a newline, the cell expands and scrolls, and an
+  over-100-line save asks for confirmation). Text cells are ordinary macOS
+  text input, so an input method composes from the very first keystroke and,
+  while an uncommitted string is up, Space / Enter / Esc drive the
+  composition instead of the cell. Typing a date still works, and is how
+  past dates are set. `Delete` clears the cell's value (the note cell asks
+  first); Esc on the cell cursor selects the whole row — `↑↓` move the
+  selection, `Delete` deletes the row's project behind the same confirmation
+  as closing it (hidden rows included), Enter or Esc return to the cells.
+  The sort bar sits at the top of the table (`↑` from the top row, `←→` and
+  Enter to pick; see the sorting notes above). `Opt+↑↓` move the cursor's
+  row (with a confirmation while a key sort is active) and `Opt+←→` its
+  column; both orders persist across restarts. `Cmd+Opt+E` toggles showing
+  every row's full note. `Cmd+N` — inside or outside the list — creates a
+  new project (below the cursor row in manual order, at its sorted position
+  otherwise), ready for its title to be typed; the list is the only creation
+  path. `Cmd+Enter` on a visible row focuses that project and closes the
+  list; on a hidden row it closes the list and focuses a nearby visible
+  project. Opened while zoomed, the list overlays the zoom without releasing
+  it (and `Cmd+Enter` switches the zoom target). The list closes on `Cmd+L`
+  or a backdrop click — never on Esc — and the table scrolls to follow the
+  cursor. This is also the only way back for a hidden project: there is no
+  always-on hidden-project shelf, so nothing permanently occupies terminal
+  space. See SPEC.md §27.
+- **Shortcut list.** `Cmd+/` toggles a read-only overlay listing the
+  effective shortcuts — upstream-inherited ones included — grouped by scene
+  (overall view, zoom, project list, note editor, overview). It opens from
+  any scene, stacking above whatever is on screen, and closing it (Esc or
+  `Cmd+/` again) restores the previous state untouched, in-progress edits
+  included. The upstream `cmd+k` clear-screen default is unbound (the action
+  remains available for user keybinds). See SPEC.md §30.
 - **Remote splits.** Splitting a pane whose shell is on a remote host (as
   reported by shell integration over OSC 7) opens the new pane on that same
   host and in the same directory, reconnecting with `ssh` and leaving user,
