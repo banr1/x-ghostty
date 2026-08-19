@@ -255,6 +255,20 @@ struct ProjectListOverlay: View {
         }
 
         if let session = edit {
+            // The six standard editing shortcuts act on the cell's editor and
+            // are consumed here, ahead of every other consumer (must 83): a
+            // Cmd+V that merely "fell through" would be pasted by the
+            // terminal surface behind the overlay. Other Cmd-chords keep
+            // their existing meaning.
+            if modifiers.subtracting([.shift]) == [.command],
+               let character = event.charactersIgnoringModifiers,
+               let shortcut = ProjectListEditorShortcut.shortcut(
+                   forCommandCharacter: character,
+                   shifted: modifiers.contains(.shift)) {
+                editor.perform(shortcut)
+                return nil
+            }
+
             // While editing, the cell field owns every key except the edit's
             // own terminators (SPEC §27.2): Enter / Tab commit and move,
             // Escape cancels only this edit, Shift+Enter inserts a newline
@@ -283,23 +297,28 @@ struct ProjectListOverlay: View {
 
         // While a candidate menu is up it owns every plain key
         // (`SPEC.md` §27.6): Up/Down choose, Enter commits the selection,
-        // Escape closes changing nothing; every other plain key is inert.
-        // Cmd-chords fall through so the session shortcuts keep working.
+        // Escape closes changing nothing, Tab / Shift+Tab close changing
+        // nothing and move the cell cursor right/left (must 83); every other
+        // plain key is inert. Cmd-chords fall through so the session
+        // shortcuts keep working. The routing is the model's judgment.
         if let menu = candidateMenu {
             guard modifiers.subtracting([.shift]).isEmpty else { return event }
-            if isEscape {
-                candidateMenu = nil
-                return nil
-            }
-            switch event.specialKey {
-            case .some(.upArrow):
-                candidateMenu = menu.moved(by: -1)
-            case .some(.downArrow):
-                candidateMenu = menu.moved(by: 1)
-            case .some(.carriageReturn), .some(.enter):
+            let shifted = modifiers == [.shift] || event.specialKey == .some(.backTab)
+            switch ProjectListCandidateMenu.routing(
+                for: Self.candidateKeyPress(for: event, isEscape: isEscape),
+                shifted: shifted
+            ) {
+            case .moveSelection(let delta):
+                candidateMenu = menu.moved(by: delta)
+            case .commitSelection:
                 onCommitCandidate(menu.selectedValue, menu.rowID)
                 candidateMenu = nil
-            default:
+            case .close:
+                candidateMenu = nil
+            case .closeAndMoveCursor(let move):
+                candidateMenu = nil
+                moveCursor(move)
+            case .ignore:
                 break
             }
             return nil
@@ -409,6 +428,26 @@ struct ProjectListOverlay: View {
             }
         }
 
+        // Cmd+C / Cmd+V on the cell cursor (SPEC §27.7, must 83): copy the
+        // cell's value, or set it from the pasteboard — single cell only.
+        // What a cell copies as and whether a pasted string is acceptable is
+        // the model's judgment (`ProjectListClipboard`); a string the column
+        // does not accept is ignored, like invalid deadline input.
+        if modifiers == [.command],
+           let character = event.charactersIgnoringModifiers?.lowercased(),
+           character == "c" || character == "v",
+           let row = cursorRow, let column = cursorColumn {
+            if character == "c" {
+                if let text = ProjectListClipboard.copyText(of: row, column: column) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }
+            } else {
+                pasteOnCursorCell(row: row, column: column)
+            }
+            return nil
+        }
+
         // Opt+arrows reorder: the cursor row through the ledger, the cursor
         // column through the persisted column order (SPEC §27.1). The model
         // reports the moved row's/column's new index and the cursor follows
@@ -502,6 +541,22 @@ struct ProjectListOverlay: View {
     ) -> ProjectListEditKeyPress {
         if isEscape { return .escape }
         switch event.specialKey {
+        case .some(.carriageReturn), .some(.enter): return .enter
+        case .some(.tab), .some(.backTab): return .tab
+        default: return .other
+        }
+    }
+
+    /// How a candidate-menu session reads a key event (`SPEC.md` §27.6).
+    /// Shift+Tab arrives as its own special key and means the same press as
+    /// Tab.
+    private static func candidateKeyPress(
+        for event: NSEvent, isEscape: Bool
+    ) -> ProjectListCandidateKeyPress {
+        if isEscape { return .escape }
+        switch event.specialKey {
+        case .some(.upArrow): return .up
+        case .some(.downArrow): return .down
         case .some(.carriageReturn), .some(.enter): return .enter
         case .some(.tab), .some(.backTab): return .tab
         default: return .other
@@ -645,20 +700,55 @@ struct ProjectListOverlay: View {
         // The note's save-time line cap (SPEC §21.1, shared with the note
         // editor): an over-limit draft asks first — OK truncates on commit
         // (`setNote` applies the cap), Cancel returns to editing untouched.
-        if session.column == .note, ProjectState.noteExceedsLimit(session.draft) {
-            let alert = NSAlert()
-            alert.messageText = "Note exceeds \(ProjectState.maxNoteLines) lines"
-            alert.informativeText =
-                "Saving will keep the first \(ProjectState.maxNoteLines) lines "
-                + "and drop the rest."
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
-            alert.addButton(withTitle: "Cancel")
-            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        if session.column == .note, ProjectState.noteExceedsLimit(session.draft),
+           !confirmOverLimitNoteSave() {
+            return
         }
         onCommitEdit(session.draft, session.column, session.rowID)
         endEdit()
         moveCursor(move)
+    }
+
+    /// The over-limit note confirmation (SPEC §21.1): OK truncates on save,
+    /// Cancel saves nothing. Shared by the cell edit's commit and the
+    /// cell-cursor paste.
+    private func confirmOverLimitNoteSave() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Note exceeds \(ProjectState.maxNoteLines) lines"
+        alert.informativeText =
+            "Saving will keep the first \(ProjectState.maxNoteLines) lines "
+            + "and drop the rest."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    /// Cmd+V on the cell cursor (SPEC §27.7, must 83): apply the pasteboard
+    /// string to the cell per the model's per-column judgment — through the
+    /// same commit paths a cell edit and a candidate selection take, so
+    /// re-sorting and persistence behave identically. An unacceptable string
+    /// is ignored; an over-limit note paste runs the same confirmation as
+    /// any other note save (§21.1).
+    private func pasteOnCursorCell(row: ProjectListRow, column: ProjectListColumn) {
+        guard let text = NSPasteboard.general.string(forType: .string) else { return }
+        switch ProjectListClipboard.pasteApplication(of: text, column: column) {
+        case .ignore:
+            break
+        case .setTitle(let title):
+            onCommitEdit(title, .title, row.id)
+        case .setNote(let note):
+            if ProjectState.noteExceedsLimit(note), !confirmOverLimitNoteSave() {
+                return
+            }
+            onCommitEdit(note, .note, row.id)
+        case .setPriority(let priority):
+            onCommitCandidate(.priority(priority), row.id)
+        case .setDeadline(let deadline):
+            onCommitCandidate(.deadline(deadline), row.id)
+        case .setNextTrigger(let trigger):
+            onCommitCandidate(.nextTrigger(trigger), row.id)
+        }
     }
 
     private func cancelEdit() {
@@ -701,10 +791,6 @@ struct ProjectListOverlay: View {
                         ForEach(Array(rows.enumerated()), id: \.1.id) { index, row in
                             self.row(row, index: index)
                                 .id(row.id)
-                                // The row whose cell holds the candidate
-                                // menu lifts above its neighbors so the
-                                // dropdown draws over the rows below.
-                                .zIndex(candidateMenu?.rowID == row.id ? 1 : 0)
                         }
                     }
                     .padding(6)
@@ -726,6 +812,20 @@ struct ProjectListOverlay: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .shadow(radius: 8)
+        // The candidate menu draws over the whole table (SPEC §27.6), hung
+        // below its cell's published bounds. Rendering it up here — above the
+        // panel's clip — keeps every candidate visible regardless of the
+        // row's height (must 65/77); near the panel's bottom edge it simply
+        // extends past it rather than truncating candidates.
+        .overlayPreferenceValue(CandidateMenuCellAnchorKey.self) { anchor in
+            GeometryReader { proxy in
+                if let menu = candidateMenu, let anchor {
+                    let cell = proxy[anchor]
+                    candidateMenuView(menu)
+                        .offset(x: cell.minX, y: cell.maxY + 2)
+                }
+            }
+        }
         .onChange(of: rows.count) { newCount in
             // A row set that shrank under the cursor (close elsewhere, a
             // future in-list create) clamps it back onto the grid.
@@ -916,14 +1016,16 @@ struct ProjectListOverlay: View {
         .background(
             isCursor ? Color.secondary.opacity(isEditing ? 0.3 : 0.22) : Color.clear)
         .cornerRadius(2)
-        .overlay(alignment: .topLeading) {
-            // The candidate menu hangs below its cell (SPEC §27.6),
-            // floating over the rows underneath (see the row's zIndex).
-            if let menu = candidateMenu,
-               menu.rowID == row.id, menu.column == column {
-                candidateMenuView(menu)
-                    .offset(y: 20)
-            }
+        // The cell that owns the open candidate menu publishes its bounds so
+        // the panel can hang the dropdown below it (SPEC §27.6). The menu is
+        // NOT rendered here: a cell overlay is clipped by the row's rounded
+        // rect, which swallowed the dropdown at normal row heights.
+        .anchorPreference(
+            key: CandidateMenuCellAnchorKey.self, value: .bounds
+        ) { anchor in
+            guard let menu = candidateMenu,
+                  menu.rowID == row.id, menu.column == column else { return nil }
+            return anchor
         }
         .onTapGesture {
             guard edit == nil, candidateMenu == nil else { return }
@@ -933,7 +1035,8 @@ struct ProjectListOverlay: View {
 
     /// The dropdown of a candidate menu (`SPEC.md` §27.6): the enumerated
     /// values below the cell, the keyboard selection highlighted. A click
-    /// commits a value directly, like the sort bar's chips.
+    /// commits a value directly, like the sort bar's chips. Positioned by the
+    /// panel's anchor overlay (`CandidateMenuCellAnchorKey`), over the table.
     private func candidateMenuView(_ menu: ProjectListCandidateMenu) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             ForEach(Array(menu.items.enumerated()), id: \.0) { index, item in
@@ -1061,7 +1164,7 @@ struct ProjectListOverlay: View {
                 : "↩/⇥ commit · esc cancel edit"
         }
         if candidateMenu != nil {
-            return "↑↓ choose · ↩ set · esc close"
+            return "↑↓ choose · ↩ set · ⇥ next cell · esc close"
         }
         if mode == .rowSelection {
             let name = cursorRow.map { " \($0.title)" } ?? ""
@@ -1092,5 +1195,15 @@ struct ProjectListOverlay: View {
             let base = "↩ or type to edit \(Self.headerLabel(of: column))"
             return base + focusHint(for: row)
         }
+    }
+}
+
+/// The bounds of the cell that owns the open candidate menu, published up to
+/// the panel so the dropdown can be rendered above the table's clipping
+/// (SPEC §27.6). At most one cell publishes at a time.
+private struct CandidateMenuCellAnchorKey: PreferenceKey {
+    static let defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
     }
 }

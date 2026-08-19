@@ -401,6 +401,35 @@ extension ProjectListCellEdit {
     }
 }
 
+// MARK: Editing shortcuts during a cell edit (SPEC §27.5, must 83)
+
+/// The six standard editing shortcuts a cell edit routes to its own editor
+/// (must 83): while an edit is up they act on the cell's text — never on the
+/// terminal behind, which the keyDown monitor guarantees by consuming the
+/// chord after performing it. Undo history is the field editor's own, scoped
+/// to the editing session like the note editor's.
+enum ProjectListEditorShortcut: CaseIterable, Equatable {
+    case selectAll, copy, cut, paste, undo, redo
+
+    /// The editor shortcut a Cmd-chord means, or `nil` for a chord that is
+    /// not one of the six (which keeps its existing meaning). `character` is
+    /// the modifier-stripped key character; `shifted` distinguishes redo
+    /// (Cmd+Shift+Z) from undo (Cmd+Z).
+    static func shortcut(
+        forCommandCharacter character: String, shifted: Bool
+    ) -> ProjectListEditorShortcut? {
+        switch (character.lowercased(), shifted) {
+        case ("a", false): return .selectAll
+        case ("c", false): return .copy
+        case ("x", false): return .cut
+        case ("v", false): return .paste
+        case ("z", false): return .undo
+        case ("z", true): return .redo
+        default: return nil
+        }
+    }
+}
+
 // MARK: Cell mutations (SPEC §27.2)
 
 extension WorkspaceStateOf {

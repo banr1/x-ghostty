@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "69e997f5c046d2f2b8589a0c6e6784d80d509e11ed3d17a16528247f22295fb0",
+  "projected_from_essence_sha256": "2b54ddf38d30f772a75f6bf6d4d06b60bc4d9b88480bef3916d1a1d7532270e7",
   "projected_at": "2026-08-19T18:10:00+09:00",
   "items": [
     {
@@ -97,7 +97,7 @@
     },
     {
       "id": "S-010",
-      "title": "No regression of existing project features (enumeration, zoom, ordinal jump, hide/show, rename, close) or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter fullscreen, primary-only overall view, no-op pane ops in the overall view, focus snapping to primary on zoom release, unconditional close confirmation, terminated-state last pane, note-editor Cmd+A/C/X/V and Cmd+Z/Shift+Z routed to the editor, the group-to-project rename, remote-path split, hidden shelf abolished in favour of the project list, Cmd+L project list and Cmd+Opt+L layout selection, daily priority reset, moving note operations from Cmd+N / Cmd+Opt+N to Cmd+E / Cmd+Opt+E, unbinding Cmd+E search_selection (feature kept), Cmd+Opt+H back to immediate hide, abolishing Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) with creation only via the list, layout types (shape x orientation) with auto-apply, abolishing project-level layout resize/equalize (pane resize while zoomed remains), moving the priority/deadline entry point to the list, Notion-style list cell operations (Enter starts editing, arrows/Tab move, Space cycling and Space stepping abolished, Delete deletes, row selection; focus stays Cmd+Enter), abolishing the Cmd+S / Cmd+Shift+S sort actions in favour of a sort state, moving row/column reordering from Cmd+arrows to Opt+arrows with Cmd+arrows as edge moves, Cmd+L toggling (no zoom release while zoomed, Esc does not close), hidden-row Cmd+Enter changed from no-op to close-and-focus-nearest-visible, layout remainder shifted to the later rows (3+3+2 to 2+3+3), the next trigger reduced to 4 values (team member merged into external), hidden rows shown in the same color, the note cap raised to 100 lines with an over-limit confirmation, Cmd+K clear_screen unbound, and Cmd+/ assigned to the shortcut list",
+      "title": "No regression of existing project features (enumeration, zoom, ordinal jump, hide/show, rename, close) or upstream-derived terminal behavior, with the sanctioned exceptions: unbinding Cmd+Enter fullscreen, primary-only overall view, no-op pane ops in the overall view, focus snapping to primary on zoom release, unconditional close confirmation, terminated-state last pane, note-editor Cmd+A/C/X/V and Cmd+Z/Shift+Z routed to the editor, the group-to-project rename, remote-path split, hidden shelf abolished in favour of the project list, Cmd+L project list and Cmd+Opt+L layout selection, daily priority reset, moving note operations from Cmd+N / Cmd+Opt+N to Cmd+E / Cmd+Opt+E, unbinding Cmd+E search_selection (feature kept), Cmd+Opt+H back to immediate hide, abolishing Cmd+Opt+D / Cmd+Opt+Shift+D (new_project_split) with creation only via the list, layout types (shape x orientation) with auto-apply, abolishing project-level layout resize/equalize (pane resize while zoomed remains), moving the priority/deadline entry point to the list, Notion-style list cell operations (Enter starts editing, arrows/Tab move, Space cycling and Space stepping abolished, Delete deletes, row selection; focus stays Cmd+Enter), abolishing the Cmd+S / Cmd+Shift+S sort actions in favour of a sort state, moving row/column reordering from Cmd+arrows to Opt+arrows with Cmd+arrows as edge moves, Cmd+L toggling (no zoom release while zoomed, Esc does not close), hidden-row Cmd+Enter changed from no-op to close-and-focus-nearest-visible, layout remainder shifted to the later rows (3+3+2 to 2+3+3), the next trigger reduced to 4 values (team member merged into external), hidden rows shown in the same color, the note cap raised to 100 lines with an over-limit confirmation, Cmd+K clear_screen unbound, and Cmd+/ assigned to the shortcut list, and list-cell editing/clipboard shortcuts routed to the cell (item 83)",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -129,7 +129,8 @@
         "`Cmd+Enter` の挙動変更(no-op から「閉じて近傍の visible へ focus」へ)、レイアウト",
         "余り配分の後半寄せ(3+3+2 → 2+3+3)、次トリガーの 4 値化(チームメンバーの廃止と",
         "外部への統合)、hidden 行の同色表示、ノート上限の 100 行化と超過時確認、`Cmd+K` の",
-        "clear_screen 既定割り当ての解除、`Cmd+/` のショートカット一覧への割り当て。"
+        "clear_screen 既定割り当ての解除、`Cmd+/` のショートカット一覧への割り当て、",
+        "一覧のセル操作中の編集・クリップボードショートカットをセルへ向けること(83 項)。"
       ]
     },
     {
@@ -987,14 +988,15 @@
     },
     {
       "id": "S-082",
-      "title": "Judgment logic for the list's row content and order, sort-state application and release, cell-edit commit and cancel, value-candidate enumeration (priority, next trigger, date candidates), Delete deletion (cell values and rows), row-selection transitions, edge moves, toggle eligibility, focus eligibility, and the new row's visibility state and insertion position lives in the model layer, verifiable from XGhosttyTests",
+      "title": "Judgment logic for the list's row content and order, sort-state application and release, cell-edit commit and cancel, value-candidate enumeration (priority, next trigger, date candidates), Delete deletion (cell values and rows), row-selection transitions, edge moves, toggle eligibility, focus eligibility, the new row's visibility state and insertion position, and the clipboard extraction and application of cell values lives in the model layer, verifiable from XGhosttyTests",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "一覧の行の内容・並び・ソート状態の適用と解除・セル編集の確定と取り消し・値候補の",
         "列挙(優先度・次トリガー・日付候補)・Delete による削除(セル値・行)・行選択の",
-        "遷移・端移動・トグル可否・focus 可否・新規行の表示状態と挿入位置の判断ロジックは",
-        "モデル層に置き、`XGhosttyTests` から検証可能にする。"
+        "遷移・端移動・トグル可否・focus 可否・新規行の表示状態と挿入位置・クリップボードの",
+        "値の取り出しと適用の判断ロジックはモデル層に置き、`XGhosttyTests` から検証可能に",
+        "する。"
       ]
     },
     {
@@ -1034,7 +1036,11 @@
         "hidden)",
         "hidden な行への focus 要求が visible なプロジェクトへの focus に解決される",
         "次トリガーが 4 値であり、保存済みの「チームメンバー」が読み込みで「外部」へ",
-        "移行する"
+        "移行する",
+        "セル値のクリップボードへの取り出しと、貼り付け文字列から各列の値への適用が",
+        "列ごとの定義どおりであり(表示列は不変、受け付けない文字列は無視、ノート列は",
+        "全行が対象)、候補列挙中の `Tab` / `Shift+Tab` が値を変えずにセルカーソルを",
+        "右・左へ移す"
       ]
     },
     {
@@ -1077,7 +1083,12 @@
         "再度 `Cmd+L` で一覧が閉じ、`Esc` では閉じない",
         "`Cmd+Opt+E` で全行のノートが全行表示になり、もう一度押すと 1 行表示に戻る",
         "行が収まらない数のときにスクロールし、カーソルに追従する",
-        "一覧の見た目がターミナルに馴染む"
+        "一覧の見た目がターミナルに馴染む",
+        "セル編集中に `Cmd+A` / `Cmd+C` / `Cmd+X` / `Cmd+V` / `Cmd+Z` / `Cmd+Shift+Z` が",
+        "そのセルのエディタに対して効き、打鍵が背後の端末へ抜けない",
+        "セルカーソルで `Cmd+C` / `Cmd+V` によりそのセルの値をコピー・貼り付けできる",
+        "優先度・次トリガー・締切の候補が列挙されている間に `Tab` / `Shift+Tab` を押すと、",
+        "値が変わらずに候補が閉じて右・左のセルへ移る"
       ]
     },
     {
@@ -1149,15 +1160,15 @@
     },
     {
       "id": "S-091",
-      "title": "Update SPEC.md and README.md to match the implemented remote split, the project list's operation grammar (Enter editing, Delete, row selection, edge moves, reordering), the sort state, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, undo/redo, the priority reset, the layout remainder distribution, the list cell editing IME support, the shortcut list, and the key changes including Cmd+K and Cmd+/",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, the project list's operation grammar (Enter editing, Delete, row selection, edge moves, reordering), the sort state, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, undo/redo, the priority reset, the layout remainder distribution, the list cell editing IME support, the shortcut list, the list clipboard operations and lateral moves during candidate enumeration, and the key changes including Cmd+K and Cmd+/",
       "status": "active",
       "priority": "must",
       "essence_refs": [
         "`SPEC.md` と `README.md` を、実装したリモート split・プロジェクト一覧の操作文法",
         "(Enter 編集・Delete・行選択・端移動・並べ替え)・ソート状態・日付候補・次トリガー",
         "(4 値)・ノートの 100 行化と超過時確認・Undo/Redo・優先度リセット・レイアウト余り",
-        "配分・一覧セル編集の IME 対応・ショートカット一覧・キー変更(`Cmd+K` / `Cmd+/` を",
-        "含む)の仕様に合わせて更新する。"
+        "配分・一覧セル編集の IME 対応・ショートカット一覧・一覧のクリップボード操作と候補",
+        "列挙中の横移動・キー変更(`Cmd+K` / `Cmd+/` を含む)の仕様に合わせて更新する。"
       ]
     },
     {
@@ -1380,6 +1391,28 @@
         "`Esc` または再度 `Cmd+/` で閉じると、呼び出す前の状態(編集途中の内容を含む)に",
         "戻る",
         "見た目がターミナルに馴染む"
+      ]
+    },
+    {
+      "id": "S-108",
+      "title": "List cell operations gain standard clipboard handling and lateral movement during candidate enumeration: while editing a cell, Cmd+A/C/X/V and Cmd+Z / Cmd+Shift+Z act on that cell editor and no keystroke reaches the terminal behind (undo history scoped to the cell editing session); on the cell cursor (not editing), Cmd+C copies the cell value and Cmd+V sets the clipboard string as the cell value — single cell only, note column targets all lines, strings a column does not accept are ignored like invalid deadline input, and the visibility column does nothing; while priority / next-trigger / deadline candidates are enumerated, Tab / Shift+Tab close the candidates without changing the value and move the cell cursor right/left with item-65 wrapping and edge stops",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "プロジェクト一覧のセル操作に、標準的なクリップボード操作と候補列挙中の横移動を",
+        "加える。",
+        "セル編集中は、標準的なテキスト編集ショートカット(Cmd+A 全選択・Cmd+C コピー・",
+        "Cmd+X 切り取り・Cmd+V 貼り付け・Cmd+Z 取り消し・Cmd+Shift+Z やり直し)がその",
+        "セルのエディタに対して効き、背後の端末には打鍵が届かない。取り消し履歴はその",
+        "セルの編集セッション内に限る。",
+        "セルカーソル(編集していない状態)では、`Cmd+C` がそのセルの値をクリップボードへ",
+        "コピーし、`Cmd+V` がクリップボードの文字列をそのセルの値として設定する。対象は",
+        "単一セルのみとし、行や複数セルのコピー・貼り付けは行わない。ノート列は全行を",
+        "対象とする。列が受け付けない文字列の貼り付けは、不正な締切入力(35 項)と同様に",
+        "無視する。表示列では `Cmd+C` / `Cmd+V` とも何もしない。",
+        "優先度・次トリガー・締切の候補が列挙されている間の `Tab` / `Shift+Tab` は、値を",
+        "変えずに候補を閉じて右・左のセルへセルカーソルを移す(行末の折り返しと端での停止は",
+        "65 項と同じ)。"
       ]
     }
   ]

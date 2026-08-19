@@ -8,7 +8,11 @@
     "avoid_mixing_high_risk_items": true,
     "avoid_mixing_executors": true
   },
-  "active_batch": [],
+  "active_batch": [
+    "T-111",
+    "T-112",
+    "T-113"
+  ],
   "items": [
     {
       "id": "T-001",
@@ -4212,7 +4216,7 @@
     {
       "id": "T-104",
       "title": "Human on-device verification (one-time, success criterion 10): note editor Cmd+A/C/X/V and Cmd+Z / Cmd+Shift+Z as before, and saving an over-100-line paste shows the confirmation — OK truncates to the first 100 lines and saves, Cancel returns to editing without saving",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-052"
@@ -4222,7 +4226,15 @@
       },
       "batch_group": "notes-100-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-20T02:10:42+09:00",
+          "reference": "R-023 resolution / human resume recorded in context.json handoff at 2026-08-20T02:10:42+09:00 (reflection.jsonl human_resume entry of the same resume)",
+          "summary": "The human performed the one-time on-device verification of success criterion 10 and confirmed all items: Cmd+A / Cmd+C / Cmd+X / Cmd+V act on the note editor as standard, Cmd+Z / Cmd+Shift+Z undo and redo the note text, saving an over-100-line paste shows the confirmation, OK truncates to the first 100 lines and saves, and Cancel returns to editing without saving."
+        }
+      ]
     },
     {
       "id": "T-105",
@@ -4242,7 +4254,7 @@
     {
       "id": "T-106",
       "title": "Human on-device verification (one-time, success criterion 16): layout-type selection incl. the 8-project wide layout stacking 2+3+3 from the top with wider slots in the upper rows, auto re-layout, restart persistence, no project-boundary resize, appearance",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-072"
@@ -4252,7 +4264,15 @@
       },
       "batch_group": "layout-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-20T02:10:42+09:00",
+          "reference": "R-023 resolution / human resume recorded in context.json handoff at 2026-08-20T02:10:42+09:00 (reflection.jsonl human_resume entry of the same resume)",
+          "summary": "The human performed the one-time on-device verification of success criterion 16 and confirmed all items: Cmd+Opt+L lists only the types for the current visible count with arrow selection, Enter apply and Esc no-op close; hiding one of 6 projects re-lays out 5 in the chosen tall type; the 8-project wide type stacks 2+3+3 with wider upper slots; the chosen type survives restart; a single visible project reports nothing to choose; project-boundary resize is impossible while zoomed pane resize still works; the picker fits the terminal."
+        }
+      ]
     },
     {
       "id": "T-107",
@@ -4272,7 +4292,7 @@
     {
       "id": "T-108",
       "title": "Human on-device verification (one-time, success criterion 26): Cmd+E note overlay, Cmd+Opt+E overview, Cmd+Opt+N / Cmd+Opt+D / Cmd+Opt+Shift+D do nothing, Cmd+E does not start search_selection, and Cmd+K does not clear the screen",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-099"
@@ -4282,12 +4302,20 @@
       },
       "batch_group": "key-changes-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-20T02:10:42+09:00",
+          "reference": "R-023 resolution / human resume recorded in context.json handoff at 2026-08-20T02:10:42+09:00 (reflection.jsonl human_resume entry of the same resume)",
+          "summary": "The human performed the one-time on-device verification of success criterion 26 and confirmed all items: Cmd+E opens the note overlay, Cmd+Opt+E enters the overview, Cmd+Opt+N / Cmd+Opt+D / Cmd+Opt+Shift+D do nothing, Cmd+E does not start search_selection, and Cmd+K does not clear the screen."
+        }
+      ]
     },
     {
       "id": "T-109",
       "title": "Human on-device verification (one-time, success criterion 27 re-check under the revised note-cell semantics): list-cell IME input in Title and Note cells with the committed string landing on the note (full-line note editing), IME Enter/Esc not misfiring cell movement or edit cancel, English input and the other edit paths unchanged",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-102"
@@ -4297,12 +4325,20 @@
       },
       "batch_group": "list-ime-human",
       "risk_level": "normal",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-20T02:10:42+09:00",
+          "reference": "R-023 resolution / human resume recorded in context.json handoff at 2026-08-20T02:10:42+09:00 (reflection.jsonl human_resume entry of the same resume)",
+          "summary": "The human performed the one-time on-device verification of success criterion 27 and confirmed all items: Japanese IME input in list Title and Note cells shows the preedit from the first keystroke with Space conversion and Enter commit landing in the cell and persisting; IME-phase Enter / Esc do not misfire cell movement or edit cancel and editing continues after IME cancel; English input, the note overlay, and title double-click editing work as before."
+        }
+      ]
     },
     {
       "id": "T-110",
       "title": "Human on-device verification (one-time, success criterion 28): Cmd+/ opens the shortcut list grouped by scene incl. upstream shortcuts, opens from the overall view / zoom / project list / note editor, closes with Esc or Cmd+/ back to the pre-invocation state incl. in-progress edits, appearance fits the terminal",
-      "status": "pending",
+      "status": "done",
       "priority": "must",
       "spec": [
         "S-107"
@@ -4311,6 +4347,62 @@
         "mode": "human"
       },
       "batch_group": "shortcut-list-human",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "human",
+          "confirmed_by": "human",
+          "at": "2026-08-20T02:10:42+09:00",
+          "reference": "R-023 resolution / human resume recorded in context.json handoff at 2026-08-20T02:10:42+09:00 (reflection.jsonl human_resume entry of the same resume)",
+          "summary": "The human performed the one-time on-device verification of success criterion 28 and confirmed all items: Cmd+/ opens the shortcut list grouped by scene including upstream shortcuts, opens from the overall view / zoom / project list / note overlay, closes via Esc or Cmd+/ restoring the pre-invocation state including in-progress edits, and its appearance fits the terminal."
+        }
+      ]
+    },
+    {
+      "id": "T-111",
+      "title": "Fix the candidate popup clipping in the project list (sent back from the R-023 on-device verification of T-105/T-107): priority, next-trigger, and date candidates opened with Enter are only visible when the row happens to be tall (e.g. full-note display with a ~5-line note) and do not appear at normal row heights, violating must items 65/77 (\"candidates enumerated below the cell\"). Render the candidate popup above the table (not clipped by the row/cell rect) so all candidates are visible regardless of row height.",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-092",
+        "S-100"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-clipboard",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-112",
+      "title": "Implement must item 83 (list cell clipboard + candidate lateral move) with model-layer tests (success criterion 20 addition): (a) while editing a list cell, Cmd+A/C/X/V and Cmd+Z / Cmd+Shift+Z act on that cell editor and never leak to the terminal behind — this also fixes the R-023 sent-back defect where Cmd+V during note-cell editing pasted into the terminal; capture the editing shortcuts ahead of every other consumer via the same local keyDown monitor route as ProjectOverlayKeys; (b) on the cell cursor, Cmd+C copies the cell value and Cmd+V applies the clipboard string per column definition (single cell only, note column all lines, unacceptable strings ignored, visibility column inert); (c) Tab / Shift+Tab while candidates are enumerated close the candidates value-unchanged and move right/left with item-65 wrapping/stops. Judgment logic in the model layer, verified from XGhosttyTests.",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-108",
+        "S-082",
+        "S-083"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-clipboard",
+      "risk_level": "normal",
+      "evidence": []
+    },
+    {
+      "id": "T-113",
+      "title": "Update SPEC.md and README.md for the list clipboard operations, the lateral Tab / Shift+Tab move during candidate enumeration, and the candidate-popup rendering fix (must item 76 as revised).",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-091"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "list-clipboard",
       "risk_level": "normal",
       "evidence": []
     }

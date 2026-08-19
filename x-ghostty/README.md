@@ -105,15 +105,24 @@ its window management with a single model:
   the priority / next-trigger / deadline cells enumerate candidates below
   the cell (real values only; the deadline offers ten real dates — today
   through seven days out, same day next month, and in three months, rounded
-  to month-end when the day doesn't exist), chosen with `↑↓` and Enter.
+  to month-end when the day doesn't exist), chosen with `↑↓` and Enter;
+  while candidates are listed, Tab / Shift+Tab close them without changing
+  the value and move to the next / previous cell.
   While editing, Enter commits and moves down, Tab commits and moves right,
   Esc cancels the edit; in the note cell the edit covers the whole note
   (Shift+Enter inserts a newline, the cell expands and scrolls, and an
   over-100-line save asks for confirmation). Text cells are ordinary macOS
   text input, so an input method composes from the very first keystroke and,
   while an uncommitted string is up, Space / Enter / Esc drive the
-  composition instead of the cell. Typing a date still works, and is how
-  past dates are set. `Delete` clears the cell's value (the note cell asks
+  composition instead of the cell. The standard editing shortcuts —
+  `Cmd+A` / `Cmd+C` / `Cmd+X` / `Cmd+V` and `Cmd+Z` / `Cmd+Shift+Z` — act
+  on the cell's editor while an edit is up (never on the terminal behind),
+  with undo scoped to that editing session. On the cell cursor, `Cmd+C`
+  copies the cell's value and `Cmd+V` sets it from the clipboard (single
+  cell only; the note column carries every line; a string the column does
+  not accept is ignored; the visibility column takes no part). Typing a
+  date still works, and is how past dates are set. `Delete` clears the
+  cell's value (the note cell asks
   first); Esc on the cell cursor selects the whole row — `↑↓` move the
   selection, `Delete` deletes the row's project behind the same confirmation
   as closing it (hidden rows included), Enter or Esc return to the cells.

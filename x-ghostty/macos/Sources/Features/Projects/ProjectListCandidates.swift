@@ -71,6 +71,55 @@ struct ProjectListCandidateMenu: Equatable {
     }
 }
 
+// MARK: Candidate-menu key routing (SPEC §27.6)
+
+/// A key press the list's keyDown monitor must route while a candidate menu
+/// is up. Only the presses that mean something to the menu are named; every
+/// other key is `.other` and is inert.
+enum ProjectListCandidateKeyPress: Equatable {
+    case up
+    case down
+    case enter
+    case escape
+    case tab
+    case other
+}
+
+/// What the list does with a key press while a candidate menu is up
+/// (`SPEC.md` §27.6): Up/Down move the selection, Enter commits it, Escape
+/// closes changing nothing, and Tab / Shift+Tab close changing nothing and
+/// move the cell cursor right/left (must 83) — the same wrap and edge stops
+/// as any other cursor move.
+enum ProjectListCandidateKeyRouting: Equatable {
+    /// Move the keyboard selection by the delta (clamped at the ends).
+    case moveSelection(Int)
+    /// Commit the selected value and close.
+    case commitSelection
+    /// Close the menu; no value ever changed.
+    case close
+    /// Close the menu without committing and move the cell cursor — the
+    /// Tab / Shift+Tab lateral move of must 83.
+    case closeAndMoveCursor(ProjectListCellCursor.Move)
+    /// The key means nothing to the menu.
+    case ignore
+}
+
+extension ProjectListCandidateMenu {
+    /// Where a key press goes while a candidate menu is up (`SPEC.md` §27.6).
+    static func routing(
+        for press: ProjectListCandidateKeyPress, shifted: Bool
+    ) -> ProjectListCandidateKeyRouting {
+        switch press {
+        case .up: return .moveSelection(-1)
+        case .down: return .moveSelection(1)
+        case .enter: return .commitSelection
+        case .escape: return .close
+        case .tab: return .closeAndMoveCursor(shifted ? .left : .right)
+        case .other: return .ignore
+        }
+    }
+}
+
 extension ProjectPriority {
     /// The compact spelling the list cell and the candidate menu share.
     var displayText: String {

@@ -2120,7 +2120,16 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     (`ProjectListCandidateMenu`):実値のみの全列挙(優先度は
     high/medium/low、次トリガーは自分/外部/イベント。**未設定は含めない**)。
     `↑↓` で選び `Enter` で確定(`commitProjectListCandidate` — 通常の setter と
-    同じ書込み口)、`Esc` は何も変えずに閉じる。旧 `Space` 循環は廃止した。
+    同じ書込み口)、`Esc` は何も変えずに閉じる。`Tab` / `Shift+Tab` は**値を
+    変えずに**候補を閉じて右・左のセルへ移る(§27.7)。旧 `Space` 循環は
+    廃止した。
+    候補メニューの描画は**セルの overlay ではなく表全体の最上層**
+    (パネルの anchor overlay、`CandidateMenuCellAnchorKey`。2026-08-20 改訂):
+    セル側の overlay は行の角丸クリップ(`cornerRadius`)に切られ、通常の
+    行高では候補が見えなかった。セルは自分の bounds を publish するだけで、
+    メニューはパネルの clip の外側に、セルの直下へ吊るして描く — 行高に
+    よらず全候補が見える。キー振り分けはモデルの純判断
+    (`ProjectListCandidateMenu.routing(for:shifted:)`)。
   - **締切列** — `Enter` で**日付候補**がセルの下に開く:今日・明日・…・
     7 日後の 8 択に翌月同日・3 ヶ月後同日を加えた **10 択**
     (`dateCandidates(from:)`)。各候補は `Aug 19` のような実日付で表示し、
@@ -2128,8 +2137,9 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     で確定、`Esc` で閉じる。候補に「未設定」は含めない — 未設定へ戻すのは
     `Delete`。任意の日付(過去日を含む)は従来どおり文字入力で設定する
     (テキスト列と同様に、文字を打つと置き換え編集が始まる。確定は §24.1 の
-    保存時境界 — 不正入力は未設定へ)。旧 `Space`/`Shift+Space` の日付送りは
-    廃止した(必須対応事項 77)。
+    保存時境界 — 不正入力は未設定へ)。`Tab` / `Shift+Tab` は値を変えずに
+    候補を閉じて右・左のセルへ移る(§27.7)。旧 `Space`/`Shift+Space` の
+    日付送りは廃止した(必須対応事項 77)。
 - **`Delete` のセル値削除**(`ProjectListDeleteAction`、必須対応事項 79):
   タイトルは空に、優先度・締切・次トリガーは未設定に。ノートは確認を表示し、
   OK なら**全行削除**・Cancel なら何もしない。表示列では何もしない。変異は
@@ -2237,7 +2247,7 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 候補メニュー(§27.2)は編集していない状態から `Enter` で開くもので、編集
 セッション(`ProjectListCellEdit`)とは相互排他 — この規則とは競合しない。
 
-### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 28 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 9 件 / ProjectListSortedMoveTests 4 件)
+### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 28 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 9 件 / ProjectListSortedMoveTests 4 件 / ProjectListClipboardTests 12 件)
 
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
@@ -2273,7 +2283,47 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 - セッション: begin は zoom を保持(一覧が zoom に重なり、閉じると戻る)・
   他オーバーレイ中は拒否 / Cmd+L トグルで閉じ Esc では閉じない / 閉じても
   実変更は残る / 全行ノートトグルは transient
+- クリップボード(§27.7): 各列の値の取り出しがその列の綴りどおり(ノートは
+  全行・未設定は空欄・表示列は nil)/ 貼り付けの適用が列ごとの定義どおりで
+  round trip する / 受け付けない文字列・空白のみ・表示列は無視 / 編集中の
+  6 ショートカットの chord 対応と対象外 chord の素通し / 候補列挙中の
+  Tab / Shift+Tab が値を変えずに閉じて横移動(ProjectListClipboardTests)
 ```
+
+### 27.7 セルのクリップボード操作と候補列挙中の横移動(2026-08-20 改訂・必須 83)
+
+一覧のセル操作に、標準的なクリップボード操作と候補列挙中の横移動を加える。
+対象は**単一セルのみ**で、行・複数セルのコピー・貼り付けは行わない。
+
+- **セル編集中の編集ショートカット**:`Cmd+A` 全選択・`Cmd+C` コピー・
+  `Cmd+X` 切り取り・`Cmd+V` 貼り付け・`Cmd+Z` 取り消し・`Cmd+Shift+Z`
+  やり直しは、**そのセルのエディタ**(field editor)に対して効き、背後の
+  端末には打鍵が届かない。keyDown モニタが chord をモデル判断
+  (`ProjectListEditorShortcut.shortcut(forCommandCharacter:shifted:)`)で
+  照合し、`ProjectListCellEditorHandle.perform(_:)` で field editor に実行
+  させて**イベントを消費する** — 従来の素通し(`return event`)では背後の
+  terminal surface が先に `Cmd+V` を拾い、端末へ貼り付けられていた。
+  取り消し履歴は field editor の undo manager のもので、そのセルの編集
+  セッション内に限る(seat 時に `allowsUndo` を立てる)。6 つ以外の chord は
+  従来の意味を保つ(`Cmd+/` のショートカット一覧など)。
+- **セルカーソルの `Cmd+C` / `Cmd+V`**(編集していない状態、
+  `ProjectListClipboard`):`Cmd+C` はそのセルの値をその列の綴り
+  (`copyText(of:column:)` — タイトルはそのまま、優先度は high/med/low、
+  締切は `YYYY-MM-DD`、次トリガーは me/external/event、ノートは**全行**。
+  未設定は空欄)でクリップボードへコピーする。`Cmd+V` はクリップボードの
+  文字列をそのセルの値として設定する(`pasteApplication(of:column:)`)。
+  適用は **parse-or-ignore**:列が受け付けない文字列(不正な日付・未知の
+  優先度綴り・空白のみ等)は**無視**して何も変えない — §24.1 の「不正入力は
+  未設定へ」と違い未設定 fallback は無い(**未設定へ戻すのは `Delete` の
+  仕事**)。表示列は `Cmd+C` / `Cmd+V` とも何もしない。書込みは既存の確定
+  経路(テキスト列は `commitListCellEdit`、値列は候補確定と同じ setter)を
+  通り、再ソート(§24.4)・永続化の挙動はセル編集・候補確定と同一。ノートの
+  貼り付けは全行を対象とし、100 行超過時は §21.2 と同じ確認を経る。
+- **候補列挙中の `Tab` / `Shift+Tab`**:優先度・次トリガー・締切の候補が
+  列挙されている間に押すと、**値を変えずに**候補を閉じて右・左のセルへ
+  セルカーソルを移す(行末の折り返しと端での停止は §27.2 と同じ)。
+  振り分けは `ProjectListCandidateMenu.routing(for:shifted:)` の
+  `.closeAndMoveCursor` — commit を伴わないことが型で読める。
 
 ## 28. 優先度の毎朝リセット仕様
 

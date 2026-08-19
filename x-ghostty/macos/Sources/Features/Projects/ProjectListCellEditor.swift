@@ -52,6 +52,23 @@ final class ProjectListCellEditorHandle {
     func insertNewline() {
         (field?.currentEditor() as? NSTextView)?.insertNewlineIgnoringFieldEditor(nil)
     }
+
+    /// Perform one of the six standard editing shortcuts on the cell's field
+    /// editor (must 83). The overlay's keyDown monitor calls this and
+    /// consumes the chord, so the keystroke acts on the cell's text and never
+    /// reaches the terminal behind. Undo/redo go through the field editor's
+    /// own undo manager, whose history is the editing session's.
+    func perform(_ shortcut: ProjectListEditorShortcut) {
+        guard let editor = field?.currentEditor() as? NSTextView else { return }
+        switch shortcut {
+        case .selectAll: editor.selectAll(nil)
+        case .copy: editor.copy(nil)
+        case .cut: editor.cut(nil)
+        case .paste: editor.paste(nil)
+        case .undo: editor.undoManager?.undo()
+        case .redo: editor.undoManager?.redo()
+        }
+    }
 }
 
 struct ProjectListCellEditor: NSViewRepresentable {
@@ -139,6 +156,9 @@ struct ProjectListCellEditor: NSViewRepresentable {
             }
             coordinator.seated = true
             window.makeFirstResponder(field)
+            // Cmd+Z / Cmd+Shift+Z act on this editing session (must 83): the
+            // shared field editor does not track undo unless asked.
+            (field.currentEditor() as? NSTextView)?.allowsUndo = true
             if handle.placeCaretAtEnd {
                 // The Enter-opened edit: collapse the select-all default so
                 // the caret sits at the end of the existing text (SPEC §27.2).
