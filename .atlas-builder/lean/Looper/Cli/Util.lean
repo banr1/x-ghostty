@@ -340,7 +340,7 @@ private def runBoundSettings (d : Domain) (project control : String) : IO UInt32
 
 /-! ## relpath -/
 
-private def runRelpath (d : Domain) (path start : String) : IO UInt32 := do
+private def runRelpath (path start : String) : IO UInt32 := do
   let cwd := (← IO.currentDir).toString
   IO.println (Core.Path.relpath (Core.Path.abspath cwd start) (Core.Path.abspath cwd path))
   pure 0
@@ -501,7 +501,7 @@ private def runJsonCheck (d : Domain) (path : String) : IO UInt32 := do
 
 /-! ## dangling-run -/
 
-private def runDanglingRun (d : Domain) (path : String) : IO UInt32 := do
+private def runDanglingRun (path : String) : IO UInt32 := do
   let scanned := match ← Io.Fs.readFile? path with
     | none => Core.Runs.Scan.unreadable  -- OSError → unreadable(旧実装と同一)
     | some text => Core.Runs.scan text
@@ -863,7 +863,7 @@ def run (d : Domain) : List String → IO UInt32
   | ["loop-heartbeat"] => do
     IO.eprintln (heartbeatUsage d)
     pure 2
-  | ["relpath", path, start] => runRelpath d path start
+  | ["relpath", path, start] => runRelpath path start
   | "render" :: src :: dst :: mode :: flags => runRender d src dst mode flags
   | "seed" :: src :: dst :: flags => runSeed d src dst flags
   | ["project-index", action, index, target, control] =>
@@ -873,7 +873,7 @@ def run (d : Domain) : List String → IO UInt32
       IO.eprintln (usage d)
       pure 2
   | ["json-check", path] => runJsonCheck d path
-  | ["dangling-run", path] => runDanglingRun d path
+  | ["dangling-run", path] => runDanglingRun path
   | ["settings-doctor", path, project, control] =>
     runSettingsDoctor d path project control "standard"
   | ["settings-doctor", path, project, control, profile] =>

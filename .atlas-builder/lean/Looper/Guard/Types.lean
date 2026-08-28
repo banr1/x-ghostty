@@ -174,23 +174,6 @@ def preToolAuditRecord (now : String) (sessionId tool file command : Value)
      ("decision", .str permission),
      ("reason", .str reason)]
 
-/-- 併走モード(`<PREFIX>_GUARD_SHADOW`)の判定ログ
-1 レコード。stdin payload と判定に影響する環境変数を丸ごと保持し、shadow
-ハーネスが Python hook へ同一入力をリプレイして突合できる形にする。 -/
-def shadowRecord (now : String) (payload : Value)
-    (sessionMode expectedProjectRaw : String) (out : GuardOutput) : Value :=
-  .obj
-    [("at", .str now),
-     ("session_mode", .str sessionMode),
-     ("session_project_root", .str expectedProjectRaw),
-     ("payload", payload),
-     ("staged", .arr (out.highRiskPre.map .str)),
-     ("decision",
-      match out.decision? with
-      | none => .null
-      | some d =>
-        .obj [("permission", .str d.permission.tag), ("reason", .str d.reason)])]
-
 -- pendingRecord は Python `json.dumps(..., ensure_ascii=False)` 出力とバイト一致
 #guard (pendingRecord "2026-07-16T00:00:00+09:00" (.str "s1") "/ws/proj/prompts/x.md" "ABSENT").render
   == "{\"at\": \"2026-07-16T00:00:00+09:00\", \"session_id\": \"s1\", \"path\": \"/ws/proj/prompts/x.md\", \"before_sha256\": \"ABSENT\"}"
@@ -199,8 +182,5 @@ def shadowRecord (now : String) (payload : Value)
   == "{\"at\": \"T\", \"phase\": \"pre_tool\", \"session_id\": \"s1\", "
     ++ "\"tool\": \"Bash\", \"file\": null, \"command\": \"rm -rf /\", "
     ++ "\"decision\": \"deny\", \"reason\": \"dangerous\"}"
-#guard (shadowRecord "T" (.obj [("tool_name", .str "Bash")]) "" ""
-    ⟨["/p"], some ⟨.deny, "r"⟩⟩).render
-  == "{\"at\": \"T\", \"session_mode\": \"\", \"session_project_root\": \"\", \"payload\": {\"tool_name\": \"Bash\"}, \"staged\": [\"/p\"], \"decision\": {\"permission\": \"deny\", \"reason\": \"r\"}}"
 
 end Looper.Guard

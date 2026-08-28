@@ -46,14 +46,11 @@ def Ledger.fileName : Ledger → String
   | .reflection => "reflection.jsonl"
   | .lessons => "lessons.jsonl"
 
-/-- CLI サブコマンド名との対応。 -/
-def Ledger.ofCommand? : String → Option Ledger
-  | "append-reflection" => some .reflection
-  | "append-lesson" => some .lessons
-  | _ => none
-
-/-- engine が刻むフィールド(呼び出し側が指定したら拒否)。`recorded_by` も
-含む: 誰が書いたかは遷移の性質であって申告事項ではない。 -/
+/-- engine が予約するフィールド(呼び出し側が指定したら拒否)。`recorded_by`
+も含む: 誰が書いたかは遷移の性質であって申告事項ではない。`id` は lessons
+でだけ実際に刻まれる(`record` の head 参照)が、reflection でも**予約**して
+拒否する — 台帳間でキーの意味を揃え、自称 id が機械読者に「engine の刻印」と
+誤読される形を作らないため(AP-004)。 -/
 def stampedKeys : List String :=
   ["at", "cycle", "run_id", "recorded_by", "id"]
 
@@ -96,7 +93,8 @@ def entryErrors (ledger : Ledger) (entry : Json.Value) : List String :=
       if stamped.isEmpty then []
       else [s!"the entry must not set engine-stamped field(s): "
         ++ String.intercalate ", " stamped
-        ++ " — they are recorded from canonical state, not declared."]
+        ++ " — they are recorded from canonical state (id: stamped on lessons, "
+        ++ "reserved on reflection), not declared."]
     match ledger with
     | .reflection =>
       let typeErrs :=
@@ -176,10 +174,6 @@ def stampsFromProject (project : Json.Value) : Int × Json.Value :=
   (cycle, (project.get? "last_run_id").getD .null)
 
 /-! ## コンパイル時テスト -/
-
-#guard Ledger.ofCommand? "append-reflection" == some .reflection
-#guard Ledger.ofCommand? "append-lesson" == some .lessons
-#guard Ledger.ofCommand? "resume" == none
 
 -- reflection: 受理形
 #guard entryErrors .reflection

@@ -23,7 +23,7 @@
 # stop is the designed hand-off to the human, reported as STOP, never as
 # ERROR. Nonzero means failure only:
 # 2 usage/environment/predicate crash, 4 git refusal, 5 lock contention,
-# 130/143 interrupted (SIGINT/SIGTERM). Machine callers query the gate state
+# 129/130/143 interrupted (SIGHUP/SIGINT/SIGTERM). Machine callers query the gate state
 # via `<tool> state should-stop` / `should-complete`, not via this exit code.
 #
 # Usage: cd ./.<tool> && bash scripts/loop.sh --project ../PROJECT_TITLE \
@@ -38,12 +38,30 @@ resolve_git_context
 
 MAX_CYCLES=25
 MAX_SESSION_CYCLES=8 # §14.1 backstop: a session lasts at most N cycles (1 fresh + N-1 continued)
+# Strict flag parsing (same rule as stop.sh / watch.sh / resume.sh): a silently
+# dropped or mistyped flag would run a different budget than the human asked
+# for — `just loop --max-cyles 5` must refuse, not run 25 autonomous cycles.
 args=("$@")
-for ((i = 0; i < ${#args[@]}; i++)); do
-  [[ "${args[$i]}" == "--max-cycles" || "${args[$i]}" == "-n" ]] &&
-    MAX_CYCLES="${args[$((i + 1))]:-${MAX_CYCLES}}"
-  [[ "${args[$i]}" == "--max-session-cycles" ]] &&
-    MAX_SESSION_CYCLES="${args[$((i + 1))]:-${MAX_SESSION_CYCLES}}"
+i=0
+while ((i < ${#args[@]})); do
+  case "${args[$i]}" in
+    --project | --max-cycles | -n | --max-session-cycles)
+      ((i + 1 < ${#args[@]})) || {
+        err "${args[$i]} requires a value."
+        exit 2
+      }
+      case "${args[$i]}" in
+        --max-cycles | -n) MAX_CYCLES="${args[$((i + 1))]}" ;;
+        --max-session-cycles) MAX_SESSION_CYCLES="${args[$((i + 1))]}" ;;
+      esac
+      i=$((i + 2))
+      ;;
+    *)
+      err "unknown argument: ${args[$i]}"
+      err "usage: bash scripts/loop.sh --project ../PROJECT_TITLE [-n N | --max-cycles N] [--max-session-cycles N]"
+      exit 2
+      ;;
+  esac
 done
 [[ "${MAX_CYCLES}" =~ ^[1-9][0-9]*$ ]] ||
   {
@@ -241,7 +259,15 @@ CYCLES_SINCE_FRESH=0
 # a rate-limited or unreachable API three seconds later, as the 2026-08-12 run
 # did, only burns the safety counters without giving the condition any time to
 # clear. Reset to 0 by any cycle whose claude exit was clean.
-LAUNCH_FAIL_STREAK=0
+# Per-class launch-failure streaks, mirroring the canonical counters
+# (`progress.usage_limited_since_ok` / `infra_fails_since_ok`, §13.1-12/-12'):
+# only an `ok` cycle resets, `unknown` HOLDS (a session that ran and failed is
+# not evidence the limit reset), and the two classes never advance each other —
+# otherwise the ladder measures interleaving instead of the streak, and the
+# stated 5/10/20-minute hand-off (§13.1-12') silently shortens.
+USAGE_FAIL_STREAK=0
+INFRA_FAIL_STREAK=0
+RETRY_STREAK=0
 # Usage limits reset on the provider's clock (minutes to hours), infra faults
 # usually much sooner — so the usage ladder starts an order of magnitude
 # higher. Both are capped so the loop never parks for longer than the human
@@ -375,23 +401,25 @@ while ((CYCLE < MAX_CYCLES)); do
       usage)
         # §13.1-12': the plan/model limit. Named as itself, never as "the agent
         # is stuck" — the whole point of the separate class.
-        LAUNCH_FAIL_STREAK=$((LAUNCH_FAIL_STREAK + 1))
+        USAGE_FAIL_STREAK=$((USAGE_FAIL_STREAK + 1))
+        RETRY_STREAK="${USAGE_FAIL_STREAK}"
         warn "claude could not run: the plan / model USAGE LIMIT was reached; this counts toward the usage_limited stop (§13.1-12'), NOT toward idle_cycles."
         log "Wait for the limit to reset, or re-run with ${TOOL_ENV}_MODEL=<tier> to continue on another model (§16.1)."
-        BACKOFF_WAIT="$(backoff_seconds "${LAUNCH_FAIL_STREAK}" "${BACKOFF_BASE_USAGE}" "${BACKOFF_CAP}")"
+        BACKOFF_WAIT="$(backoff_seconds "${USAGE_FAIL_STREAK}" "${BACKOFF_BASE_USAGE}" "${BACKOFF_CAP}")"
         ;;
       infra)
         # §13.1-12: an infra-caused failure is not the agent being stuck —
         # Claude itself could not run.
-        LAUNCH_FAIL_STREAK=$((LAUNCH_FAIL_STREAK + 1))
+        INFRA_FAIL_STREAK=$((INFRA_FAIL_STREAK + 1))
+        RETRY_STREAK="${INFRA_FAIL_STREAK}"
         warn "claude failed for an infra reason (API connection / auth / Claude-side error); this counts toward the infra_unreachable stop (§13.1-12)."
-        BACKOFF_WAIT="$(backoff_seconds "${LAUNCH_FAIL_STREAK}" "${BACKOFF_BASE_INFRA}" "${BACKOFF_CAP}")"
+        BACKOFF_WAIT="$(backoff_seconds "${INFRA_FAIL_STREAK}" "${BACKOFF_BASE_INFRA}" "${BACKOFF_CAP}")"
         ;;
       *)
         # `unknown`: the session ran and failed for a reason we cannot attribute
-        # to the environment. That IS ordinary §13.2 work — no backoff, and the
-        # idle counter keeps its meaning.
-        LAUNCH_FAIL_STREAK=0
+        # to the environment. That IS ordinary §13.2 work — no backoff. The
+        # streaks HOLD (like the canonical counters): an unknown failure is
+        # not evidence that a limit reset or the network healed.
         ;;
     esac
     # A retry delay the CLI stated itself outranks the ladder when it is longer
@@ -405,7 +433,8 @@ while ((CYCLE < MAX_CYCLES)); do
     log "claude exited nonzero (class: ${RUN_CLASS}); next session will start fresh (§14.1, §28.4)."
     SESSION_MODE="fresh"
   else
-    LAUNCH_FAIL_STREAK=0
+    USAGE_FAIL_STREAK=0
+    INFRA_FAIL_STREAK=0
   fi
 
   finalize_cycle "${RUN_STATUS}" "${RUN_CLASS}"
@@ -437,8 +466,18 @@ while ((CYCLE < MAX_CYCLES)); do
   # `just stop` already asked us to end at this boundary. The wait is
   # interruptible so Ctrl-C and a late `just stop` still land immediately.
   if ((BACKOFF_WAIT > 0)) && ((CYCLE < MAX_CYCLES)); then
-    log "BACKOFF: waiting ${BACKOFF_WAIT}s before retry ${LAUNCH_FAIL_STREAK} (class: ${RUN_CLASS}, §19.1-8). Ctrl-C or \`just stop\` ends the wait."
+    log "BACKOFF: waiting ${BACKOFF_WAIT}s before retry ${RETRY_STREAK} (class: ${RUN_CLASS}, §19.1-8). Ctrl-C or \`just stop\` ends the wait."
     interruptible_sleep "${BACKOFF_WAIT}"
+    # §19.1-7: a `just stop` that landed DURING the wait ends the invocation at
+    # this same cycle boundary — abandoning the wait only to launch one more
+    # cycle against a limit that has not reset would make the interrupt worse
+    # than the plain sleep. The checkpoint is committed and no gate is latched
+    # (both checked above), so this is the same legal DRAIN terminal.
+    if consume_drain_request; then
+      log "DRAIN: \`just stop\` arrived during the backoff wait — stopping at this cycle boundary; cycle ${CYCLE}/${MAX_CYCLES} finished and its checkpoint is committed."
+      log "Re-run \`just loop\` to continue (no resume needed, §19.1-7)."
+      exit 0
+    fi
   fi
 done
 

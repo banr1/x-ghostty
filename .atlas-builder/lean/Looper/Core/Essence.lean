@@ -100,17 +100,19 @@ private structure ScanState where
   /-- 収集済み項目(逆順)。 -/
   ritems : List String := []
 
-/-- 分岐順序は従来どおり(フェンストグルは in_comment より先に評価される —
-コメント内の ``` もフェンスを反転する)。見出しの照合だけが厳密化されている:
-節の開始は「レベル 2・タイトル厳密一致」、終端は「レベル ≤ 2 の次見出し」
-(H3 以下は節の内側)。 -/
+/-- 分岐順序は `scanSemanticLine` と同じ「コメントがフェンスに先行」:
+コメント本文の ``` は表示物であってフェンスを反転しない(かつては逆順で、
+複数行コメントに ``` を書くと以降の節項目が全部フェンス内として消えた —
+§2.1.1 の共有安全境界が sectionItems 側だけ割れていた)。見出しの照合は
+厳密: 節の開始は「レベル 2・タイトル厳密一致」、終端は「レベル ≤ 2 の
+次見出し」(H3 以下は節の内側)。 -/
 private def scanLine (heading : String) (st : ScanState) (raw : String) : ScanState :=
   let stripped := pyStrip raw
-  if stripped.startsWith "```" || stripped.startsWith "~~~" then
+  if st.inComment then
+    if containsSub raw "-->" then { st with inComment := false } else st
+  else if stripped.startsWith "```" || stripped.startsWith "~~~" then
     { st with inFence := !st.inFence }
   else if st.inFence then st
-  else if st.inComment then
-    if containsSub raw "-->" then { st with inComment := false } else st
   else if stripped.startsWith "<!--" && !containsSub stripped "-->" then
     { st with inComment := true }
   else
@@ -404,7 +406,11 @@ private def eolAfterWs : List Char → Option (List Char)
 意味は変わらない — `"recipe:\na@1"` は Python でもマッチする、実測)。成功時は
 `(name, major, 残り)`。 -/
 private def tryPointerMatch (cs : List Char) : Option (String × Nat × List Char) := do
-  let rest ← dropLit? (cs.dropWhile isPySpace) "recipe:".toList
+  -- 接頭辞クラスは `deps:` / `profile:` と同じ `[ \t>*-]*`(§2.1.1 の 3 directive
+  -- 共通文法)。クラスは `r` を含まないため貪欲 dropWhile が唯一の分割。
+  let rest ← dropLit?
+    (cs.dropWhile fun c => isPySpace c || c == '>' || c == '*' || c == '-')
+    "recipe:".toList
   let rest := rest.dropWhile isPySpace
   match rest with
   | c :: _ =>
@@ -477,8 +483,10 @@ def recipePointers (text : String) : List (String × Nat) :=
   == ["v1 -->", "text <!-- c --> tail", "v2"]
 #guard essenceSuccessItems "## 成功条件\n-x\n12. z\n3) w\n1.x\n12.5 x\n- \n+ b\n1)  a  b "
   == ["-x", "z", "w", "1.x", "12.5 x", "-", "b", "a  b"]
+-- コメントがフェンスに先行(semanticLines と同一の安全境界): コメント内の
+-- ``` はフェンスを開かず、コメント閉鎖後の項目は収集される
 #guard essenceSuccessItems "## 成功条件\n<!-- open\n```\nstill hidden? -->\n- q1\n```\n- q2"
-  == []
+  == ["q1"]
 -- 厳密化(§13.1-15): 節を開くのは「レベル 2・タイトル厳密一致」だけ。旧別名・
 -- 部分一致・小文字化・見出しレベル違いはすべて不成立(取りこぼしは構造ゲートが
 -- 停止させるので silent にならない)
@@ -636,6 +644,9 @@ private def structIssues (text : String) : List String :=
 #guard recipePointers "recipe: a@1\nrecipe: b@2" == [("a", 1), ("b", 2)]
 #guard recipePointers "recipe: a@1 \n\nrecipe: b@2" == [("a", 1), ("b", 2)]
 #guard recipePointers "x recipe: a@1" == []
+-- リスト項目の接頭辞は deps:/profile: と同じクラスで剥がれる(§2.1.1)
+#guard recipePointers "- recipe: a@1" == [("a", 1)]
+#guard recipePointers "> recipe: a@1" == [("a", 1)]
 #guard recipePointers "recipe: a@1 x" == []
 #guard recipePointers "recipe: A@1" == []
 #guard recipePointers "recipe: a@01" == [("a", 1)]

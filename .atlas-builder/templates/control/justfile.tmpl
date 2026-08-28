@@ -62,7 +62,7 @@ update-essence:
 init project *args:
     bash scripts/init.sh --project {{quote(project)}} {{args}}
 
-# Human-only: explicit setup step — mark only the CONTROL_ROOT launch-root candidates trusted in ~/.claude.json. PROJECT_ROOT itself is never pre-trusted (META.md §10)
+# Human-only: explicit setup step — mark only the CONTROL_ROOT launch-root candidates trusted in ~/.claude.json. PROJECT_ROOT itself is never pre-trusted (META.md §16)
 [group('human-only')]
 trust target=project:
     bash scripts/claude-trust.sh --project {{quote(target)}} --apply
@@ -109,8 +109,7 @@ build:
     mkdir -p bin
     install -m 755 lean/.lake/build/bin/atlas-builder bin/atlas-builder
 
-# Human-only health check: it inspects Claude trust/credential configuration,
-# which an Agent is denied from reading by I-024
+# Human-only health check: inspects Claude trust/credential configuration, which an Agent is denied from reading by I-024
 [group('human-only')]
 doctor:
     bash scripts/doctor.sh --project {{quote(project)}}
@@ -125,8 +124,7 @@ status:
 watch:
     bash scripts/watch.sh --project {{quote(project)}}
 
-# Human-only: check Claude Code trust without writing ~/.claude.json. Reading
-# the credential/config file is still outside the Agent secret boundary.
+# Human-only: check Claude Code trust without writing ~/.claude.json — reading the credential/config file is still outside the Agent secret boundary (I-024)
 [group('human-only')]
 trust-check target=project:
     bash scripts/claude-trust.sh --project {{quote(target)}} --check

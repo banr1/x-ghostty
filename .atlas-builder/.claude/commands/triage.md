@@ -46,9 +46,11 @@ else on this list is read with the Read tool — `cat`, `ls`, `jq`, `grep`,
 
 Open gate items are: proposed human-gated Recommendations (§21.4, including
 loop-raised gates §21.5 — `no_runnable_todos` / `idle_cycles` /
-`infra_unreachable` / `must_complete_awaiting_phase_approval`), active
+`usage_limited` / `infra_unreachable` /
+`must_complete_awaiting_phase_approval`), active
 `essence_blocking` Blockers, and file-fact stops (`essence_missing` /
-`essence_placeholder` / `essence_unreviewed_change` / `state_unreadable`).
+`essence_placeholder` / `essence_structure` / `essence_asset_integrity` /
+`essence_unreviewed_change` / `state_unreadable`).
 
 ### 2. Explain every open gate to the human first
 

@@ -261,6 +261,14 @@ def essenceSha256 : EssenceRead → Except String (Option String)
   | .file bytes => .ok (some (Sha256.hexDigest bytes))
   | .ioError e => .error s!"ESSENCE.md is unreadable ({e})"
 
+/-- §13.1-8 の placeholder 判定本体(空・空白のみ・placeholder マーカー・
+未消化 FILL マーカー)。`essenceIsPlaceholder`(停止理由)と `essenceRealText?`
+(実体を持つときだけ走る検査の門)が**同一の条件**を共有するための単一定義。 -/
+def isPlaceholderText (d : Domain) (text : String) : Bool :=
+  Text.containsSub text d.placeholderMarker
+    || (Text.pyStrip text).isEmpty
+    || Text.containsSub text fillMarker
+
 /-- Python `essence_is_placeholder`(§13.1-8): ガイドブロック残存・空白のみ・
 未消化 FILL マーカーのいずれか。OSError(不在・読めない)は False。
 不正 UTF-8 は Python の uncaught UnicodeDecodeError(exit 2)に対応する
@@ -271,10 +279,7 @@ def essenceIsPlaceholder (d : Domain) : EssenceRead → Except String Bool
   | .file bytes =>
     match String.fromUTF8? bytes with
     | none => .error "ESSENCE.md is not valid UTF-8"
-    | some text =>
-      .ok (Text.containsSub text d.placeholderMarker
-        || (Text.pyStrip text).isEmpty
-        || Text.containsSub text fillMarker)
+    | some text => .ok (isPlaceholderText d text)
 
 /-- human-review baseline(§13.1-10): ESSENCE.md の SHA-256 と、essences/
 資産マニフェスト(相対パス → SHA-256、パス昇順)。同一の attestation レコード
@@ -344,11 +349,7 @@ def essenceReviewBaseline (attestations project : RawFile) (title : String) :
 def essenceRealText? (d : Domain) : EssenceRead → Option String
   | .file bytes =>
     match String.fromUTF8? bytes with
-    | some text =>
-      if Text.containsSub text d.placeholderMarker
-          || (Text.pyStrip text).isEmpty
-          || Text.containsSub text fillMarker then none
-      else some text
+    | some text => if isPlaceholderText d text then none else some text
     | none => none
   | _ => none
 
@@ -566,7 +567,14 @@ def completionPayload (i : CompletionInputs) : Except String CompletionVerdict :
   let runnableShoulds := items.filter fun t =>
     t.get? "priority" == some (.str "should") && todoIsRunnable i.domain t phase
   let resolvedShoulds := shoulds.filter todoIsResolved
-  let unresolvedShoulds := shoulds.filter fun t => !todoIsResolved t
+  -- 「must でない未解決 Todo」全体を数える(should に限らない): priority を
+  -- 欠く/集合外の Todo は apply-projection では書けないが(validate error)、
+  -- 外因破損で紛れ込んだ場合に「should でないから」と完了計算から消えると、
+  -- runnable な Todo を残したまま full_complete が立つ — §19.3 の双対性
+  -- (「実行可能な Todo が尽きたときの終端は 3 択」)と I-021 の向き(壊れた
+  -- state は完了を証明しない)の両方に反する。
+  let unresolvedShoulds := items.filter fun t =>
+    t.get? "priority" != some (.str "must") && !todoIsResolved t
   let phaseApproved := phase == phaseExtendedApproved
   let closedAtMust := phase == phaseClosedAtMust
   let resumePending :=
@@ -753,9 +761,9 @@ test_sync_pairs が凍結する)・message の組み立て順と文言・payload
 def stopAssemble (i : StopInputs) (phaseApprovalStop placeholderEssence : Bool)
     (currentEssence : Option String)
     (humanIds blockingIds blockerIds : List String)
-    (currentAssets : List (String × String) := [])
-    (assetIssues : List String := [])
-    (structureIssues : List String := []) : StopVerdict :=
+    (currentAssets : List (String × String))
+    (assetIssues : List String)
+    (structureIssues : List String) : StopVerdict :=
   let essenceBlockers := stopEssenceBlockers i
   let blockingRecs := stopBlockingRecs i
   let humanRequests := stopHumanRequests i
@@ -1077,7 +1085,7 @@ private def stopKeyProbe : StopInputs :=
 無さを `#guard` で凍結する。 -/
 def stopPayloadCollisions (payload : List (String × Json.Value)) : List String :=
   let common : List String :=
-    match (stopAssemble stopKeyProbe false false none [] [] []).payload with
+    match (stopAssemble stopKeyProbe false false none [] [] [] [] [] []).payload with
     | .obj entries => entries.map Prod.fst
     | _ => []
   (payload.map Prod.fst).filter common.contains

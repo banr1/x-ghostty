@@ -88,5 +88,11 @@ private def stopGateProbe : Looper.StopGateInputs :=
 #guard domain.cycleAuthorizations.isEmpty
 #guard (Looper.State.Validate.cycleAuthorizationCollisions domain).isEmpty
 #guard domain.resumeAdjudication?.isNone
+-- 見出し列の包含と seed の床(fixture 側 #guard の鏡像)。Wont 節が列から落ちる
+-- とスコープの柵(§2.1.2)が、成功条件節が落ちると受け入れ基準の抽出(§20.2-6)が、
+-- 黙って空になる。bootstrap は最低限 ESSENCE.md を配る(§26.1)。
+#guard domain.essenceHeadings.contains domain.essenceWontHeading
+#guard domain.essenceHeadings.contains Looper.Core.Essence.essenceSuccessHeading
+#guard domain.bootstrapSeeds.any (·.path == "ESSENCE.md")
 
 end AtlasBuilder

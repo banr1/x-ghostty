@@ -256,7 +256,7 @@ def recordProgressApply (d : Domain) (g : RecordGate) (current : String)
         else newContext
       | _ => newContext
     else newContext
-  -- §13.4-7: ドメインが「次の cycle だけ」の許可として立てた承認マーカーも、
+  -- §14.1: ドメインが「次の cycle だけ」の許可として立てた承認マーカーも、
   -- note と同じ終端(`--run-status ok`)だけが下ろす。当該 cycle が許可の目的を
   -- 果たしていなければ、判定の根拠になった事実が残って次の境界で再び停止する —
   -- **押し忘れは常に安全側**である。軸が空なら恒等変換。
@@ -365,9 +365,19 @@ def raiseLoopGatesCore (i : RaiseInputs) : RaiseOutcome := Id.run do
   -- open_gates: `gate` は gate 種別の名前なので、文字列でない値はどの種別も
   -- 名指ししていない = 冪等性(§13.4-7)の観点では不在として読む。壊れた値を
   -- 遷移の失敗にしてはならない(頭注のデッドロック)。
+  --
+  -- **human-gating な rec だけを数える。** `raised_by` / `gate` は agent が
+  -- apply-projection で書けるフィールドなので(resume 側が
+  -- `hasFrameworkPhaseGate` から rec 経路を外したのと同じ理由)、この 2 つ
+  -- だけで再 raise を抑止させると、非停止 rec の偽装 1 枚で本物の gate
+  -- (例: `no_runnable_todos`)の実体化を恒久に黙らせられる — I-017 破り。
+  -- `recommendationRequiresHuman` を課せば、抑止力を持つ rec はそれ自身が
+  -- should-stop を止める rec に限られ、偽装は不可視停止ではなく可視の
+  -- 停止になる(本物の loop gate は常にこの形を満たすので冪等性は不変)。
   let openGates := (((objectItems (.arr recItems)).filter fun r =>
     r.get? "status" == some (.str "proposed")
-      && r.get? "raised_by" == some (.str i.domain.loopActor)).filterMap
+      && r.get? "raised_by" == some (.str i.domain.loopActor)
+      && Predicates.recommendationRequiresHuman r).filterMap
     fun r => (r.get? "gate").bind (·.asStr?)).eraseDups
   let hasGate (k : String) : Bool := openGates.contains k
   -- Agent が既に可視化した停止条件は重複マテリアライズしない(§13.4-2)。

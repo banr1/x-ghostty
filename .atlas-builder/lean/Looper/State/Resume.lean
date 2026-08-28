@@ -299,7 +299,7 @@ rec を置けば `--approve-should` が should phase の自律予算を奪取で
 (raise-loop-gates 実体化前)も含めて実境界を捉えるため、rec ベースの分岐は
 冗長かつ危険であり撤去する。gate rec の**選択**(どの rec を resolved にするか)
 には `isPhaseGateRec` を引き続き使うが、それは phase 昇格の**認可**には効かない。 -/
-def hasFrameworkPhaseGate (stopPayload : Json.Value) (_recsRaw : RawFile) : Bool :=
+def hasFrameworkPhaseGate (stopPayload : Json.Value) : Bool :=
   ((stopPayload.get? "must_complete_awaiting_phase_approval").getD .null).truthy
 
 /-! ## ドメイン軸の引き当て
@@ -337,7 +337,7 @@ def domainAdjudicated (i : TransitionInputs) (verdicts : List (String × String)
     | some a => a.apply (adjudicationInputsOf i a verdicts note)
     | none => {}
 
-/-- この resume が立てる cycle 承認マーカー(§13.4-7)。立てる条件は
+/-- この resume が立てる cycle 承認マーカー(§14.1)。立てる条件は
 **ドメイン自身の停止 payload の面が truthy であること**であり、下ろす側
 (`Domain.cycleAuthorizationFlags`)と同じ 1 つの宣言から綴りが出る。 -/
 def raisedAuthorizations (i : TransitionInputs) : List CycleAuthorization :=
@@ -405,15 +405,23 @@ def selectionError? (i : TransitionInputs) : Option String :=
   let openIds := (openBlockers ++ openRecs).filterMap itemId?
   let selected := i.resolveIds ++ i.retractIds
   let duplicate := duplicateStrings selected
-  let unknown := selected.filter fun id => !openIds.contains id
+  -- 診断はフラグ別に組む: `--retract-approval` の入力を「--resolve が…」と
+  -- 呼ぶ拒否文は、人間に存在しないフラグ誤用を訂正させる(§13.3「拒否文は
+  -- この呼出しの何が誤りだったかを言う」)。
+  let unknown := i.resolveIds.filter fun id => !openIds.contains id
   let (todo, _) := readJsonOrEmpty "todo.json" i.todoRaw
   let todoItems := objectItems ((todo.get? "items").getD (.arr []))
   let authorizations := Predicates.superviseAuthorizations i.domain openRecs todoItems
   let authorizedIds := authorizations.map (·.1)
   let resolvedAuthorizing := i.resolveIds.filter authorizedIds.contains
   let retractsNothing := i.retractIds.filter fun id => !authorizedIds.contains id
+  let duplicateFlagLabel :=
+    if duplicate.any i.retractIds.contains then
+      if duplicate.any i.resolveIds.contains then "--resolve/--retract-approval"
+      else "--retract-approval"
+    else "--resolve"
   let phaseIds := (openRecs.filter (isPhaseGateRec i.domain)).filterMap itemId?
-  let frameworkPhaseGate := hasFrameworkPhaseGate i.stopPayload i.recsRaw
+  let frameworkPhaseGate := hasFrameworkPhaseGate i.stopPayload
   -- 排他の対象になる選択フラグ。ドメイン専有フラグは軸が綴るので、この列に
   -- 製品の綴りは現れない — 綴りを直書きすると、チャネルを持つドメインでだけ
   -- 文言から抜け落ちる(人間は排他の理由を message からしか知れない)。
@@ -431,7 +439,7 @@ def selectionError? (i : TransitionInputs) : Option String :=
       ++ "; drop --steer-only to make those decisions, or drop them to record "
       ++ "the edits alone")
   else if !duplicate.isEmpty then
-    some s!"duplicate --resolve id(s): {String.intercalate ", " duplicate}"
+    some s!"duplicate {duplicateFlagLabel} id(s): {String.intercalate ", " duplicate}"
   else if !unknown.isEmpty then
     some s!"--resolve names no currently open gate: {String.intercalate ", " unknown}"
   else if !resolvedAuthorizing.isEmpty then
@@ -628,12 +636,12 @@ def transition (i : TransitionInputs) : Transition :=
   let (usageCleared, _) :=
     Predicates.progressCounter progress0 "usage_limited_since_ok"
   -- L2897: raise-loop-gates が走る前にクラッシュした場合の直接述語フォールバック
-  let frameworkPhaseGate := hasFrameworkPhaseGate i.stopPayload i.recsRaw
+  let frameworkPhaseGate := hasFrameworkPhaseGate i.stopPayload
   let releasesGates := !selectedBlockers.isEmpty || !selectedRecs.isEmpty
     || idleCleared != 0 || infraCleared != 0 || usageCleared != 0
     || (frameworkPhaseGate && phaseDecision.isSome)
     || !adjudications.isEmpty
-  -- §13.4-7: 事前評価がドメインの承認マーカー面を観測した resume は、その
+  -- §14.1: 事前評価がドメインの承認マーカー面を観測した resume は、その
   -- マーカーを立てる — 立たなければ次の cycle は同じ pre-gate で再び止まり、
   -- マーカーが解くはずの恒久デッドロックになる。マーカーの根拠はファイル事実型
   -- ゲート(latch されない)であり、対象変更が commit 済み(worktree clean)だと
@@ -643,7 +651,7 @@ def transition (i : TransitionInputs) : Transition :=
   -- noop(L2905–2928): projection drift は次サイクルの再投影事項なので
   -- 単独では resume を非冪等にしない。attestation の無い Essence
   -- (essence_unreviewed)と観測されたドメイン承認マーカーだけは決して no-op に
-  -- しない(§13.1-10、§13.4-7)
+  -- しない(§13.1-10、§14.1)
   if !releasesGates && !essenceUnreviewed && authorizations.isEmpty
       && i.worktree == some [] && closedRuns.isEmpty then
     .noop (.obj [
@@ -717,11 +725,16 @@ def transition (i : TransitionInputs) : Transition :=
     let newRecs := if resolvedRecs.isEmpty then none
       else some (resolveItems recs fun r =>
         isOpenRec r && (((itemId? r).map selected.contains |>.getD false)
-          || (phaseDecision.isSome && isPhaseGateRec i.domain r)))
+          -- 報告(selectedRecs)と書込みは同じ述語を使う: `phaseSelectable` は
+          -- supervise authorizing gate を phase 判断の一括選択から除外する
+          -- (§13.3-4''(a))。素の `isPhaseGateRec` で書くと、authorizing 形と
+          -- phase gate 形を兼ねる rec が報告されないまま resolved になり、
+          -- supervise の open gate 要件が恒久に満たせなくなる(同じ自壊)。
+          || (phaseDecision.isSome && phaseSelectable r)))
     -- context(L2987–3010、`resumedContext` に分離 — S-T6 の証明対象)
     let rc := resumedContext i.contextRaw approvesShouldPhase closesAtMust
       (mode == "gate_release") i.now note
-    -- §13.4-7: 観測したドメイン承認マーカーを立てる(観測は上の authorizations
+    -- §14.1: 観測したドメイン承認マーカーを立てる(観測は上の authorizations
     -- で済み)— 下ろすのは成功 cycle の終端(record-progress --run-status ok)だけで
     -- あり、**下ろす側は同じ 1 つの宣言から綴りを取る**(§14.1 で reset も保存)。
     let newContext := authorizations.foldl
@@ -745,6 +758,7 @@ def transition (i : TransitionInputs) : Transition :=
       ("closed_at_must", .bool closesAtMust),
       ("idle_cycles_cleared", .num idleCleared 0),
       ("infra_fails_cleared", .num infraCleared 0),
+      ("usage_limited_cleared", .num usageCleared 0),
       ("prior_handoff", priorHandoff),
       ("essence_sha256", essenceShaJson),
       ("essence_projection_drift", .bool drift),

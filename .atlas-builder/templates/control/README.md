@@ -15,10 +15,10 @@ These `*.tmpl` files are the canonical sources that `init.sh`
 Rendering is a literal substitution of these tokens (chosen to never collide
 with real prose or paths):
 
-| Token | Replaced with | Example |
-| --- | --- | --- |
-| `__ATLAS_BUILDER_PROJECT_PATH__` | PROJECT_ROOT relative to CONTROL_ROOT | `../my-project` |
-| `__ATLAS_BUILDER_PROJECT_TITLE__` | PROJECT_ROOT basename | `my-project` |
+| Token | Replaced with | Example | Used by |
+| --- | --- | --- | --- |
+| `__ATLAS_BUILDER_PROJECT_PATH__` | PROJECT_ROOT relative to CONTROL_ROOT | `../my-project` | `CLAUDE.md.tmpl` / `justfile.tmpl` (rendered here) |
+| `__ATLAS_BUILDER_PROJECT_TITLE__` | PROJECT_ROOT basename | `my-project` | `templates/workspace/README.md.tmpl` (seeded by init, META.md §16.1) |
 
 `settings.json.tmpl` carries no token at all: the rendered settings file is
 the machine-independent BASE (META.md §16.1) and the only value init derives

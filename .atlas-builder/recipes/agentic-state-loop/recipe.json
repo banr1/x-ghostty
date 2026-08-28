@@ -57,6 +57,12 @@
       "guidance": "stop_after_idle_cycles / stop_after_failed_runs / max_session_cycles as positive integers. Defaults are sane; tighten for expensive cycles."
     },
     {
+      "name": "logs",
+      "kind": "authored",
+      "fills": "<loop_dir>/schema.json `logs`",
+      "guidance": "Extra append-only .jsonl ledgers beside the built-in runs.jsonl (default: journal.jsonl, which the cycle prompt appends to). Appends go through `asl-loop state append-log`; only declared logs are writable that way."
+    },
+    {
       "name": "protected_paths",
       "kind": "authored",
       "fills": "<loop_dir>/schema.json `protected_paths`",

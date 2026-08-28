@@ -519,16 +519,19 @@ private def projectWorktreeChanges (ctx : Ctx) : IO (Option (List String)) := do
     return none
   pure (some (Validate.parseWorktreeChanges gitRoot ctx.projectRoot.toString st.stdout))
 
-/-- Python `project_recipe_locks`: `PROJECT_ROOT/*/recipe.lock.json`
-(glob は dot 始まりを除外、パス順)を読む。dict にパースできないもの
-(OSError / JSONDecodeError / 非 dict)は none。 -/
+/-- `PROJECT_ROOT/*/recipe.lock.json`(パス順)を読む。dict にパースできない
+もの(OSError / JSONDecodeError / 非 dict)は none。**dot 始まりの instance
+ディレクトリも走査する** — 同梱レシピの既定 `loop_dir` は `.loop/` であり
+(§29.5)、走査規約(§29.4「深さ 2」)に dot 除外は無い。旧 Python glob の
+dot 除外をここに写すと、既定設置の instance が §29.4 の全突き合わせ
+(未設置 warning の解消・major 不一致・source hash drift)から永久に消える。 -/
 private def readRecipeLocks (ctx : Ctx) : IO (List Validate.RecipeLockObs) := do
   let entries ← try
       ctx.projectRoot.readDir
     catch _ =>
       pure #[]
   let names := ((entries.map (·.fileName)).toList.filter
-    (fun n => !n.startsWith ".")).mergeSort (· ≤ ·)
+    (fun n => n != ".git")).mergeSort (· ≤ ·)
   let mut locks : List Validate.RecipeLockObs := []
   for name in names do
     let path := ctx.projectRoot / name / "recipe.lock.json"
@@ -654,9 +657,9 @@ private def runApplyProjection (ctx : Ctx) (args : Args) : IO UInt32 := do
     | .ok _ => return ← die ctx.domain.tool "projection bundle top-level value must be an object"
   if bundle.isEmpty then
     return ← die ctx.domain.tool "projection bundle must contain at least one canonical projection file"
+  -- 重複 key は JSON パーサのオブジェクト意味論(後勝ち)で既に 1 key に
+  -- 畳まれており、ここに届く names に重複は存在しない(§20.2-8)。
   let names := bundle.map (·.1)
-  if names.eraseDups.length != names.length then
-    return ← die ctx.domain.tool "projection bundle contains duplicate file keys"
   if let some unknown := names.find? (!ctx.domain.projectionFiles.contains ·) then
     return ← die ctx.domain.tool s!"projection bundle contains unsupported file: {unknown}"
   if let some bad := bundle.find? fun (_, value) =>
@@ -736,7 +739,12 @@ private def runAppendLedger (ctx : Ctx) (args : Args)
     return ← die ctx.domain.tool ("project.json is missing from the initialized state directory; "
       ++ "restore it (git restore) before appending to a ledger.")
   match Loop.startRunGate (← readRawText (ctxState ctx "project.json")) with
-  | .error msg => die ctx.domain.tool msg
+  | .error msg =>
+    -- gate の文言は start-run 向け(「start-run に再構築させるな」)なので、
+    -- 追記コマンドの利用者には修復指示だけを残して主語を差し替える。
+    die ctx.domain.tool ("project.json is unreadable or has lost its shape; "
+      ++ "repair it (git restore) before appending to a ledger. "
+      ++ s!"[{msg}]")
   | .ok project =>
     let (cycle, runId) := State.Append.stampsFromProject project
     let stamps : State.Append.Stamps := {
@@ -911,7 +919,8 @@ private def runRaiseLoopGates (ctx : Ctx) : IO UInt32 := do
     | .ok v => pure v
     | .error e => throw (IO.userError e)
   let stamp ← compactNow ctx.domain
-  -- 同一 raise で最大 5 gate が実体化され、id は `R-LG-<stamp>-<suffix>` で
+  -- 1 回の raise が使いうる suffix は gate 種別数の 5(実体化は must 境界と
+  -- no_runnable_todos が排他なので同時に最大 4)。id は `R-LG-<stamp>-<suffix>` で
   -- stamp を共有する。suffix が衝突すると 2 つの gate Recommendation が同一 id
   -- を持ち、(a) validate の id 一意検査(S-T5)が error になり、(b) 人間の
   -- `resume --resolve <id>` が意図しない方の gate まで resolved にする

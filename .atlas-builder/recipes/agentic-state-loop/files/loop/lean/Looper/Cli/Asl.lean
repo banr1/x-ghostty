@@ -493,6 +493,9 @@ private def runResume (ctx : Ctx) (args : Args) : IO UInt32 := do
               let closed := if args.force then dangling else []
               let rec appendEnds : List Core.Json.Value → IO UInt32
                 | [] => do
+                  -- 兄弟 payload(ensure / raise-gate / …)は renderAscii だが、
+                  -- resume だけは端末の人間へ note(和文が通例)を読み返す
+                  -- 表示なので ensure_ascii=False の render を保つ(意図差)。
                   IO.println (Engine.resumePayload released closed note).render
                   pure 0
                 | runId :: rest => do

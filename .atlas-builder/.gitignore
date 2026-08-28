@@ -14,7 +14,6 @@ CLAUDE.local.md
 !.agent/runs/.gitkeep
 .agent/tmp/*
 !.agent/tmp/.gitkeep
-.agent/cache/
 .agent/state/tool_audit.jsonl
 .agent/state/control_runs.jsonl
 # Loop runtime signals: graceful-drain flag (§19.1-7) and display-only

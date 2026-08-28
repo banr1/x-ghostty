@@ -59,7 +59,7 @@ def commitDenyReason (_d : Domain) : String :=
 
 /-- Bash: HUMAN_ONLY_BASH / `resume` サブコマンド(I-011、§13.3・§18.2)。 -/
 def humanOnlyDenyReason (d : Domain) : String :=
-  s!"Human-only {d.displayName} transition (I-011, META.md §13.3, §18.2): resume / loop / stop / once / init / trust / triage / supervise / new-essence / update-essence are operated by the human. Agents never release their own stop conditions, pace or drain the loop (§19.1-7), spawn their own loop / triage / essence-interview sessions, re-bind the control plane, grant trust, or author ESSENCE.md."
+  s!"Human-only {d.displayName} transition (I-011, META.md §13.3, §18.2): resume / loop / stop / once / init / doctor / trust / trust-check / triage / supervise / new-essence / update-essence / watch are operated by the human. Agents never release their own stop conditions, pace or drain the loop (§19.1-7), spawn their own loop / triage / essence-interview sessions, re-bind the control plane, grant trust, or author ESSENCE.md."
 
 /-- Bash: LOOP_ONLY_BASH / loop-only サブコマンド(§19.1)。 -/
 def loopOnlyDenyReason (d : Domain) : String :=

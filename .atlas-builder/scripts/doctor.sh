@@ -81,16 +81,10 @@ if command -v claude >/dev/null 2>&1; then
     fi
   done
 
-  # §19.1-5 / §28.5: credential scrubbing makes current Claude Code resolve a
-  # headless cycle to `default`; supplying an inert dontAsk CLI flag merely emits
-  # a warning each cycle. The headless `-p` invocation is therefore the
-  # load-bearing fail-closed floor and must remain present in both session forms.
-  LOOP_SRC="$(cat "scripts/loop.sh" 2>/dev/null || true)"
-  if grep -q -- 'claude -p ' <<<"${LOOP_SRC}" && grep -q -- 'claude -c -p ' <<<"${LOOP_SRC}"; then
-    ok "headless Claude launch is intact; unmatched tools are denied when the scrubbed CLI resolves default mode (§19.1-5)"
-  else
-    fail "loop.sh must launch both fresh and continued cycles headlessly ('claude -p' / 'claude -c -p'): without it, scrubbed default mode could prompt instead of denying (§19.1-5, §28.5)"
-  fi
+  # §19.1-5 / §28.5: the headless `-p` floor of both session forms is asserted
+  # by the launcher-fragment check below ('claude -p "${PROMPT}"' /
+  # 'claude -c -p "${PROMPT}"') — a strictly stronger form of the probe that
+  # used to live here.
 else
   note "claude CLI not found on PATH — the loop cannot run"
 fi
@@ -267,14 +261,14 @@ else
       '"${TOOL_ENV}_SESSION_MODE=triage"' '"${TOOL_ENV}_SESSION_PROJECT_ROOT=' \
       CLAUDE_CODE_SKIP_PROMPT_HISTORY=1 resolve_interactive_permission_mode \
       build_sanitized_claude_env build_read_only_session_settings \
-      '--add-dir "${PROJECT_ROOT}"' \
+      '--add-dir "${PROJECT_ROOT}"' --disallowedTools \
       --settings '--setting-sources project' --strict-mcp-config
     # shellcheck disable=SC2016  # the fragments are literal source text, not expansions
     emit_missing_fragments "scripts/essence.sh" \
       '"${TOOL_ENV}_SESSION_MODE=essence"' '"${TOOL_ENV}_SESSION_PROJECT_ROOT=' \
       CLAUDE_CODE_SKIP_PROMPT_HISTORY=1 resolve_interactive_permission_mode \
       build_sanitized_claude_env build_read_only_session_settings \
-      '--add-dir "${PROJECT_ROOT}"' \
+      '--add-dir "${PROJECT_ROOT}"' --disallowedTools \
       --settings '--setting-sources project' --strict-mcp-config
     # shellcheck disable=SC2016  # the fragments are literal source text, not expansions
     emit_missing_fragments "scripts/supervise.sh" \

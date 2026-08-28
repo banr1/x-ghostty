@@ -449,7 +449,7 @@ def initialState (d : Domain) (now title : String) (essenceSha : Option String)
   ++ d.extraLedgers.map (fun n => (n ++ ".json", Json.Value.obj [
     ("schema_version", .str schemaVersion), ("items", .arr [])]))
 
-/-! ## context.json の framework 面とドメイン軸の衝突(§13.4-7 / §31.1 R-13) -/
+/-! ## context.json の framework 面とドメイン軸の衝突(§14.1 / §31.1 R-13) -/
 
 /-- framework が意味を与える `context.json` の**最上位キー**。列挙を複製せず、
 ensure が書く canonical な初期 context そのものから導くので、framework が面を
@@ -459,7 +459,7 @@ def contextFrameworkKeys (d : Domain) : List String :=
   | some (.obj entries) => entries.map Prod.fst
   | _ => []
 
-/-- ドメインの cycle 承認マーカー(§13.4-7)が名乗ってしまった framework 面。
+/-- ドメインの cycle 承認マーカー(§14.1)が名乗ってしまった framework 面。
 
 空でなければならない。マーカーは resume が**立て**、成功 cycle の終端が
 **下ろす**ので、交わりがあると framework の面がマーカーの上げ下げで書き換わる —
@@ -468,6 +468,11 @@ def contextFrameworkKeys (d : Domain) : List String :=
 無さを `#guard` で凍結する。 -/
 def cycleAuthorizationCollisions (d : Domain) : List String :=
   d.cycleAuthorizationFlags.filter (contextFrameworkKeys d).contains
+
+-- 参照ドメイン(軸なし)と fixtureRich(全軸あり)の凍結。各製品も自分の
+-- Domain に同じ #guard を置く(S-T4 / S-T6 の保存定理はこの不等式が前提)。
+#guard cycleAuthorizationCollisions Looper.Domain.fixture == []
+#guard cycleAuthorizationCollisions Looper.Domain.fixtureRich == []
 /-- `cmd_ensure` の registry 更新核(§8.1)。`index` は project_index.json の
 読み取り結果(Python は診断なしの `read_json_or_empty` — 読めなければ空)。
 返り値: 書き込むべき index(`none` = 変更なしで書かない)。`.error` は

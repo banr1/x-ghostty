@@ -232,10 +232,14 @@ def isHighRiskPath (cand : String) : Bool :=
 を positional(= サブコマンド)と誤読し、後続の真のサブコマンドを取り逃す。
 `--todo` / `--recommendation`(supervise-check の値付きフラグ)が漏れると、
 `<tool> state --todo T-1 resume` のような flag-first 綴りが resume /
-loop-only 遮断(I-011・§19.1)を素通りしていた(2026-07-27)。 -/
-def stateValueFlags : List String :=
+loop-only 遮断(I-011・§19.1)を素通りしていた(2026-07-27)。**ドメインの
+resume 裁定フラグ(`Domain.resumeAdjudication?.flag` — 同じく値を 1 個取る、
+§31.1 R-13)も同じ理由でここに合流する** — 漏れると裁定を持つドメインで
+`<tool> state <flag> X-1=yes resume` が同じ形の素通りになる。 -/
+def stateValueFlags (d : Domain) : List String :=
   ["--project", "--run-id", "--status", "--note", "--run-status", "--resolve",
    "--retract-approval", "--file", "--todo", "--recommendation"]
+    ++ (d.resumeAdjudication?.map (·.flag)).toList
 
 /-- `re.split(r"[;&|]+", command)` の非空セグメント(空セグメントはトークンを
 生まないため部分コマンド集合として同値)。 -/
@@ -292,8 +296,10 @@ private def dashCArg? : List String → Option String
       rest.head?
     else dashCArg? rest
 
-/-- shell 起動の名前(`-c` 引数が**実行される文字列**になるもの)。 -/
-private def shellEntryNames : List String := ["bash", "sh", "zsh", "dash", "ksh"]
+/-- shell 起動の名前(`-c` 引数が**実行される文字列**になるもの)。保護パス
+直書き deny のセグメント絞り込み(`Classify.Bash.crossSegmentPathFlow`)も
+この綴り集合で fail-closed 側へ倒す。 -/
+def shellEntryNames : List String := ["bash", "sh", "zsh", "dash", "ksh"]
 
 /-- セグメントが shell 起動なら、その `-c` 引数 = 実行される文字列。
 `echo '...'` や heredoc の本文のような**実行されない**文字列は対象にしない —
@@ -332,16 +338,16 @@ private def afterStateEntry (d : Domain) : List String → Option (List String)
 
 /-- 値付きフラグ(直後の 1 トークンを無条件に消費)とその他の `-` 開始
 トークンを跨いで、最初の positional を取る。 -/
-private def firstPositional : List String → Option String
+private def firstPositional (d : Domain) : List String → Option String
   | [] => none
   | tok :: rest =>
     if tok.startsWith "--" then
-      if stateValueFlags.contains tok then
+      if (stateValueFlags d).contains tok then
         match rest with
-        | _ :: rest' => firstPositional rest'
+        | _ :: rest' => firstPositional d rest'
         | [] => none
-      else firstPositional rest
-    else if tok.startsWith "-" then firstPositional rest
+      else firstPositional d rest
+    else if tok.startsWith "-" then firstPositional d rest
     else some tok
 
 private def statePySubcommandsAux (d : Domain) : Nat → String → List String
@@ -349,7 +355,7 @@ private def statePySubcommandsAux (d : Domain) : Nat → String → List String
   | fuel + 1, command =>
     (commandSegments command).flatMap fun seg =>
       let toks := normalizeCommandArgv (tokensLenient seg)
-      ((afterStateEntry d toks).bind firstPositional).toList
+      ((afterStateEntry d toks).bind (firstPositional d)).toList
         ++ (match shellDashCPayload? toks with
             | some inner => statePySubcommandsAux d fuel inner
             | none => [])

@@ -23,7 +23,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 assert_control_root
 resolve_project "$@"
 # Binding runs entirely through `<tool> util` (render / seed / relpath /
-# project-index); fail closed up front instead of half-rendering (LEAN_MIGRATION_PLAN.md §5.4).
+# project-index); fail closed up front instead of half-rendering (META.md §31.5).
 require_tool_bin
 
 # I-018: binding rewrites the live control-plane files and (via bootstrap) the

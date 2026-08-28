@@ -169,9 +169,17 @@ private def slashes : Frag := fun cs =>
 private def scriptPathFrag (stem : String) : Frag :=
   lit "scripts" >=> slashes >=> lit (stem ++ ".sh")
 
+/-- クォート除去後のトークン列を空白 1 個で再連結した綴り。`just 'resume'` /
+`bash scripts/lo"op".sh` のようなクォート分断で human-only / loop-only / ask の
+テキスト照合を外せないようにする(`isSecretBash` / `isProtectedWriteTarget` の
+トークン側照合と同じ規律)。字句解析不能なら `tokensLenient` が空白分割へ
+退避するため、緩む側には倒れない。 -/
+private def tokenJoined (command : String) : String :=
+  String.intercalate " " (tokensLenient command)
+
 /-- `HUMAN_ONLY_BASH` × `re.search`。`state\.py\s+resume` は綴りが隣接する形のみ
 (フラグ先行綴りの遮断は `statePySubcommands` の責務 — 第 1 部)。 -/
-def isHumanOnlyBash (d : Domain) (command : String) : Bool :=
+private def isHumanOnlyBashText (d : Domain) (command : String) : Bool :=
   search (lit "state.py" >=> ws1 >=> lit "resume" >=> wordEnd) command
     -- Lean マルチコール綴り(agent 向け配線面。trust ensure
     -- と同じく、バイナリ直接呼び出しがゲートを迂回できない形で deny)
@@ -185,8 +193,14 @@ def isHumanOnlyBash (d : Domain) (command : String) : Bool :=
     || searchJustPrefix (alts (humanOnlyJustRecipes.map fun w => lit w >=> wordEnd)) command
     || containsSub command "claude-trust.sh"
     || search (lit "claude_trust.py" >=> ws1 >=> lit "ensure" >=> wordEnd) command
+    -- `trust status` も `~/.claude.json` を読む(I-024、§18.2 の trust-check と
+    -- 同じ面)ので、subcommand を限定せず `<tool> trust` の両綴りを deny する。
     || searchAtBoundary
-        (lit d.tool >=> ws1 >=> lit "trust" >=> ws1 >=> lit "ensure" >=> wordEnd) command
+        (lit d.tool >=> ws1 >=> lit "trust" >=> wordEnd) command
+
+/-- `isHumanOnlyBashText` を生テキストとトークン再連結の両方に適用する。 -/
+def isHumanOnlyBash (d : Domain) (command : String) : Bool :=
+  isHumanOnlyBashText d command || isHumanOnlyBashText d (tokenJoined command)
 
 /-! ## LOOP_ONLY_BASH(META.md §19.1) -/
 
@@ -198,19 +212,26 @@ private def loopOnlySubTail : Frag :=
   alts (loopOnlyStateSubcommands.map fun w => lit w >=> wordEnd)
 
 /-- `LOOP_ONLY_BASH` × `re.search`。 -/
-def isLoopOnlyBash (d : Domain) (command : String) : Bool :=
+private def isLoopOnlyBashText (d : Domain) (command : String) : Bool :=
   search (lit "state.py" >=> ws1 >=> loopOnlySubTail) command
     || searchAtBoundary
         (lit d.tool >=> ws1 >=> lit "state" >=> ws1 >=> loopOnlySubTail) command
     || searchJustPrefix (lit "state" >=> ws1 >=> loopOnlySubTail) command
 
+/-- `isLoopOnlyBashText` を生テキストとトークン再連結の両方に適用する
+(クォート分断対策 — `tokenJoined` の頭注)。 -/
+def isLoopOnlyBash (d : Domain) (command : String) : Bool :=
+  isLoopOnlyBashText d command || isLoopOnlyBashText d (tokenJoined command)
+
 /-! ## ASK_BASH(bootstrap / build は明示承認) -/
 
-/-- `ASK_BASH` × `re.search`。 -/
+/-- `ASK_BASH` × `re.search`(クォート分断対策に生テキストとトークン再連結の
+両方 — `tokenJoined` の頭注)。 -/
 def isAskBash (_d : Domain) (command : String) : Bool :=
-  search (scriptPathFrag "bootstrap") command
-    || searchJustPrefix (lit "bootstrap" >=> wordEnd) command
-    || searchJustPrefix (lit "build" >=> wordEnd) command
+  [command, tokenJoined command].any fun text =>
+    search (scriptPathFrag "bootstrap") text
+      || searchJustPrefix (lit "bootstrap" >=> wordEnd) text
+      || searchJustPrefix (lit "build" >=> wordEnd) text
 
 /-! ## DANGEROUS_BASH(安全ルールの絶対 deny) -/
 
@@ -507,11 +528,22 @@ private def protectedTargetText (d : Domain) (text : String) : Bool :=
 `protectedTargetText` は小文字化済みテキスト前提(大小文字違いを塞ぐ §28.5-9 —
 Edit 面 `isDenyPath` と同一規律)、トークンには normpath も適用して冗長スラッシュ
 (`.<tool>//state/`)を潰す。字句解析不能な入力では `tokensLenient` が空白分割へ
-退避するため、生テキスト判定だけが残る(緩む側には倒れない)。 -/
+退避するため、生テキスト判定だけが残る(緩む側には倒れない)。
+
+保護面の**ディレクトリ自身**を名指すトークン(`rm -r essences` /
+`mv .<tool>/state /tmp` — 末尾スラッシュの無い綴り)。prefix 形(`essences/`)
+は中身への書込みを塞ぎ、この等値形は面そのものの削除・改名・上書きを塞ぐ
+(§2.1.5「write, move, rename, or delete」)。トークンは normpath 済みなので
+`essences/`(末尾スラッシュ)もここへ正規化される。 -/
+private def protectedBareDirTok (d : Domain) (t : String) : Bool :=
+  ["essences", "secrets", s!"{d.controlDirName}/state", ".agent/state"].any
+    fun n => t == n || t.endsWith ("/" ++ n)
+
 def isProtectedWriteTarget (d : Domain) (command : String) : Bool :=
   protectedTargetText d (lowerStr command)
     || (tokensLenient command).any fun t =>
-         protectedTargetText d (lowerStr (normpath t))
+         let tok := lowerStr (normpath t)
+         protectedTargetText d tok || protectedBareDirTok d tok
 
 /-! ## 保護パス直書き deny の**セグメント単位**判定(§11.3、2026-08-12 改訂)
 
@@ -551,13 +583,22 @@ private def crossSegmentPathFlow (command : String) : Bool :=
     || containsSub lowered "-exec" || containsSub lowered "-delete"
     || ((tokensLenient command).any fun t =>
       let base := lastComponent t
-      base == "xargs" || base == "eval" || base == "parallel")
+      base == "xargs" || base == "eval" || base == "parallel"
+        -- `sh -c '<cmd>'` の本文は別の字句空間で実行される(セグメント分割も
+        -- コマンド位置判定もその内側には届かない)ため、shell 起動を含む形は
+        -- 全文連言へ落とす(`bash -c 'cp x ESSENCE.md'` の素通り封止)。
+        || shellEntryNames.contains base
+        -- ループ変数がパスをセグメント間で運ぶ(`for f in ESSENCE.md; do rm $f`)
+        || base == "for" || base == "while" || base == "until")
 
 /-- コマンド位置の前置ラッパ(剥がしても実行されるコマンドは変わらない)。
 `sudo` は別途 dangerous で deny されるが、剥がしておくことに害はない。 -/
 private def commandPositionWrappers : List String :=
   ["sudo", "nohup", "time", "nice", "stdbuf", "setsid", "exec", "builtin",
-   "doas", "ionice", "timeout"]
+   "command", "doas", "ionice", "timeout",
+   -- shell キーワード: 剥がしても後続コマンドが実行される事実は変わらない
+   -- (`if true; then rm ESSENCE.md; fi` の `then` セグメント)
+   "if", "then", "elif", "else", "do", "{", "(", "!"]
 
 /-- `VAR=value` 前置(`normalizeCommandArgv` の `env` 前置代入と同じ形)。 -/
 private def isEnvAssignmentTok (t : String) : Bool :=
@@ -569,20 +610,46 @@ private def isEnvAssignmentTok (t : String) : Bool :=
     | [] => false
   | _ => false
 
+/-- 数値開始トークン(`timeout 5` / `nice -n 5` の持続時間・優先度引数)。
+ラッパの直後でだけ読み飛ばす — コマンド位置に数値が立つことはなく、
+読み飛ばしは deny 側(検出強化)にしか倒れない。 -/
+private def isDigitInitial (t : String) : Bool :=
+  match t.toList with
+  | c :: _ => c.isDigit
+  | [] => false
+
+/-- `env` の引数(代入 `NAME=VALUE`・flag。値付き `-u` / `-C` / `-S` は
+1 トークン道連れ)。剥がし過ぎは deny 側にしか倒れない(この関数の消費点は
+保護パス deny の writer 判定だけである)。 -/
+private def stripEnvArgs : List String → List String
+  | [] => []
+  | t :: rest =>
+    if isEnvAssignmentTok t then stripEnvArgs rest
+    else if t == "-u" || t == "-C" || t == "-S" then
+      match rest with
+      | [] => []
+      | _ :: rest' => stripEnvArgs rest'
+    else if t.startsWith "-" then stripEnvArgs rest
+    else t :: rest
+
 /-- ラッパを剥がしながらコマンド位置トークンを探す。fuel はトークン数
 (1 反復につき最低 1 トークン消費するので上界として十分)— 純粋核レイヤは
-`partial` を禁じている(§31.1 R-3、purity-gate が機械検査)。 -/
+`partial` を禁じている(§31.1 R-3、purity-gate が機械検査)。コマンド位置の
+`-flag`(`env -i` の残骸等)は読み飛ばす — flag はコマンドになれない。 -/
 private def commandPositionAux : Nat → List String → Option String
   | 0, _ => none
   | fuel + 1, toks =>
-    match normalizeCommandArgv (toks.dropWhile isEnvAssignmentTok) with
+    match toks.dropWhile isEnvAssignmentTok with
     | [] => none
     | tok :: rest =>
-      let base := lastComponent tok
-      if commandPositionWrappers.contains base then
-        commandPositionAux fuel (rest.dropWhile fun t =>
-          t.startsWith "-" || isEnvAssignmentTok t)
-      else some base
+      if tok.startsWith "-" then commandPositionAux fuel rest
+      else
+        let base := lastComponent tok
+        if base == "env" then commandPositionAux fuel (stripEnvArgs rest)
+        else if commandPositionWrappers.contains base then
+          commandPositionAux fuel (rest.dropWhile fun t =>
+            t.startsWith "-" || isEnvAssignmentTok t || isDigitInitial t)
+        else some base
 
 /-- セグメントのコマンド位置トークン(basename)。`VAR=v` 前置・`env` /
 `command` ラッパ(`normalizeCommandArgv`)・上記ラッパ語を剥がす。 -/
@@ -744,7 +811,7 @@ def bashPathishTokens (command : String) : List String :=
 #guard isHumanOnlyBash Domain.fixture "looper trust ensure" == true
 #guard isHumanOnlyBash Domain.fixture "bin/looper trust ensure" == true
 #guard isHumanOnlyBash Domain.fixture "xlooper trust ensure" == false
-#guard isHumanOnlyBash Domain.fixture "looper trust status" == false
+#guard isHumanOnlyBash Domain.fixture "looper trust status" == true
 #guard isHumanOnlyBash Domain.fixture "just doctor" == true
 #guard isHumanOnlyBash Domain.fixture "scripts/doctor.sh" == true
 #guard isHumanOnlyBash Domain.fixture "just supervise" == true

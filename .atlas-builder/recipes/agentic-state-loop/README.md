@@ -85,7 +85,7 @@ bash <loop_dir>/scripts/resume.sh --note "..."   # human-only: gate 解放 + rev
 
 停止(STOP)は設計どおりの人間への hand-off であり exit 0。非 0 は失敗のみ
 (2 環境/エンジン、3 dangling run の拒否 — クラッシュ後は `resume.sh --force`、
-4 git 拒否、5 ロック競合、130/143 割込み)。
+4 git 拒否、5 ロック競合、129/130/143 割込み)。
 
 ## deny パターンの方言(制限グロブ)
 

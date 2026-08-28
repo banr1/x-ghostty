@@ -242,7 +242,7 @@ structure Adjudication where
   /-- 裁定の適用(台帳の書き換え計画)。書くのは Looper の IO シェルである。 -/
   apply : AdjudicationInputs → Adjudicated
 
-/-- cycle 承認マーカー(§13.4-7)。resume が「次の cycle だけ」の許可として
+/-- cycle 承認マーカー(§14.1)。resume が「次の cycle だけ」の許可として
 立て、成功 cycle の終端(`--run-status ok`)が下ろす面である。
 
 **立てる側と下ろす側が 1 つの宣言から出る**のがこの型の要点である。綴りを
@@ -344,7 +344,7 @@ structure Domain where
   /-- evidence(§22)の `type` のうち、**台帳 entry の名指し**(`ledger`)を
   必須で持つもの。転記フィールドの台帳整合は `ledgerMeaningIssues` が見る。 -/
   evidenceLedgerTypes : List String
-  /-- cycle 承認マーカー(§13.4-7)。resume が立て、成功 cycle の終端が下ろす。
+  /-- cycle 承認マーカー(§14.1)。resume が立て、成功 cycle の終端が下ろす。
   **立てる側と下ろす側は同じ 1 つの宣言から綴りを取る**(`CycleAuthorization`)。 -/
   cycleAuthorizations : List CycleAuthorization
   /-- ドメイン台帳の**形状**検査(§20.1 系: enum 語彙・必須フィールド・

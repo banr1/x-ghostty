@@ -14,7 +14,7 @@
 # a stop is the designed hand-off to the human, reported as STOP, never as
 # ERROR. Nonzero means failure only: 2 usage/environment/engine crash,
 # 3 dangling-run refusal (a previous cycle crashed; recover with
-# `resume.sh --force`), 4 git refusal, 5 lock contention, 130/143 interrupted.
+# `resume.sh --force`), 4 git refusal, 5 lock contention, 129/130/143 interrupted.
 #
 # Usage: cd <target> && bash <loop-dir>/scripts/loop.sh [-n N | --max-cycles N] [--max-session-cycles N]
 

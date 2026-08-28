@@ -280,11 +280,11 @@ def runPostTool (d : Domain) : IO UInt32 := do
 `high_risk_pre.jsonl` へ stage(best-effort、§20.4-3)し `decision?` を
 stdout へ出す — だけで、分岐ロジックを持たない。exit は常に 0。
 
-**併走モード**: `<PREFIX>_GUARD_SHADOW` が非空のとき、
-stage も stdout も行わず、判定を payload ごと
-`.agent/tmp/guard_shadow.jsonl` へ記録して無意見で終わる。Python hook と
-両登録して実セッションの差分コーパスを集めるための足場で、リプレイ突合は
-shadow ハーネス側の責務。 -/
+(かつての併走モード `<PREFIX>_GUARD_SHADOW` — Python hook との差分コーパス
+収集の足場 — は移行完了で撤去した。guard 全体を無意見化する環境変数は、
+役目を終えたあとはただの undocumented kill switch である。stale 配線の検出は
+`Core.SettingsDoctor` が、残骸 `guard_shadow.jsonl` の掃除は bootstrap の
+sweep が引き続き持つ。) -/
 
 /-- stdin payload から `ToolCall` を組む。`.error` は Python の未捕捉
 TypeError(truthy 非 object の `tool_input`、truthy 非文字列の
@@ -417,13 +417,6 @@ def runPreTool (d : Domain) : IO UInt32 := do
         base, handoffRoot, expectedProject?, stateScript, declared, resolved,
         profile, writablePatterns, domain := d }
     let out := Guard.decide env toolCall
-    if ((← IO.getEnv (d.envPrefix ++ "_GUARD_SHADOW")).getD "") ≠ "" then
-      let record := Guard.shadowRecord (← nowLocal d) payload sessionMode
-        expectedProjectRaw out
-      if let .error e ← Io.Fs.appendJsonl
-          (rootFp / ".agent" / "tmp" / "guard_shadow.jsonl") record then
-        IO.eprintln s!"[pre_tool_guard] shadow log failed: {e}"
-      return 0
     -- §20.4-3: before-hash の staging(best-effort)は decision 出力に先行する
     for raw in out.highRiskPre do
       let staged ← do

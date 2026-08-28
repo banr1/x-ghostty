@@ -40,6 +40,28 @@
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
 assert_control_root
+
+# Strict flag parsing (same rule as stop.sh / loop.sh / resume.sh): a silently
+# dropped argument would run a different action than the human asked for.
+args=("$@")
+i=0
+while ((i < ${#args[@]})); do
+  case "${args[$i]}" in
+    --project)
+      ((i + 1 < ${#args[@]})) || {
+        err "--project requires a value."
+        exit 2
+      }
+      i=$((i + 2))
+      ;;
+    *)
+      err "unknown argument: ${args[$i]}"
+      err "usage: bash scripts/triage.sh --project ../PROJECT_TITLE"
+      exit 2
+      ;;
+  esac
+done
+
 resolve_project "$@"
 
 TRIAGE_DIR="${CONTROL_ROOT}/.agent/tmp/triage"

@@ -181,10 +181,15 @@ def cdFirstTokens (command : String) : List String :=
     | _ => none
 
 /-- `cd_targets(command, cwd)` 等価: 綴りによらず解決結果を使う(失敗時は生
-綴りを保持 — 許可ルートに一致せず ask 側へ落ちる fail-safe)。 -/
+綴りを保持 — 許可ルートに一致せず ask 側へ落ちる fail-safe)。**`~` 始まりと
+shell 展開(`$`)を含む綴りは解決結果を使わない**: 解決表は字句解決
+(cwd 相対)であり、shell が実際に向かう home / 変数先とは別の場所を指す —
+`cd ~ && …` が「cwd/~ は許可ルート内」としてフェンスを素通りしていた。生綴り
+のまま残せば許可ルートに一致せず ask 側へ落ちる(同じ fail-safe)。 -/
 def cdTargets (env : GuardEnv) (command : String) : List String :=
   (cdFirstTokens command).map fun first =>
-    (env.resolved? first).getD (pyPathStr first)
+    if first.startsWith "~" || (first.toList.contains '$') then pyPathStr first
+    else (env.resolved? first).getD (pyPathStr first)
 
 /-- `cd_leaves_allowed_roots(command, cwd)` 等価: 許可ルート(CONTROL_ROOT ∪
 登録 PROJECT_ROOT)の外へ出る最初の cd 先。 -/
@@ -204,6 +209,9 @@ def installAllowReason? (env : GuardEnv) (command : String) : Option String :=
   | .notGate => none
   | .bare seg => installAllowSegReason? env.domain env.declared seg
   | .withCd cdRaw seg =>
+    -- `~` / `$` 綴りの cd 先は字句解決が実際の行き先を表さない(`cdTargets` の
+    -- 頭注)。唯一の自動許可面なので、解決を信用できない綴りは許可しない。
+    if cdRaw.startsWith "~" || cdRaw.toList.contains '$' then none else
     match env.resolved? cdRaw with
     | none => none
     | some p =>

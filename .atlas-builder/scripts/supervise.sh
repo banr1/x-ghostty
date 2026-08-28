@@ -129,10 +129,22 @@ CLAUDE_RC=0
 ((CLAUDE_RC == 0)) || warn "claude exited nonzero (${CLAUDE_RC}); review any partial diff before proceeding."
 if [[ -n "$(git -C "${GIT_ROOT}" status --porcelain --untracked-files=all)" ]]; then
   log "Supervised changes for ${TODO_ID} are uncommitted. Review the full diff."
-  if [[ -n "${RECOMMENDATION_ID}" ]]; then
-    log "Then run: just resume --resolve ${RECOMMENDATION_ID} --note \"approved High-Risk Todo ${TODO_ID} reviewed\""
+  # §13.4-2: the resume form is derived from the single should-stop message,
+  # never spelled as fixed text — a fixed `--resolve ${RECOMMENDATION_ID}` is
+  # exactly the form the engine refuses while the Todo is still unfinished
+  # (§13.3-4'': the authorization must stay open until the diff review), so a
+  # hardcoded spelling here would be wrong precisely when the session ended
+  # without finishing the Todo.
+  GUIDANCE_RC=0
+  GUIDANCE="$(resume_guidance)" || GUIDANCE_RC=$?
+  if ((GUIDANCE_RC == 0)) && [[ -n "${GUIDANCE}" ]]; then
+    log "After the review, follow the current gate guidance (§13.4-2):"
+    printf '%s
+' "${GUIDANCE}" | sed 's/^/  /'
+  elif ((GUIDANCE_RC == 1)); then
+    log "No stop gate is latched; record the review with: just resume --note \"approved High-Risk Todo ${TODO_ID} reviewed\""
   else
-    log "Then use just status and resume only the exact Recommendation that authorized ${TODO_ID}."
+    warn "could not derive the resume guidance (should-stop hard error, I-021); run \`just status\`."
   fi
 else
   log "The supervised session left no worktree changes."

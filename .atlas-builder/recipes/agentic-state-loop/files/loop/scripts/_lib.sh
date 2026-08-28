@@ -143,7 +143,16 @@ require_claude_trust() {
 LOOP_LOCK_DIR=""
 
 lock_pid_is_alive() {
-  kill -0 "$1" 2>/dev/null || ps -p "$1" >/dev/null 2>&1
+  kill -0 "$1" 2>/dev/null && return 0
+  local ps_err ps_rc=0
+  ps_err="$(ps -p "$1" 2>&1 >/dev/null)" || ps_rc=$?
+  if [[ ${ps_rc} -eq 0 ]]; then
+    return 0
+  fi
+  if [[ ${ps_rc} -eq 1 && -z "${ps_err}" ]]; then
+    return 1 # positively absent
+  fi
+  return 0 # unknown → alive (fail-closed)
 }
 
 acquire_loop_lock() {

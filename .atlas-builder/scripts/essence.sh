@@ -251,7 +251,9 @@ REPLACING_REAL=0
 essence_is_real && REPLACING_REAL=1
 if [[ -f "${ESSENCE_FILE}" ]] && printf '%s\n' "${DRAFT}" | cmp -s - "${ESSENCE_FILE}"; then
   log "The draft is identical to the current ESSENCE.md; nothing to install."
-  rm -f "${DRAFT_FILE}"
+  # §2.1.4-4: the no-op cleans the whole handoff (the xlsx dumps included),
+  # not just the draft file.
+  rm -rf "${ESSENCE_TMP_DIR}"
   exit 0
 fi
 

@@ -21,9 +21,12 @@ you cannot clear them; META.md §13.1 is the canonical enumeration):
    the real Essence clears it (directly, or via the human-only
    `just new-essence` interview whose draft the human confirms on the
    terminal, §2.1.4).
-9. `no_runnable_todos` / `idle_cycles` / `infra_unreachable` /
+9. `no_runnable_todos` / `idle_cycles` / `usage_limited` / `infra_unreachable` /
    `must_complete_awaiting_phase_approval` — loop-detected; materialized as gate
    Recommendations at cycle end (§13.4, see "Every stop must be visible").
+   `usage_limited` (§13.1-12') is the plan/model usage limit — the human waits
+   for the reset or switches models; it is not the same decision as
+   `infra_unreachable` (connectivity/auth repair).
 10. `essence_unreviewed_change` — the ESSENCE.md hash matches no human-attested
     record in the control-plane attestation ledger (or no baseline exists at
     all, §13.1-10). The attested record now covers both the ESSENCE.md hash
@@ -84,7 +87,8 @@ human would see the loop refuse to progress with no explanation. Therefore:
 - Every Todo you set to `blocked` must carry a `blocked_reason` (and, where
   one exists, the id of the Blocker that explains it).
 - The loop itself materializes `no_runnable_todos` / `idle_cycles` /
-  `infra_unreachable` / `must_complete_awaiting_phase_approval` gates as
+  `usage_limited` / `infra_unreachable` /
+  `must_complete_awaiting_phase_approval` gates as
   Recommendations via `atlas-builder state raise-loop-gates`
   when you fail to; treat a
   loop-raised gate (`raised_by: "atlas-builder-loop"`) in the state as a signal

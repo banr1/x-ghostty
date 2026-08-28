@@ -6,7 +6,7 @@ import Looper.Domain
 
 `CONTROL_ROOT/.agent/state/` の静的設定 JSON(workspace.json と未束縛
 project_index.json シード)の正本。配布ファイルは本モジュールの rendered
-バイト列を `just render-static`(maintainer plane、§18.4)で書き出した投影で
+バイト列を maintainer plane の再生成レシピ(製品の `just render-static`。標準配布では installer が設置時に同じ面をエンジンに書かせる — §18.4)で書き出した投影で
 あり、`<tool> util static-config <name>` がその出力面を提供する。乖離は
 sync テスト(D-008)が `just test` で、配備済みプレーンでは doctor が warn で
 検出する。投影の忠実性は機械証明済み(§31.3 W-T1)。

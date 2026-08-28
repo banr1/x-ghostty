@@ -353,7 +353,8 @@ The wrapper refuses drafts failing 1–2; the rest are your protocol:
 - READ-ONLY (I-027): the only freely writable path is `.agent/tmp/essence/`.
   The Write tool works ONLY inside that directory — the hook denies every
   other target except the ask-gated surfaces described below (settings
-  repair; and, in `--mode new` only, the ESSENCE.md install fallback).
+  repair; and, in `--mode new` only, the ESSENCE.md install fallback and
+  the essences/ asset install).
   Edit/NotebookEdit tools are disabled for this session.
 - Denied-write protocol: if the sanctioned handoff write itself is denied —
   the Write tool into `.agent/tmp/essence/`, or the exact heredoc below —
@@ -390,6 +391,18 @@ The wrapper refuses drafts failing 1–2; the rest are your protocol:
   wrapper's y-step was replaced by the ask prompt and point at the normal
   next step (`just init` before binding / `just resume` after), which
   anchors the attestation as usual (§2.1.4-5).
+- `essences/` assets: in `--mode update`, every write under
+  `PROJECT_ROOT/essences/` is denied (I-004). In `--mode new` one more
+  ask-gated face exists (I-027 second path, §2.1.5): writing ONE file at
+  most 3 path segments deep under `PROJECT_ROOT/essences/` — the hook
+  asks, and the human's explicit approval on the permission prompt is the
+  install confirmation. Use it only to place textual instruction material
+  the human supplied and approved during the interview (never content of
+  your own invention), and make the draft ESSENCE.md mention every
+  installed asset by its `essences/<path>` or a parent directory — an
+  unmentioned asset later stops the loop as `essence_asset_integrity`
+  (§13.1-14). The essences/ root itself, deeper paths, and every other
+  target stay denied.
 - Never run init / bootstrap / loop / once / resume / trust / triage /
   new-essence / update-essence — binding, attesting, and resuming are the
   human's own commands after this session (the hooks deny them to you,

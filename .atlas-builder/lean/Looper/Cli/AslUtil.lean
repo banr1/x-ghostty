@@ -1,4 +1,5 @@
 import Looper.Asl.Hooks
+import Looper.Core.Doc
 import Looper.Core.Json
 import Looper.Io.Fs
 
@@ -80,16 +81,6 @@ def stopMessageOf (input : String) : String :=
     | _ => defaultStopMessage
   | .error _ => defaultStopMessage
 
-/-- Python `int()` 意味論への写し: 数値は 0 方向切り捨て、文字列は
-`int(str)`(前後空白と符号を許す 10 進)、bool は 1/0。それ以外は none。 -/
-def pyIntOf? : Value → Option Int
-  | .num m e =>
-    let q : Int := Int.ofNat (m.natAbs / (10 ^ e))
-    some (if m < 0 then -q else q)
-  | .str s => s.trimAscii.toInt?
-  | .bool b => some (if b then 1 else 0)
-  | _ => none
-
 /-- `max_session_cycles` の純粋部: schema.json テキストから値を導く
 (`loop.sh` の `int(json.load(...).get("policy", {}).get(..., 8))`、
 失敗は 8)。 -/
@@ -104,7 +95,9 @@ def maxSessionCyclesOf (schemaText? : Option String) : Int :=
       match v.get? "policy" with
       | some policy =>
         match policy.get? "max_session_cycles" with
-        | some value => (pyIntOf? value).getD fallback
+        -- Python `int()` 意味論の単一定義(下線区切り・非 ASCII 空白を含む
+        -- 文字列形も忠実)は `Core.Doc.pyInt?` — ここで再実装しない。
+        | some value => (Core.Doc.pyInt? value).getD fallback
         | none => fallback
       | none => fallback
 
@@ -166,13 +159,13 @@ def run (args : List String) : IO UInt32 := do
 #guard stopMessageOf "not json" == "stop condition detected"
 
 -- Python int() 意味論
-#guard pyIntOf? (.num 8 0) == some 8
-#guard pyIntOf? (.num 85 1) == some 8      -- int(8.5) = 8(0 方向切り捨て)
-#guard pyIntOf? (.num (-85) 1) == some (-8) -- int(-8.5) = -8
-#guard pyIntOf? (.str " 12 ") == some 12
-#guard pyIntOf? (.str "8.5") == none
-#guard pyIntOf? (.bool true) == some 1
-#guard pyIntOf? .null == none
+#guard Core.Doc.pyInt? (.num 8 0) == some 8
+#guard Core.Doc.pyInt? (.num 85 1) == some 8      -- int(8.5) = 8(0 方向切り捨て)
+#guard Core.Doc.pyInt? (.num (-85) 1) == some (-8) -- int(-8.5) = -8
+#guard Core.Doc.pyInt? (.str " 12 ") == some 12
+#guard Core.Doc.pyInt? (.str "8.5") == none
+#guard Core.Doc.pyInt? (.bool true) == some 1
+#guard Core.Doc.pyInt? (.null) == none
 
 -- max-session-cycles: 正常・欠損・破損
 #guard maxSessionCyclesOf (some "{\"policy\": {\"max_session_cycles\": 5}}") == 5

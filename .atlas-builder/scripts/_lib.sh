@@ -329,9 +329,22 @@ loop_lock_owner_pid() {
 
 # Liveness that survives EPERM: bash `kill -0` exits nonzero for a LIVE pid
 # owned by another user, so it alone would read a foreign holder as dead and
-# reclaim its lock (I-018). `ps -p` needs no signal permission.
+# reclaim its lock (I-018). `ps -p` needs no signal permission. Fail-closed
+# like the Lean twin (Io/Proc.pidAlive): only `ps` exiting 1 with an empty
+# stderr positively establishes absence — a `ps` that errors (busybox has no
+# `-p`; sandbox may block it) proves nothing and must read as alive (§13.5:
+# "permission/sandbox/probe uncertainty never authorizes lock reclamation").
 lock_pid_is_alive() {
-  kill -0 "$1" 2>/dev/null || ps -p "$1" >/dev/null 2>&1
+  kill -0 "$1" 2>/dev/null && return 0
+  local ps_err ps_rc=0
+  ps_err="$(ps -p "$1" 2>&1 >/dev/null)" || ps_rc=$?
+  if [[ ${ps_rc} -eq 0 ]]; then
+    return 0
+  fi
+  if [[ ${ps_rc} -eq 1 && -z "${ps_err}" ]]; then
+    return 1 # positively absent
+  fi
+  return 0 # unknown → alive (fail-closed)
 }
 
 # True when the lock directory is old enough that a holder caught between its
@@ -385,9 +398,11 @@ acquire_loop_lock() {
     if mv "${LOOP_LOCK_PATH}" "${LOOP_LOCK_PATH}.reclaim.$$" 2>/dev/null; then
       moved_pid="$(cat "${LOOP_LOCK_PATH}.reclaim.$$/pid" 2>/dev/null || true)"
       if [[ "${moved_pid}" != "${owner_pid}" ]]; then
-        # Best-effort restore; if a third party already recreated the lock we
-        # leave the moved dir as harmless debris in .agent/tmp rather than rm a
-        # dir that is now someone's live lock content.
+        # Best-effort restore. If a third party already recreated the lock,
+        # POSIX `mv` onto an existing directory NESTS the source inside it
+        # rather than replacing it — the racer's own pid/token stay untouched
+        # and the nested dir is swept away with the lock on release. Either
+        # way we never rm a dir that may be someone's live lock content.
         mv "${LOOP_LOCK_PATH}.reclaim.$$" "${LOOP_LOCK_PATH}" 2>/dev/null || true
         err "the loop lock changed hands during reclamation; retry in a few seconds (I-018)."
         exit 5
@@ -613,7 +628,7 @@ essence_has_placeholder_marker() {
   grep -q -e "${TOOL_PLACEHOLDER}" -e "<!-- FILL:" "$@" 2>/dev/null
 }
 
-# META.md §8.4-4: the canonical projection item-id shape, `<PREFIX>-[A-Za-z0-9_+-]+`.
+# META.md §8.2: the canonical projection item-id shape, `<PREFIX>-[A-Za-z0-9_+-]+`.
 # This is a syntactic pre-filter in front of the state engine (which
 # independently checks that the id exists, is open, and is unique); its ONLY
 # job is to keep a malformed handoff/CLI string out of an argv. It must
@@ -1086,7 +1101,7 @@ is_forbidden_cycle_commit_path() {
     */".${TOOL}"/.agent/runs/.gitkeep | */".${TOOL}"/.agent/tmp/.gitkeep)
       return 1
       ;;
-    */".${TOOL}"/.agent/runs/* | */".${TOOL}"/.agent/tmp/* | */".${TOOL}"/.agent/cache/*)
+    */".${TOOL}"/.agent/runs/* | */".${TOOL}"/.agent/tmp/*)
       return 0
       ;;
     */".${TOOL}"/tmp/.gitkeep)

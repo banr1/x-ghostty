@@ -419,7 +419,7 @@ def validateOutcome (inp : ValidateInputs) : ValidateOutcome :=
     | _ => .obj []
   let stateErrors :=
     if !inp.stateDirExists then
-      ["state/ does not exist; run `state.py ensure` first."]
+      ["state/ does not exist; run `asl-loop state ensure` first."]
     else
       (match inp.control with
         | .error diag => [s!"control.json missing or corrupt ({diag}); restore it "
@@ -646,7 +646,7 @@ private instance {ε α : Type} [BEq ε] [BEq α] : BEq (Except ε α) :=
     previous := .obj [], now := "T" }).validation.get? "errors"
   == some (.arr [.str "schema.json does not exist.",
                  .str "prompts/cycle.md does not exist.",
-                 .str "state/ does not exist; run `state.py ensure` first."])
+                 .str "state/ does not exist; run `asl-loop state ensure` first."])
 -- inspection idempotency: 意味的に同じなら previous を保持し write しない
 #guard (
   let inputs : ValidateInputs := {

@@ -16,7 +16,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 assert_control_root
 resolve_project "$@"
 # Seeding runs through `<tool> util seed`; fail closed before touching
-# anything (LEAN_MIGRATION_PLAN.md §5.4).
+# anything (META.md §31.5).
 require_tool_bin
 
 # I-018: seeding + state ensure mutate the project plane; inherit the lock
@@ -37,7 +37,7 @@ log "Bootstrapping ${PROJECT_TITLE} at ${PROJECT_ROOT}"
 prune_stale_control_tmp
 
 # Seed a file from the template tree only when the destination does not exist.
-# Human-owned files are therefore never clobbered (LEAN_PROOF_ARCHITECTURE_REVIEW.md §7.2). Mode "render"
+# Human-owned files are therefore never clobbered (META.md §26.1-5). Mode "render"
 # substitutes the literal PROJECT_TITLE token; only the prose seeds that carry
 # the token declare it. Mode "verbatim" copies bytes unchanged, so a settings
 # or ignore file can never be rewritten by a stray token match added in a
