@@ -4486,6 +4486,176 @@
           "summary": "SPEC.md: §27.2 candidate-menu bullets gain the Tab/Shift+Tab lateral move and the top-layer rendering note (anchor overlay, why the cell-overlay clipped); new §27.7 (cell clipboard + candidate lateral move, must 83) documenting the six editing shortcuts with event consumption, the cell-cursor copy/paste parse-or-ignore semantics, and the candidate Tab routing; §27.6 test inventory adds ProjectListClipboardTests 12. README.md: the project-list bullet documents the candidate Tab move, the six cell-edit shortcuts acting on the cell editor (never the terminal), and cell-cursor Cmd+C/Cmd+V."
         }
       ]
+    },
+    {
+      "id": "T-114",
+      "title": "Model layer for the render target (must 84/87, success criterion 29): a pure judgment type in macos/Sources/Features/Projects/ that, from the project/pane model plus the zoom state, derives (a) the render-target surface set — overall view: each visible project's primary pane only; zoom: all panes of the zoomed project only; overlays never change it — and (b) for a transition (hide/show, entering/leaving zoom, primary reassignment, the list visibility toggle, close, exited-state restart) the sets of surfaces to stop and to resume, and the retained-surface set that a closed or replaced surface drops out of. Cover all of success criterion 29 with new XGhosttyTests.",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-109",
+        "S-112",
+        "S-113"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "render-gating",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full macOS app build green with the render-target model, the occlusion wiring, the focused-surface release fix and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 689 test cases passed / 0 failed (676 before this cycle), incl. the new ProjectRenderTargetTests 13/13"
+        },
+        {
+          "type": "diff",
+          "summary": "New macos/Sources/Features/Projects/ProjectRenderTarget.swift: RenderTargetSnapshot (drawn / retained) and RenderTargetTransition(from:to:) deriving stop = before.drawn - after.drawn intersected with after.retained (a vanished surface is released, never merely stopped), resume = after.drawn - before.drawn, released = before.retained - after.retained; WorkspaceStateOf extension with renderTargetSurfaceIDs (overall view: overallViewPaneIDs' values; zoomed: every pane of the zoomed project, falling back to the overall view when that zoom is unrenderable, matching relayout()/effectiveVisibleProjectTree), retainedSurfaceIDs (every pane of every project, hidden included) and renderTargetSnapshot. New macos/Tests/Projects/ProjectRenderTargetTests.swift: 13 tests over a 3-project fixture (A=[a1|a2] visible, B=[b1] visible, C=[c1|c2] hidden) covering all four bullets of success criterion 29 — the overall-view and zoomed render targets and their exclusions, overlays not changing the target, and the stop/resume/released sets across entering and leaving zoom, hide/show, the list visibility toggle, primary reassignment, close (visible and hidden project), and the exited-pane restart."
+        }
+      ]
+    },
+    {
+      "id": "T-115",
+      "title": "Wire the render-target model into the app layer (must 84/85): surfaces outside the render target stop the renderer's drawing and their display link and resume on return, while the shell and PTY keep running so a re-shown surface draws the latest screen. Drive it from the T-114 model at every transition. If this cannot be done through the existing surface/renderer API and would require modifying the upstream Ghostty terminal core, do not start it — record a Human-input Recommendation instead (must 87, 思想 3).",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-110",
+        "S-109"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "render-gating",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full macOS app build green with the render-target model, the occlusion wiring, the focused-surface release fix and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 689 test cases passed / 0 failed (676 before this cycle), incl. the new ProjectRenderTargetTests 13/13"
+        },
+        {
+          "type": "diff",
+          "summary": "macos/Sources/Features/Terminal/BaseTerminalController.swift: syncSurfaceTreeOcclusionState (window occlusion pushed over surfaceTree — the focused project only, so every background and hidden project drew forever) replaced by syncRenderTargetOcclusion(for:), which pushes `window visible AND in state.renderTargetSurfaceIDs` per surface over the focused project's live tree plus every project in workspace.state, via the existing C API xghostty_surface_set_occlusion (the Zig core already stops the display link, skips drawFrame/cursor blink and drops the render thread's QoS on .visible=false, and does updateFrame+drawFrame immediately on resume — no upstream core change was needed, so the must-87 consultation clause did not trigger). Firing points: windowDidLoad (seat the target after restore), windowDidChangeOcclusionState, surfaceTreeDidChange, and the workspace.$state subscription (which every hide/show, zoom, primary swap, list visibility toggle and close already flows through) — the sink syncs off the emitted value because @Published publishes before assignment. macos/Sources/XGhostty/Surface View/SurfaceView_AppKit.swift: isWindowVisible renamed to isDrawing and redocumented as the last occlusion value pushed, so the controller only calls the C API on a change."
+        }
+      ]
+    },
+    {
+      "id": "T-116",
+      "title": "Release closed surfaces (must 86): on Cmd+W, close_project and the list row-selection Delete, and for the old surface replaced when an exited-state pane is restarted, free the surface with its renderer, display link and related threads so nothing is left in the process. Same upstream-core caveat as T-115.",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-111"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "render-gating",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full macOS app build green with the render-target model, the occlusion wiring, the focused-surface release fix and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 689 test cases passed / 0 failed (676 before this cycle), incl. the new ProjectRenderTargetTests 13/13"
+        },
+        {
+          "type": "diff",
+          "summary": "macos/Sources/Features/Terminal/BaseTerminalController.swift surfaceTreeDidChange: `if to.isEmpty { focusedSurface = nil }` replaced by clearing focusedSurface whenever it is absent from the incoming tree AND from every project's pane tree. A static audit of the surface retain graph found exactly one non-bounded retention: focusedSurface is a strong var and TerminalView never reports a nil focus change, so a closed pane stayed retained there — with its renderer, display link and threads — until some other surface next took focus; on the paths that deliberately do not move surface focus after a removal (the project-list row close) that lasted until the overlay closed. The membership test spans all projects because the cross-project click path in focusedSurface's didSet legitimately parks focus outside surfaceTree. Every other real holder was confirmed to drop the view on close (surfaceTree is replaced on all close paths; WorkspaceState.removeProject removes the projects entry; ProjectState's focusedSurface/primaryPane/terminatedPane are SurfaceID values, not view refs; restartTerminatedPane replaces paneTree wholesale; no app-level surface registry, no retain cycle — the event monitor, CachedValue and every Timer capture weakly and NC observers are selector-based with removeObserver in deinit). The remaining retention is the upstream undo window (registerWorkspaceUndo's ExpiringUndoManager snapshots, expiresAfter: undoExpiration), which must-14 protects from regression and which frees the surface when it expires; XGhostty.Surface.deinit then calls xghostty_surface_free and the core's Surface.deinit joins the renderer/IO threads and releases the display link."
+        }
+      ]
+    },
+    {
+      "id": "T-117",
+      "title": "Update SPEC.md and README.md for the render-target definition, the draw / display-link stop and resume, and the release of closed surfaces (must item 76 as revised).",
+      "status": "done",
+      "priority": "must",
+      "spec": [
+        "S-091"
+      ],
+      "executor": {
+        "mode": "atlas-builder"
+      },
+      "batch_group": "render-gating",
+      "risk_level": "normal",
+      "evidence": [
+        {
+          "type": "command",
+          "command": "zig build (PATH=/opt/homebrew/opt/zig@0.15/bin, zig 0.15.2)",
+          "exit_code": 0,
+          "summary": "full macOS app build green with the render-target model, the occlusion wiring, the focused-surface release fix and the docs update"
+        },
+        {
+          "type": "command",
+          "command": "just test",
+          "exit_code": 0,
+          "summary": "Zig core tests green"
+        },
+        {
+          "type": "command",
+          "command": "just swift-test",
+          "exit_code": 0,
+          "summary": "TEST SUCCEEDED — full XGhosttyTests suite, 689 test cases passed / 0 failed (676 before this cycle), incl. the new ProjectRenderTargetTests 13/13"
+        },
+        {
+          "type": "diff",
+          "summary": "SPEC.md: new §31 (描画対象・描画停止・surface 解放仕様) with §31.1 the render-target definition and the overlay-irrelevance rule, §31.2 the retained set and the stop/resume/released transition algebra, §31.3 the occlusion implementation (C API path through the Zig renderer thread, the window-visible AND in-render-target rule, the all-projects walk and the four firing points), §31.4 release (xghostty_surface_free through SurfaceView deinit, the focusedSurface clearing, and the bounded upstream undo window), §31.5 the 13-test inventory; §16 file layout gains ProjectRenderTarget.swift. README.md: new \"What isn't drawn costs nothing\" bullet in About, describing the render target, the shell/PTY continuing while drawing stops, overlays not changing it, and release on close."
+        }
+      ]
+    },
+    {
+      "id": "T-118",
+      "title": "Human on-device verification of success criterion 30 after T-114..T-117 land: idle CPU below 1% with visible 1 / hidden 8, thread count and footprint IOSurface regions returning to the pre-creation values after creating and closing 5 projects, and a re-shown hidden project drawing the latest screen. Resource consumption is not automatically verifiable, so the human runs top / footprint on the device and reports the result through resume.",
+      "status": "pending",
+      "priority": "must",
+      "spec": [
+        "S-114"
+      ],
+      "executor": {
+        "mode": "human"
+      },
+      "batch_group": "render-gating",
+      "risk_level": "normal",
+      "evidence": []
     }
   ]
 }

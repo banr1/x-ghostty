@@ -1118,6 +1118,7 @@ macos/Sources/Features/Projects/
   ProjectRemoteSplit.swift         (リモート split の起動判断とレポート鮮度、§29)
   PaneForegroundProbe.swift        (pty の前景プロセス取得、§29.3)
   ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2)
+  ProjectRenderTarget.swift        (描画対象・保持集合・停止/再開/解放の導出、§31)
 ```
 
 `HiddenProjectShelf.swift` は hidden シェルフの廃止に伴い削除済み(§7.2)。
@@ -2599,6 +2600,118 @@ struct PaneLocationTracker {
   場面表示名が非空
 - セッション: toggle/end の遷移 / 一覧セッションの上に重ねても下の
   セッションが無傷で残る(スタッキング)
+```
+
+## 31. 描画対象・描画停止・surface 解放仕様
+
+**描かれていないものは描画コストゼロ**であることの仕様(2026-09-07 改訂・
+必須対応事項 84〜87)。多数のプロジェクトを抱えて長時間起動し続けるのが
+この製品の前提であり、画面に出ていない surface が描画を続けること、閉じた
+surface が解放されずに残ることは、いずれも根治すべき欠陥である。
+
+### 31.1 描画対象の定義(必須 84)
+
+- **全体ビュー(非 zoom)**:描画対象は **visible な各プロジェクトの
+  プライマリーペインのみ**(§22.3 の `overallViewPaneIDs` と同一集合)。
+- **zoom 中**:描画対象は **zoom 対象プロジェクトの全ペインのみ**。
+- したがって次はすべて**描画対象外**である — hidden なプロジェクトの全ペイン、
+  全体ビューにおける非プライマリーペイン、zoom 中の他プロジェクトのペイン。
+- **オーバーレイは描画対象を変えない**。プロジェクト一覧・一望モード・
+  ショートカット一覧・レイアウト選択・ノート編集は背後の端末を覆うだけで、
+  この定義に一切影響しない(必須 84)。
+- モデル層は `WorkspaceState.renderTargetSurfaceIDs`
+  (`Features/Projects/ProjectRenderTarget.swift`)。zoom 対象が描画不能
+  (hidden・消失)な状態は全体ビューとして読む — `relayout()` がそのような
+  zoom を解除し、`effectiveVisibleProjectTree`(§13)も同じ判断を採る。
+
+### 31.2 保持集合と遷移(必須 85・86)
+
+- `WorkspaceState.retainedSurfaceIDs` は**プロセスが保持している全 surface**
+  (hidden を含む全プロジェクトの全ペイン)。描画対象と保持集合は別物である:
+  hidden なプロジェクトは**生きている**(§14.7)。止まるのは描画であって
+  シェルではない。
+- `RenderTargetSnapshot`(`drawn` / `retained`)の 2 点間から
+  `RenderTargetTransition` が 3 集合を導く:
+  - `stop` = 描画していたが今は描画対象外、かつ**まだ保持されている** surface。
+    レンダラの描画とディスプレイリンクを止める。
+  - `resume` = 今は描画対象で、直前は違った surface。復帰時にはその間の
+    シェル出力を反映した最新の画面が描かれる。
+  - `released` = 直前は保持していたが今は保持していない surface。close、および
+    終了済み状態からの再開(§23.3)で置き換えられた旧 surface。**止めるのでは
+    なく解放する**(だから `stop` は保持集合との積を取る)。
+- この導出は hide/show・zoom の出入り・プライマリーの付け替え・一覧の表示
+  トグル・close・終了済みからの再開のすべてで同じ 1 本の判断を通る。
+
+### 31.3 描画停止の実装(occlusion 経路)
+
+- 反映先は既存の C API `xghostty_surface_set_occlusion(surface, visible)`。
+  コア側は renderer thread の `.visible` メールボックスを経て
+  `renderer.setVisible()` を呼び、**ディスプレイリンクを停止**し、`drawFrame`
+  とカーソル点滅をスキップし、レンダラスレッドの QoS を下げる。可視復帰時は
+  即座に `updateFrame` + `drawFrame` が走るため、必須 85 の「最新の画面」が
+  そのまま満たされる。**上流のターミナルコア(`src/**`)の改変は不要**
+  (必須 87 の但し書きに該当しない)。
+- 呼び出し側は `BaseTerminalController.syncRenderTargetOcclusion(for:)`。
+  surface が描画するのは「**ウィンドウが可視 かつ 描画対象に入っている**」
+  ときだけで、最後に送った値を `SurfaceView.isDrawing` にキャッシュし、
+  変化したときだけ C API を叩く。
+- 走査対象は `surfaceTree`(focused プロジェクトの分だけ)**ではなく**、
+  focused の live tree + `workspace.state.projects` 全体である。`surfaceTree`
+  起点のままでは背景・hidden の全プロジェクトが永久に描画を続ける — それが
+  この仕様が取り除くコストそのものである。
+- 発火点:`windowDidLoad`(復元直後の初期整合)、`windowDidChangeOcclusionState`
+  (ウィンドウ可視性)、`surfaceTreeDidChange`(分割・close)、および
+  `workspace.$state` の購読 — hide/show・zoom・プライマリー付け替え・一覧の
+  表示トグル・close はすべてここを通るので、各呼び出し元に判断を配らない。
+  `@Published` はプロパティ代入**前**に発行するため、sink は
+  `workspace.state` ではなく**発行された値**で同期する。
+
+### 31.4 解放(必須 86)
+
+- `XGhostty.Surface` の `deinit` が `xghostty_surface_free` を呼び、コア側
+  `Surface.deinit` がレンダラ/IO スレッドを join し、ディスプレイリンクを
+  停止・解放する。すなわち**最後の Swift 強参照が切れれば、レンダラ・
+  ディスプレイリンク・関連スレッドまで丸ごと解放される**。
+- したがって解放は「参照を残さないこと」に尽きる。close(`Cmd+W`・
+  `close_project`・一覧の行選択 `Delete`)は当該プロジェクトを
+  `workspace.state.projects` から外し、終了済みからの再開(§23.3)は
+  `paneTree` を新ペインで置き換える。どちらも旧 surface は保持集合から消える
+  (§31.2 の `released`、テストで検証)。
+- `BaseTerminalController.focusedSurface` は強参照であり、`TerminalView` は
+  focus の `nil` 遷移を通知しない。よって `surfaceTreeDidChange` で、focused
+  surface が**どのプロジェクトの paneTree にも存在しなくなった**ときに明示的に
+  落とす(cross-project クリックでは focused surface が `surfaceTree` の外に
+  正当に居るため、判定は「全プロジェクトのいずれかに居るか」で行う)。これが
+  無いと、閉じたペインが「次に別の surface が focus を取るまで」レンダラごと
+  滞留する — 一覧の行 close のように focus を動かさない経路では、その滞留が
+  オーバーレイを閉じるまで続いてしまう。
+- 例外は**上流由来の undo 窓**だけである:`registerWorkspaceUndo` が
+  `WorkspaceState` スナップショットを `ExpiringUndoManager` に
+  `undoExpiration` 付きで預けるため、閉じたプロジェクトの surface は
+  undo できる間だけ生き残る(`close_surface` の undo と同じ挙動)。これは
+  上流由来のターミナル動作であり、必須 14 の退行禁止に従って維持する。
+  期限切れで undo が破棄された時点で参照が切れ、解放される — **恒久的な
+  滞留ではない**。
+
+### 31.5 テスト(ProjectRenderTargetTests 13 件)
+
+```text
+- 全体ビューの描画対象が visible な各プロジェクトのプライマリーのみ
+- 同上が hidden なプロジェクトのペインと非プライマリーペインを含まず、
+  それらは保持集合には残る
+- オーバーレイ(一覧・ショートカット一覧・ノート編集・レイアウト選択)は
+  描画対象を変えない
+- zoom 中の描画対象が zoom 対象プロジェクトの全ペインのみで、他プロジェクトの
+  ペインを含まない
+- 描画不能なプロジェクトへの zoom は全体ビューとして読まれる
+- zoom の出入りの stop / resume 集合
+- hide / show の stop / resume 集合(hide は解放しない)
+- 一覧の表示トグルの stop / resume 集合
+- プライマリー付け替えの stop / resume 集合
+- close が描画中の surface を「停止」ではなく「解放」として扱う
+- hidden なプロジェクトの close も解放を伴う(stop は空)
+- 終了済みからの再開が置き換えられた surface を解放し、新ペインを resume する
+- 変化のないスナップショット間の遷移は空
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

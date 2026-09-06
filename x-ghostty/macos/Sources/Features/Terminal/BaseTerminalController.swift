@@ -231,9 +231,19 @@ class BaseTerminalController: NSWindowController,
         // `invalidateRestorableState`. Mirror that hook on the project layer's
         // source of truth so the ledger and names survive relaunch.
         // (`dropFirst` skips the initial value emitted on subscription.)
+        //
+        // The same hook drives the render target (`SPEC.md` §31): hide/show,
+        // zoom, the primary reassignment, the list's visibility toggle and close
+        // all land here, so occlusion follows the model on every transition
+        // instead of being re-derived at each call site. `$state` publishes
+        // before the property is assigned, so the sink syncs off the emitted
+        // value, not `workspace.state`.
         workspaceStateCancellable = workspace.$state
             .dropFirst()
-            .sink { [weak self] _ in self?.invalidateRestorableState() }
+            .sink { [weak self] newState in
+                self?.invalidateRestorableState()
+                self?.syncRenderTargetOcclusion(for: newState)
+            }
 
         // Setup our bell state for the window
         setupBellNotificationPublisher()
@@ -658,11 +668,22 @@ class BaseTerminalController: NSWindowController,
         // `surfaceTree` is the source of truth; the workspace follows it.
         workspace.replaceFocusedPaneTree(to, focusedSurface: focusedSurface)
 
-        // If our surface tree becomes empty then we have no focused surface.
-        if to.isEmpty {
+        // Drop a focused surface that no longer exists anywhere (`SPEC.md` §31.4).
+        // This is a strong reference, and `TerminalView` never reports a `nil`
+        // focus change, so a closed pane would otherwise stay retained here —
+        // with its renderer and threads — until some other surface next took
+        // focus. The focused surface may legitimately sit outside `surfaceTree`
+        // (the cross-project click path in `focusedSurface`'s `didSet`), so the
+        // test is membership in *any* project, not just the focused one. Covers
+        // the empty-tree case too: nothing left to focus.
+        if let surface = focusedSurface,
+           !to.contains(surface),
+           !workspace.state.projects.values.contains(where: {
+               $0.paneTree.find(id: surface.id) != nil
+           }) {
             focusedSurface = nil
         }
-        syncSurfaceTreeOcclusionState()
+        syncRenderTargetOcclusion()
     }
 
     /// Update all surfaces with the focus state. This ensures that libghostty has an accurate view about
@@ -2199,6 +2220,12 @@ class BaseTerminalController: NSWindowController,
 
         // Set our update overlay state
         updateOverlayIsVisible = defaultUpdateOverlayVisibility()
+
+        // Seat the render target once the window exists (`SPEC.md` §31). A
+        // restore brings back hidden projects and non-primary panes that no
+        // transition would otherwise touch, and their surfaces must not start
+        // out drawing.
+        syncRenderTargetOcclusion()
     }
 
     func defaultUpdateOverlayVisibility() -> Bool {
@@ -2307,16 +2334,48 @@ class BaseTerminalController: NSWindowController,
     }
 
     func windowDidChangeOcclusionState(_ notification: Notification) {
-        syncSurfaceTreeOcclusionState()
+        syncRenderTargetOcclusion()
     }
 
-    private func syncSurfaceTreeOcclusionState() {
-        let visible = self.window?.occlusionState.contains(.visible) ?? false
-        for view in surfaceTree {
-            if let surface = view.surface, view.isWindowVisible != visible {
-                xghostty_surface_set_occlusion(surface, visible)
-                view.isWindowVisible = visible
+    /// Push the render target (`SPEC.md` §31) down to libghostty as per-surface
+    /// occlusion.
+    ///
+    /// A surface draws only when the window is visible AND the workspace model
+    /// puts it in the render target — the visible projects' primary panes in
+    /// the overall view, every pane of the zoomed project while zoomed. Every
+    /// other surface is occluded, which stops its renderer's drawing and its
+    /// display link (and drops its render thread's QoS) while its shell and PTY
+    /// keep running; returning to the render target resumes it and redraws the
+    /// latest screen, including whatever arrived meanwhile.
+    ///
+    /// This walks every surface the controller owns, not just `surfaceTree`:
+    /// `surfaceTree` is only the focused project's panes, so driving occlusion
+    /// from it would leave every background and hidden project drawing forever,
+    /// which is exactly the cost this is here to remove.
+    private func syncRenderTargetOcclusion(for state: WorkspaceState? = nil) {
+        let state = state ?? workspace.state
+        let windowVisible = self.window?.occlusionState.contains(.visible) ?? false
+        let drawn = state.renderTargetSurfaceIDs
+
+        // The focused project's live panes are `surfaceTree` (the workspace copy
+        // is only mirrored on change); the rest come from the workspace, deduped
+        // by id the way `allSurfaces` does it.
+        var seen = Set<UUID>()
+        var views: [XGhostty.SurfaceView] = []
+        for view in surfaceTree where seen.insert(view.id).inserted {
+            views.append(view)
+        }
+        for project in state.projects.values {
+            for view in project.paneTree where seen.insert(view.id).inserted {
+                views.append(view)
             }
+        }
+
+        for view in views {
+            let visible = windowVisible && drawn.contains(SurfaceID(rawValue: view.id))
+            guard let surface = view.surface, view.isDrawing != visible else { continue }
+            xghostty_surface_set_occlusion(surface, visible)
+            view.isDrawing = visible
         }
     }
 

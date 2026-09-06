@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "projected_from_essence_sha256": "2b54ddf38d30f772a75f6bf6d4d06b60bc4d9b88480bef3916d1a1d7532270e7",
-  "projected_at": "2026-08-19T18:10:00+09:00",
+  "projected_from_essence_sha256": "dfbb8d698636dc25bd7bc0e24675137338267d7cefbc2cb6488cc38adbd36299",
+  "projected_at": "2026-09-07T07:20:00+09:00",
   "items": [
     {
       "id": "S-001",
@@ -1160,7 +1160,7 @@
     },
     {
       "id": "S-091",
-      "title": "Update SPEC.md and README.md to match the implemented remote split, the project list's operation grammar (Enter editing, Delete, row selection, edge moves, reordering), the sort state, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, undo/redo, the priority reset, the layout remainder distribution, the list cell editing IME support, the shortcut list, the list clipboard operations and lateral moves during candidate enumeration, and the key changes including Cmd+K and Cmd+/",
+      "title": "Update SPEC.md and README.md to match the implemented remote split, the project list's operation grammar (Enter editing, Delete, row selection, edge moves, reordering), the sort state, date candidates, the 4-valued next trigger, the 100-line note cap with its over-limit confirmation, undo/redo, the priority reset, the layout remainder distribution, the list cell editing IME support, the shortcut list, the list clipboard operations and lateral moves during candidate enumeration, the key changes including Cmd+K and Cmd+/, and the render target with draw stopping and the release of closed surfaces",
       "status": "active",
       "priority": "must",
       "essence_refs": [
@@ -1168,7 +1168,8 @@
         "(Enter 編集・Delete・行選択・端移動・並べ替え)・ソート状態・日付候補・次トリガー",
         "(4 値)・ノートの 100 行化と超過時確認・Undo/Redo・優先度リセット・レイアウト余り",
         "配分・一覧セル編集の IME 対応・ショートカット一覧・一覧のクリップボード操作と候補",
-        "列挙中の横移動・キー変更(`Cmd+K` / `Cmd+/` を含む)の仕様に合わせて更新する。"
+        "列挙中の横移動・キー変更(`Cmd+K` / `Cmd+/` を含む)・描画対象と描画停止・閉じた",
+        "surface の解放の仕様に合わせて更新する。"
       ]
     },
     {
@@ -1413,6 +1414,102 @@
         "優先度・次トリガー・締切の候補が列挙されている間の `Tab` / `Shift+Tab` は、値を",
         "変えずに候補を閉じて右・左のセルへセルカーソルを移す(行末の折り返しと端での停止は",
         "65 項と同じ)。"
+      ]
+    },
+    {
+      "id": "S-109",
+      "title": "Render-target definition: in the overall view (non-zoom) the render target is exactly each visible project's primary pane; while zoomed it is exactly all panes of the zoomed project. All panes of hidden projects, non-primary panes in the overall view, and other projects' panes while zoomed are outside the render target. Overlays (project list, overview mode, shortcut list, layout picker, note editor) only cover the terminal behind them and never change the render-target definition",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "描画対象は、全体ビュー(非 zoom)では visible な各プロジェクトのプライマリーペイン",
+        "のみ、zoom 中は zoom 対象プロジェクトの全ペインのみとする。hidden なプロジェクトの",
+        "全ペイン、全体ビューにおける非プライマリーペイン、zoom 中の他プロジェクトのペインは",
+        "描画対象外とする。オーバーレイ(プロジェクト一覧・一望モード・ショートカット一覧・",
+        "レイアウト選択・ノート編集)は背後の端末を覆うだけで、描画対象の定義には影響しない。",
+        "**描画対象** — いま画面に描かれている surface の集合。全体ビューでは visible な各",
+        "プロジェクトのプライマリーペイン、zoom 中は zoom 対象プロジェクトの全ペイン。描画対象外",
+        "の surface は描画とディスプレイリンクを止め、シェルと PTY 入出力だけが動き続ける。"
+      ]
+    },
+    {
+      "id": "S-110",
+      "title": "Surfaces outside the render target stop the renderer's drawing and their display link, and resume the moment they return to the render target; the shell and PTY IO keep running throughout, so a re-shown surface draws the latest screen including the output produced while it was not drawn (what it means for a hidden project to be \"alive\" is unchanged) — the fork's premise is many projects held over long uptime, so what is not drawn must cost zero drawing",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "描画対象外の surface は、レンダラの描画とディスプレイリンクを停止し、描画対象へ",
+        "戻った時点で再開する。シェルと PTY 入出力は描画対象外の間も従来どおり動き続け、",
+        "再表示時にはその間の出力が反映された最新の画面が描かれる(hidden なプロジェクトが",
+        "「生きている」ことの定義は変えない)。",
+        "5 日間起動し続けた xghostty が、全ペインがアイドルでも CPU を焼き続け、GPU メモリを",
+        "3 GB 超抱え、スレッド数がペイン数の 2〜3 倍に膨れていた。原因と見られるのは、hidden な",
+        "プロジェクトや全体ビューで描かれない非プライマリーペインの surface が、画面に出ていない",
+        "のに描画を続けていること、そして閉じたペインの surface が解放されずに残ることである。",
+        "多数のプロジェクトを抱えて長時間起動し続けるのはこの製品の前提そのものであり、",
+        "**描かれていないものは描画コストゼロ**でなければならない。再起動やペイン数の削減は",
+        "対症療法であり、今回は根治として、描画対象の定義と描画停止・解放の保証を必須対応事項へ",
+        "取り込む。"
+      ]
+    },
+    {
+      "id": "S-111",
+      "title": "Closing a pane or project (Cmd+W, close_project, Delete on a list row selection) releases that surface together with its renderer, display link and related threads so nothing remains in the process; the old surface replaced when an exited-state pane is restarted (item 30) is released the same way",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "ペイン・プロジェクトを閉じた(`Cmd+W`・`close_project`・一覧の行選択での",
+        "`Delete`)時点で、その surface とレンダラ・ディスプレイリンク・関連スレッドは解放",
+        "され、プロセスに残らない。終了済み状態からの再開(30 項)で置き換えられた旧 surface",
+        "も同様に解放する。"
+      ]
+    },
+    {
+      "id": "S-112",
+      "title": "The render-target decision and the derivation of the surface sets to stop and resume around an operation live in the model layer and are verifiable from XGhosttyTests; if it turns out this cannot be achieved without modifying the upstream terminal core, do not start — consult the human",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "描画対象の判定と、操作前後で描画を停止・再開すべき surface の集合の導出はモデル層に",
+        "置き、`XGhosttyTests` から検証可能にする。上流のターミナルコアの改変なしに実現",
+        "できないと判明した場合は、着手せず人間に相談する。"
+      ]
+    },
+    {
+      "id": "S-113",
+      "title": "XGhosttyTests hold passing tests for: the overall view's render target equalling only the visible projects' primary panes (excluding hidden projects' panes and non-primary panes); the zoomed render target equalling only the zoomed project's panes; the stop/resume surface sets being derived as defined around hide/show, entering and leaving zoom, primary reassignment, the list visibility toggle and close; and close plus exited-state restart dropping the replaced surface from the retained set",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "`XGhosttyTests` に以下を検証するテストが存在し、成功する。",
+        "全体ビューの描画対象が visible な各プロジェクトのプライマリーペインのみと一致し、",
+        "hidden なプロジェクトのペインと非プライマリーペインを含まない",
+        "zoom 中の描画対象が zoom 対象プロジェクトの全ペインのみと一致し、他プロジェクトの",
+        "ペインを含まない",
+        "hide / show・zoom の出入り・プライマリーの付け替え・一覧の表示トグル・close の",
+        "各操作の前後で、描画を停止すべき surface と再開すべき surface の集合が定義どおりに",
+        "導かれる",
+        "close および終了済み状態からの再開で、置き換えられた surface が保持集合から消える"
+      ]
+    },
+    {
+      "id": "S-114",
+      "title": "After the draw-stop / release implementation is in place, the human verifies once on the device (pid from `pgrep -x xghostty`; resource consumption is not automatically verifiable and is observed with top / footprint): CPU below 1% in the last sample of `top -l 3 -stats pid,cpu,th -pid <pid>` after one idle minute in a visible-1 / hidden-8 overall view (same level as hidden 0); thread count back within ±2 of the pre-creation value and the `footprint -p <pid>` IOSurface region count back to the pre-creation value after creating and closing 5 projects of 2+ panes each; and a re-shown hidden project drawing the latest screen including the output produced while hidden. Not complete until confirmed",
+      "status": "active",
+      "priority": "must",
+      "essence_refs": [
+        "描画停止・解放の実装が揃った後、人間が実機で一度だけ以下を確認し、確認が取れる。",
+        "確認が取れるまで完了とはしない。pid は `pgrep -x xghostty` で得る。",
+        "全ペインのシェルがアイドルな状態で、visible 1・hidden 8 の全体ビューを 1 分",
+        "放置した後、`top -l 3 -stats pid,cpu,th -pid <pid>` の最終サンプルの CPU が",
+        "1% 未満である(hidden 0 のときと同水準)",
+        "プロジェクトを 5 個(各 2 ペイン以上)作ってすべて閉じ、閉じる前後で",
+        "`top -l 1 -stats th -pid <pid>` のスレッド数が作る前の値 ±2 以内に戻り、",
+        "`footprint -p <pid>` の IOSurface 領域数が作る前の値に一致する",
+        "hidden にしたプロジェクトを再表示すると、その間のシェル出力が反映された最新の",
+        "画面が描かれる",
+        "プロセスの CPU 使用率・スレッド数・GPU メモリ等の資源消費は自動検証できない",
+        "(実機で稼働するアプリを要する)。`top` / `footprint` 等のコマンドで人間が実機観測する。"
       ]
     }
   ]

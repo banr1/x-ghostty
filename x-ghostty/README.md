@@ -170,6 +170,17 @@ its window management with a single model:
   SPEC.md §26.
 - **Splits** work as they do upstream, nested inside each project; in the
   overall view only each project's primary pane is shown (see above).
+- **What isn't drawn costs nothing.** Only the surfaces actually on screen
+  render: each visible project's primary pane in the overall view, and every
+  pane of the zoomed project while zoomed. Hidden projects' panes, non-primary
+  panes in the overall view, and the other projects' panes while zoomed stop
+  their renderer and display link entirely — their shells and PTYs keep running,
+  so showing one again draws the latest screen including whatever arrived
+  meanwhile. Overlays only cover the terminal; they never change what is drawn
+  behind them. Closing a pane or project frees its surface along with its
+  renderer, display link, and threads (after the usual undo window). This is why
+  the app can sit idle for days holding many projects without burning CPU or
+  GPU memory. See SPEC.md §31.
 
 Everything else — the VT implementation, renderer, font stack, shell
 integration, configuration system, and command palette — is inherited from
