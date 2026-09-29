@@ -15,6 +15,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - `xcodebuild -only-testing:<Target>/<Suite>/<test>` は識別子が何にも一致しなくても exit 0 になる(0 件実行で「成功」)。絞り込み実行は、ログでそのテストが実際に走ったことを確かめてから通過とみなす。
 - ビルドとテストは foreground で、明示的な timeout を付けて実行する。headless のセッションは手番の終了とともに background のプロセスを SIGTERM するため、background に回した検証は失われる。
 - Swift Testing の `#expect` は、ローカル変数の mutating メソッド呼び出しを包めない(コンパイルエラー)。`let applied = state.mutatingCall(...)` としてから `#expect(applied)` と書く。
+- 2026-09-30 時点で macOS 27 / Xcode 27(27A266a)へ上がっており、3 ゲートとも環境要因で失敗する。(1) Metal Toolchain は Xcode 27 では別途ダウンロードする部品(`xcodebuild -showComponent MetalToolchain` で状態確認、`xcodebuild -downloadComponent MetalToolchain` で導入)で、無いと metallib 生成が失敗する。(2) zig 0.15.2 同梱の libcxx を MacOSX27 SDK でコンパイルすると `INFINITY` 未定義になる(SDK 27 の math.h は modules 有効時に `INFINITY` の定義を clang の float.h(`__need_infinity_nan`)へ委ねるが、zig 0.15 の float.h はそれに応じない)。CommandLineTools の MacOSX26.2 SDK(`DEVELOPER_DIR=/Library/Developer/CommandLineTools`)ではこのエラーは出ない(ただし CLT には xcodebuild が無い)。`just swift-test` は `macos/XGhosttyKit.xcframework` を要するので、`zig build` が通るまで失敗する。
 - C ABI: `include/xghostty.h` の action enum は後続のタグ値を保つ(in-place 置換か末尾追加)。
 
 ## 実装の現状
