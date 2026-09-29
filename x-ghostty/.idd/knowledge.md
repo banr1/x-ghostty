@@ -1,0 +1,32 @@
+# 知見
+
+<!-- 周回を跨いで役に立つ事実だけを書く: ビルド/テストの実行方法、ツールの制限と回避策、環境の癖。
+     「次にやること」は書かない(それは周回記録の「申し送り」)。古くなった行は消す。50 行以内に保つ。
+     周回のエージェントは途中で替わりうる。特定のハーネスのツール名ではなく、コマンドと事実で書く。 -->
+
+Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
+
+## ビルドと検証
+
+- 検証の 3 ゲートは `zig build` / `just test` / `just swift-test`。いずれもプロジェクトルートで実行する。
+- Zig は 0.15.x に固定(`build.zig.zon` の minimum 0.15.2。0.16 では comptime のバージョン検査で失敗する)。Homebrew の素の `zig` は 0.16 へ上がるので、`zig build` を直接叩くときは `PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH` を前置する。`just` のレシピは既定でこの zig を使う。
+- exit code はパイプ越しに取らない。`cmd | tail; echo $?` は tail の状態を返す。`cmd > log 2>&1; echo EXIT=$?` の形で取る。
+- `just swift-test` の passed 件数の表示は並列出力で揺れる。判定は exit code と、ログ中の failed が 0 件であること。
+- `xcodebuild -only-testing:<Target>/<Suite>/<test>` は識別子が何にも一致しなくても exit 0 になる(0 件実行で「成功」)。絞り込み実行は、ログでそのテストが実際に走ったことを確かめてから通過とみなす。
+- ビルドとテストは foreground で、明示的な timeout を付けて実行する。headless のセッションは手番の終了とともに background のプロセスを SIGTERM するため、background に回した検証は失われる。
+- Swift Testing の `#expect` は、ローカル変数の mutating メソッド呼び出しを包めない(コンパイルエラー)。`let applied = state.mutatingCall(...)` としてから `#expect(applied)` と書く。
+- C ABI: `include/xghostty.h` の action enum は後続のタグ値を保つ(in-place 置換か末尾追加)。
+
+## 実装の現状
+
+- 描画停止は既存の C API `xghostty_surface_set_occlusion` で行っている。コア側がディスプレイリンク停止・drawFrame のスキップ・可視復帰時の即時再描画を実装済みで、`src/**` の改変は要らなかった。同期の発火点は `BaseTerminalController.syncRenderTargetOcclusion`(windowDidLoad / occlusion 変化 / surfaceTreeDidChange / workspace.$state)。
+- 閉じたプロジェクトの surface は、上流由来の close undo(`ExpiringUndoManager`、undo-timeout)の間だけ生き残る。スレッド数・IOSurface 数の実測(C117)は undo 期限が切れてから行う。この扱いは周回の判断であり、人間の承認はまだ無い。
+- fork の機能を作る前に、上流が同等の機構を既に持っていないかを確かめる。欠けているのは API ではなく呼び出し側の走査範囲、ということがあった。
+
+## SwiftUI / AppKit の癖
+
+- `NSEvent.addLocalMonitorForEvents` を SwiftUI の `onAppear` で 1 度だけ入れると、その時点の View の値を掴んだまま古い closure を呼び続ける(1 回目だけ動き、2 回目から狂う)。参照型の handler box を経由させ、body の評価ごとに現在の closure へ差し替える。
+- ローカル keyDown モニタは responder より先に走り、登録順に呼ばれ、nil を返すと連鎖が止まる。オーバーレイを重ねるときは、下の層のハンドラの先頭で「上の層が active なら event をそのまま返す」。
+- モニタが `Cmd` 系の打鍵を素通しすると、端末 surface の `performKeyEquivalent` が先に食う(`Cmd+V` が背後の端末へ貼り付く)。編集ショートカットはモニタで捕まえて field editor に対して実行し、nil を返す。
+- IME: 編集開始の打鍵はモニタが消費するので、新しいエディタが first responder になってから `interpretKeyEvents([event])` で再生する。Enter / Esc / Tab / Space の終端処理は `hasMarkedText()` が false のときだけ行う。未確定状態を読むには AppKit のエディタが要る(`NSTextField` を `NSViewRepresentable` で包む)。
+- SwiftUI の `.cornerRadius` は clipShape であり、その内側に付けた overlay は zIndex では逃げられない。ポップアップは、セルが `anchorPreference` で矩形だけを公開し、コンテナの最上位が `.overlayPreferenceValue` で clip の後に描く。
