@@ -114,18 +114,18 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C97 | 必須 | ノート編集オーバーレイの編集ショートカット・100 行超過確認の実機目視(検証: 人間) | unmet | - |
 | C98 | 必須 | 優先度・締切のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C99 | 必須 | 優先度・締切の実機目視(検証: 人間) | unmet | - |
-| C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (WorkspaceModelTests.hideFocusedProjectHidesAndMovesFocusToNeighbor / hideFocusedProjectRejectsLastVisibleProject、ProjectListTests.hidingTheLastVisibleProjectIsRefused が passed) |
 | C101 | 必須 | hide の実機目視(検証: 人間) | unmet | - |
 | C102 | 必須 | レイアウト型のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C103 | 必須 | レイアウト型の実機目視(検証: 人間) | unmet | - |
 | C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | unmet | - |
-| C105 | 必須 | リモート判定のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C105 | 必須 | リモート判定のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (ProjectRemoteSplitTests の localReportLaunchesLocally / remoteReportLaunchesSshToThatHostAndPath / reportWithoutHostInformationIsLocal が passed) |
 | C106 | 必須 | リモート split の実機目視(検証: 人間) | unmet | - |
 | C107 | 必須 | プロジェクト一覧のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C108 | 必須 | プロジェクト一覧の実機目視(検証: 人間) | unmet | - |
-| C109 | 必須 | 優先度リセットのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C109 | 必須 | 優先度リセットのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (ProjectPriorityResetTests の boundaryCrossing… / resetClearsEvery… / resetRunsOnlyOnce… / resetDoesNotReorder… / resetResorts… が passed) |
 | C110 | 必須 | 優先度リセットの実機目視(検証: 人間) | unmet | - |
-| C111 | 必須 | 次トリガーのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C111 | 必須 | 次トリガーのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (ProjectNextTriggerTests の nextTriggerDefaultsToUnset / nextTriggerSurvivesASaveAndRestoreForEveryValue / overviewContentIncludesTheNextTrigger が passed) |
 | C112 | 必須 | 次トリガーの実機目視(検証: 人間) | unmet | - |
 | C113 | 必須 | キー変更の実機目視(検証: 人間) | unmet | - |
 | C114 | 必須 | 一覧セル編集の IME の実機目視(検証: 人間) | unmet | - |
