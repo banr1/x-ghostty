@@ -121,7 +121,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | unmet | - |
 | C105 | 必須 | リモート判定のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (ProjectRemoteSplitTests の localReportLaunchesLocally / remoteReportLaunchesSshToThatHostAndPath / reportWithoutHostInformationIsLocal が passed) |
 | C106 | 必須 | リモート split の実機目視(検証: 人間) | unmet | - |
-| C107 | 必須 | プロジェクト一覧のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C107 | 必須 | プロジェクト一覧のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 10: just swift-test exit 0 (21 項目に対応する 52 テストがすべて passed。項目とテストの対応は .idd/cycles/0010.md の「変更」節。ノート全行削除の確認は ProjectList.deleteAction = confirmClearNote をモデルで固定し、ProjectListOverlay.deleteOnCursorCell が OK のときだけ削除を呼ぶことを読み合わせ) |
 | C108 | 必須 | プロジェクト一覧の実機目視(検証: 人間) | unmet | - |
 | C109 | 必須 | 優先度リセットのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (ProjectPriorityResetTests の boundaryCrossing… / resetClearsEvery… / resetRunsOnlyOnce… / resetDoesNotReorder… / resetResorts… が passed) |
 | C110 | 必須 | 優先度リセットの実機目視(検証: 人間) | unmet | - |
