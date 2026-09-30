@@ -59,7 +59,7 @@ struct ProjectListOverlay: View {
     /// `onConsumePendingTitleEdit`.
     let pendingTitleEdit: ProjectID?
 
-    /// The active sort state the bar highlights (`SPEC.md` §24.5).
+    /// The active sort state the bar highlights (`SPEC.md` §24.4).
     let sortState: ProjectSortState
 
     /// Whether Space would change anything for a row — the model refuses to
@@ -105,7 +105,7 @@ struct ProjectListOverlay: View {
     /// when nothing moved (a clamped end).
     let onMoveRow: (ProjectID, Int) -> Int?
 
-    /// The approved row move while a key sort is active (`SPEC.md` §24.5):
+    /// The approved row move while a key sort is active (`SPEC.md` §24.4):
     /// the confirmation's OK path — inherit the current display order as
     /// the manual order, then move. Returns the row's new index, or `nil`
     /// when nothing moved.
@@ -119,7 +119,7 @@ struct ProjectListOverlay: View {
     let onToggleFullNotes: () -> Void
 
     /// Apply a sort state (the bar's Enter, or a mouse click on a bar chip,
-    /// `SPEC.md` §24.5). Selecting manual inherits the current display order
+    /// `SPEC.md` §24.4). Selecting manual inherits the current display order
     /// — the model's judgment.
     let onSetSortState: (ProjectSortState) -> Void
 
@@ -165,7 +165,7 @@ struct ProjectListOverlay: View {
     @State private var candidateMenu: ProjectListCandidateMenu?
 
     /// The sort bar's keyboard selection, or `nil` while the cursor is in
-    /// the table (`SPEC.md` §24.5). Entered with Up from the top row seeded
+    /// the table (`SPEC.md` §24.4). Entered with Up from the top row seeded
     /// with the active state; Left/Right move it (`movedInBar`), Enter
     /// applies it and returns to the table, Escape returns without applying.
     /// Pure presentation state, like `cursor`.
@@ -325,7 +325,7 @@ struct ProjectListOverlay: View {
         }
 
         // While the keyboard is on the sort bar it owns every plain key
-        // (`SPEC.md` §24.5): Left/Right choose, Enter applies and returns to
+        // (`SPEC.md` §24.4): Left/Right choose, Enter applies and returns to
         // the table, Escape (or Down) returns without applying. Cmd-chords
         // fall through so the session shortcuts keep working.
         if let selection = sortBarSelection {
@@ -459,7 +459,7 @@ struct ProjectListOverlay: View {
                 let delta = special == .upArrow ? -1 : 1
                 guard let row = cursorRow else { return nil }
                 if sortState == .manual {
-                    // Manual state: confirmation-free (SPEC §24.5).
+                    // Manual state: confirmation-free (SPEC §24.4).
                     if let moved = onMoveRow(row.id, delta) {
                         cursor.row = moved
                     }
@@ -467,7 +467,7 @@ struct ProjectListOverlay: View {
                     // A key sort governs the order: moving a row by hand
                     // needs the approval — OK inherits the current display
                     // order as the manual order and then moves, Cancel
-                    // changes nothing (SPEC §24.5).
+                    // changes nothing (SPEC §24.4).
                     if let moved = onApproveSortedMove(row.id, delta) {
                         cursor.row = moved
                     }
@@ -489,7 +489,7 @@ struct ProjectListOverlay: View {
         // Plain movement: Tab / Shift+Tab and the arrows, with the row-end
         // wrap and the edge stops (`ProjectListCellCursor`). Up from the top
         // row leaves the table and enters the sort bar, seeded with the
-        // active state (`SPEC.md` §24.5).
+        // active state (`SPEC.md` §24.4).
         if let move = Self.cursorMove(for: event, shifted: modifiers == [.shift]) {
             if move == .up, cursor.row == 0 {
                 sortBarSelection = sortState
@@ -621,7 +621,7 @@ struct ProjectListOverlay: View {
         }
     }
 
-    /// The sorted row-move approval dialog (SPEC §24.5): OK approves
+    /// The sorted row-move approval dialog (SPEC §24.4): OK approves
     /// switching to the manual order (inheriting the current display order)
     /// so the move can happen; Cancel keeps the sort and moves nothing.
     /// Same OK/Cancel form as the other list confirmations.
@@ -876,7 +876,7 @@ struct ProjectListOverlay: View {
         }
     }
 
-    /// The sort bar (`SPEC.md` §24.5): the five states at the very top of
+    /// The sort bar (`SPEC.md` §24.4): the five states at the very top of
     /// the table. The active state is always marked; while the keyboard is
     /// on the bar (Up from the top row) the selection candidate carries the
     /// stronger highlight. A mouse click applies a state directly.

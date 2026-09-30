@@ -85,7 +85,9 @@ its window management with a single model:
   deadline, and next trigger kept — and pressing Return starts a new shell in
   the same pane.
   The only way a project and its information are lost is an explicitly
-  confirmed close. See SPEC.md §23.
+  confirmed close (`Cmd+W` on the last pane, `close_project`, or `Delete` on
+  a selected row in the project list); quitting and relaunching restores
+  every project. See SPEC.md §23.
 - **Hiding.** `Cmd+Opt+H` immediately hides the focused project — no
   selection screen — and the remaining projects re-lay themselves out with
   the remembered layout type. At least one project always stays visible, so

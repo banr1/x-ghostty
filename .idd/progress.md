@@ -59,7 +59,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C42 | 必須 | 一覧最上部のソートバーをキーボード・マウスで操作(検証: C107 + C108) | unmet | - |
 | C43 | 必須 | ソート有効中の即時再ソートと Opt+↑↓ の確認、ソートアクション廃止(検証: C107 + C108) | unmet | - |
 | C44 | 必須 | 優先度・締切・次トリガー・終了済みの判断ロジックはモデル層(検証: C95・C98・C111) | met | cycle 11: just swift-test exit 0 (検証は C95・C98・C111 のテスト成功のみ。C95・C98・C111 は met、failed 0 件) |
-| C45 | 必須 | SPEC.md / README.md を削除保護・ショートカット・優先度・締切層に合わせる(検証: 周回の読み合わせ) | unmet | - |
+| C45 | 必須 | SPEC.md / README.md を削除保護・ショートカット・優先度・締切層に合わせる(検証: 周回の読み合わせ) | met | cycle 14: grep -c "@Test" (ProjectTerminatedTests / ProjectPriorityDeadlineTests / ProjectSortStateTests / ProjectNextTriggerTests) exit 0 (16 / 18 / 13 / 7 件で SPEC §23.5・§24.5・§24.6 と一致。SPEC §23・§24・§10 と README の Deletion protection / Priorities 項を WorkspaceModel / ProjectState / ProjectLabel / ProjectListOverlay / BaseTerminalController / Surface.zig / Config.zig の既定キーと読み合わせ。食い違い — §23.1 の closeFocusedProject の説明、§23.4・README の喪失経路に一覧の行選択 Delete が無い点 — を直し、ソース内コメントの §24.5 参照(ソート状態は §24.4)も直した) |
 | C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | unmet | - |
 | C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 11: just swift-test exit 0 (検証は C100 のテスト成功のみ。C100 は met、failed 0 件) |
 | C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | unmet | - |

@@ -25,6 +25,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - 停止・再開・解放の集合は `macos/Sources/Features/Projects/ProjectRenderTarget.swift` の `RenderTargetTransition(from:to:)` が 2 つのスナップショットから導く。停止集合は「誕生」(after.retained − before.retained)も含む。テストは `macos/Tests/Projects/ProjectRenderTargetTests.swift`。
 - エディタの SourceKit 診断(`Cannot find type 'SurfaceID'`、`No such module 'Testing'`)はプロジェクト文脈なしの索引によるもので、ビルドとは無関係。判定は `just swift-test` で行う。
 - 閉じたプロジェクトの surface は、上流由来の close undo(`ExpiringUndoManager`、undo-timeout)の間だけ生き残る。スレッド数・IOSurface 数の実測(C117)は undo 期限が切れてから行う。この扱いは周回の判断であり、人間の承認はまだ無い。
+- ソース内コメントの `SPEC.md §N.M` 参照は、SPEC の節番号の付け替えに追従していないことがある(§24.5 → §24.4 の例)。読み合わせでは `grep -rn "§N\.M" macos/Sources` で参照先の節見出しと突き合わせる。
 - fork の機能を作る前に、上流が同等の機構を既に持っていないかを確かめる。欠けているのは API ではなく呼び出し側の走査範囲、ということがあった。
 
 ## SwiftUI / AppKit の癖

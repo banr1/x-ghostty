@@ -1681,9 +1681,13 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 - 判断はモデルの `WorkspaceModel.closeProjectRequiresConfirmation(anyLiveProcess:)`
   で、**無条件に true** を返す。確認済み close ダイアログがプロジェクトとその情報を
   失う唯一の正規経路だからである(§23.4)。
-- controller の `closeFocusedProject` は従来の surfaceTree `needsConfirmQuit`
-  スキャンではなくこの判断を使うため、実行中プロセスの有無によらず既存の
-  Cancel / Close Project ダイアログ(同一形式を流用)が出る。
+- controller の `closeFocusedProject` は surfaceTree の `needsConfirmQuit`
+  スキャン結果を `anyLiveProcess` として渡すだけで、確認の要否はこの判断が
+  決める。したがって実行中プロセスの有無によらず既存の Cancel / Close Project
+  ダイアログ(同一形式を流用)が出る。
+- 一覧の行選択での `Delete`(§27.2)は `closeProjectListRow` で同じ
+  Cancel / Close Project ダイアログを経てその行のプロジェクトを閉じる(hidden な
+  行にも効き、一覧は開いたまま)。
 - 最終ペインの `Cmd+W`:`ghosttyDidCloseSurface` の最終ペイン昇格から
   `projects.count > 1` ガードを外し、単一プロジェクトの最終ペイン close も確認付き
   `close_project` へ昇格する(確定後の経路は §18.5 どおり window close へ委譲)。
@@ -1743,7 +1747,10 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   シェルで再生成するため、terminated だったプロジェクトも生きて戻る。ノート・
   優先度・締切は ProjectState レコードに乗って保持される(§21.1、§24.1)。
 - プロジェクトとその情報が失われる経路は、確認ダイアログを経た明示的な close
-  操作**のみ**。アプリ終了・再起動では従来どおり全プロジェクトが復元される。
+  操作(`Cmd+W`・`close_project`・一覧の行選択での `Delete`)**のみ**。アプリ
+  終了・再起動では従来どおり全プロジェクトが復元される。最後の 1 つでない
+  プロジェクトの close は "Close Project" の undo を登録するため、undo 期限内は
+  取り消せる(§31.4)。
 
 ### 23.5 テスト(ProjectTerminatedTests、16 件)
 

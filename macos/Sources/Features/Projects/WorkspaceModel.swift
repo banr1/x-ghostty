@@ -702,7 +702,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return target
     }
 
-    /// The approved row move under an active sort (`SPEC.md` §24.5, §27.1):
+    /// The approved row move under an active sort (`SPEC.md` §24.4, §27.1):
     /// the confirmation's OK inherits the current display order as the
     /// manual order — `setSortState(.manual)` stops the re-sorts, which is
     /// the whole inheritance — and then performs the move, in one call so
@@ -1396,7 +1396,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.sortState
     }
 
-    /// Select a sort state (the sort bar's Enter, SPEC §24.5). A key state
+    /// Select a sort state (the sort bar's Enter, SPEC §24.4). A key state
     /// applies its stable ordering immediately — over every row, hidden ones
     /// included — and keeps governing the order until the state changes:
     /// every later key-value change, creation, load, and priority reset

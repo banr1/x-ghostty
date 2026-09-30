@@ -12,7 +12,7 @@ import Foundation
 /// the key's stable ordering to `projectOrder` in place, so ties keep the
 /// previous display order — exactly the spec's stability rule. Selecting
 /// manual therefore inherits the current display order for free: the rows
-/// simply stop being re-sorted (`SPEC.md` §24.5).
+/// simply stop being re-sorted (`SPEC.md` §24.4).
 enum ProjectSortState: String, Codable, CaseIterable, Equatable {
     /// The human's own order. Never re-sorts; rows move only by explicit
     /// row moves (`Opt+↑↓`).
@@ -37,14 +37,14 @@ enum ProjectSortState: String, Codable, CaseIterable, Equatable {
         }
     }
 
-    // MARK: Sort bar movement (SPEC §24.5)
+    // MARK: Sort bar movement (SPEC §24.4)
 
     /// The sort bar's fixed left-to-right order: manual, next, show,
     /// deadline, priority (the declaration order).
     static let barOrder: [ProjectSortState] = ProjectSortState.allCases
 
     /// The state `delta` Left/Right steps reach from this one on the sort
-    /// bar, clamped at the ends (`SPEC.md` §24.5). The movement judgment the
+    /// bar, clamped at the ends (`SPEC.md` §24.4). The movement judgment the
     /// bar's arrow keys apply — pure, so the overlay never re-derives it.
     func movedInBar(by delta: Int) -> ProjectSortState {
         let order = Self.barOrder
@@ -113,7 +113,7 @@ extension WorkspaceStateOf {
         return applyProjectOrder(orderedProjectIDs(by: sortState))
     }
 
-    /// Select a sort state (the sort bar's Enter, `SPEC.md` §24.5). A key
+    /// Select a sort state (the sort bar's Enter, `SPEC.md` §24.4). A key
     /// state applies its ordering immediately; selecting manual inherits the
     /// current display order as the manual order — `projectOrder` *is* the
     /// display order, so stopping the re-sorts is the whole inheritance.
