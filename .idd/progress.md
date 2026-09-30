@@ -109,10 +109,10 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | - |
 | C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C94 | 必須 | プライマリーペインの実機目視(検証: 人間) | unmet | - |
-| C95 | 必須 | 削除保護のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C95 | 必須 | 削除保護のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 6: just swift-test exit 0 (ProjectTerminatedTests の closeProjectRequiresConfirmationRegardlessOfRunningProcesses / lastPaneExitIsJudgedTerminatedForEveryExitKind + markPaneTerminatedKeepsProjectWithNoteAndPane / siblingPaneNormalExitIsJudgedClosePane + removeExitedPaneClosesOnlyThatPane / terminatedProjectRoundTripKeepsNote が passed) |
 | C96 | 必須 | 削除保護の実機目視(検証: 人間) | unmet | - |
 | C97 | 必須 | ノート編集オーバーレイの編集ショートカット・100 行超過確認の実機目視(検証: 人間) | unmet | - |
-| C98 | 必須 | 優先度・締切のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C98 | 必須 | 優先度・締切のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 6: just swift-test exit 0 (ProjectPriorityDeadlineTests の priorityAndDeadlineRoundTripThroughSaveRestore / invalidDeadlineInputIsRejectedToUnset / prioritySortOrders… + deadlineSortOrders… + sortOrderingsCoverAllRowsAndMutateNothing(hidden を含む) / postSortOrdinalsCountVisibleRowsSkippingHidden / overdueIsStrictlyPastTheDeadlineDay が passed) |
 | C99 | 必須 | 優先度・締切の実機目視(検証: 人間) | unmet | - |
 | C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (WorkspaceModelTests.hideFocusedProjectHidesAndMovesFocusToNeighbor / hideFocusedProjectRejectsLastVisibleProject、ProjectListTests.hidingTheLastVisibleProjectIsRefused が passed) |
 | C101 | 必須 | hide の実機目視(検証: 人間) | unmet | - |
