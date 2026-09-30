@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A local keyDown `NSEvent` monitor scoped to a view's on-screen lifetime,
-/// shared by the project overlay family (`SPEC.md` §21.2, §25, §26.2).
+/// shared by the project overlay family (`SPEC.md` §21.2, §26.2, §27, §30).
 ///
 /// The overlays own the keyboard through focused text machinery — the note
 /// editor's `TextEditor`, the selection screens' invisible sink `TextField` —

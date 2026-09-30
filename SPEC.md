@@ -859,6 +859,11 @@ close_surface 経路)。
 - focusedSurface per project
 ```
 
+新規保存は常に project 系のキーで書く。改名(旧「グループ」)前の保存を失わない
+ため、decode は旧キー(`canonicalGroupTree` / `groups` / `focusedGroup`)も
+フォールバックとして読む(`WorkspaceState.LegacyCodingKeys`。2026-08-11 の
+人間の決定で残す)。
+
 ### 12.2 保存しないもの
 
 ```text
@@ -1926,14 +1931,19 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 ### モデル判断と実行
 
 - `canHideFocusedProject`:hide 後も**最低 1 つは visible に残る**こと
-  (visible プロジェクト 2 つ以上)。performable チェックと実行が同じ判定を
+  (visible プロジェクト 2 つ以上)、かつノート編集オーバーレイも他の
+  オーバーレイのセッションも開いていないこと(各オーバーレイはキーボードを
+  単独で持つ)。performable チェックと実行が同じ判定を
   共有し、不成立時はキー未消費で fall through する(`set_primary` と同型)。
   同じ「最低 1 つ visible」拒否は一覧の表示トグル(§27.2)にも適用される
   (必須対応事項 47)。
 - 実行 `hideFocusedProject(savingOutgoingPaneTree:)`:
   1. focus の移動先を hide 前の配置上で解決する(nearest 規則)
   2. 台帳の hidden フラグを立てる(`setProjectHidden(id, true)`)—
-     台帳の**行はそのまま**残り、visibility 列だけが変わる(§27.1)
+     台帳の**行はそのまま**残り、visibility 列だけが変わる(§27.1)。
+     visibility はソートキー show の値なので、`setProjectHidden` はセル値の
+     変更として `resortProjects()` を通す(手動状態では並びは変わらず、
+     ソート有効中は状態の帰結として再ソートされる。§24.4)
   3. `relayout()` が記憶しているレイアウト型で残りの visible 行の配置を
      即座に再導出する(§26.3 の自動適用。hide 直後に選択画面もリサイズ操作も
      介在しない)
@@ -1982,7 +1992,10 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   常に最後。
 - `slots(forVisibleCount:)` が単位正方形上の `Slot`(frame + row/column)列を
   **割り当て順**で返す。`tree(over:)` がスロット列を入れ子の等比 split
-  (`SplitTree`)として構築し、走査順は割り当て順と一致する。
+  (`SplitTree`)として構築する(横長型は行の積み重ね、縦長型は列の並び、
+  台座型は上部の木と最下段の積み重ね)。k 番目の visible 行が k 番目の
+  スロットに入るが、木の走査順は一般に割り当て順と一致しない(横長型の
+  列送りは列を下る)。序数は常に一覧の行順から導き、木の走査順からは導かない。
 
 ### 26.2 選択肢の畳み込みと選択オーバーレイ(choose_project_layout / Cmd+Opt+L)
 
@@ -1993,7 +2006,7 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   独立の選択肢になる。n=1 は 1 択)。
 - `choose_project_layout`(既定 `Cmd+Opt+L`、§10.5)が選択オーバーレイ
   `ProjectLayoutSelector` を開く。performability は `canBeginLayoutSelection`
-  (visible プロジェクト 1 つ以上 + 他のオーバーレイなし)で、不成立時は
+  (visible プロジェクト 1 つ以上 + ノート編集・他のオーバーレイなし)で、不成立時は
   キー未消費で fall through する。`beginLayoutSelection` は zoom を先に解除する
   (zoom 中呼び出しの挙動は Essence が実装に委ねた部分)。セッション状態は
   transient で、`restoreState` / `removeAllProjects` が終了する。
@@ -2030,7 +2043,7 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   プロジェクト境界は動かせない。zoom 中のプロジェクト内ペイン(split)の
   resize / equalize は従来どおり有効(必須対応事項 55)。
 
-### 26.5 テスト(ProjectLayoutTypeTests 13 件 / ProjectLayoutSelectionTests 10 件)
+### 26.5 テスト(ProjectLayoutTypeTests 14 件 / ProjectLayoutSelectionTests 10 件)
 
 ```text
 - スロット計算: visible 数 1〜9 の各々で横長・縦長・台座 × 行送り・列送りの
@@ -2041,6 +2054,8 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 - 畳み込み: 配置と序数の進み方が完全一致する選択肢は 1 つに畳まれる
   (n=9 の横長/縦長は畳まれない、n=3 の横長(1+2)と台座(2+1)は
   一致しないため独立の選択肢)
+- 代表: どの型も各 visible 数で残った選択肢のいずれかへ解決される
+  (`representative(forVisibleCount:)` — 選択画面が現在の型を強調するのに使う)
 - 永続化: 型の round trip 復元 / 保存が無ければ横長型・行送り
 - 自動適用: visible 数が変わる操作の後、記憶している型で新しい数の配置が
   導かれる / 変わらない操作では配置が変わらない(ProjectLedgerTests)

@@ -73,7 +73,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C56 | 必須 | レイアウト型の判断ロジックはモデル層(検証: C102) | met | cycle 11: just swift-test exit 0 (検証は C102 のテスト成功のみ。C102 は met、failed 0 件) |
 | C57 | 必須 | 「グループ」→「プロジェクト」全面改名(検証: C104) | unmet | - |
 | C58 | 必須 | 改名は純粋なリネームで退行なし(検証: C104 + C88〜C90) | unmet | - |
-| C59 | 必須 | SPEC.md / README.md をレイアウト型・自動適用・hide・改名語彙に合わせる(検証: 周回の読み合わせ) | unmet | - |
+| C59 | 必須 | SPEC.md / README.md をレイアウト型・自動適用・hide・改名語彙に合わせる(検証: 周回の読み合わせ) | met | cycle 15: grep -c "@Test" macos/Tests/Projects/ProjectLayoutTypeTests.swift macos/Tests/Projects/ProjectLayoutSelectionTests.swift exit 0 (14 / 10 件で SPEC §26.5 の見出しを 13→14 に直して一致。SPEC §25・§26・§12 と README の Hiding / Layout types 項を WorkspaceModel / WorkspaceState / ProjectLayoutType / BaseTerminalController / Config.zig の Cmd+Opt+H・Cmd+Opt+L と読み合わせ。食い違い — §25 の canHideFocusedProject の条件と setProjectHidden の再ソート、§26.1 の木の走査順、§26.2 の performability、§26.5 の件数と代表テスト、§12.1 に旧 group キーの decode フォールバックが無い点 — を直した。grep で SPEC/README に「グループ」はショートカット一覧の場面グループのみ、test -d Projects exit 0・test -e Groups exit 1) |
 | C60 | 必須 | リモートペインの split は同ホスト・同パスへ ssh(検証: C105 + C106) | unmet | - |
 | C61 | 必須 | リモート判定不能・接続失敗はローカルで開く(検証: C105 + C106) | unmet | - |
 | C62 | 必須 | リモート判定はモデル層(検証: C105) | met | cycle 11: just swift-test exit 0 (検証は C105 のテスト成功のみ。C105 は met、failed 0 件) |

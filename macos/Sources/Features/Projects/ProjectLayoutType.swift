@@ -197,9 +197,11 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
     /// orientations, those whose arrangement **and** ordinal progression
     /// coincide exactly are collapsed into one (the first in `all` order is
     /// kept), and the rest are the choices. E.g. n = 9 keeps wide and tall
-    /// apart (same 3×3 shape, different progression), while n = 3 pedestal
-    /// collapses into wide/row-major (2 on top, 1 full-width below, same
-    /// progression). A single choice means there is nothing to choose.
+    /// apart (same 3×3 shape, different progression), while n = 3 keeps wide
+    /// (1 over 2) and pedestal (2 over 1 full-width) apart and collapses only
+    /// wide's (and tall's) two orientations, which n = 3 cannot tell apart.
+    /// A single choice means
+    /// there is nothing to choose.
     static func choices(forVisibleCount n: Int) -> [ProjectLayoutType] {
         var seen: [[[Int]]] = []
         var result: [ProjectLayoutType] = []
