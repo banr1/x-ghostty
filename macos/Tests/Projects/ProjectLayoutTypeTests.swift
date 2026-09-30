@@ -195,6 +195,22 @@ struct ProjectLayoutTypeTests {
         #expect(tallColumn.representative(forVisibleCount: 9) == wideColumn)
     }
 
+    @Test func choiceSetsMatchTheSlotFrameCollapseForEveryCount() {
+        // Two types coincide exactly when their ordered slot frames agree:
+        // same arrangement AND same ordinal progression. Collapse `all` by
+        // that criterion, keeping the first of each class, independently of
+        // the production arrangement key.
+        for n in 1...9 {
+            var kept: [(type: ProjectLayoutType, frames: [CGRect])] = []
+            for type in ProjectLayoutType.all {
+                let frames = type.slotFrames(forVisibleCount: n)
+                if kept.contains(where: { Self.approxAll($0.frames, frames) }) { continue }
+                kept.append((type, frames))
+            }
+            #expect(ProjectLayoutType.choices(forVisibleCount: n) == kept.map(\.type), "n=\(n)")
+        }
+    }
+
     @Test func everyTypeResolvesToAKeptRepresentative() {
         for n in 1...9 {
             let choices = ProjectLayoutType.choices(forVisibleCount: n)

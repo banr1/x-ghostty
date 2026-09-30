@@ -116,7 +116,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C99 | 必須 | 優先度・締切の実機目視(検証: 人間) | unmet | - |
 | C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (WorkspaceModelTests.hideFocusedProjectHidesAndMovesFocusToNeighbor / hideFocusedProjectRejectsLastVisibleProject、ProjectListTests.hidingTheLastVisibleProjectIsRefused が passed) |
 | C101 | 必須 | hide の実機目視(検証: 人間) | unmet | - |
-| C102 | 必須 | レイアウト型のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C102 | 必須 | レイアウト型のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 7: just swift-test exit 0 (スロット計算 = ProjectLayoutTypeTests の tierCounts… / wideSlots… / tallIsTheExactTransposeOfWide / wideOrientation… / pedestalStacks…、選択肢の畳み込み = choiceSetsCollapseExactMatchesPerCount + choiceSetsMatchTheSlotFrameCollapseForEveryCount(n=1〜9)、割当と序数 = rowMajor… / columnMajor… / pedestalAssigns… / ordinalsFollowTheListOrder…、永続化と既定 = ProjectLedgerTests の layoutTypeDefaultsToWideRowMajorWhenNothingIsSaved / chosenLayoutTypeRoundTrips、自動適用 = visibleCountChangesReapply… / countPreservingOperations… がすべて passed) |
 | C103 | 必須 | レイアウト型の実機目視(検証: 人間) | unmet | - |
 | C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | unmet | - |
 | C105 | 必須 | リモート判定のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 5: just swift-test exit 0 (ProjectRemoteSplitTests の localReportLaunchesLocally / remoteReportLaunchesSshToThatHostAndPath / reportWithoutHostInformationIsLocal が passed) |
