@@ -11,7 +11,7 @@
      階層は 必須 / 望ましい。ID 列は IDEAL.md の番号を装飾なしで書く(`C1`。`**C1**` にしない)。
      列は 5 つ固定: | ID | 階層 | 条件 | 状態 | 証拠 |。idd はこの形で met / unmet を数え、完了を検算する。 -->
 
-ideal_sha: 6b2f0b2462542fa67f44803ee82148812c319e7df9b04e66d839e6d8972fe556
+ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 
 | ID | 階層 | 条件 | 状態 | 証拠 |
 |----|------|------|------|------|
@@ -98,13 +98,13 @@ ideal_sha: 6b2f0b2462542fa67f44803ee82148812c319e7df9b04e66d839e6d8972fe556
 | C81 | 必須 | `Cmd+/` でショートカット一覧をトグル(検証: C115) | unmet | - |
 | C82 | 必須 | `Cmd+K` の clear_screen 既定割り当て解除(検証: C113) | unmet | - |
 | C83 | 必須 | 一覧セルのクリップボード操作と候補列挙中の Tab 横移動(検証: C107 + C108) | unmet | - |
-| C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | unmet | - |
-| C85 | 必須 | 描画対象外はレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | - |
+| C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed) |
+| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | - |
 | C86 | 必須 | 閉じた surface とレンダラ・スレッドを解放(検証: C116 + C117) | unmet | - |
-| C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | unmet | - |
-| C88 | 必須 | `zig build` が exit 0 | blocked | cycle 1 で exit 1: Metal Toolchain 未導入(`xcodebuild -showComponent MetalToolchain` が uninstalled)と、zig 0.15.2 の libcxx が macOS 27 SDK で `INFINITY` 未定義になる不整合。環境の準備待ち |
-| C89 | 必須 | `just test` が exit 0 | blocked | cycle 1 で exit 1: metallib の生成が Metal Toolchain 未導入で失敗。環境の準備待ち |
-| C90 | 必須 | `just swift-test` が exit 0 | blocked | cycle 1 で exit 65: XGhosttyKit.xcframework が無い(C88 のビルド失敗に依存)。環境の準備待ち |
+| C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed) |
+| C88 | 必須 | `zig build` が exit 0 | met | cycle 2: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
+| C89 | 必須 | `just test` が exit 0 | met | cycle 2: just test exit 0 |
+| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 2: just swift-test exit 0 |
 | C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | - |
 | C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
@@ -130,8 +130,10 @@ ideal_sha: 6b2f0b2462542fa67f44803ee82148812c319e7df9b04e66d839e6d8972fe556
 | C113 | 必須 | キー変更の実機目視(検証: 人間) | unmet | - |
 | C114 | 必須 | 一覧セル編集の IME の実機目視(検証: 人間) | unmet | - |
 | C115 | 必須 | ショートカット一覧の実機目視(検証: 人間) | unmet | - |
-| C116 | 必須 | 描画対象・停止/再開集合・解放のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C116 | 必須 | 描画対象・停止/再開集合・解放・誕生時停止のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed。全 5 項目を macos/Tests/Projects/ProjectRenderTargetTests.swift で突き合わせ済み) |
 | C117 | 必須 | 描画停止・解放の実機観測(top / footprint、検証: 人間) | unmet | - |
+| C121 | 必須 | 停止集合に誕生した描画対象外の surface を含める(stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born))(検証: C116) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed) |
+| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ、SurfaceView.isDrawing を持たない、未生成 surface は未適用扱い(検証: C116 + 読み合わせ) | unmet | - |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |
 | C120 | 望ましい | 全体ビューの非プライマリーペインのインジケータ(検証: 人間) | unmet | - |

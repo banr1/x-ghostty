@@ -286,6 +286,71 @@ struct ProjectRenderTargetTests {
         #expect(!model.state.retainedSurfaceIDs.contains(sid(b1)))
     }
 
+    // MARK: Birth outside the render target (C85 / C121)
+
+    @Test func restoringStopsEverySurfaceBornOutsideTheRenderTarget() throws {
+        let w = try Self.makeWorkspace()
+
+        // A restore: nothing existed before, every surface is born at once.
+        let restore = RenderTargetTransition(
+            from: RenderTargetSnapshot(),
+            to: w.model.state.renderTargetSnapshot)
+
+        // The hidden project's panes and the visible non-primary pane are born
+        // outside the render target, so they stop before drawing a frame.
+        #expect(restore.stop == [sid(w.a2), sid(w.c1), sid(w.c2)])
+        #expect(restore.resume == [sid(w.a1), sid(w.b1)])
+        #expect(restore.released.isEmpty)
+    }
+
+    @Test func splittingStopsTheNewPaneBornOutsideTheOverallView() throws {
+        // A = [a1] alone in the overall view; a split births a non-primary pane.
+        let a1 = TestPane()
+        let projectA = Self.makeProject(.init(view: a1), name: "a")
+        let model = TestWorkspaceModel(TestWorkspaceState(
+            canonicalProjectTree: .init(view: ProjectRef(id: projectA.id)),
+            projects: [projectA.id: projectA],
+            focusedProject: projectA.id))
+        let before = model.state.renderTargetSnapshot
+
+        let a2 = TestPane()
+        model.replaceFocusedPaneTree(
+            try model.focusedPaneTree.inserting(view: a2, at: a1, direction: .right))
+        let split = RenderTargetTransition(from: before, to: model.state.renderTargetSnapshot)
+
+        #expect(split.stop == [sid(a2)])
+        #expect(split.resume.isEmpty)
+        #expect(split.released.isEmpty)
+    }
+
+    @Test func aSurfaceBornInsideTheRenderTargetResumesAndIsNotStopped() throws {
+        let w = try Self.makeWorkspace()
+        w.model.toggleProjectZoom() // zoom A: every pane of A is drawn
+        let before = w.model.state.renderTargetSnapshot
+
+        let a3 = TestPane()
+        w.model.replaceFocusedPaneTree(
+            try w.model.focusedPaneTree.inserting(view: a3, at: w.a2, direction: .down))
+        let split = RenderTargetTransition(from: before, to: w.model.state.renderTargetSnapshot)
+
+        #expect(split.stop.isEmpty)
+        #expect(split.resume == [sid(a3)])
+        #expect(split.released.isEmpty)
+    }
+
+    @Test func aSurfaceThatStaysUndrawnIsNotStoppedAgain() throws {
+        let w = try Self.makeWorkspace()
+        let before = w.model.state.renderTargetSnapshot
+
+        // An unrelated transition (zoom) must not re-stop a2, c1, c2, which
+        // were already retained and undrawn before it.
+        w.model.toggleProjectZoom()
+        w.model.toggleProjectZoom()
+        let roundTrip = RenderTargetTransition(from: before, to: w.model.state.renderTargetSnapshot)
+
+        #expect(roundTrip.isEmpty)
+    }
+
     // MARK: Transition algebra
 
     @Test func anUnchangedSnapshotImpliesNoWork() throws {

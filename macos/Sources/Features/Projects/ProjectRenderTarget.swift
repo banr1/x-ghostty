@@ -28,8 +28,14 @@ struct RenderTargetSnapshot: Equatable {
 /// pane, the list's visibility toggle, close, and the restart of an exited
 /// pane — goes through the same judgment.
 struct RenderTargetTransition: Equatable {
-    /// Drawn before, not drawn now, and still alive: stop the renderer and the
-    /// display link. Its shell and PTY keep running.
+    /// Alive and not drawn now, and either drawn before or born in this
+    /// transition: stop the renderer and the display link. Its shell and PTY
+    /// keep running.
+    ///
+    /// A newly born surface (restored, split, or a restarted exited pane) is
+    /// included because the core starts every renderer visible and its display
+    /// link running; nothing but an explicit stop keeps a surface born outside
+    /// the render target from drawing (`SPEC.md` §31.2).
     var stop: Set<SurfaceID>
 
     /// Drawn now and not before: resume drawing. The surface draws the latest
@@ -45,10 +51,14 @@ struct RenderTargetTransition: Equatable {
 
     /// A surface that disappeared entirely is released, never "stopped": the
     /// release path tears down the very renderer the stop would have paused.
-    /// That is why `stop` is intersected with what is still retained.
+    /// That is why `stop` is drawn from what is still retained:
+    /// `stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born)`, where
+    /// `born = after.retained − before.retained`.
     init(from before: RenderTargetSnapshot, to after: RenderTargetSnapshot) {
+        let born = after.retained.subtracting(before.retained)
         released = before.retained.subtracting(after.retained)
-        stop = before.drawn.subtracting(after.drawn).intersection(after.retained)
+        stop = after.retained.subtracting(after.drawn)
+            .intersection(before.drawn.union(born))
         resume = after.drawn.subtracting(before.drawn)
     }
 }
