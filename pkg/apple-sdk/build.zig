@@ -53,11 +53,15 @@ pub fn addPaths(
             // Detect our SDK using the "findNative" Zig stdlib function.
             // This is really important because it forces using `xcrun` to
             // find the SDK path.
-            const libc = std.zig.LibCInstallation.findNative(.{
+            var libc = std.zig.LibCInstallation.findNative(.{
                 .allocator = b.allocator,
                 .target = &step.rootModuleTarget(),
                 .verbose = false,
             }) catch break :darwin;
+
+            // Search our libc overlay before the SDK headers. The SDK
+            // headers stay reachable through sys_include_dir.
+            libc.include_dir = try libcOverlay(b);
 
             // Render the file compatible with the `--libc` Zig flag.
             var stream: std.io.Writer.Allocating = .init(b.allocator);
@@ -154,4 +158,33 @@ pub fn addPaths(
             step.setLibCFile(cross.libc);
         },
     }
+}
+
+/// Headers that are searched before the SDK's libc headers.
+///
+/// macOS 27 SDK's math.h leaves INFINITY to <float.h> when modules are
+/// enabled, but the clang float.h bundled with Zig (0.15 and 0.16) only
+/// defines it outside strict ANSI mode. Zig compiles its bundled libc++
+/// in strict mode, so libc++ fails with "use of undeclared identifier
+/// 'INFINITY'". This overlay restores the definition. It is a no-op for
+/// SDKs that already define INFINITY in math.h, and can be removed once
+/// Zig's float.h handles the new SDK.
+const overlay_math_h =
+    \\#include_next <math.h>
+    \\#ifndef INFINITY
+    \\#define INFINITY (__builtin_inff())
+    \\#endif
+    \\
+;
+
+/// Write the libc overlay into the cache and return its directory.
+/// This must be a concrete path at configure time because it is embedded
+/// in the libc txt file.
+fn libcOverlay(b: *std.Build) ![]const u8 {
+    const sub_path = "apple-sdk-overlay/include";
+    try b.cache_root.handle.makePath(sub_path);
+    var dir = try b.cache_root.handle.openDir(sub_path, .{});
+    defer dir.close();
+    try dir.writeFile(.{ .sub_path = "math.h", .data = overlay_math_h });
+    return try b.cache_root.handle.realpathAlloc(b.allocator, sub_path);
 }
