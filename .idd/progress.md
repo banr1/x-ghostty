@@ -30,7 +30,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C13 | 必須 | ノート UI は端末領域を恒久占有しない(検証: C92) | unmet | - |
 | C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | met | cycle 4: just swift-test exit 0 (zig build・just test も exit 0。git diff -M 9cb808d HEAD で削除されたテスト・.swift/.zig ファイルは無く、.disabled / XCTSkip / SkipZigTest の追加も無い。テスト宣言数は 3642 → 3650) |
 | C15 | 必須 | ノートの判断ロジックはモデル層で XGhosttyTests から検証可能(検証: C91) | met | cycle 11: just swift-test exit 0 (検証は C91 のテスト成功のみ。C91 は met、failed 0 件) |
-| C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | unmet | - |
+| C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | met | cycle 12: README Building 節に zig build / just test / just swift-test の 3 行があることを grep で確認 exit 0 (README About の Notes 項と SPEC §21 を ProjectState / WorkspaceModel / ProjectNoteEditor / ProjectNoteOverview / NoteEditHistory / Config.zig の既定キーと読み合わせ。食い違い 3 点 — テスト件数 44→45、削除済み締切フィールドへの言及、「プロジェクト(=プロジェクト)」— を SPEC §21 で直した) |
 | C17 | 必須 | 各ペインはプライマリーフラグを持ち最初のペインがプライマリー(検証: C93) | met | cycle 11: just swift-test exit 0 (検証は C93 のテスト成功のみ。C93 は met、failed 0 件) |
 | C18 | 必須 | プライマリーはプロジェクト内で常に 1 つ(検証: C93) | met | cycle 11: just swift-test exit 0 (検証は C93 のテスト成功のみ。C93 は met、failed 0 件) |
 | C19 | 必須 | 全体ビューはプライマリーのみ描画、zoom 中は全ペイン(検証: C93 + C94) | unmet | - |

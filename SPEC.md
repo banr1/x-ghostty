@@ -1348,7 +1348,7 @@ truth、tree は投影**になった(§4.1)— それでもプロジェクトが
 
 ## 21. ノート仕様
 
-プロジェクト(=プロジェクト)ごとに人間が手書きする短いメモを保持する層。
+プロジェクトごとに人間が手書きする短いメモを保持する層。
 判断ロジック(保持・復元・表示対象)はすべてモデル層に置き、`XGhosttyTests`
 から検証する。
 
@@ -1404,7 +1404,8 @@ static var maxNoteLines: Int { 100 }
   (`OverlayKeyDownMonitor`、`ProjectOverlayKeys.swift`)が chord を
   key-equivalent / メニュー判定より前に捕まえ、標準セレクタ
   (`selectAll:`/`copy:`/`cut:`/`paste:`)を focused なテキストビュー
-  (エディタ本体、または締切フィールドの field editor)へ直接 perform する。
+  (エディタ本体の `NSTextView`。first responder がテキストビューでなければ
+  responder chain へ送る)へ直接 perform する。
   当初の隠し `keyboardShortcut` 受け口 + `NSApp.sendAction(to: nil)` 方式は
   実機で `selectAll:`/`copy:` のみ届き `cut:`/`paste:` が不達だったため、
   key-equivalent 経路にも action dispatch にも依存しない方式に置き換えた。
@@ -1413,7 +1414,7 @@ static var maxNoteLines: Int { 100 }
 - **取り消し・やり直しはセッション内の自前履歴**(`NoteEditHistory`):
   オーバーレイ表示中の `Cmd+Z` が取り消し、`Cmd+Shift+Z` がやり直しで、
   上の標準ショートカットと同じ `OverlayKeyDownMonitor` が chord を捕まえる。
-  - **スコープはノート本文のみ**。優先度・締切のドラフトは履歴に入らない。
+  - **スコープはノート本文のみ**(このオーバーレイが編集するのは本文だけ)。
   - **寿命は 1 編集セッション**:履歴はエディタを開いた時点の本文から始まり
     (`NoteEditHistory(note)`)、保存・破棄いずれの経路でも閉じると同時に
     捨てられる。前回セッションの編集は取り消せない。
@@ -1471,7 +1472,7 @@ static var maxNoteLines: Int { 100 }
 - undo 復元(`restoreState`)・全プロジェクト削除はモードを終了させる
   (復元された zoom が「zoom 解除済み」不変条件と矛盾しないように)。
 
-### 21.4 テスト(ProjectNoteTests 44 件 / ProjectNoteUndoTests 8 件)
+### 21.4 テスト(ProjectNoteTests 45 件 / ProjectNoteUndoTests 8 件)
 
 ```text
 - 正規化: 100 行上限(init / setNote / decode)、改行統一、レガシー decode
@@ -1481,7 +1482,8 @@ static var maxNoteLines: Int { 100 }
 - Codable round trip でノート本文復元
 - 編集セッション: begin は focused を対象 / begin(id) は非 focused でも
   開き focus を変えない(ヘッダー帯マウス導線) / end(Cmd+Enter)は保存して
-  閉じる / cancel(Esc)は破棄して閉じ開く前の本文を保持 /
+  閉じる / 100 行ちょうどのドラフトは end でそのまま保存される /
+  cancel(Esc)は破棄して閉じ開く前の本文を保持 /
   超過ドラフト(CRLF 行末含む)の切り詰め適用は先頭 100 行(確認の OK 経路)/
   プロジェクト消滅でクリア
 - 一望モード: 表示対象 = visible のみ(hidden 除外) / 進入で zoom 解除 /
