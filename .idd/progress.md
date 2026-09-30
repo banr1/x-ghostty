@@ -28,7 +28,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C11 | 必須 | 一望モードは閲覧専用で編集・focus 移動しない(検証: C91) | unmet | - |
 | C12 | 必須 | 一望モードで収まらないノートは切詰め、編集オーバーレイはスクロールで全文(検証: C92) | unmet | - |
 | C13 | 必須 | ノート UI は端末領域を恒久占有しない(検証: C92) | unmet | - |
-| C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | unmet | - |
+| C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | met | cycle 4: just swift-test exit 0 (zig build・just test も exit 0。git diff -M 9cb808d HEAD で削除されたテスト・.swift/.zig ファイルは無く、.disabled / XCTSkip / SkipZigTest の追加も無い。テスト宣言数は 3642 → 3650) |
 | C15 | 必須 | ノートの判断ロジックはモデル層で XGhosttyTests から検証可能(検証: C91) | unmet | - |
 | C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | unmet | - |
 | C17 | 必須 | 各ペインはプライマリーフラグを持ち最初のペインがプライマリー(検証: C93) | unmet | - |
@@ -102,9 +102,9 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | - |
 | C86 | 必須 | 閉じた surface とレンダラ・スレッドを解放(検証: C116 + C117) | unmet | - |
 | C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed) |
-| C88 | 必須 | `zig build` が exit 0 | met | cycle 3: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
-| C89 | 必須 | `just test` が exit 0 | met | cycle 3: just test exit 0 |
-| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 3: just swift-test exit 0 |
+| C88 | 必須 | `zig build` が exit 0 | met | cycle 4: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
+| C89 | 必須 | `just test` が exit 0 | met | cycle 4: just test exit 0 |
+| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 4: just swift-test exit 0 |
 | C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | - |
 | C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
