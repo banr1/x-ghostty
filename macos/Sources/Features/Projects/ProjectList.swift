@@ -563,7 +563,7 @@ extension WorkspaceStateOf {
     ///
     /// Deliberately narrow: deadlines, notes, and next triggers are
     /// untouched. The reset's effect on the row order follows the sort state
-    /// (§28.3): in manual it never reorders — the re-sort below is a no-op —
+    /// (§28.2): in manual it never reorders — the re-sort below is a no-op —
     /// and while a key state is active the cleared priorities re-sort as any
     /// value change would (§24.4).
     ///

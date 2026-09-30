@@ -975,8 +975,10 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
     (表示のみ、保存しない。§7.3, §27.1)
 21. restore 時は normalizeLedger が台帳を修復し(順列・生存・上限 9・
     最低 1 visible)、relayout が配置を再導出する(§12.4)
-22. 優先度・締切・次トリガー・ノートの値変更は台帳の行順を変えない
-    (並び替えは明示のソート・行移動のみ、§24.4)
+22. ソート状態が手動のとき、優先度・締切・次トリガー・ノートの値変更は
+    台帳の行順を変えない(並び替えは行移動のみ)。ソート有効中(手動以外)は
+    値変更・新規作成・読み込み・優先度の毎朝リセットの帰結として即座に
+    再ソートされる(§24.4)
 ```
 
 ## 15. 実装フェーズ
@@ -2395,10 +2397,13 @@ struct Workday: Codable, Equatable, Hashable {
   (新規ワークスペース、リセット導入前の保存)は常に due — 規則を文字どおり
   読んだ結果で、実害も無い。
 - `resetPrioritiesIfNeeded(at:calendar:)` は due のときだけ、**hidden を含む
-  全プロジェクト**の `priority` を `nil` にし、現在の作業日を刻む。実行したかを
-  返す。
-- **意図的に狭い**:締切・ノート・次トリガー(§24.6)は触らず、台帳の行順
-  (`projectOrder`)を書かないので**並び替えは構造的に起こり得ない**。
+  全プロジェクト**の `priority` を `nil` にし、現在の作業日を刻み、
+  `resortProjects()` を通す。実行したかを返す。
+- **意図的に狭い**:締切・ノート・次トリガー(§24.6)は触らない。
+- **並びへの影響はソート状態に従う**(必須 74):手動状態では
+  `resortProjects()` が no-op なので行順(`projectOrder`)は変わらない。
+  ソート有効中は、優先度が消えたことの帰結として他の値変更と同じく
+  即座に再ソートされる(§24.4)。
 
 ### 28.3 トリガ(BaseTerminalController)
 
@@ -2418,18 +2423,19 @@ struct Workday: Codable, Equatable, Hashable {
   タイマを**再武装**もする(時計が大きく進んでいる可能性があるため)。
 - 重複トリガが無害なのは §28.2 の冪等性による(作業日を刻むので 2 回目は
   no-op)。「多く走りすぎる」は構造的に起こらない。
-- **通知も印も出さない。並び替えもしない** — ソートは明示アクション時のみ
-  (§24.4)。優先度しか変わらないので undo エントリも登録しない。
+- **通知も印も出さない**。並びはソート状態の帰結としてだけ動く(§28.2)。
+  変わるのは優先度(とソート有効中のその帰結)だけなので undo エントリも
+  登録しない。
 - `deinit` でタイマを invalidate し、両 observer を外す。
 
-### 28.4 テスト(ProjectPriorityResetTests、9 件)
+### 28.4 テスト(ProjectPriorityResetTests、10 件)
 
 ```text
 - 作業日: ローカル 6:00 から翌 6:00 まで / 最終リセット日付と現在時刻から
   境界跨ぎを判定 / 次の境界は来たるローカル 6:00
 - リセット: hidden を含む全プロジェクトの優先度が未設定になる /
-  並び順は変わらない / 同じ作業日内では 2 回目が起きない /
-  稼働中の跨ぎでも 1 回だけ
+  手動状態では並び順は変わらない / ソート有効中は再ソートされる /
+  同じ作業日内では 2 回目が起きない / 稼働中の跨ぎでも 1 回だけ
 - 永続化: lastPriorityResetWorkday が保存・復元される /
   当該キーの無い保存は「未リセット」として decode される
 ```
@@ -2661,8 +2667,15 @@ surface が解放されずに残ることは、いずれも根治すべき欠陥
   シェルではない。
 - `RenderTargetSnapshot`(`drawn` / `retained`)の 2 点間から
   `RenderTargetTransition` が 3 集合を導く:
-  - `stop` = 描画していたが今は描画対象外、かつ**まだ保持されている** surface。
-    レンダラの描画とディスプレイリンクを止める。
+  - `stop` = 今は描画対象外で**まだ保持されている** surface のうち、直前は
+    描画していたもの、**または今回保持集合に新たに現れたもの(誕生)**。
+    レンダラの描画とディスプレイリンクを止める。式では
+    `stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born)`、
+    `born = after.retained − before.retained`(必須 121)。誕生を含めるのは、
+    コアの renderer が `visible = true` で生まれディスプレイリンクを無条件に
+    開始するため — 復元された hidden プロジェクトの全ペイン、全体ビューの
+    非プライマリーペイン(復元・分割)、終了済みからの再開で生まれた
+    surface は、明示的に止めない限り最初のフレームから描き続ける。
   - `resume` = 今は描画対象で、直前は違った surface。復帰時にはその間の
     シェル出力を反映した最新の画面が描かれる。
   - `released` = 直前は保持していたが今は保持していない surface。close、および
@@ -2682,10 +2695,23 @@ surface が解放されずに残ることは、いずれも根治すべき欠陥
   (必須 87 の但し書きに該当しない)。
 - 呼び出し側は `BaseTerminalController.syncRenderTargetOcclusion(for:)`。
   surface が描画するのは「**ウィンドウが可視 かつ 描画対象に入っている**」
-  ときだけで、最後に送った値を `SurfaceView.isDrawing` にキャッシュし、
-  変化したときだけ C API を叩く。
+  ときだけで、after は現在のワークスペース状態の `renderTargetSnapshot`
+  (ウィンドウが不可視なら `drawn` を空にする)、before はコントローラが
+  持つ**最後に適用したスナップショット** `appliedRenderTarget`(初期値は空)。
+  両者から導いた `RenderTargetTransition` の `stop` の各 surface へ
+  `set_occlusion(false)`、`resume` の各 surface へ `true` を送る — **これが
+  唯一の適用経路**であり(必須 122)、View ごとの描画状態キャッシュは
+  持たない(`SurfaceView` に `isDrawing` は無い)。テストが検証する導出が
+  そのまま実行される導出である。
+- コアの状態は、生成後にここで送った値だけを既知とする(コアの初期状態を
+  仮定しない)。コア側の surface がまだ無く送れなかった id は
+  `RenderTargetSnapshot.applied(except:)` で両集合から外して記録するため、
+  次回の同期で再び「誕生」として導出され、描画対象なら `resume`、
+  それ以外なら `stop` に入る。
 - 走査対象は `surfaceTree`(focused プロジェクトの分だけ)**ではなく**、
-  focused の live tree + `workspace.state.projects` 全体である。`surfaceTree`
+  `workspace.state.projects` 全体である(`surfaceTreeDidChange` は
+  `replaceFocusedPaneTree` で live tree を workspace へ写してから同期する
+  ので、focused の live tree もそこに含まれる)。`surfaceTree`
   起点のままでは背景・hidden の全プロジェクトが永久に描画を続ける — それが
   この仕様が取り除くコストそのものである。
 - 発火点:`windowDidLoad`(復元直後の初期整合)、`windowDidChangeOcclusionState`
@@ -2722,7 +2748,7 @@ surface が解放されずに残ることは、いずれも根治すべき欠陥
   期限切れで undo が破棄された時点で参照が切れ、解放される — **恒久的な
   滞留ではない**。
 
-### 31.5 テスト(ProjectRenderTargetTests 13 件)
+### 31.5 テスト(ProjectRenderTargetTests 21 件)
 
 ```text
 - 全体ビューの描画対象が visible な各プロジェクトのプライマリーのみ
@@ -2740,7 +2766,14 @@ surface が解放されずに残ることは、いずれも根治すべき欠陥
 - close が描画中の surface を「停止」ではなく「解放」として扱う
 - hidden なプロジェクトの close も解放を伴う(stop は空)
 - 終了済みからの再開が置き換えられた surface を解放し、新ペインを resume する
+- 誕生: 復元で戻る hidden プロジェクトの全ペインと非プライマリーペインが
+  stop に入る / 分割で全体ビューの外に生まれたペインが stop に入る /
+  描画対象の中に生まれた surface は resume に入り stop に入らない /
+  描画対象外のままの surface は再び stop されない
 - 変化のないスナップショット間の遷移は空
+- 空のスナップショットからの初回適用が全 surface を stop / resume に振り分ける
+- ウィンドウ不可視で全 surface が stop され、可視復帰で resume される
+- 送れなかった stop / resume は次回の同期で再び導出される
 ```
 
 [1]: https://ghostty.org/docs/config/keybind/reference "Action Reference - Keybindings"

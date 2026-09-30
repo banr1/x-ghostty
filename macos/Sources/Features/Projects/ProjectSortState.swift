@@ -117,7 +117,7 @@ extension WorkspaceStateOf {
     /// state applies its ordering immediately; selecting manual inherits the
     /// current display order as the manual order — `projectOrder` *is* the
     /// display order, so stopping the re-sorts is the whole inheritance.
-    /// This is also the model half of the row-move approval (§27.3): the
+    /// This is also the model half of the row-move approval (§24.4): the
     /// caller flips to manual here, then performs the move.
     ///
     /// - Returns: whether the row order changed (a state change alone,

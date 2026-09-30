@@ -492,8 +492,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// The id of a hidden project named `name`, if any. Resolves the
-    /// `show_project:<name>` action's argument to a concrete project; the shelf
-    /// shows projects by id directly (`SPEC.md` §7.2, §11.8).
+    /// `show_project:<name>` action's argument to a concrete project; the
+    /// project list toggles rows by id directly (`SPEC.md` §7.2, §11.8).
     func hiddenProjectID(named name: String) -> ProjectID? {
         state.projects.first { id, project in
             state.hiddenProjectIDs.contains(id) && project.name == name
@@ -502,9 +502,9 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Whether `show_project` would actually reveal `id`: it must be a live hidden
     /// project, and there must be room under the `WorkspaceState.maxVisibleProjects`
-    /// cap. At the cap the reveal is rejected silently and the pill stays on the
-    /// shelf, so callers check this before touching `surfaceTree` or registering
-    /// an undo.
+    /// cap. At the cap the reveal is rejected silently and the project stays
+    /// hidden, so callers check this before touching `surfaceTree` or
+    /// registering an undo.
     func canShowProject(_ id: ProjectID) -> Bool {
         guard state.hiddenProjectIDs.contains(id), state.projects[id] != nil else { return false }
         return canAddVisibleProject
@@ -762,8 +762,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// The change applies immediately — the list has no confirm step, and
     /// closing it with Escape does not undo it.
     ///
-    /// Showing never moves focus: Space is a visibility control, and Enter
-    /// (`focusProjectListRow`) is the focus control. Hiding moves focus only
+    /// Showing never moves focus: Enter on the visibility cell is a visibility
+    /// control, and Cmd+Enter (`focusProjectListRow`) is the focus control. Hiding moves focus only
     /// when the hidden project *was* focused, in which case the nearest
     /// surviving project takes over exactly as in `hideFocusedProject`.
     ///

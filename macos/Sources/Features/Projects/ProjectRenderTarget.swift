@@ -100,7 +100,7 @@ extension WorkspaceStateOf {
     }
 
     /// Every surface the process owns, drawn or not: all panes of all projects,
-    /// hidden ones included. Hidden projects stay alive (`SPEC.md` §14.2) —
+    /// hidden ones included. Hidden projects stay alive (`SPEC.md` §14.7) —
     /// what stops for them is drawing, not the shell.
     var retainedSurfaceIDs: Set<SurfaceID> {
         var result: Set<SurfaceID> = []

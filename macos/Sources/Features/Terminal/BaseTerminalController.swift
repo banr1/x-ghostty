@@ -462,8 +462,10 @@ class BaseTerminalController: NSWindowController,
 
     /// Run the reset if the boundary has been crossed since it last ran. The
     /// model owns the whole judgment; a reset that is not due is a no-op, and
-    /// one that runs changes only priorities — never the order, the deadlines,
-    /// or the notes — so it needs no undo entry and shows no notification.
+    /// one that runs changes only priorities — never the deadlines, the notes,
+    /// or the next triggers; the order moves only as the active sort state's
+    /// consequence (`SPEC.md` §28.2) — so it needs no undo entry and shows no
+    /// notification.
     private func applyDailyPriorityResetIfNeeded() {
         workspace.applyDailyPriorityReset()
     }
@@ -1799,14 +1801,14 @@ class BaseTerminalController: NSWindowController,
         registerWorkspaceUndo("Choose Layout", undo: before, redo: workspace.state)
     }
 
-    /// Show the hidden project `id` in response to a shelf pill click or the
-    /// `show_project` action (`SPEC.md` §11.8). The model un-hides it, clears any
-    /// zoom, and focuses it; here we swap `surfaceTree` to its panes and move
-    /// keyboard focus into its last-focused pane. Registers a project-aware undo
-    /// ("Show Project") so the reveal can be reversed.
+    /// Show the hidden project `id` in response to the `show_project` action
+    /// (`SPEC.md` §11.8). The model un-hides it, clears any zoom, and focuses
+    /// it; here we swap `surfaceTree` to its panes and move keyboard focus into
+    /// its last-focused pane. Registers a project-aware undo ("Show Project") so
+    /// the reveal can be reversed.
     ///
     /// Silent no-op when `WorkspaceState.maxVisibleProjects` projects are already
-    /// visible: the pill just stays on the shelf.
+    /// visible: the project just stays hidden.
     func showProject(_ id: ProjectID) {
         guard workspace.canShowProject(id) else { return }
         let before = workspace.state
@@ -1817,10 +1819,10 @@ class BaseTerminalController: NSWindowController,
         registerWorkspaceUndo("Show Project", undo: before, redo: workspace.state)
     }
 
-    /// Toggle a project-list row between hidden and visible (Space, `SPEC.md`
-    /// §27.2). The change is immediate and needs no confirm, so each toggle
-    /// registers its own project-aware undo, exactly like the shelf-era
-    /// `showProject` did.
+    /// Toggle a project-list row between hidden and visible (Enter on the
+    /// visibility cell, `SPEC.md` §27.2). The change is immediate and needs no
+    /// confirm, so each toggle registers its own project-aware undo, exactly
+    /// like `showProject` does.
     ///
     /// Keyboard focus deliberately stays with the list: the overlay owns the
     /// keyboard for the whole session, so even a toggle that moved the focused

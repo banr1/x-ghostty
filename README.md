@@ -161,7 +161,9 @@ its window management with a single model:
   SPEC.md §29.
 - **Layout types.** The screen arrangement is a layout type — a shape (wide,
   tall, or pedestal: n−1 on top plus one full-width across the bottom) times
-  an ordinal direction (row-major or column-major) — remembered persistently
+  an ordinal direction (row-major or column-major; the wide shape uses about
+  √n rows and gives any remainder to the later rows, so the top rows hold
+  fewer, wider slots — eight projects go 2+3+3) — remembered persistently
   and re-applied automatically whenever the number of visible projects
   changes (hiding, showing, creating, closing). `Cmd+Opt+L` lists only the
   distinct choices for the current visible count (identical arrangements are
@@ -178,7 +180,11 @@ its window management with a single model:
   panes in the overall view, and the other projects' panes while zoomed stop
   their renderer and display link entirely — their shells and PTYs keep running,
   so showing one again draws the latest screen including whatever arrived
-  meanwhile. Overlays only cover the terminal; they never change what is drawn
+  meanwhile. This holds from the moment a surface is born: panes restored
+  into a hidden project or behind a primary, split off in the overall view,
+  or restarted from a terminated pane are stopped before their first frame
+  unless they are on screen, and every start and stop goes through the one
+  model-layer transition the tests check. Overlays only cover the terminal; they never change what is drawn
   behind them. Closing a pane or project frees its surface along with its
   renderer, display link, and threads (after the usual undo window). This is why
   the app can sit idle for days holding many projects without burning CPU or

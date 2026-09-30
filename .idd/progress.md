@@ -90,7 +90,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C73 | 必須 | 最終リセット日付を永続化し作業日ごとに 1 回(検証: C109 + C110) | unmet | - |
 | C74 | 必須 | 自動リセットの並びはソート状態に従う(検証: C109) | met | cycle 11: just swift-test exit 0 (検証は C109 のテスト成功のみ。C109 は met、failed 0 件) |
 | C75 | 必須 | リセット判定はモデル層(検証: C109) | met | cycle 11: just swift-test exit 0 (検証は C109 のテスト成功のみ。C109 は met、failed 0 件) |
-| C76 | 必須 | SPEC.md / README.md をリモート split〜描画停止までの仕様に合わせる(検証: 周回の読み合わせ) | unmet | - |
+| C76 | 必須 | SPEC.md / README.md をリモート split〜描画停止までの仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 16: grep -c "@Test" (§27.6・§28.4・§29.4・§30.4・§31.5 の 12 スイート) exit 0 (§27.6 の 7 件・§29.4 の 15・§30.4 の 7/2 は一致、§28.4 を 9→10・§31.5 を 13→21 に直した。SPEC §27〜§31 の backtick 識別子を macos/Sources・Tests・src・include と突き合わせ、欠けていたのは isDrawing のみ。食い違い — §31.2 の stop に誕生が無い点、§31.3 の SurfaceView.isDrawing キャッシュと走査対象の旧記述、§28.2・§28.3 と §14 不変条件 22 の「リセット・値変更で並び替えない」(ソート有効中は再ソート)— を直し、README に生成時の停止と横長型の余り配分(2+3+3)を足した。Config.zig の Cmd+K 解除・Cmd+/ 割り当て、RemoteSplit の initialInput・loopback 集合も一致。ソース内の古いコメント(Space 表示トグル・shelf pill・§14.2・§27.3・§28.3 参照)も直した) |
 | C77 | 必須 | 締切セルの Enter で 10 択の日付候補(検証: C107 + C108) | unmet | - |
 | C78 | 必須 | 一覧テキスト列のセル編集が日本語 IME を受け付ける(検証: C114) | unmet | - |
 | C79 | 必須 | セルカーソルの Delete で列ごとの値削除(検証: C107 + C108) | unmet | - |
