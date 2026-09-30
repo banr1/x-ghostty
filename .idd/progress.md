@@ -41,7 +41,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C24 | 必須 | プライマリーフラグの永続化と復元時正規化(検証: C93) | met | cycle 11: just swift-test exit 0 (検証は C93 のテスト成功のみ。C93 は met、failed 0 件) |
 | C25 | 必須 | プライマリー印は zoom 中かつ複数ペイン時のみ右上に表示(検証: C94) | unmet | - |
 | C26 | 必須 | プライマリーの判断ロジックはモデル層(検証: C93) | met | cycle 11: just swift-test exit 0 (検証は C93 のテスト成功のみ。C93 は met、failed 0 件) |
-| C27 | 必須 | SPEC.md / README.md をプライマリーペイン層仕様に合わせる(検証: 周回の読み合わせ) | unmet | - |
+| C27 | 必須 | SPEC.md / README.md をプライマリーペイン層仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 13: grep -c "@Test" macos/Tests/Projects/ProjectPrimaryPaneTests.swift exit 0 (35 件で SPEC §22.8 と一致。README About の Primary panes 項と SPEC §22 を ProjectState / SplitTree.nearestLeaf / WorkspaceState / WorkspaceModel / BaseTerminalController / XGhostty.App / ProjectView / TerminalSplitTreeView / Config.zig の Cmd+P と読み合わせ。食い違い 3 点 — 冒頭のテスト節参照 §22.7→§22.8、最後のペイン close の旧記述(削除保護 §23 と矛盾)、snapFocusToPrimaryInOverallView の呼び出し元列挙の不足 — を SPEC §22 で直した) |
 | C28 | 必須 | プロジェクトを閉じる操作は常に確認ダイアログ(検証: C95 + C96) | unmet | - |
 | C29 | 必須 | 最後のペインのシェル exit でプロジェクトを閉じず終了済みで残す(検証: C95 + C96) | unmet | - |
 | C30 | 必須 | 終了済みペインで Enter により新シェルで再開(検証: C96) | unmet | - |

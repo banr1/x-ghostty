@@ -1510,7 +1510,7 @@ static var maxNoteLines: Int { 100 }
 プロジェクトごとに常に 1 つだけ存在する代表ペインの層。全体ビュー
 (非 zoom)は各プロジェクトのプライマリーペインだけを描画し、一望に適した情報密度を
 作る。判断ロジック(既定付与・唯一性・昇格・復元時正規化・全体ビューの表示対象)
-はすべてモデル層に置き、`XGhosttyTests` から検証する(§22.7)。
+はすべてモデル層に置き、`XGhosttyTests` から検証する(§22.8)。
 
 ### 22.1 データモデル
 
@@ -1547,8 +1547,11 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
     (スロット原点間のユークリッド距離。同距離は走査順で先のものが勝ち)で、
     新ツリーへ生き残っているペインの最近傍 leaf を昇格する。
   - 昇格候補がない(旧プライマリー不明・生存者なし)場合は first leaf。空ツリーは
-    プライマリーなし(最後のペインの close は §11.10 / §18.5 の既存挙動どおり
-    プロジェクトごと閉じる)。
+    プライマリーなし。
+  - プライマリーが最後のペインの場合は昇格が起きない:シェルの exit では
+    ペインがツリーに残ったまま終了済み状態になり(§23.2)、フラグもそのまま
+    残る。最後のペインの `Cmd+W`・`close_project` は確認を経てプロジェクトごと
+    閉じる(§23.1)。
 
 ### 22.3 全体ビューの描画対象
 
@@ -1569,7 +1572,9 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   非 zoom 状態に着地しうる全ミューテーションの後段で呼ぶ:
   `replaceFocusedPaneTree`(プライマリー exit 昇格を含む)/ `setFocusedSurface` /
   `switchFocusedProject` / `gotoProject` / `toggleProjectZoom`(zoom 解除時の寄せ)/
-  `hideFocusedProject` / `showProject` / `closeFocusedProject`。
+  `hideFocusedProject` / `showProject` / `closeFocusedProject` /
+  一覧の表示トグル(`showFromProjectList` / `hideFromProjectList`)/
+  `focusProjectListRow` / `chooseLayoutType` / `removeExitedPane`。
 - controller 側の focus 配線:`ghosttyDidToggleProjectZoom` は zoom 解除時に
   プライマリーへ focus を渡し、`ghosttyDidPresentTerminal` と
   `replaceSurfaceTree` は非 zoom 時の focus 先をプライマリーへ付け替える。
