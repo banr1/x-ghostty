@@ -105,7 +105,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C88 | 必須 | `zig build` が exit 0 | met | cycle 4: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
 | C89 | 必須 | `just test` が exit 0 | met | cycle 4: just test exit 0 |
 | C90 | 必須 | `just swift-test` が exit 0 | met | cycle 4: just swift-test exit 0 |
-| C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
+| C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 8: just swift-test exit 0 (ProjectNoteTests の 保存復元 = codableRoundTripRestoresNoteText、100 行以内 = normalizedNoteKeepsExactlyOneHundredLines / noteWithinLimitIsNotJudgedOver / endNoteEditingKeepsANoteOfExactlyOneHundredLinesVerbatim、超過と切詰め = noteOverLimitIsJudgedOverAndTruncationKeepsFirstOneHundred、保存して閉じる = endNoteEditingSavesDraftAndCloses、破棄 = cancelNoteEditingKeepsPreOpenTextAndCloses、一望の表示集合 = overviewDisplaySetIsExactlyTheVisibleProjects / …ExcludesHiddenProjects、zoom 解除 = enteringOverviewReleasesZoom、閲覧専用 = overviewBlocksNoteEditing / …DirectionalFocusMoves / …IndexFocusMoves / …FocusSwitch がすべて passed) |
 | C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | - |
 | C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C94 | 必須 | プライマリーペインの実機目視(検証: 人間) | unmet | - |

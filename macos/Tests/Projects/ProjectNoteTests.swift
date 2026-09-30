@@ -220,6 +220,21 @@ struct ProjectNoteTests {
         #expect(model.noteEditingProject == nil)
     }
 
+    @Test func endNoteEditingKeepsANoteOfExactlyOneHundredLinesVerbatim() throws {
+        // A save within the cap is stored as-is: nothing is judged over and
+        // nothing is truncated, including the last (100th) line.
+        let (state, ids) = try WorkspaceStateTests.makeTwoProjectState()
+        let model = WorkspaceModel(state)
+        model.beginNoteEditing(ids.0)
+
+        let hundred = (1...ProjectState.maxNoteLines).map { "line \($0)" }.joined(separator: "\n")
+        #expect(!ProjectState.noteExceedsLimit(hundred))
+        model.endNoteEditing(saving: hundred)
+
+        #expect(model.state.projects[ids.0]?.note == hundred)
+        #expect(model.noteEditingProject == nil)
+    }
+
     @Test func endNoteEditingCapsAtOneHundredLines() throws {
         let (state, ids) = try WorkspaceStateTests.makeTwoProjectState()
         let model = WorkspaceModel(state)
