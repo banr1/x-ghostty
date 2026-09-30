@@ -154,6 +154,11 @@ class BaseTerminalController: NSWindowController,
     /// Cancellable for invalidating restorable state on project-layer changes.
     private var workspaceStateCancellable: AnyCancellable?
 
+    /// The render target as last pushed down to libghostty (`SPEC.md` §31):
+    /// the `before` of the next `RenderTargetTransition`. Starts empty, so the
+    /// first sync treats every surface as born.
+    private var appliedRenderTarget = RenderTargetSnapshot()
+
     /// An override title for the window set by the user.
     /// When set, this takes precedence over the computed title from the terminal.
     var titleOverride: String? {
@@ -2348,35 +2353,43 @@ class BaseTerminalController: NSWindowController,
     /// keep running; returning to the render target resumes it and redraws the
     /// latest screen, including whatever arrived meanwhile.
     ///
-    /// This walks every surface the controller owns, not just `surfaceTree`:
-    /// `surfaceTree` is only the focused project's panes, so driving occlusion
-    /// from it would leave every background and hidden project drawing forever,
-    /// which is exactly the cost this is here to remove.
+    /// The only judgment is `RenderTargetTransition`: from the snapshot last
+    /// applied to the current one, where an invisible window draws nothing. The
+    /// snapshot covers every surface the workspace owns, not just
+    /// `surfaceTree` (only the focused project's panes, and mirrored into the
+    /// workspace before this runs), so background and hidden projects stop too.
+    /// A surface born outside the render target lands in `stop`, because the
+    /// core starts every renderer drawing.
+    ///
+    /// Nothing about the core's state is assumed beyond what was sent here.
+    /// A surface the value could not be delivered to (no core surface yet) is
+    /// left out of the applied snapshot, so the next sync derives it again.
     private func syncRenderTargetOcclusion(for state: WorkspaceState? = nil) {
         let state = state ?? workspace.state
         let windowVisible = self.window?.occlusionState.contains(.visible) ?? false
-        let drawn = state.renderTargetSurfaceIDs
+        var target = state.renderTargetSnapshot
+        if !windowVisible { target.drawn = [] }
 
-        // The focused project's live panes are `surfaceTree` (the workspace copy
-        // is only mirrored on change); the rest come from the workspace, deduped
-        // by id the way `allSurfaces` does it.
-        var seen = Set<UUID>()
-        var views: [XGhostty.SurfaceView] = []
-        for view in surfaceTree where seen.insert(view.id).inserted {
-            views.append(view)
-        }
+        let transition = RenderTargetTransition(from: appliedRenderTarget, to: target)
+
+        var views: [SurfaceID: XGhostty.SurfaceView] = [:]
         for project in state.projects.values {
-            for view in project.paneTree where seen.insert(view.id).inserted {
-                views.append(view)
+            for view in project.paneTree {
+                views[SurfaceID(rawValue: view.id)] = view
             }
         }
 
-        for view in views {
-            let visible = windowVisible && drawn.contains(SurfaceID(rawValue: view.id))
-            guard let surface = view.surface, view.isDrawing != visible else { continue }
-            xghostty_surface_set_occlusion(surface, visible)
-            view.isDrawing = visible
+        var unapplied = Set<SurfaceID>()
+        for (ids, drawing) in [(transition.stop, false), (transition.resume, true)] {
+            for id in ids {
+                guard let surface = views[id]?.surface else {
+                    unapplied.insert(id)
+                    continue
+                }
+                xghostty_surface_set_occlusion(surface, drawing)
+            }
         }
+        appliedRenderTarget = target.applied(except: unapplied)
     }
 
     func windowDidResize(_ notification: Notification) {

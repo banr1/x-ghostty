@@ -20,7 +20,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 
 ## 実装の現状
 
-- 描画停止は既存の C API `xghostty_surface_set_occlusion` で行っている。コア側がディスプレイリンク停止・drawFrame のスキップ・可視復帰時の即時再描画を実装済みで、`src/**` の改変は要らなかった。同期の発火点は `BaseTerminalController.syncRenderTargetOcclusion`(windowDidLoad / occlusion 変化 / surfaceTreeDidChange / workspace.$state)。
+- 描画停止は既存の C API `xghostty_surface_set_occlusion` で行っている。コア側がディスプレイリンク停止・drawFrame のスキップ・可視復帰時の即時再描画を実装済みで、`src/**` の改変は要らなかった。同期の発火点は `BaseTerminalController.syncRenderTargetOcclusion`(windowDidLoad / occlusion 変化 / surfaceTreeDidChange / workspace.$state)。コントローラは最後に適用したスナップショット `appliedRenderTarget`(初期値は空)だけを状態として持ち、`RenderTargetTransition` の stop/resume を送る。コア surface が nil で送れなかった id は `RenderTargetSnapshot.applied(except:)` で両集合から外し、次回に「誕生」として再導出させる。`surfaceTreeDidChange` は `replaceFocusedPaneTree` で workspace へ写してから同期するので、走査は workspace の全プロジェクトで足りる。
 - 停止・再開・解放の集合は `macos/Sources/Features/Projects/ProjectRenderTarget.swift` の `RenderTargetTransition(from:to:)` が 2 つのスナップショットから導く。停止集合は「誕生」(after.retained − before.retained)も含む。テストは `macos/Tests/Projects/ProjectRenderTargetTests.swift`。
 - エディタの SourceKit 診断(`Cannot find type 'SurfaceID'`、`No such module 'Testing'`)はプロジェクト文脈なしの索引によるもので、ビルドとは無関係。判定は `just swift-test` で行う。
 - 閉じたプロジェクトの surface は、上流由来の close undo(`ExpiringUndoManager`、undo-timeout)の間だけ生き残る。スレッド数・IOSurface 数の実測(C117)は undo 期限が切れてから行う。この扱いは周回の判断であり、人間の承認はまだ無い。

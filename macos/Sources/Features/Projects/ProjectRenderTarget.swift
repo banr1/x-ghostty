@@ -17,6 +17,19 @@ struct RenderTargetSnapshot: Equatable {
         self.drawn = drawn
         self.retained = retained
     }
+
+    /// This snapshot as it stands once a transition into it was applied, minus
+    /// the surfaces the transition could not be delivered to (`SPEC.md` §31.2).
+    ///
+    /// Recording the result of an application, not the intent, is what keeps a
+    /// failed delivery from being forgotten: a surface dropped from both sets
+    /// reads as newly born on the next transition, so it is derived again —
+    /// into `resume` if it is drawn by then, into `stop` otherwise.
+    func applied(except unapplied: Set<SurfaceID>) -> RenderTargetSnapshot {
+        RenderTargetSnapshot(
+            drawn: drawn.subtracting(unapplied),
+            retained: retained.subtracting(unapplied))
+    }
 }
 
 /// The work one workspace transition implies for the render path

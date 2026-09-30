@@ -92,17 +92,6 @@ extension XGhostty {
         // Whether the cursor is currently visible (not hidden by typing, etc.)
         @Published private(set) var cursorVisible: Bool = true
 
-        /// The last occlusion value pushed to libghostty for this surface, i.e.
-        /// whether it is currently drawing.
-        ///
-        /// A surface draws only when the window is visible *and* the workspace
-        /// says the surface is in the render target (`SPEC.md` §31): a hidden
-        /// project's panes, the overall view's non-primary panes, and the other
-        /// projects' panes while zoomed are all occluded, which stops their
-        /// renderer and display link while their shell and PTY keep running.
-        /// Cached here so the controller only pushes the value on a change.
-        var isDrawing = false
-
         /// The configuration derived from the XGhostty config so we don't need to rely on references.
         @Published private(set) var derivedConfig: DerivedConfig
 

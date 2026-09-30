@@ -359,4 +359,59 @@ struct ProjectRenderTargetTests {
 
         #expect(RenderTargetTransition(from: snapshot, to: snapshot).isEmpty)
     }
+
+    // MARK: Application bookkeeping
+
+    @Test func theFirstApplicationFromNothingStopsAndResumesEverySurface() throws {
+        let w = try Self.makeWorkspace()
+        let first = RenderTargetTransition(
+            from: RenderTargetSnapshot(), to: w.model.state.renderTargetSnapshot)
+
+        #expect(first.resume == [sid(w.a1), sid(w.b1)])
+        #expect(first.stop == [sid(w.a2), sid(w.c1), sid(w.c2)])
+        #expect(first.released.isEmpty)
+    }
+
+    @Test func anInvisibleWindowStopsEverySurfaceAndResumesThemOnReturn() throws {
+        let w = try Self.makeWorkspace()
+        let visible = w.model.state.renderTargetSnapshot
+        var invisible = visible
+        invisible.drawn = []
+
+        let hide = RenderTargetTransition(from: visible, to: invisible)
+        #expect(hide.stop == [sid(w.a1), sid(w.b1)])
+        #expect(hide.resume.isEmpty)
+
+        let show = RenderTargetTransition(from: invisible, to: visible)
+        #expect(show.resume == [sid(w.a1), sid(w.b1)])
+        #expect(show.stop.isEmpty)
+    }
+
+    @Test func anUndeliveredStopIsDerivedAgainOnTheNextSync() throws {
+        let w = try Self.makeWorkspace()
+        let target = w.model.state.renderTargetSnapshot
+
+        // c1 had no core surface yet, so its stop was never sent.
+        let applied = target.applied(except: [sid(w.c1)])
+        #expect(!applied.retained.contains(sid(w.c1)))
+
+        let retry = RenderTargetTransition(from: applied, to: target)
+        #expect(retry.stop == [sid(w.c1)])
+        #expect(retry.resume.isEmpty)
+        #expect(retry.released.isEmpty)
+    }
+
+    @Test func anUndeliveredResumeIsDerivedAgainOnTheNextSync() throws {
+        let w = try Self.makeWorkspace()
+        let target = w.model.state.renderTargetSnapshot
+
+        // a1 had no core surface yet, so its resume was never sent.
+        let applied = target.applied(except: [sid(w.a1)])
+        #expect(!applied.drawn.contains(sid(w.a1)))
+
+        let retry = RenderTargetTransition(from: applied, to: target)
+        #expect(retry.resume == [sid(w.a1)])
+        #expect(retry.stop.isEmpty)
+        #expect(retry.released.isEmpty)
+    }
 }

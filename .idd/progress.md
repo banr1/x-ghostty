@@ -102,9 +102,9 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | - |
 | C86 | 必須 | 閉じた surface とレンダラ・スレッドを解放(検証: C116 + C117) | unmet | - |
 | C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed) |
-| C88 | 必須 | `zig build` が exit 0 | met | cycle 2: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
-| C89 | 必須 | `just test` が exit 0 | met | cycle 2: just test exit 0 |
-| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 2: just swift-test exit 0 |
+| C88 | 必須 | `zig build` が exit 0 | met | cycle 3: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
+| C89 | 必須 | `just test` が exit 0 | met | cycle 3: just test exit 0 |
+| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 3: just swift-test exit 0 |
 | C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
 | C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | - |
 | C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - |
@@ -133,7 +133,7 @@ ideal_sha: 17076ce6f2df32055db93cc9e2dbf4d97a23ecd099b636a036e27e20ef96be5c
 | C116 | 必須 | 描画対象・停止/再開集合・解放・誕生時停止のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed。全 5 項目を macos/Tests/Projects/ProjectRenderTargetTests.swift で突き合わせ済み) |
 | C117 | 必須 | 描画停止・解放の実機観測(top / footprint、検証: 人間) | unmet | - |
 | C121 | 必須 | 停止集合に誕生した描画対象外の surface を含める(stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born))(検証: C116) | met | cycle 2: just swift-test exit 0 (ProjectRenderTargetTests 17 件 passed) |
-| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ、SurfaceView.isDrawing を持たない、未生成 surface は未適用扱い(検証: C116 + 読み合わせ) | unmet | - |
+| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ、SurfaceView.isDrawing を持たない、未生成 surface は未適用扱い(検証: C116 + 読み合わせ) | met | cycle 3: just swift-test exit 0 (ProjectRenderTargetTests 21 件 passed。grep -rn isDrawing macos/Sources は該当なし。set_occlusion の呼び出しは syncRenderTargetOcclusion 内の transition.stop/resume のループだけであることを読み合わせた) |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |
 | C120 | 望ましい | 全体ビューの非プライマリーペインのインジケータ(検証: 人間) | unmet | - |
