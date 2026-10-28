@@ -372,6 +372,16 @@ extension XGhostty {
                 self.error = XGhostty.Error.apiFailed
                 return
             }
+
+            // Every surface is born stopped (`SPEC.md` §31.2). This is the one
+            // exception to "occlusion is applied only from RenderTargetTransition"
+            // (IDEAL C122): it is unconditional — no render-target decision and
+            // no cached drawing state here. It must be queued before the renderer
+            // thread drains its mailbox for the first frame, which a later
+            // controller sync cannot guarantee for surfaces decoded during state
+            // restoration. Drawing starts only via the transition's `resume`.
+            xghostty_surface_set_occlusion(surface, false)
+
             self.surfaceModel = XGhostty.Surface(cSurface: surface)
 
             // Setup our tracking area so we get mouse moved events

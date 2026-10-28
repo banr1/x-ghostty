@@ -182,11 +182,11 @@ its window management with a single model:
   panes in the overall view, and the other projects' panes while zoomed stop
   their renderer and display link entirely — their shells and PTYs keep running,
   so showing one again draws the latest screen including whatever arrived
-  meanwhile. This holds from the moment a surface is born: panes restored
-  into a hidden project or behind a primary, split off in the overall view,
-  or restarted from a terminated pane are stopped before their first frame
-  unless they are on screen, and every start and stop goes through the one
-  model-layer transition the tests check. Overlays only cover the terminal; they never change what is drawn
+  meanwhile. This holds from the moment a surface is born: every surface —
+  restored, split off, or restarted from a terminated pane — is created
+  stopped, and only starts drawing when the one model-layer transition the
+  tests check puts it on screen; every later start and stop goes through
+  that same transition. Overlays only cover the terminal; they never change what is drawn
   behind them. Closing a pane or project — by `Cmd+W`, `close_project`, or
   `Delete` on a selected list row alike — frees its surface along with its
   view, PTY, renderer, display link, threads, and IOSurfaces once the usual
