@@ -222,6 +222,19 @@ struct ProjectListOverlay: View {
             .onChange(of: keyboardSink) { typed in
                 if !typed.isEmpty { keyboardSink = "" }
             }
+            // Take the keyboard back whenever something else takes first
+            // responder while no cell edit owns it. A row Delete that closes
+            // the focused project moves first responder to the new focus
+            // target's surface (`SPEC.md` §27.2, must 125) so the closed
+            // surface is let go; the list stays up, so the catcher must
+            // reclaim it — otherwise typed keys and Cmd-chords reach that
+            // terminal behind the list.
+            .onChange(of: focus) { newFocus in
+                guard newFocus == nil, edit == nil, !shortcutListActive else { return }
+                DispatchQueue.main.async {
+                    if edit == nil, !shortcutListActive { focus = .catcher }
+                }
+            }
             .accessibilityHidden(true)
             .onAppear {
                 keyboardSink = ""
@@ -244,6 +257,16 @@ struct ProjectListOverlay: View {
         // While the shortcut list stacks above (SPEC §30), every key is its:
         // yield untouched so its later-installed monitor sees the event.
         if shortcutListActive { return event }
+
+        // Cmd+L closes the list from any list state (SPEC §27.3). The
+        // surface's binding path is inert while the catcher holds first
+        // responder, so the default `list_projects` chord is re-matched
+        // here, like Cmd+/ below. Only an IME composition outranks it.
+        if modifiers == [.command], !editor.isComposing,
+           event.charactersIgnoringModifiers?.lowercased() == "l" {
+            onClose()
+            return nil
+        }
 
         // Cmd+/ opens the shortcut list from any list state — mid-edit
         // included, which is exactly the "restores in-progress edits" face
@@ -531,7 +554,11 @@ struct ProjectListOverlay: View {
             return nil
         }
 
-        return event
+        // Every other plain key is the session's and does nothing: the
+        // catcher would discard it anyway, and passing it on would type it
+        // into the terminal behind the list whenever a surface momentarily
+        // holds first responder (a row Delete's focus move).
+        return nil
     }
 
     /// How the edit session reads a key event (`SPEC.md` §27.5). Shift+Tab

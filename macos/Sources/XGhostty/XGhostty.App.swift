@@ -985,11 +985,13 @@ extension XGhostty {
                 guard let surfaceView = self.surfaceView(from: surface) else { return false }
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
 
-                // Only performable when the list can open: at least one
+                // Only performable when the list can open — at least one
                 // project and no other overlay owning the keyboard
-                // (`SPEC.md` §27.1); otherwise the keybind falls through
+                // (`SPEC.md` §27.1) — or is already open, which this chord
+                // closes (§27.3); otherwise the keybind falls through
                 // unconsumed.
-                guard controller.workspace.canBeginProjectList else { return false }
+                guard controller.workspace.projectListActive
+                    || controller.workspace.canBeginProjectList else { return false }
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyListProjects,

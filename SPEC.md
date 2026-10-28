@@ -2189,7 +2189,13 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   キーボードフォーカス(first responder)が移る(`moveKeyboardFocus(toProjectSurface:)`、
   必須 125)。一覧は開いたままで、行操作の操作感は変わらず、閉じた後も
   `Cmd+L` で一覧を閉じられる(フォーカスが閉じた surface に残ると、その
-  surface が解放されず、`Cmd+L` で一覧を閉じることもできなくなる。§31.4)。**一覧そのものは
+  surface が解放されず、`Cmd+L` で一覧を閉じることもできなくなる。§31.4)。
+  フォーカス移動で first responder が surface へ移った後は、一覧の不可視の
+  catcher(`ProjectListOverlay.keyCatcher`)が次のランループで first responder を
+  取り戻す(セル編集中・ショートカット一覧の重なり中を除く)。取り戻すまでの間も、
+  一覧の扱わない素のキーは監視が消費し、背後の端末へ届かない。確認シートや
+  アラートが key のあいだは、オーバーレイのキー監視(`OverlayKeyDownMonitor`)は
+  イベントに触れず、`Enter` / `Esc` はシートに届く。**一覧そのものは
   `Esc` では閉じない**(閉じるのは `Cmd+L`、§27.3)。
 - **全行ノート表示**(`Cmd+Opt+E`、一覧の中でのみ):全行のノートを全行表示に
   するトグル。閲覧のみ・行ごとではなく一括・状態は透過的(セッション開始時は
@@ -2213,7 +2219,12 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   `Cmd+L` で閉じ(`closeProjectList`)、**`Esc` では閉じない**(`Esc` は
   行選択の遷移、§27.2)。バックドロップのクリックでも閉じる。閉じても
   トグル・確定済みセル編集・行/列移動・ソート状態はすべて実変更として残る。
-  focus は「いま focused なプロジェクト」へ戻す。
+  focus は「いま focused なプロジェクト」へ戻す。一覧の表示中は catcher が
+  first responder なので surface の keybind 経路は働かない。閉じる側の
+  `Cmd+L` は一覧のキー監視(`ProjectListOverlay.handleKey`)が `Cmd+/` と
+  同様に自前で照合する(IME の未確定中を除き、セル編集中も含めどの状態からでも
+  閉じる)。surface が first responder の場合に備え、`list_projects` の
+  実行可否も「開ける(`canBeginProjectList`)か、既に開いている」とする。
 - **zoom 中に開いた場合は zoom を解除せず、zoom 画面の上に重なる**
   (2026-08-19 改訂で「先に zoom を解除」を廃止):`beginProjectList` は
   `zoomedProject` に触れず、閉じると元の zoom 状態に戻る(`Cmd+N` 経由で

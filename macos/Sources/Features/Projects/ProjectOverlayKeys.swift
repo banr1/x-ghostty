@@ -39,13 +39,28 @@ struct OverlayKeyDownMonitor: ViewModifier {
                 guard monitor == nil else { return }
                 monitor = NSEvent.addLocalMonitorForEvents(
                     matching: .keyDown) { [box] event in
-                    box.handler(event)
+                    // A sheet or modal window above the overlay (the row
+                    // Delete's Close Project sheet, an alert) owns its own
+                    // keys: Enter / Escape must answer it, not drive the
+                    // overlay underneath.
+                    if Self.isForModalWindow(event) { return event }
+                    return box.handler(event)
                 }
             }
             .onDisappear {
                 if let monitor { NSEvent.removeMonitor(monitor) }
                 monitor = nil
             }
+    }
+
+    /// Whether the event is addressed to a sheet or an app-modal window
+    /// rather than to the window hosting the overlay. A local monitor sees
+    /// every keyDown in the app, including those for an attached sheet.
+    private static func isForModalWindow(_ event: NSEvent) -> Bool {
+        guard let window = event.window else { return false }
+        return window.isSheet
+            || window.sheetParent != nil
+            || window === NSApp.modalWindow
     }
 }
 

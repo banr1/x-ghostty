@@ -20,6 +20,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - macOS 27 / Xcode 27(27A266a)環境の注意。(1) Metal Toolchain は Xcode 27 では別途ダウンロードする部品で、無いと metallib 生成が失敗する(`xcodebuild -showComponent MetalToolchain` で確認、`xcodebuild -downloadComponent MetalToolchain` で導入。2026-09-30 導入済み)。(2) MacOSX27 SDK の math.h は modules 有効時に `INFINITY` を float.h に委ねるが、zig 0.15/0.16 同梱の float.h は strict モードで定義しないため、zig 同梱 libc++ のビルドが `INFINITY` 未定義で落ちる(zig 0.16 でも再現。zig を上げても直らない)。`pkg/apple-sdk/build.zig` の `libcOverlay` が `math.h` の上書きヘッダを libc の include_dir に挟んで補っている。(3) `macos/build` に古い未署名の `xghostty.debug.dylib` が残ると CodeSign が「code object is not signed at all」で失敗する。`macos/build/Debug/XGhostty.app` を消して再ビルドすれば直る。2026-09-30 時点で 3 ゲートはこの環境で exit 0。
 - テストの削除・無効化の検査(C14)の基準は Atlas Builder 移行時点の commit `9cb808d`。当時は `x-ghostty/` 配下にあったため、`git diff -M 9cb808d HEAD` とリネーム検出を付けて比べる。fork 開始時点(`5307c05`)からは、`f93d9b1`(タブ・複数ウィンドウ・非 macOS の撤去)でタブ・ウィンドウ・quick terminal・update 系のテストが消えており、Zig の `test "ghostty.h ..."` は `xghostty.h` へ改名されている。
 - `.idd/` の台帳・記録はシェルコマンド(grep 等)からは読めない(hook が拒否する)。ファイルとして直接読む。
+- 実機観測(サンドボックス off の周回で使える): `zig build` 後、`(nohup zig-out/XGhostty.app/Contents/MacOS/xghostty > /tmp/app.log 2>&1 &)` で別プロセスとして起動できる(`open -n` は -54 で失敗した)。保存状態を復元して起動する。打鍵は Swift の小さなツールで `NSRunningApplication(processIdentifier:).activate` の後 `CGEvent(keyboardEventSource:virtualKey:keyDown:)` を `.cghidEventTap` へ post、窓 ID は `CGWindowListCopyWindowInfo` で pid から引き、`screencapture -x -l <窓ID> out.png` で撮る(swiftc のコンパイルは数分かかる)。終わったら自分の pid だけ kill する。
 - C ABI: `include/xghostty.h` の action enum は後続のタグ値を保つ(in-place 置換か末尾追加)。
 
 ## 実装の現状
@@ -37,5 +38,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - `NSEvent.addLocalMonitorForEvents` を SwiftUI の `onAppear` で 1 度だけ入れると、その時点の View の値を掴んだまま古い closure を呼び続ける(1 回目だけ動き、2 回目から狂う)。参照型の handler box を経由させ、body の評価ごとに現在の closure へ差し替える。
 - ローカル keyDown モニタは responder より先に走り、登録順に呼ばれ、nil を返すと連鎖が止まる。オーバーレイを重ねるときは、下の層のハンドラの先頭で「上の層が active なら event をそのまま返す」。
 - モニタが `Cmd` 系の打鍵を素通しすると、端末 surface の `performKeyEquivalent` が先に食う(`Cmd+V` が背後の端末へ貼り付く)。編集ショートカットはモニタで捕まえて field editor に対して実行し、nil を返す。
+- ローカル keyDown モニタは、ウィンドウに付いたシート(`beginSheetModal` の確認)宛ての打鍵も見る。オーバーレイのモニタはシート・モーダル宛て(`event.window` が sheet / `sheetParent` あり / `NSApp.modalWindow`)を素通しする(`OverlayKeyDownMonitor`)。
+- 一覧などのオーバーレイが開いている間は不可視の catcher が first responder なので、surface の keybind(`Cmd+L` 等)は働かない。閉じる chord はオーバーレイのハンドラで自前に照合する。
 - IME: 編集開始の打鍵はモニタが消費するので、新しいエディタが first responder になってから `interpretKeyEvents([event])` で再生する。Enter / Esc / Tab / Space の終端処理は `hasMarkedText()` が false のときだけ行う。未確定状態を読むには AppKit のエディタが要る(`NSTextField` を `NSViewRepresentable` で包む)。
 - SwiftUI の `.cornerRadius` は clipShape であり、その内側に付けた overlay は zIndex では逃げられない。ポップアップは、セルが `anchorPreference` で矩形だけを公開し、コンテナの最上位が `.overlayPreferenceValue` で clip の後に描く。
