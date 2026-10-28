@@ -99,7 +99,7 @@ ideal_sha: b342586dbcbb66af128a90978ca6ec5dd637b3d6ef7f9a00f7c8ea469af894ed
 | C82 | 必須 | `Cmd+K` の clear_screen 既定割り当て解除(検証: C113) | unmet | - |
 | C83 | 必須 | 一覧セルのクリップボード操作と候補列挙中の Tab 横移動(検証: C107 + C108) | unmet | - |
 | C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | met | cycle 21: just swift-test exit 0 (ProjectRenderTargetTests 21 件 passed) |
-| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | - |
+| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | - (C116 は met。2026-10-28 の実機確認で C117(6) が NG: 復元経路では surface がコントローラより先にデコードで生まれ、最初の同期より前に 1 フレーム描く。直し方が C122 の「適用経路は 1 本」と衝突するため cycle 22 で ask) |
 | C86 | 必須 | 閉じた surface を経路によらず undo 期限後に SurfaceView〜IOSurface まで解放(検証: C116・C126 + C123〜C125 の読み合わせ + C117) | unmet | - (C116・C126 は met、C123 は met。C124・C125 は C117 待ち) |
 | C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 21: just swift-test exit 0 (ProjectRenderTargetTests 21 件 passed) |
 | C88 | 必須 | `zig build` が exit 0 | met | cycle 21: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 |
