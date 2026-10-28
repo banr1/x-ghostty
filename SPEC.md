@@ -310,7 +310,9 @@ single click label:
   その project に focus
 
 double click label:
-  inline rename
+  inline rename(Enter で確定・Esc で取消。終えたらキーボードフォーカスを
+  端末へ戻す — 消えた入力欄が first responder を持ったままにしない。
+  クリックで別の surface へ移って終えた場合はそのまま)
 
 click note glyph (帯の右端):
   その project のノート編集オーバーレイを開く(§21.2、focus は変えない)
@@ -2781,6 +2783,16 @@ surface が解放されずに残ることは、いずれも根治すべき欠陥
   first responder を移す。かつてこの経路だけはフォーカスを一覧に残す扱いで、
   window の first responder が閉じた `SurfaceView` を掴んだまま解放させず、
   `Cmd+L` で一覧を閉じることもできなかった。
+- **ポインタ追跡を閉じた後に取り直す**(必須 86)。SwiftUI の hover /
+  pointer-style の追跡は、最後のマウスイベントの時点でポインタの下にあった
+  responder を、次のマウスイベントまで保持する。キーボードだけで
+  プロジェクト・ペインを閉じると(一覧の行選択 `Delete` 等)、そのとき
+  ポインタの下に居た view(zoom 中の分割の各ペイン等)がマウスを動かすまで
+  `SurfaceView` ごと滞留し、レンダラも描き続けていた。そこで
+  `syncRenderTargetOcclusion` は遷移の `released` が空でないとき、次の
+  ランループでポインタの現在位置へ合成の mouse-moved をウィンドウに送り
+  (`refreshPointerTracking`)、追跡を今の view 階層で取り直させる。ポインタが
+  ウィンドウの外なら送らない。
 - **`SurfaceView` は自身を強参照する購読を持たない**(必須 123)。
   `.ghosttySelectionDidChange` の購読は publisher に `object:` を渡さず
   (`object: self` を渡すと `NotificationCenter` の publisher が `self` を

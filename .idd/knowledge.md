@@ -21,6 +21,9 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - テストの削除・無効化の検査(C14)の基準は Atlas Builder 移行時点の commit `9cb808d`。当時は `x-ghostty/` 配下にあったため、`git diff -M 9cb808d HEAD` とリネーム検出を付けて比べる。fork 開始時点(`5307c05`)からは、`f93d9b1`(タブ・複数ウィンドウ・非 macOS の撤去)でタブ・ウィンドウ・quick terminal・update 系のテストが消えており、Zig の `test "ghostty.h ..."` は `xghostty.h` へ改名されている。
 - `.idd/` の台帳・記録はシェルコマンド(grep 等)からは読めない(hook が拒否する)。ファイルとして直接読む。
 - 実機観測(サンドボックス off の周回で使える): `zig build` 後、`(nohup zig-out/XGhostty.app/Contents/MacOS/xghostty > /tmp/app.log 2>&1 &)` で別プロセスとして起動できる(`open -n` は -54 で失敗した)。保存状態を復元して起動する。打鍵は Swift の小さなツールで `NSRunningApplication(processIdentifier:).activate` の後 `CGEvent(keyboardEventSource:virtualKey:keyDown:)` を `.cghidEventTap` へ post、窓 ID は `CGWindowListCopyWindowInfo` で pid から引き、`screencapture -x -l <窓ID> out.png` で撮る(swiftc のコンパイルは数分かかる)。終わったら自分の pid だけ kill する。
+- `zig-out/XGhostty.app` の bundle id は `com.mitchellh.xghostty`、Xcode の `macos/build/Debug/XGhostty.app` は `com.mitchellh.xghostty.debug`。保存状態が別なので、人間が残した Debug アプリを起動したまま zig-out 版を並行して起動・kill できる。
+- 解放の確認は `heap <pid> -addresses 'XGhostty.SurfaceView' | grep -c '^0x'` で生存 `SurfaceView` を数えるのが最も直接的(スレッド・IOSurface より揺れない)。`leaks <pid> --traceTree=<addr>` は保守的走査で弱参照やスタック上の古いポインタまで並べるので、所有者の特定にはほぼ使えない。仮説は挙動の差(どの操作で解放されるか)で切り分ける。`lldb -p <pid> --batch -s cmds.txt` で自分の起動したプロセスに ObjC の式を打てる(合成イベントの送信など)。
+- 合成のマウス操作: `CGEvent(mouseEventSource:mouseType:mouseCursorPosition:mouseButton:)` を `.cghidEventTap` へ post(座標はグローバルの左上原点ポイント、ダブルクリックは `.mouseEventClickState` を 1→2)。この環境では window のスクショ 1px = 1pt で、左右 56px・上 37px が影。合成ダブルクリックでラベルの名前編集に入ると、入力欄が first responder にならないことがある(もう一度クリックすると入る)。
 - C ABI: `include/xghostty.h` の action enum は後続のタグ値を保つ(in-place 置換か末尾追加)。
 
 ## 実装の現状
@@ -35,6 +38,8 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - fork の機能を作る前に、上流が同等の機構を既に持っていないかを確かめる。欠けているのは API ではなく呼び出し側の走査範囲、ということがあった。
 
 ## SwiftUI / AppKit の癖
+
+- SwiftUI(macOS)の hover / pointer-style の追跡は、最後のマウスイベントの時点でポインタの下にあった responder 連鎖を次のマウスイベントまで保持する。キーボードだけで view を消すと、その view(とそれが持つ `SurfaceView`)がマウスを動かすまで解放されない。ポインタ位置への合成 mouse-moved を window に `sendEvent` すれば取り直される(`BaseTerminalController.refreshPointerTracking`)。この保持は「マウスの位置」に依存するので、解放の実機再現ではポインタの置き場所を固定しないと結果が揺れる。
 
 - `NSEvent.addLocalMonitorForEvents` を SwiftUI の `onAppear` で 1 度だけ入れると、その時点の View の値を掴んだまま古い closure を呼び続ける(1 回目だけ動き、2 回目から狂う)。参照型の handler box を経由させ、body の評価ごとに現在の closure へ差し替える。
 - ローカル keyDown モニタは responder より先に走り、登録順に呼ばれ、nil を返すと連鎖が止まる。オーバーレイを重ねるときは、下の層のハンドラの先頭で「上の層が active なら event をそのまま返す」。

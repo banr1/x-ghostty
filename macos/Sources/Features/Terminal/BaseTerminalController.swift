@@ -2396,6 +2396,41 @@ class BaseTerminalController: NSWindowController,
             }
         }
         appliedRenderTarget = target.applied(except: unapplied)
+
+        if !transition.released.isEmpty {
+            refreshPointerTracking()
+        }
+    }
+
+    /// Re-run the window's pointer tracking at the pointer's current location
+    /// once the views of released surfaces are gone (`SPEC.md` §31.4).
+    ///
+    /// SwiftUI's hover / pointer-style tracking keeps the responders it found
+    /// under the pointer at the last mouse event, and only recomputes them on
+    /// the next one. Closing a project or pane from the keyboard removes its
+    /// views without any mouse event, so that stale state would keep every
+    /// surface view under the pointer — renderer, display link, IOSurfaces —
+    /// alive past the undo window, for as long as the mouse stays still. A
+    /// synthetic mouse-moved at the same spot makes it look again. Deferred
+    /// so SwiftUI has already dropped the closed views from the hierarchy.
+    private func refreshPointerTracking() {
+        DispatchQueue.main.async { [weak self] in
+            guard let window = self?.window, window.isVisible,
+                  let contentView = window.contentView else { return }
+            let location = window.mouseLocationOutsideOfEventStream
+            guard contentView.frame.contains(location),
+                  let event = NSEvent.mouseEvent(
+                    with: .mouseMoved,
+                    location: location,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber,
+                    context: nil,
+                    eventNumber: 0,
+                    clickCount: 0,
+                    pressure: 0) else { return }
+            window.sendEvent(event)
+        }
     }
 
     func windowDidResize(_ notification: Notification) {

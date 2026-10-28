@@ -221,6 +221,22 @@ struct TerminalWorkspaceView: View {
                 }
             }
         }
+        .onChange(of: workspace.renamingProject) { newValue in
+            // Ending an inline rename (Enter commits, Escape cancels) removes
+            // the label's text field, which held first responder; nothing
+            // would take the keyboard back, so typing and keybinds (Cmd+L)
+            // would go nowhere. Hand it back to the terminal like the
+            // overlays above — unless the rename ended because the user
+            // clicked into a surface, which already has it.
+            if newValue == nil {
+                DispatchQueue.main.async {
+                    guard let surface = lastFocusedSurface?.value,
+                          let window = surface.window,
+                          !(window.firstResponder is XGhostty.SurfaceView) else { return }
+                    window.makeFirstResponder(surface)
+                }
+            }
+        }
         .onChange(of: workspace.shortcutListActive) { active in
             // Closing the shortcut list hands keyboard focus back to the
             // terminal ONLY when no other overlay is underneath: closed over

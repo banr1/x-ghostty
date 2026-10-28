@@ -195,7 +195,9 @@ its window management with a single model:
   leaks are fixed for this: a terminal view no longer subscribes to its own
   selection notifications with a strong self-reference, and the core surface
   is freed synchronously on the main thread instead of being deferred past
-  its view's lifetime. This is why
+  its view's lifetime. Closing from the keyboard also re-runs pointer
+  tracking once, so SwiftUI's hover state does not keep the closed views
+  that were under a resting mouse pointer alive. This is why
   the app can sit idle for days holding many projects without burning CPU or
   GPU memory. See SPEC.md §31.
 
