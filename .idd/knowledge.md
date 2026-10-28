@@ -14,6 +14,8 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - `just swift-test` の passed 件数の表示は並列出力で揺れる。判定は exit code と、ログ中の failed が 0 件であること。
 - `xcodebuild -only-testing:<Target>/<Suite>/<test>` は識別子が何にも一致しなくても exit 0 になる(0 件実行で「成功」)。絞り込み実行は、ログでそのテストが実際に走ったことを確かめてから通過とみなす。
 - ビルドとテストは foreground で、明示的な timeout を付けて実行する。headless のセッションは手番の終了とともに background のプロセスを SIGTERM するため、background に回した検証は失われる。
+- `just swift-test` のログには失敗したテスト名しか出ず、どの `#expect` が落ちたかは出ない。失敗箇所は式を分けて推測する。
+- テストの `ProjectStateOf(... paneTree:)` は `focusedSurface` を nil で作る。閉じる・zoom 解除などで `snapFocusToPrimaryInOverallView` が走って初めてプライマリーが入るので、期待値は操作前の `focusedSurface` ではなくペインの id から作る。
 - Swift Testing の `#expect` は、ローカル変数の mutating メソッド呼び出しを包めない(コンパイルエラー)。`let applied = state.mutatingCall(...)` としてから `#expect(applied)` と書く。
 - macOS 27 / Xcode 27(27A266a)環境の注意。(1) Metal Toolchain は Xcode 27 では別途ダウンロードする部品で、無いと metallib 生成が失敗する(`xcodebuild -showComponent MetalToolchain` で確認、`xcodebuild -downloadComponent MetalToolchain` で導入。2026-09-30 導入済み)。(2) MacOSX27 SDK の math.h は modules 有効時に `INFINITY` を float.h に委ねるが、zig 0.15/0.16 同梱の float.h は strict モードで定義しないため、zig 同梱 libc++ のビルドが `INFINITY` 未定義で落ちる(zig 0.16 でも再現。zig を上げても直らない)。`pkg/apple-sdk/build.zig` の `libcOverlay` が `math.h` の上書きヘッダを libc の include_dir に挟んで補っている。(3) `macos/build` に古い未署名の `xghostty.debug.dylib` が残ると CodeSign が「code object is not signed at all」で失敗する。`macos/build/Debug/XGhostty.app` を消して再ビルドすれば直る。2026-09-30 時点で 3 ゲートはこの環境で exit 0。
 - テストの削除・無効化の検査(C14)の基準は Atlas Builder 移行時点の commit `9cb808d`。当時は `x-ghostty/` 配下にあったため、`git diff -M 9cb808d HEAD` とリネーム検出を付けて比べる。fork 開始時点(`5307c05`)からは、`f93d9b1`(タブ・複数ウィンドウ・非 macOS の撤去)でタブ・ウィンドウ・quick terminal・update 系のテストが消えており、Zig の `test "ghostty.h ..."` は `xghostty.h` へ改名されている。

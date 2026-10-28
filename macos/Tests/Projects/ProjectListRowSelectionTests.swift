@@ -177,6 +177,39 @@ struct ProjectListRowSelectionTests {
         #expect(model.state.focusedProject == b.id)
     }
 
+    @Test func closingTheFocusedRowHandsTheNewFocusTargetAndKeepsTheSession() {
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
+        let model = Self.makeListModel(Self.makeState([a, b]))
+        let closedSurfaces = Set(a.paneTree.map { SurfaceID(rawValue: $0.id) })
+        // B's only pane is its primary, where focus lands outside zoom.
+        let newFocus = b.paneTree.map { SurfaceID(rawValue: $0.id) }.first
+        #expect(newFocus != nil)
+        #expect(closedSurfaces.isSubset(of: model.state.retainedSurfaceIDs))
+
+        // The outcome carries the newly focused project's focused surface —
+        // the target the controller moves keyboard focus to (C125), so no
+        // first responder lingers on the closed surface.
+        #expect(model.closeProject(a.id) == .switched(target: b.id, focus: newFocus))
+        #expect(model.state.focusedProject == b.id)
+        #expect(model.state.projects[b.id]?.focusedSurface == newFocus)
+        #expect(model.state.retainedSurfaceIDs.isDisjoint(with: closedSurfaces))
+        #expect(model.projectListActive)
+    }
+
+    @Test func closingAnUnfocusedRowLeavesTheFocusedProjectAlone() {
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
+        let c = Self.makeProject(name: "gamma", at: Date(timeIntervalSince1970: 2))
+        let model = Self.makeListModel(Self.makeState([a, b, c]))
+        let focus = model.state.projects[a.id]?.focusedSurface
+
+        #expect(model.closeProject(c.id) == .switched(target: a.id, focus: focus))
+        #expect(model.state.focusedProject == a.id)
+        #expect(model.state.projects[a.id]?.focusedSurface == focus)
+        #expect(model.projectListActive)
+    }
+
     @Test func closingTheLastRowDelegatesToTheWindowClose() {
         let only = Self.makeProject(name: "only")
         let model = Self.makeListModel(Self.makeState([only]))

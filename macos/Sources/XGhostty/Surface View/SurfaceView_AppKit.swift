@@ -285,8 +285,18 @@ extension XGhostty {
 
             // A drag can emit multiple selection changes. Debounce so screen
             // readers hear one announcement once the selection settles.
+            //
+            // The publisher must not be given `object: self`: it retains its
+            // object, and since this view holds the subscription that formed a
+            // retain cycle that kept every closed SurfaceView (and its core
+            // surface, pty and renderer) alive forever. Filter by identity
+            // through a weak reference instead.
             accessibilitySelectionCancellable = NotificationCenter.default
-                .publisher(for: .ghosttySelectionDidChange, object: self)
+                .publisher(for: .ghosttySelectionDidChange)
+                .filter { [weak self] notification in
+                    guard let self else { return false }
+                    return notification.object as AnyObject? === self
+                }
                 .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
                 .sink { [weak self] _ in
                     guard let self else { return }

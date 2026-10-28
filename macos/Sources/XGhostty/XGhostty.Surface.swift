@@ -24,12 +24,20 @@ extension XGhostty {
         }
 
         deinit {
-            // deinit is not guaranteed to happen on the main actor and our API
-            // calls into libghostty must happen there so we capture the surface
-            // value so we don't capture `self` and then we detach it in a task.
-            // We can't wait for the task to succeed so this will happen sometime
-            // but that's okay.
+            // Our API calls into libghostty must happen on the main thread.
+            // When deinit already runs there (the common case: the owning
+            // SurfaceView is released on the main thread), free synchronously.
+            // Deferring the free would let core callbacks still reach the
+            // SurfaceView through its unretained userdata after that view has
+            // been deallocated, which crashes.
             let surface = self.surface
+            if Thread.isMainThread {
+                xghostty_surface_free(surface)
+                return
+            }
+
+            // Off the main thread we can't call in directly, so capture the
+            // surface value (not `self`) and free it on the main actor.
             Task.detached { @MainActor in
                 xghostty_surface_free(surface)
             }

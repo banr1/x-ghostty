@@ -1883,14 +1883,18 @@ class BaseTerminalController: NSWindowController,
     /// Apply a confirmed row-selection Delete. Closing the focused row moves
     /// focus like `close_project` (the model's judgment); the `surfaceTree`
     /// swap is then a real switch, otherwise a harmless no-op. Keyboard focus
-    /// stays with the open list either way. The last project's close
-    /// delegates to the window close (§18.5), exactly like
-    /// `performCloseFocusedProject`.
+    /// (first responder) follows the model's new focus target exactly like
+    /// `performCloseFocusedProject`: leaving it on the closed surface would
+    /// keep that surface alive past the undo window and swallow `Cmd+L`.
+    /// The list stays open; its row operations run on the local key monitor,
+    /// not the responder chain. The last project's close delegates to the
+    /// window close (§18.5), exactly like `performCloseFocusedProject`.
     private func performCloseProjectListRow(_ id: ProjectID) {
         let before = workspace.state
         switch workspace.closeProject(id) {
-        case .switched:
+        case .switched(_, let focus):
             surfaceTree = workspace.focusedPaneTree
+            moveKeyboardFocus(toProjectSurface: focus)
             registerWorkspaceUndo("Close Project", undo: before, redo: workspace.state)
 
         case .closedLast:
