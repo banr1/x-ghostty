@@ -1694,7 +1694,10 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   ダイアログ(同一形式を流用)が出る。
 - 一覧の行選択での `Delete`(§27.2)は `closeProjectListRow` で同じ
   Cancel / Close Project ダイアログを経てその行のプロジェクトを閉じる(hidden な
-  行にも効き、一覧は開いたまま)。
+  行にも効き、一覧は開いたまま)。閉じたのがフォーカス中のプロジェクトなら、
+  `closeProject` の `.switched` が返す新しい focus 先の surface へキーボード
+  フォーカスを移す — `close_project`(`performCloseFocusedProject`)と同じ扱いで、
+  閉じる経路によってフォーカスの行き先に差を出さない(必須 125、§31.4)。
 - 最終ペインの `Cmd+W`:`ghosttyDidCloseSurface` の最終ペイン昇格から
   `projects.count > 1` ガードを外し、単一プロジェクトの最終ペイン close も確認付き
   `close_project` へ昇格する(確定後の経路は §18.5 どおり window close へ委譲)。
@@ -2181,8 +2184,13 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   `↑↓` で選択行が動き、`Enter` でその行のセルカーソルへ戻り、`Esc` で解除して
   セルカーソルへ戻る。行選択中の `Delete` はプロジェクトを閉じる操作と同じ
   確認ダイアログ(§23)を経てその行のプロジェクトを削除する — **hidden な
-  行にも効く**(`closeProject(id:)`)。**一覧そのものは `Esc` では閉じない**
-  (閉じるのは `Cmd+L`、§27.3)。
+  行にも効く**(`closeProject(id:)`)。フォーカス中の行を閉じた場合は、
+  モデルが導いた新しい focus 先(`.switched` の `focus`)の surface へ
+  キーボードフォーカス(first responder)が移る(`moveKeyboardFocus(toProjectSurface:)`、
+  必須 125)。一覧は開いたままで、行操作の操作感は変わらず、閉じた後も
+  `Cmd+L` で一覧を閉じられる(フォーカスが閉じた surface に残ると、その
+  surface が解放されず、`Cmd+L` で一覧を閉じることもできなくなる。§31.4)。**一覧そのものは
+  `Esc` では閉じない**(閉じるのは `Cmd+L`、§27.3)。
 - **全行ノート表示**(`Cmd+Opt+E`、一覧の中でのみ):全行のノートを全行表示に
   するトグル。閲覧のみ・行ごとではなく一括・状態は透過的(セッション開始時は
   常に 1 行表示、永続化しない)。一望モードの `toggle_note_overview` とは
@@ -2279,7 +2287,7 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 候補メニュー(§27.2)は編集していない状態から `Enter` で開くもので、編集
 セッション(`ProjectListCellEdit`)とは相互排他 — この規則とは競合しない。
 
-### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 28 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 9 件 / ProjectListSortedMoveTests 4 件 / ProjectListClipboardTests 12 件)
+### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 28 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 11 件 / ProjectListSortedMoveTests 4 件 / ProjectListClipboardTests 12 件)
 
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
@@ -2299,7 +2307,11 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 - Delete: セル値削除が列ごとの定義どおり(タイトル空・優先度/締切/次トリガー
   未設定・表示は不変)/ ノートの全行削除は確認の承認を経てのみ
 - 行選択: Esc で行選択・Enter で復帰・Esc で解除の遷移 / 行選択の Delete が
-  close 相当の削除(hidden 行にも効く)
+  close 相当の削除(hidden 行にも効く)/ 一覧セッション中にフォーカス中の
+  プロジェクトを閉じると `.switched` で新しい focus 先の surface が返り、閉じた
+  プロジェクトの surface は保持集合から消え、一覧セッションは継続する /
+  フォーカス中でない行を閉じてもフォーカス中のプロジェクトは変わらない
+  (必須 126)
 - ソート連動: ソート有効中のセル値変更・新規作成で並びが即座に更新 /
   手動入替の承認で表示順を手動順として引き継ぎソート状態が手動へ戻る /
   ソートバーで手動を直接選んだ場合も表示順を引き継ぐ(ProjectListSortedMoveTests)
@@ -2640,7 +2652,8 @@ struct PaneLocationTracker {
 ## 31. 描画対象・描画停止・surface 解放仕様
 
 **描かれていないものは描画コストゼロ**であることの仕様(2026-09-07 改訂・
-必須対応事項 84〜87)。多数のプロジェクトを抱えて長時間起動し続けるのが
+必須対応事項 84〜87)と、**閉じたものは資源ゼロ**であることの仕様
+(2026-10 改訂・必須対応事項 86・123〜126、§31.4)。多数のプロジェクトを抱えて長時間起動し続けるのが
 この製品の前提であり、画面に出ていない surface が描画を続けること、閉じた
 surface が解放されずに残ることは、いずれも根治すべき欠陥である。
 
@@ -2738,15 +2751,42 @@ surface が解放されずに残ることは、いずれも根治すべき欠陥
   落とす(cross-project クリックでは focused surface が `surfaceTree` の外に
   正当に居るため、判定は「全プロジェクトのいずれかに居るか」で行う)。これが
   無いと、閉じたペインが「次に別の surface が focus を取るまで」レンダラごと
-  滞留する — 一覧の行 close のように focus を動かさない経路では、その滞留が
-  オーバーレイを閉じるまで続いてしまう。
+  滞留する。
+- **閉じる経路でキーボードフォーカスに差を出さない**(必須 125)。一覧の
+  行選択 `Delete`(`performCloseProjectListRow`)でフォーカス中のプロジェクトを
+  閉じたときも、`close_project`(`performCloseFocusedProject`)と同じく
+  `.switched` の新しい focus 先へ `moveKeyboardFocus(toProjectSurface:)` で
+  first responder を移す。かつてこの経路だけはフォーカスを一覧に残す扱いで、
+  window の first responder が閉じた `SurfaceView` を掴んだまま解放させず、
+  `Cmd+L` で一覧を閉じることもできなかった。
+- **`SurfaceView` は自身を強参照する購読を持たない**(必須 123)。
+  `.ghosttySelectionDidChange` の購読は publisher に `object:` を渡さず
+  (`object: self` を渡すと `NotificationCenter` の publisher が `self` を
+  強参照し、その購読を `self` が持つ循環になる)、debounce の前の
+  `[weak self]` の filter(`notification.object === self`)で自身の通知に
+  絞る。この循環は fork 開始時点(5307c05)から上流にあり、閉じたペイン・
+  プロジェクト・起動時の復元で捨てられる初期 surface の `SurfaceView` を
+  一つも解放させていなかった。
+- **コア surface はメインスレッド上で同期的に解放する**(必須 124)。
+  `XGhostty.Surface.deinit` は、メインスレッド上で走るとき(所有する
+  `SurfaceView` がメインスレッドで解放される通常の場合)は
+  `xghostty_surface_free` をその場で呼ぶ。メインスレッド外のときだけ
+  メインアクターへ回す。上流の `deinit` は常に `Task` で後回しにしており、
+  その間に `SurfaceView` が先に解放されると、コアのコールバックが unretained
+  userdata(`App.surfaceView(from:)`)経由で解放済みの view を参照して落ちる
+  — 上の循環を断ったことで初めて表面化し、起動直後に落ちていた。
 - 例外は**上流由来の undo 窓**だけである:`registerWorkspaceUndo` が
   `WorkspaceState` スナップショットを `ExpiringUndoManager` に
   `undoExpiration` 付きで預けるため、閉じたプロジェクトの surface は
   undo できる間だけ生き残る(`close_surface` の undo と同じ挙動)。これは
   上流由来のターミナル動作であり、必須 14 の退行禁止に従って維持する。
   期限切れで undo が破棄された時点で参照が切れ、解放される — **恒久的な
-  滞留ではない**。
+  滞留ではない**。以上により、`Cmd+W`(`close_surface`)・`close_project`・
+  一覧の行選択 `Delete` で閉じた surface、終了済みからの再開で置き換えられた
+  旧 surface、起動時の復元で置き換えられた初期 surface は、閉じる経路に
+  よらず undo 期限後に `SurfaceView`・コア surface・pty・レンダラ・
+  ディスプレイリンク・関連スレッド・IOSurface まで解放される(必須 86。
+  **閉じたものは資源ゼロ**)。
 
 ### 31.5 テスト(ProjectRenderTargetTests 21 件)
 

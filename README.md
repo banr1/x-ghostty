@@ -127,7 +127,9 @@ its window management with a single model:
   cell's value (the note cell asks
   first); Esc on the cell cursor selects the whole row — `↑↓` move the
   selection, `Delete` deletes the row's project behind the same confirmation
-  as closing it (hidden rows included), Enter or Esc return to the cells.
+  as closing it (hidden rows included; if it was the focused project, keyboard
+  focus moves to the newly focused project exactly as with `close_project`,
+  while the list stays open), Enter or Esc return to the cells.
   The sort bar sits at the top of the table (`↑` from the top row, `←→` and
   Enter to pick; see the sorting notes above). `Opt+↑↓` move the cursor's
   row (with a confirmation while a key sort is active) and `Opt+←→` its
@@ -185,8 +187,15 @@ its window management with a single model:
   or restarted from a terminated pane are stopped before their first frame
   unless they are on screen, and every start and stop goes through the one
   model-layer transition the tests check. Overlays only cover the terminal; they never change what is drawn
-  behind them. Closing a pane or project frees its surface along with its
-  renderer, display link, and threads (after the usual undo window). This is why
+  behind them. Closing a pane or project — by `Cmd+W`, `close_project`, or
+  `Delete` on a selected list row alike — frees its surface along with its
+  view, PTY, renderer, display link, threads, and IOSurfaces once the usual
+  undo window expires, and so do surfaces replaced by restarting a
+  terminated pane or discarded during launch-time restore. Two upstream
+  leaks are fixed for this: a terminal view no longer subscribes to its own
+  selection notifications with a strong self-reference, and the core surface
+  is freed synchronously on the main thread instead of being deferred past
+  its view's lifetime. This is why
   the app can sit idle for days holding many projects without burning CPU or
   GPU memory. See SPEC.md §31.
 
