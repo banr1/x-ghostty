@@ -14,6 +14,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - `just swift-test` の passed 件数の表示は並列出力で揺れる。判定は exit code と、ログ中の failed が 0 件であること。
 - `xcodebuild -only-testing:<Target>/<Suite>/<test>` は識別子が何にも一致しなくても exit 0 になる(0 件実行で「成功」)。絞り込み実行は、ログでそのテストが実際に走ったことを確かめてから通過とみなす。
 - ビルドとテストは foreground で、明示的な timeout を付けて実行する。headless のセッションは手番の終了とともに background のプロセスを SIGTERM するため、background に回した検証は失われる。
+- 3 ゲートを background に回した場合は、手番を終える前に foreground のループ(`perl -e 'select(undef,undef,undef,5)'` で待ち、出力ファイルに終了印が出るまで回す。素の `sleep` はハーネスが拒否することがある)で完了を待てば失われない。
 - `just swift-test` のログには失敗したテスト名しか出ず、どの `#expect` が落ちたかは出ない。失敗箇所は式を分けて推測する。
 - テストの `ProjectStateOf(... paneTree:)` は `focusedSurface` を nil で作る。閉じる・zoom 解除などで `snapFocusToPrimaryInOverallView` が走って初めてプライマリーが入るので、期待値は操作前の `focusedSurface` ではなくペインの id から作る。
 - Swift Testing の `#expect` は、ローカル変数の mutating メソッド呼び出しを包めない(コンパイルエラー)。`let applied = state.mutatingCall(...)` としてから `#expect(applied)` と書く。

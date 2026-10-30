@@ -28,7 +28,8 @@ Ghostty 既存の action model には `new_split`, `goto_split`, `toggle_split_z
 ```text
 - Linux / GTK 対応（本 fork は macOS 専用。GTK apprt は削除済みで、
   そもそも対応対象として存在しない）
-- tmux / zellij 互換
+- tmux / zellij 互換(tmux / zellij のセッション・ウィンドウ・ペイン管理を
+  xghostty 側で再実装すること。tmux をペインの受け皿として使うことは含まない、§29)
 - floating pane
 - live session 完全復元
 - scrollback / PTY 状態の永続復元
@@ -855,7 +856,9 @@ close_surface 経路)。
 - sortState(ソート状態 — 手動 / next / show / deadline / priority、§24.4。
   レガシー保存は手動として decode)
 - projects(names / paneTree / note / priority / deadline / nextTrigger /
-  primary フラグ / createdAt)
+  terminal(プロジェクトの端末の表示名。手元は保存しない)/ paneSessions
+  (ペインごとの端末と連番)/ lastPaneIndex / primary フラグ / createdAt。
+  §29.2)
 - lastPriorityResetWorkday(§28.2)
 - focusedProject(復元時に検証)
 - focusedSurface per project
@@ -1124,8 +1127,7 @@ macos/Sources/Features/Projects/
   ProjectListOverlay.swift         (プロジェクト一覧(台帳)オーバーレイ、§27)
   ProjectListCellEditor.swift      (一覧セルの AppKit 編集フィールドと IME 橋渡し、§27.5)
   ProjectWorkday.swift             (作業日と 06:00 境界、§28.1)
-  ProjectRemoteSplit.swift         (リモート split の起動判断とレポート鮮度、§29)
-  PaneForegroundProbe.swift        (pty の前景プロセス取得、§29.3)
+  ProjectTerminal.swift            (端末登録・手元判定・tmux セッションのコマンドと kill 対象、§29)
   ProjectOverlayKeys.swift         (オーバーレイ共有のローカル keyDown モニタ、§21.2)
   ProjectRenderTarget.swift        (描画対象・保持集合・停止/再開/解放の導出、§31)
 ```
@@ -1238,7 +1240,7 @@ hidden な project も一覧の**行選択 Delete** で close できる(2026-08-
 ## 19. テスト計画
 
 (MVP 構築時の計画記録。現行のテストは各仕様節末尾のテスト小節 —
-§21.4/§22.8/§23.5/§24.5/§25/§26.5/§27.6/§28.4/§29.4 — が正。)
+§21.4/§22.8/§23.5/§24.5/§25/§26.5/§27.6/§28.4/§29.5 — が正。)
 
 ### 19.1 Unit tests
 
@@ -1744,8 +1746,16 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   代わりに `ghosttyExitedSurfaceKeyDown`(`isReturn` フラグ付き)を post する。
   素の keyDown だけが対象で、コマンド chord(`Cmd+W` 等)は exited ペインでも
   従来どおり効く。
+- ペインのコマンドは tmux セッションへの attach(§29.3)なので、最終ペインの
+  「exit」は tmux クライアントまたは ssh の終了 — detach・セッションの終了・
+  ssh の失敗や切断 — を含み、いずれも同じ終了済み経路に乗る。出力(ssh の
+  エラーを含む)は最終フレームとして見えたまま残る。パネルの文言は上流どおり
+  "Shell exited" のまま。
 - controller:terminated なプロジェクトでの Enter は `restartTerminatedPane` —
-  新しい `SurfaceView`(新シェル)を生成し、モデルの
+  死んだペインと**同じ attach コマンド**(`restartLaunchCommand`、§29.3)で
+  新しい `SurfaceView` を生成する。セッションが生きていれば再 attach、無ければ
+  開始ディレクトリの規則で作り直す。ペインの端末とセッション名は新ペインへ
+  引き継がれる。新しい surface はモデルの
   `WorkspaceModel.restartTerminatedPane` で**同じペインスロット**へ差し替える
   (新ペインはプライマリーかつ focused surface になり、ノートは保持)。
   surfaceTree を再同期し、focused プロジェクトならキーボード focus も移す。
@@ -1755,8 +1765,10 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 
 ### 23.4 永続化と喪失経路
 
-- 終了済み状態は **runtime-only**(保存しない)。復元は全ペインを新しい
-  シェルで再生成するため、terminated だったプロジェクトも生きて戻る。ノート・
+- 終了済み状態は **runtime-only**(保存しない)。復元は全ペインを保存済みの
+  tmux セッションへの attach コマンドで再生成するため(§29.3)、terminated
+  だったプロジェクトも生きて戻る(セッションが生きていれば同じ中身へ戻り、
+  無ければ作り直される)。ノート・
   優先度・締切は ProjectState レコードに乗って保持される(§21.1、§24.1)。
 - プロジェクトとその情報が失われる経路は、確認ダイアログを経た明示的な close
   操作(`Cmd+W`・`close_project`・一覧の行選択での `Delete`)**のみ**。アプリ
@@ -2081,7 +2093,7 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
 2026-08-19 改訂で **Notion 流儀**に統一した(必須対応事項 65〜80):`Enter` は
 セルの操作、移動は矢印と Tab、削除は `Delete`、行の選択と削除は行選択。
 行の内容・並び・ソート状態の適用と解除・セル編集の確定と取り消し・値候補の
-列挙(優先度・次トリガー・日付候補)・Delete の削除規則・行選択の遷移・
+列挙(優先度・次トリガー・端末・日付候補)・Delete の削除規則・行選択の遷移・
 端移動・トグル可否・focus 可否・新規行の表示状態と挿入位置・編集中のキー
 振り分けの判断はすべてモデル層(`ProjectList.swift` /
 `ProjectListCandidates.swift` / `WorkspaceState.swift`)に置き、
@@ -2097,13 +2109,18 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   - `hiddenProjectIDs: Set<ProjectID>` — 一覧の visibility 列。**永続化される**
     (2026-08-18 改訂で runtime-only から昇格、§12.1)。
   - `listColumnOrder: [ProjectListColumn]` — 列順。既定は
-    **表示・タイトル・優先度・締切・次トリガー・ノート**の 6 列。
+    **表示・タイトル・端末・優先度・締切・次トリガー・ノート**の 7 列。
+    decode は `ProjectListColumn.normalizedOrder` で常に全列の順列へ修復し、
+    端末列が無かった頃の 6 列の保存では端末列が既定どおりタイトルの直後に
+    入り、他の列の保存順は保たれる。
 - **序数(Cmd+1〜9)は visible な行を上から数えた順**
   (`visibleProjectIDs = projectOrder.filter { !hidden }`、`ordinal(of:)`)。
   ツリーの走査順ではなく台帳が序数を定義し、配置が序数に追従する(§26.3)。
 - `ProjectListRow` は行の純粋導出(`projectListRows`):タイトル・序数
-  (hidden は nil)・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
-  まま運び、空欄に描くのは view の仕事。ノート列は通常 1 行目のみを表示し、
+  (hidden は nil)・端末・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
+  まま運び、空欄に描くのは view の仕事。端末セルは空欄にならない
+  (`terminalDisplayName(in:)` — 保存値が手元(nil)か登録から消えた名前なら
+  手元の端末の表示名を描く。§29.2)。ノート列は通常 1 行目のみを表示し、
   全行表示トグル(§27.2)が全文を描く。**hidden な行も visible な行と同じ色で
   描く**(2026-08-19 改訂でグレーアウトを廃止。序数欄の `·` が hidden の
   印)。
@@ -2120,7 +2137,8 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   ときはスクロールしてセルカーソルに追従する(zoom 中に呼び出した場合の挙動は
   定めず、実装に任せる)。列幅はヘッダ帯とセルが共有する単一規則
   (`columnFrame`):タイトル・ノートは固定列の残り幅を等分する可変幅、
-  表示・優先度・締切・次トリガーは各列の最長値が収まる固定幅。
+  表示・優先度・締切・次トリガーは各列の最長値が収まる固定幅、端末は短い
+  機体名が収まる固定幅(長い表示名は切り詰める)。
 
 ### 27.2 セル機構(カーソル・Enter 操作・候補メニュー・Delete・行選択)
 
@@ -2153,9 +2171,10 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     台帳を書き、`relayout()` が背後の配置を即座に組み直す(§26.3)。可否は
     `canToggleProjectVisibility`:hidden → visible は表示上限 9(§7.3)、
     visible → hidden は**最低 1 つは visible に残す**(§25 と同じ規則)。
-  - **優先度・次トリガー列** — **候補メニュー**がセルの下に開く
+  - **優先度・次トリガー・端末列** — **候補メニュー**がセルの下に開く
     (`ProjectListCandidateMenu`):実値のみの全列挙(優先度は
-    high/medium/low、次トリガーは自分/外部/イベント。**未設定は含めない**)。
+    high/medium/low、次トリガーは自分/外部/イベント。**未設定は含めない**。
+    端末は手元を含む登録済み端末の表示名を登録順に、§29.1)。
     `↑↓` で選び `Enter` で確定(`commitProjectListCandidate` — 通常の setter と
     同じ書込み口)、`Esc` は何も変えずに閉じる。`Tab` / `Shift+Tab` は**値を
     変えずに**候補を閉じて右・左のセルへ移る(§27.7)。旧 `Space` 循環は
@@ -2178,7 +2197,7 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     候補を閉じて右・左のセルへ移る(§27.7)。旧 `Space`/`Shift+Space` の
     日付送りは廃止した(必須対応事項 77)。
 - **`Delete` のセル値削除**(`ProjectListDeleteAction`、必須対応事項 79):
-  タイトルは空に、優先度・締切・次トリガーは未設定に。ノートは確認を表示し、
+  タイトルは空に、優先度・締切・次トリガーは未設定に、端末は手元に戻す。ノートは確認を表示し、
   OK なら**全行削除**・Cancel なら何もしない。表示列では何もしない。変異は
   `deleteProjectListCellValue`(通常の setter と同じ書込み口)。
 - **行選択**(`ProjectListKeyboardMode`、必須対応事項 80):セルカーソルで
@@ -2305,7 +2324,8 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
   visible 行を上から数えた順で hidden を飛ばす / 既定列順 = 表示・タイトル・
-  優先度・締切・次トリガー・ノート / 行順・列順の入れ替えと round trip 復元 /
+  端末・優先度・締切・次トリガー・ノート / 6 列の保存はタイトルの直後に端末列を
+  得る / 行順・列順の入れ替えと round trip 復元 /
   配置が台帳の全変更と復元で再導出される / 挿入はアンカー行の直下・上限では
   hidden / 連続 N 回の行・列入替の結果順と、返る index が常に移動対象の
   現在位置(カーソル追従)・端のクランプは nil
@@ -2345,6 +2365,7 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   round trip する / 受け付けない文字列・空白のみ・表示列は無視 / 編集中の
   6 ショートカットの chord 対応と対象外 chord の素通し / 候補列挙中の
   Tab / Shift+Tab が値を変えずに閉じて横移動(ProjectListClipboardTests)
+- 端末列(候補・Delete・コピー・貼り付け)は §29.5 の ProjectTerminalColumnTests
 ```
 
 ### 27.7 セルのクリップボード操作と候補列挙中の横移動(2026-08-20 改訂・必須 83)
@@ -2366,13 +2387,15 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 - **セルカーソルの `Cmd+C` / `Cmd+V`**(編集していない状態、
   `ProjectListClipboard`):`Cmd+C` はそのセルの値をその列の綴り
   (`copyText(of:column:)` — タイトルはそのまま、優先度は high/med/low、
-  締切は `YYYY-MM-DD`、次トリガーは me/external/event、ノートは**全行**。
-  未設定は空欄)でクリップボードへコピーする。`Cmd+V` はクリップボードの
+  締切は `YYYY-MM-DD`、次トリガーは me/external/event、端末は表示名、
+  ノートは**全行**。未設定は空欄)でクリップボードへコピーする。`Cmd+V` はクリップボードの
   文字列をそのセルの値として設定する(`pasteApplication(of:column:)`)。
   適用は **parse-or-ignore**:列が受け付けない文字列(不正な日付・未知の
   優先度綴り・空白のみ等)は**無視**して何も変えない — §24.1 の「不正入力は
   未設定へ」と違い未設定 fallback は無い(**未設定へ戻すのは `Delete` の
-  仕事**)。表示列は `Cmd+C` / `Cmd+V` とも何もしない。書込みは既存の確定
+  仕事**)。端末列は**登録済みの表示名だけ**を受け付ける(前後の空白は無視。
+  手元の表示名は既定値 = 手元として保存する)。表示列は `Cmd+C` / `Cmd+V` とも
+  何もしない。書込みは既存の確定
   経路(テキスト列は `commitListCellEdit`、値列は候補確定と同じ setter)を
   通り、再ソート(§24.4)・永続化の挙動はセル編集・候補確定と同一。ノートの
   貼り付けは全行を対象とし、100 行超過時は §21.2 と同じ確認を経る。
@@ -2465,132 +2488,189 @@ struct Workday: Codable, Equatable, Hashable {
   当該キーの無い保存は「未リセット」として decode される
 ```
 
-## 29. リモート split 仕様
+## 29. 端末と tmux セッション仕様
 
-リモートホストで作業中のペインを split したとき、新ペインを**同じホスト・
-同じパス**で開く層。判定はモデル層に閉じ、`XGhosttyTests` から検証する
-(§29.4、必須対応事項 62)。判断材料の OSC 7 レポートを apprt まで運ぶために、
-上流ターミナルコアには最小限の改変を入れてある(`stream_handler.reportPwd` が
-非ローカル報告を捨てずに path + host を apprt へ転送し、`apprt.action.Pwd` と
-`xghostty_action_pwd_s` が `host` を持つ)。VT の意味論は変えていない。
+プロジェクトの数とともに計算資源も 1 台では足りなくなり、手元の機体に加えて
+リモートの機体でも作業するようになった。プロジェクトの実体は各端末の
+`~/workspace/<タイトル>` に同じ名前で置かれ、どの端末で開くかは作業ごとに選ぶ。
+そこで端末を設定ファイルへの**登録制**にし、手元を含む**すべてのペインを端末上の
+tmux セッションの中で開く**。切断や再起動を跨いで作業が生き残り、どの端末に
+いるかは tmux のバーの色で一目で分かる(2026-10-30 改訂・必須 127〜136)。
 
-### 29.1 判断(RemoteSplit.launch)
+判断ロジック — 端末の読み込みと手元判定・プロジェクトの端末の既定と欠落時の
+扱い・セッション名・attach コマンドと開始ディレクトリ規則・セッションオプション・
+端末列の候補と `Delete` / 貼り付け・閉じたときの kill 対象 — はモデル層
+(`ProjectTerminal.swift`・`ProjectState.swift`・`ProjectList*.swift`)に置き、
+`XGhosttyTests` から検証する(§29.5、必須 135)。tmux / zellij の管理を
+xghostty 側で再実装すること(§2)はしない — tmux は**ペインの受け皿**として
+使うだけで、セッション内のウィンドウやペインは tmux 自身が扱う。
 
-```swift
-struct PaneLocationReport: Equatable { var host: String?; var path: String? }
+**OSC 7 検出の廃止**:旧リモート split(ペインがいま ssh 先にいるかを OSC 7 の
+報告と pty の前景プロセスから推測し、split 先で ssh を初期入力として流し込む層。
+`ProjectRemoteSplit` / `PaneLocationTracker` / `PaneForegroundProbe` と
+`ProjectRemoteSplitTests`)は、ssh が切れれば作業が消え、tmux の中では検出自体が
+効かないため廃止した。判断材料の OSC 7 レポートを apprt まで運ぶために入れていた
+上流コアの最小改変(`stream_handler.reportPwd` の非ローカルホストの転送、
+`apprt.action.Pwd` と `xghostty_action_pwd_s` の `host`)も**上流の形へ戻した**
+(非ローカルのホストは上流どおり警告して捨てる)。split 先の端末は推測せず、
+プロジェクトの端末(§29.2)で決まる。
 
-enum PaneSplitLaunch: Equatable {
-    case local
-    case ssh(host: String, path: String)
-    var initialInput: String? { ... }
-}
-
-enum RemoteSplit {
-    static func launch(for report: PaneLocationReport?) -> PaneSplitLaunch
-    static func launch(
-        for report: PaneLocationReport?,
-        foreground: PaneForegroundProcess) -> PaneSplitLaunch
-}
-```
-
-- `PaneLocationReport` はシェル統合(OSC 7)が報告したペインの居場所。
-  `host` はローカルなら空、リモートなら報告されたホスト名。
-  `OSSurfaceView.paneLocation`(`PaneLocationTracker`)が保持する(§29.3)。
-- `.ssh` になるのは**すべて**満たすときだけ:
-  1. レポートが存在し、
-  2. `host` が空白除去後に非空で、かつ loopback 集合
-     (`localhost` / `localhost.localdomain` / `127.0.0.1` / `::1`、
-     大小文字無視)に含まれず、
-  3. `path` が**絶対パス**(`/` 始まり)である。
-- それ以外はすべて `.local`:レポート無し・ホスト情報無し・loopback・
-  パス無し・相対パス。**再接続先を確定できない場合はローカル**という
-  必須対応事項 61 の規則をそのまま形にしたもの。
-- loopback チェックはコアが既にローカル性を解決した後の**二重の柵**である。
-
-### 29.2 届け方(initialInput)
+### 29.1 端末の登録と手元判定(ProjectTerminal / ProjectTerminalRegistry)
 
 ```text
-ssh -t <quoted-host> 'cd <quoted-path> && exec ${SHELL:-/bin/sh} -l'\n
+project-terminal = <name>,<host>[,<color>]    # 繰り返し可。空値でリストを消す
 ```
 
-- この行は**新ペインのコマンドを置き換えるのではなく、通常どおり起動した
-  ローカルシェルへ初期入力として流し込む**(`XGhostty.App.swift` の split 経路が
-  `surfaceView.paneSplitLaunch().initialInput` を `config.initialInput` に
-  載せる)。
-- そうする理由は失敗経路にある:ホストが到達不能でも、ssh が無くても、リモートの
-  パスが消えていても、**ペインは継承ディレクトリで動くローカルシェルのまま残る** —
-  特別扱いのコードなしに「従来どおりローカルで開く」(必須対応事項 61)が
-  構造的に満たされる。
-- 引用は二重:ローカルシェルがスクリプトを素通しするため(同時に `${SHELL}` を
-  リモートに届くまで展開させないため)と、リモートシェルがパスを 1 語として
-  見るため。`-t` は tty を強制し、リモートシェルを対話的にする。
-- ユーザー名・鍵・ポートは**意図的に**リモート側の ssh 設定に委ねる
-  (前提事項)。使うのは報告されたホスト名だけで、元ペインの ssh コマンドラインは
-  再現しない。
-- 対象は **split のみ**。新規プロジェクト作成とレイアウト適用で作られる新
-  プロジェクトはローカルで開く(必須対応事項 60)。
+- 設定キー `project-terminal`(`src/config/Config.zig` の `ProjectTerminals`)。
+  1 端末につき表示名・ssh で接続するホスト名・tmux が解釈できる色
+  (`colour25`・`#2f6f4f` 等。省略時は tmux の既定)を書き、複数登録できる。
+  C API へは 1 行 1 登録の改行区切りの 1 文字列で渡り、Swift 側で
+  `ProjectTerminalRegistry.registrations(fromConfigLines:)` が行に分ける。
+- `ProjectTerminal(registration:)` は各欄の前後の空白を無視し、名前かホストの
+  欠けた登録は捨てる。同じ表示名の 2 つ目以降も捨てる(先勝ち)。
+- **手元**:起動している機体の hostname(`gethostname`。DNS は引かない)と、
+  末尾の `.local` と大小文字の差を無視して一致するホストを持つ最初の端末。
+  手元は ssh を介さない。一致する登録が無いとき — 登録が 1 つも無いときを
+  含む — は、hostname を表示名とする**暗黙の手元**(色は既定)が末尾に足され、
+  手元は常に存在する。
+- 設定の再読み込みで反映される:`AppDelegate` が起動時と設定変更のたびに
+  `ProjectTerminalRegistry.shared`(ワークスペースのモデルが無い復元のデコード中に
+  使う)を、`BaseTerminalController` が `workspace.terminalRegistry`(一覧の候補と
+  以後に起動するペイン)を差し替える。開いているペインはそのセッションのまま。
 
-### 29.3 レポートの鮮度(PaneLocationTracker)
+### 29.2 プロジェクトの端末と一覧の端末列
 
-OSC 7 は**変わったときにしか報告されない**。bash 統合は同一 PWD の再報告を
-抑止する(`_ghostty_last_reported_cwd`)ため、ssh を抜けて同じディレクトリの
-ローカルシェルに戻っても新しい報告は来ない。レポートを最後に受けたまま持ち
-続けると、**手元にいるペインの split が誤ってリモートへ ssh してしまう**
-(成功条件 19 後半の違反)。zsh 統合は precmd ごとに無条件再報告するため自然
-回復するが、bash では回復しない。上流のシェル統合スクリプトは継承資産であり
-触らないので、鮮度は macOS アプリ層で担保する。
+- `ProjectState.terminalName: String?` — 登録済み端末の表示名。`nil` が既定 =
+  手元(手元を選んだときも `nil` を保存する、`storedName(for:)`)。キー
+  `terminal` で永続化され、無い保存(端末より前の保存)は手元として読む。
+- 登録から消えた名前は**手元として扱う**が、値は保持する
+  (`ProjectTerminalRegistry.terminal(named:)`)。再登録されれば戻る。
+- 一覧の端末列(§27.1。既定列順でタイトルの直後):`Enter` で手元を含む登録済み
+  端末の表示名を登録順に候補列挙して選ぶ(§27.2)。`Delete` は手元へ戻す。
+  `Cmd+C` は表示名をコピーし、`Cmd+V` は登録済みの表示名だけを受け付けて
+  それ以外を無視する(§27.7)。端末はソートキーではない。
+- 端末の変更は**その後に起動するペイン**(split・終了済みからの再開)に効き、
+  開いているペインはそのまま。
 
-```swift
-enum PaneForegroundProcess { case shell, other, unknown
-    static func classify(executablePath: String?) -> PaneForegroundProcess }
+### 29.3 ペインの tmux セッション(TmuxPaneBinding / TmuxSession)
 
-struct PaneLocationTracker {
-    private(set) var report: PaneLocationReport?
-    mutating func record(_ report: PaneLocationReport)
-    mutating func reset()
-    mutating func commandFinished(foreground: PaneForegroundProcess)
-    func splitLaunch(foreground: PaneForegroundProcess) -> PaneSplitLaunch
-}
-```
+- **ペインのコマンドそのもの**が attach コマンドである(ローカルシェルへの
+  初期入力ではない)。全経路 — 起動時の初期ペイン・新規プロジェクト
+  (`ProjectState.new`)・split(`splitLaunchCommand`)・終了済みからの再開
+  (`restartLaunchCommand`)・復元(`TmuxPaneRestore`)— で surface はこの
+  コマンドで生まれる。
+- **束縛**(`TmuxPaneBinding`):ペインは最初に起動するときに、プロジェクトの
+  その時点の端末と、プロジェクト内で一意な連番に束縛される(`bindPane` /
+  `launchCommand(forNewPane:)`)。連番はプロジェクトが生きている間は再利用しない
+  (`lastPaneIndex`。undo 期限中の閉じたペインと後続が衝突しない)。束縛は
+  固定で、プロジェクトの端末を後で変えても開いているペインは動かない。
+- **セッション名**は `<プロジェクト ID(UUID 小文字)>-<n>`(`TmuxSession.name`)。
+  タイトルにも端末にも依存せず、リネームや端末の変更で変わらない。
+- **コマンド**(`TmuxSession.attachCommand`):
 
-- **前景プロセス**が根拠である。ペインが本当にリモートにいる間、pty の前景に
-  いるのは(ローカルの)`ssh` 等であり、手元のプロンプトに戻っていれば前景は
-  ペイン自身のシェルである。前景 pid は `xghostty_surface_foreground_pid`
-  (pty の `tcgetpgrp`)で得て、`proc_pidpath` で実行ファイル名を引き、
-  `PaneForegroundProcess.classify` が既知のシェル名集合と照合する
-  (`PaneForegroundProbe`)。取得できなければ `.unknown`。
-- **split 時の柵**:前景がペイン自身のシェルなら、レポートがどれだけリモートを
-  主張していても `.local`。`.unknown` は柵にしない — 前景を読めないことは
-  「戻ってきた証拠」ではないので、従来どおりレポートに従う。
-- **command finished(OSC 133 D)での破棄**:コマンド終了時に前景がシェルなら、
-  いま終わったのは**手元で**走っていたコマンド(= ssh からの復帰)なので
-  レポートを捨てる。前景がシェル以外なら、それはリモートシェル自身の
-  コマンド終了報告が同じストリームを流れてきただけなので**捨てない**
-  (リモート側が bash で再報告を抑止していても、リモート判定が維持される)。
-  この処理は通知設定(`notifyOnCommandFinish`)の判定より**前**に行う。
-- **child exit での破棄**:報告した当のシェルが消えたのだからレポートも消す。
-  終了済みペインを Enter で再開した新しいシェルは手元で始まる(§23.3)。
-- 観測性:pwd 報告の受信(host + path)と split の起動判断は debug ログに
-  出る。実機で「報告が来ていない」のか「来たうえでローカルと判定した」のかを
-  ログだけで切り分けられる。
+  ```text
+  手元:       /bin/sh -c '<script>'
+  手元でない: env TERM=xterm-256color ssh -t '<host>' '/bin/sh -c '\''<script>'\'''
 
-### 29.4 テスト(ProjectRemoteSplitTests、15 件)
+  <script> = PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; <開始ディレクトリ>;
+             exec tmux new-session -A -s '<session>' -c "$d"
+               ';' set-option -t '=<session>:' status-style 'bg=<color>'
+               ';' set-option -t '=<session>:' status-left-length 100
+               ';' set-option -t '=<session>:' status-left '[<title>] '
+               ';' set-option -t '=<session>:' prefix C-s
+  ```
+
+  - `-A` はセッションが生きていれば attach、無ければ作る。ホスト・パス・
+    セッション名・タイトルは引用する。ユーザー名・鍵・ポートは xghostty を動かす
+    機体の ssh 設定に任せる。`PATH` の前置は、ペインのコマンドや非対話の ssh が
+    Homebrew を `PATH` に入れるログインプロファイルを読まないため。
+  - `TERM=xterm-256color` は ssh 先に xghostty の terminfo が無くても tmux を
+    起動させるため(必須 134)。
+- **開始ディレクトリ**(端末側のシェルで判定、必須 130):`~/workspace/<タイトル>`
+  があればそこ、無ければ `~/workspace`、それも無ければホーム
+  (`TmuxStartDirectory.project`)。split は元ペインのセッションの
+  `#{pane_current_path}` を `tmux display-message` で引き継ぎ、引けなければ
+  同じ規則に落ちる(`.inherit(fromSession:)`)。既存セッションへの再 attach では
+  tmux が `-c` を無視するので開始ディレクトリは変わらない。
+- **セッションオプション**(`optionCommands`、必須 131):attach のたびに
+  **そのセッションだけ**へ `status-style` の背景を端末の色に(色が既定なら
+  触れない)、`status-left` をプロジェクトのタイトルに(`#` は `##` へ。
+  `status-left-length` を 100 に)、`prefix` を `C-s` に設定する。`-g` は使わず、
+  各端末の `~/.tmux.conf`・サーバ全体のオプション・キー表・他のセッションには
+  触れない(`C-s C-s` で prefix を透過させる `bind C-s send-prefix` は各端末の
+  `~/.tmux.conf` に置く)。
+- **リネーム**:`BaseTerminalController` が `workspace.$state` の変化ごとに
+  `TmuxOpenPanes.retitles(to:)` で前後とも開いているペインのうちプロジェクトの
+  タイトルが変わったものを導き、`retitleArguments`(`status-left` だけの
+  `set-option`)を実行する。経路(一覧のセル・ダブルクリック・rename action)に
+  よらない。端末に届かなければ諦め、次の attach で揃う。
+- **終了と再 attach**(必須 132、§23):tmux クライアントや ssh の終了 —
+  detach・セッションの終了・ssh の失敗や切断 — でペインは終了済みになり、出力は
+  見えたまま残る。`Enter` は同じ attach コマンドを再実行する。
+- **復元**:ペインごとの端末と連番はキー `paneSessions`(と `lastPaneIndex`)で
+  ペインレイアウトと同じ経路に保存され、ツリーに無いペインの記録は落とす。復元の
+  デコードでは surface の生成時にコマンドが要るので、プロジェクトのデコードが
+  ツリーのデコードを `TmuxPaneRestore.decoding` の中で走らせ、各 surface が
+  `TmuxPaneRestore.command(for:)` で自分の attach コマンドを引く(task-local)。
+  保存済みのペインは同じ端末の同じセッションへ再 attach し(中身が保たれる)、
+  セッションの記録が無い保存のペインはプロジェクトの端末と次の連番に束縛される。
+
+### 29.4 閉じたペインのセッションの kill(TmuxOpenPanes)
+
+- `BaseTerminalController` は `workspace.$state` の変化ごとに、開いている束縛済み
+  ペインの集合(`TmuxOpenPanes`)を前の集合と比べ、木から消えたペインを記録する
+  (`advance(to:)`)。閉じる経路 — `Cmd+W`・`close_project`(終了済みペインを
+  含む全ペイン)・一覧の行選択 `Delete`・redo — によらない。
+- undo 期限 + 1 秒後に、そのとき開いていないペインのセッションだけを端末ごとに
+  まとめて kill する(`killTargets` → `killArguments`:
+  `tmux kill-session -t '=<session>'`。手元でない端末は
+  `ssh -o BatchMode=yes` で)。undo で戻したペインと、開いているペインが attach
+  しているセッション(終了済みから再開したペインが引き継いだもの)は kill しない。
+  登録から消えた端末のペインは、attach していた手元で kill する。
+- 端末に届かなければ再試行せず諦める。束縛の無いペインは kill の対象にならない。
+- アプリの終了・窓を閉じる(`removeAllSurfaces`)では kill しない — 再起動後の
+  復元が同じセッションへ戻るため。
+
+### 29.5 テスト(ProjectTerminalTests 23 件 / ProjectTerminalColumnTests 14 件 / ProjectTmuxPaneTests 21 件 / ProjectTmuxLaunchTests 11 件)
 
 ```text
-- ローカルの pwd 報告 → .local
-- リモートホストの pwd 報告 → そのホスト・パスへの .ssh
-- ホスト情報なし / 空白ホスト / loopback ホスト → .local
-- リモートホストでも絶対パスが無ければ .local
-- ホストとパスは両シェル向けに引用される
-- 再接続は新ペインのシェル内で走る(失敗してもローカルシェルが残る)
-- 前景プロセスの分類(シェル / それ以外 / 取得不能)
-- 前景がシェルなら、リモートのレポートがあっても .local
-- 前景がシェル以外 / 取得不能なら、レポートどおり .ssh
-- 生きたリモートセッション中のコマンド終了ではレポートを捨てない
-- 手元のシェルに戻ってのコマンド終了ではレポートを捨てる
-- 破棄後に新しい報告が来ればリモート判定が復活する
-- reset(child exit)でレポートを忘れる
-- ローカルのレポートは柵の影響を受けない
+- 登録: 登録順に読める / 設定の改行区切りの値が登録に分かれる / 再読み込みの登録が
+  レジストリを置き換える / hostname と一致する端末だけが手元(.local・大小文字を
+  無視)/ 登録が無ければ hostname を名とする暗黙の手元だけ / 不正・重複の登録は
+  捨てる / 色は省略でき各欄は trim される
+- プロジェクトの端末: 既定は手元 / 保存・復元で同じ端末 / 端末より前の保存は手元 /
+  登録から消えた端末は手元として読むが値は保持 / 手元を選ぶと既定値を保存
+- 端末列: タイトルの直後の選択列 / 候補は登録済み端末の表示名のみ(未登録の
+  機体では暗黙の手元を含む)/ 候補の選択で表示名を保存 / ソートキーではない /
+  Delete で手元へ / 実変更のみ報告 / コピーは表示名 / 貼り付けは登録済みの
+  表示名のみ
+- セッション名: <ID>-<n> / 連番は再利用しない(閉じたペインの連番も)
+- コマンド: 手元は sh の中で tmux を直接 / 手元でない端末は同じスクリプトを
+  ssh -t で包み TERM=xterm-256color / ホスト・タイトル・セッションの引用 /
+  開始ディレクトリの規則(~/workspace/<タイトル> → ~/workspace → ホーム)/
+  split は元セッションの #{pane_current_path} を引き継ぐ
+- セッションオプション: そのセッション宛てで -g を伴わない / 色が既定なら
+  status-style に触れない / attach の後に設定される / タイトルの # は文字どおり /
+  リネームは status-left だけを更新 / 手元でない端末の kill は BatchMode の ssh
+- 束縛: プロジェクトの端末と増える連番に束縛 / 一度決まれば端末の変更に従わない /
+  木に無いペインは束縛しない / 端末変更後の split は新しい端末で / 終了済みの
+  再開はセッションを保つ / 保存・復元で端末とセッション名が戻る / 保存は木に
+  あるペインだけで最大の連番は保つ / セッションの記録が無い保存は未束縛で戻る
+- 起動: 新規プロジェクトの初期ペインは最初のセッションの attach / split は
+  現在の端末の新しいセッションで元のパスを引き継ぐ / 未束縛ペインの split は
+  プロジェクトの規則 / 終了済みの再開は同じセッションへ再 attach(未束縛なら
+  新しいセッション)/ 生きているプロジェクトに再開コマンドは無い / 復元された
+  ペインは保存済みセッションへ再 attach / 記録の無い保存は起動時に束縛 /
+  プロジェクトの外のデコードは既定のコマンド / ワークスペースは元ペインを持つ
+  プロジェクトで split を束縛 / 新規プロジェクトは命名され attach する
+- kill: kill 対象は端末ごとのセッション名の集合 / undo で戻したペインは除く /
+  プロジェクトを閉じると終了済みペインも対象 / 未束縛と登録から消えた端末は
+  プロジェクトと同じに解決 / 木から消えたペインは undo 期限後に kill 対象 /
+  プロジェクトの close は終了済みを含む全ペインを閉じる / 期限前に undo で
+  戻せば kill しない / 終了済みから再開したペインが引き継いだセッションは
+  kill しない / 未束縛は追わずペインの追加では何も閉じない
+- リネーム: 開いている各セッションを retitle / リネームが無い・その変化で
+  開いたペインは retitle しない / 閉じたプロジェクトは retitle しない
 ```
 
 ## 30. ショートカット一覧仕様

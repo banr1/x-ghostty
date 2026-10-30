@@ -80,10 +80,10 @@ its window management with a single model:
   once per day, silently. Deadlines, notes, and
   next triggers are left alone. See SPEC.md §24 and §28.
 - **Deletion protection.** Closing a project always asks for confirmation,
-  whether or not anything is running in it. When a project's last pane's shell
-  exits, the project stays as a terminated pane — its note, priority,
-  deadline, and next trigger kept — and pressing Return starts a new shell in
-  the same pane.
+  whether or not anything is running in it. When a project's last pane's command
+  (its tmux client or ssh) exits, the project stays as a terminated pane — its note, priority,
+  deadline, and next trigger kept — and pressing Return re-runs the pane's
+  command (its tmux attach) in the same pane.
   The only way a project and its information are lost is an explicitly
   confirmed close (`Cmd+W` on the last pane, `close_project`, or `Delete` on
   a selected row in the project list); quitting and relaunching restores
@@ -94,9 +94,9 @@ its window management with a single model:
   hiding the last visible project is refused. See SPEC.md §25.
 - **Project list.** `Cmd+L` toggles the ledger: a table covering roughly 80%
   of the window that lists *every* project, hidden ones included (drawn in
-  the same color as visible rows), in one unpartitioned row order with six
-  columns — visibility, title, priority, deadline, next trigger, and the
-  note's first line. This row order is the source of truth: the on-screen
+  the same color as visible rows), in one unpartitioned row order with seven
+  columns — visibility, title, terminal, priority, deadline, next trigger,
+  and the note's first line. This row order is the source of truth: the on-screen
   arrangement is derived from it, and the `Cmd+1-9` ordinals are its visible
   rows counted from the top. Cell operations follow the Notion idiom. The
   cell cursor moves with the arrows and Tab / Shift+Tab (row-end wrap, edge
@@ -105,7 +105,8 @@ its window management with a single model:
   replaces the content), the visibility cell hides or shows the project on
   the spot — immediately re-laying out the terminals behind the list — and
   the priority / next-trigger / deadline cells enumerate candidates below
-  the cell (real values only; the deadline offers ten real dates — today
+  the cell (real values only; the terminal cell lists the registered
+  terminals; the deadline offers ten real dates — today
   through seven days out, same day next month, and in three months, rounded
   to month-end when the day doesn't exist), chosen with `↑↓` and Enter;
   while candidates are listed, Tab / Shift+Tab close them without changing
@@ -122,9 +123,10 @@ its window management with a single model:
   with undo scoped to that editing session. On the cell cursor, `Cmd+C`
   copies the cell's value and `Cmd+V` sets it from the clipboard (single
   cell only; the note column carries every line; a string the column does
-  not accept is ignored; the visibility column takes no part). Typing a
+  not accept is ignored — the terminal column takes only a registered
+  terminal's name; the visibility column takes no part). Typing a
   date still works, and is how past dates are set. `Delete` clears the
-  cell's value (the note cell asks
+  cell's value (the terminal cell goes back to the local one; the note cell asks
   first); Esc on the cell cursor selects the whole row — `↑↓` move the
   selection, `Delete` deletes the row's project behind the same confirmation
   as closing it (hidden rows included; if it was the focused project, keyboard
@@ -152,15 +154,28 @@ its window management with a single model:
   `Cmd+/` again) restores the previous state untouched, in-progress edits
   included. The upstream `cmd+k` clear-screen default is unbound (the action
   remains available for user keybinds). See SPEC.md §30.
-- **Remote splits.** Splitting a pane whose shell is on a remote host (as
-  reported by shell integration over OSC 7) opens the new pane on that same
-  host and in the same directory, reconnecting with `ssh` and leaving user,
-  key, and port to your `~/.ssh/config`. A pane that is back at its own shell
-  prompt counts as local again even if its last report came from elsewhere, so
-  returning from `ssh` and splitting gives you a local pane. If the location
-  cannot be determined or the connection fails, you simply get a local pane as
-  before. Only splits do this — new projects always start locally. See
-  SPEC.md §29.
+- **Terminals and tmux sessions.** Machines are registered in the config with
+  `project-terminal = <name>,<host>[,<color>]` (repeatable; reloading the
+  config applies changes). The terminal whose host matches this machine's
+  hostname (ignoring `.local` and case) is the local one; with nothing
+  registered, an implicit local terminal named after the hostname exists.
+  Each project runs on one terminal — local by default, chosen in the project
+  list's terminal column. Every pane, local ones included, is started as the
+  command `tmux new-session -A -s <project id>-<n>`, wrapped in
+  `ssh -t <host>` (with `TERM=xterm-256color`) for a non-local terminal and
+  leaving user, key, and port to your `~/.ssh/config`. A new session starts in
+  `~/workspace/<title>`, else `~/workspace`, else home; a split inherits the
+  current path of the pane it splits. On attach, only that session gets its
+  status bar colored with the terminal's color, the project title as
+  `status-left` (updated on rename), and `C-s` as its prefix — your
+  `~/.tmux.conf` and other sessions are left alone. When tmux or ssh exits
+  (detach, session end, a failed or dropped connection) the pane becomes
+  terminated with its output still visible, and Return re-runs the same
+  attach. Restarting xghostty re-attaches every pane to its saved session.
+  Closing a pane or project kills its sessions once the undo period has
+  passed (not if undone); quitting never kills them. The former OSC 7
+  remote-split detection is gone, and the upstream core is back to its
+  original OSC 7 handling. See SPEC.md §29.
 - **Layout types.** The screen arrangement is a layout type — a shape (wide,
   tall, or pedestal: n−1 on top plus one full-width across the bottom) times
   an ordinal direction (row-major or column-major; the wide shape uses about
