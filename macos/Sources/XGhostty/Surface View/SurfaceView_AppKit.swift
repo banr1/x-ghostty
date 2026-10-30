@@ -1872,6 +1872,10 @@ extension XGhostty {
             let uuid = UUID(uuidString: try container.decode(String.self, forKey: .uuid))
             var config = XGhostty.SurfaceConfiguration()
             config.workingDirectory = try container.decode(String?.self, forKey: .pwd)
+            // A project's pane re-attaches to its tmux session (must 129).
+            if let uuid, let command = TmuxPaneRestore.command(for: uuid) {
+                config.command = command
+            }
             let savedTitle = try container.decodeIfPresent(String.self, forKey: .title)
             let isUserSetTitle = try container.decodeIfPresent(Bool.self, forKey: .isUserSetTitle) ?? false
 

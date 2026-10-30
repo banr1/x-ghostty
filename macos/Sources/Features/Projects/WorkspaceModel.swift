@@ -76,8 +76,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// offers and resolves names against. Never persisted — it comes from the
     /// config and this machine's hostname. Until the config registers any,
     /// only the implicit local terminal exists.
-    @Published var terminalRegistry = ProjectTerminalRegistry(
-        registrations: [], hostname: ProjectTerminalRegistry.machineHostname)
+    @Published var terminalRegistry = ProjectTerminalRegistry.shared
 
     /// Whether any workspace-modal overlay session (note overview, layout
     /// selection, project list) currently owns the interaction: while one is
@@ -110,7 +109,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// generated only at creation; restore reuses the stored name and never
     /// regenerates (`SPEC.md` §8). `name` is injectable so tests stay
     /// deterministic; production passes `nil` to draw a random name.
-    init(
+    convenience init(
         wrapping paneTree: SplitTree<Pane>,
         now: Date = Date(),
         name: String? = nil
@@ -118,15 +117,20 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         let projectID = ProjectID()
         let focused = paneTree.firstLeaf.map { SurfaceID(rawValue: $0.id) }
 
-        let project = ProjectStateOf<Pane>(
+        self.init(wrappingProject: ProjectStateOf<Pane>(
             id: projectID,
             name: name ?? ProjectNameGenerator.make(existing: []),
             paneTree: paneTree,
             focusedSurface: focused,
             createdAt: now,
             lastFocusedAt: focused == nil ? nil : now
-        )
+        ))
+    }
 
+    /// A workspace of the single, focused project `project` — the launch
+    /// workspace when nothing is restored.
+    init(wrappingProject project: ProjectStateOf<Pane>) {
+        let projectID = project.id
         state = WorkspaceStateOf<Pane>(
             canonicalProjectTree: .init(view: ProjectRef(id: projectID)),
             projects: [projectID: project],
@@ -1144,6 +1148,50 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///
     /// - Returns: `false` when the project is unknown or not terminated (the
     ///   caller should then discard `newPane`).
+    /// The pane command for `newPane`, about to split `origin` (must 129,
+    /// 130): bound to the current terminal of `origin`'s project, starting
+    /// in `origin`'s current path.
+    ///
+    /// - Returns: `nil` (and changes nothing) when no project holds `origin`.
+    func splitLaunchCommand(newPane: SurfaceID, splitting origin: SurfaceID) -> String? {
+        guard let projectID = projectID(containing: origin),
+              var project = state.projects[projectID] else { return nil }
+        let command = project.splitLaunchCommand(
+            newPane: newPane, splitting: origin, registry: terminalRegistry)
+        state.projects[projectID] = project
+        return command
+    }
+
+    /// The pane command for `newPane`, about to replace the terminated pane
+    /// of `projectID` (must 132): the dead pane's attach command.
+    ///
+    /// - Returns: `nil` (and changes nothing) when the project is unknown or
+    ///   not terminated.
+    func restartLaunchCommand(in projectID: ProjectID, newPane: SurfaceID) -> String? {
+        guard var project = state.projects[projectID],
+              let command = project.restartLaunchCommand(
+                newPane: newPane, registry: terminalRegistry) else { return nil }
+        state.projects[projectID] = project
+        return command
+    }
+
+    /// A new project with a generated name, its single pane made by
+    /// `makePane` from the pane's id and attach command (must 129).
+    func makeNewProject(
+        now: Date = Date(),
+        lastFocusedAt: Date? = nil,
+        makePane: (UUID, String) -> Pane
+    ) -> ProjectStateOf<Pane> {
+        let existingNames = Set(state.projects.values.map(\.name))
+        return ProjectStateOf<Pane>.new(
+            id: ProjectID(),
+            name: ProjectNameGenerator.make(existing: existingNames),
+            createdAt: now,
+            lastFocusedAt: lastFocusedAt,
+            registry: terminalRegistry,
+            makePane: makePane)
+    }
+
     @discardableResult
     func restartTerminatedPane(
         in projectID: ProjectID,

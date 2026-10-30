@@ -37,6 +37,8 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - SPEC の読み合わせでは、節内の backtick 識別子を抜き出して `grep -rlw` で `macos/Sources macos/Tests src include` に在るかを一括で調べると、廃止済みの識別子(例: `isDrawing`)が機械的に見つかる。テスト件数は `grep -c '@Test'` で節見出しと突き合わせる(1 ファイルに複数 struct があるスイートは struct 単位で数える)。
 - `ProjectListRow` は memberwise init をテストが 30 箇所以上で使う。列を足すときは `var <field>: T? = nil` で宣言すると既存の呼び出しを変えずに済む。端末の登録は `WorkspaceModel.terminalRegistry` が持ち(永続化しない)、一覧の候補・表示・コピー・貼り付けは `terminals:` 引数でこれを受け取る。プロジェクトが保存するのは表示名だけ(手元は `nil`)。
 - ペインの tmux セッションは `ProjectState.paneBindings`(pane ID → 端末の保存名と連番)と `lastPaneIndex`(永続化する最大連番)が持つ。`bindPane` は初回だけプロジェクトの現在の端末で割り当てる。木から外れたペインの割り当てはメモリ上に残し(undo と kill のため)、保存は木にあるペインだけ。終了済みからの再開は割り当てを新しいペインへ移す。kill 対象は `TmuxSession.killTargets(closed:open:registry:)`。
+- ペインの surface は生成時の `SurfaceConfiguration.command` で tmux の attach コマンドを走らせる。surface の id(`SurfaceView(app, baseConfig:, uuid:)`)を先に決めて割り当ててから surface を作る(`BaseTerminalController.makePane`、`ProjectState.new` / `splitLaunchCommand` / `restartLaunchCommand`)。復元では `ProjectState` の decode が保存済みセッションを先に読み、木の decode を `TmuxPaneRestore.decoding` の中で行い、`SurfaceView.init(from:)` が `TmuxPaneRestore.command(for:)` を引く。この文脈は `@TaskLocal`(Swift Testing は並列に走るので、static 変数だとテスト間で漏れて落ちた)。登録の参照先は `ProjectTerminalRegistry.shared`(workspace が無い復元中にも引ける)。
+- zig-out 版を起動すると、復元された全ペインが既定ソケットの tmux に `<uuid>-<n>` のセッションを作る。起動前の `tmux ls -F '#{session_name}'` を控え、終了後にそれ以外の `^[0-9a-f-]{36}-[0-9]+$` だけを kill すれば人間のセッションに触れない。
 - 保存済みの列順に無い列は `ProjectListColumn.normalizedOrder` が既定順の直前の列の後ろへ挿入する(6 列の保存は端末列がタイトルの後に入る)。
 - fork の機能を作る前に、上流が同等の機構を既に持っていないかを確かめる。欠けているのは API ではなく呼び出し側の走査範囲、ということがあった。
 

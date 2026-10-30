@@ -221,12 +221,27 @@ class BaseTerminalController: NSWindowController,
             let model = WorkspaceModel(restoredWorkspace)
             self.surfaceTree = model.focusedPaneTree
             self.workspace = model
-        } else {
-            self.surfaceTree = tree ?? .init(view: XGhostty.SurfaceView(xghostty_app, baseConfig: base))
+        } else if let tree {
+            self.surfaceTree = tree
 
             // Wrap the initial pane tree into the project layer. Phase 0 keeps a
             // single default project whose pane tree mirrors `surfaceTree`.
             self.workspace = WorkspaceModel(wrapping: self.surfaceTree)
+        } else {
+            // The launch project: its first pane attaches to its tmux session
+            // (must 129), like every pane created later.
+            let now = Date()
+            let project = ProjectState.new(
+                id: ProjectID(),
+                name: ProjectNameGenerator.make(existing: []),
+                createdAt: now,
+                lastFocusedAt: now,
+                registry: .shared
+            ) { id, command in
+                Self.makePane(xghostty_app, id: id, command: command, baseConfig: base)
+            }
+            self.surfaceTree = project.paneTree
+            self.workspace = WorkspaceModel(wrappingProject: project)
         }
 
         // Persist state-only project-layer mutations. `rename_project` (both
@@ -498,6 +513,20 @@ class BaseTerminalController: NSWindowController,
 
     // MARK: Methods
 
+    /// A pane surface with id `id` whose command is `command` — the attach
+    /// command of its tmux session (must 129) — replacing the shell, not typed
+    /// into one. The rest of `baseConfig` is kept.
+    static func makePane(
+        _ app: xghostty_app_t,
+        id: UUID,
+        command: String,
+        baseConfig: XGhostty.SurfaceConfiguration?
+    ) -> XGhostty.SurfaceView {
+        var config = baseConfig ?? XGhostty.SurfaceConfiguration()
+        config.command = command
+        return XGhostty.SurfaceView(app, baseConfig: config, uuid: id)
+    }
+
     /// Create a new split.
     @discardableResult
     func newSplit(
@@ -514,9 +543,14 @@ class BaseTerminalController: NSWindowController,
         // We can only create new splits for surfaces in our tree.
         guard surfaceTree.root?.node(view: oldView) != nil else { return nil }
 
-        // Create a new surface view
+        // Create a new surface view, attached to its own tmux session that
+        // starts in the current path of the split pane's (must 129, 130).
         guard let xghostty_app = ghostty.app else { return nil }
-        let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: config)
+        let newID = UUID()
+        guard let command = workspace.splitLaunchCommand(
+            newPane: SurfaceID(rawValue: newID),
+            splitting: SurfaceID(rawValue: oldView.id)) else { return nil }
+        let newView = Self.makePane(xghostty_app, id: newID, command: command, baseConfig: config)
 
         // Do the split
         let newTree: SplitTree<XGhostty.SurfaceView>
@@ -567,20 +601,13 @@ class BaseTerminalController: NSWindowController,
         guard workspace.canAddVisibleProject else { return nil }
         guard let xghostty_app = ghostty.app else { return nil }
 
-        // Build the new project's single initial pane.
-        let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: config)
-        let newPaneTree = SplitTree<XGhostty.SurfaceView>(view: newView)
-
-        // Name and assemble the new project, focused on its initial pane.
-        let now = Date()
-        let existingNames = Set(workspace.state.projects.values.map(\.name))
-        let newProject = ProjectState(
-            id: ProjectID(),
-            name: ProjectNameGenerator.make(existing: existingNames),
-            paneTree: newPaneTree,
-            focusedSurface: SurfaceID(rawValue: newView.id),
-            createdAt: now,
-            lastFocusedAt: now)
+        // Name and assemble the new project, focused on its single initial
+        // pane, which attaches to the project's first tmux session.
+        let newProject = workspace.makeNewProject(lastFocusedAt: Date()) { id, command in
+            Self.makePane(xghostty_app, id: id, command: command, baseConfig: config)
+        }
+        let newPaneTree = newProject.paneTree
+        guard let newView = newPaneTree.firstLeaf else { return nil }
 
         // Snapshot before the switch so the undo can restore the outgoing project.
         let before = workspace.state
@@ -636,15 +663,9 @@ class BaseTerminalController: NSWindowController,
             .init(from: xghostty_surface_inherited_config($0, XGHOSTTY_SURFACE_CONTEXT_PROJECT))
         }
 
-        let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: inherited)
-        let now = Date()
-        let existingNames = Set(workspace.state.projects.values.map(\.name))
-        let newProject = ProjectState(
-            id: ProjectID(),
-            name: ProjectNameGenerator.make(existing: existingNames),
-            paneTree: SplitTree<XGhostty.SurfaceView>(view: newView),
-            focusedSurface: SurfaceID(rawValue: newView.id),
-            createdAt: now)
+        let newProject = workspace.makeNewProject { id, command in
+            Self.makePane(xghostty_app, id: id, command: command, baseConfig: inherited)
+        }
 
         let before = workspace.state
         guard workspace.insertProjectFromList(newProject, after: anchorID) else { return nil }
@@ -1154,7 +1175,11 @@ class BaseTerminalController: NSWindowController,
         guard workspace.isProjectTerminated(projectID) else { return }
         guard let xghostty_app = ghostty.app else { return }
 
-        let newView = XGhostty.SurfaceView(xghostty_app, baseConfig: nil)
+        // Enter re-runs the same attach command (must 132).
+        let newID = UUID()
+        guard let command = workspace.restartLaunchCommand(
+            in: projectID, newPane: SurfaceID(rawValue: newID)) else { return }
+        let newView = Self.makePane(xghostty_app, id: newID, command: command, baseConfig: nil)
         guard workspace.restartTerminatedPane(in: projectID, with: newView) else { return }
 
         if projectID == workspace.state.focusedProject {

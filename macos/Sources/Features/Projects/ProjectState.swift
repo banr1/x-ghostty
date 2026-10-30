@@ -288,6 +288,14 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     @discardableResult
     mutating func bindPane(_ paneID: SurfaceID) -> TmuxPaneBinding? {
         guard paneTree.find(id: paneID.rawValue) != nil else { return nil }
+        return binding(forStarting: paneID)
+    }
+
+    /// The binding of `paneID`, binding it to the project's current terminal
+    /// and the next unused index if it has none. No tree check: a pane's
+    /// surface is created with its attach command, so a new pane is bound
+    /// before it joins the tree.
+    private mutating func binding(forStarting paneID: SurfaceID) -> TmuxPaneBinding {
         if let existing = paneBindings[paneID] { return existing }
         let index = TmuxSession.nextIndex(
             after: paneBindings.values.map(\.index) + [lastPaneIndex])
@@ -295,6 +303,87 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         paneBindings[paneID] = binding
         lastPaneIndex = index
         return binding
+    }
+
+    /// The pane command of `paneID`, a pane about to be created in this
+    /// project (must 129): bind it (unless already bound) and attach to its
+    /// session, starting a new session in `start`.
+    mutating func launchCommand(
+        forNewPane paneID: SurfaceID,
+        start: TmuxStartDirectory,
+        registry: ProjectTerminalRegistry
+    ) -> String {
+        attachCommand(binding: binding(forStarting: paneID), start: start, registry: registry)
+    }
+
+    /// The pane command of `newPane`, about to split `origin` (must 130): the
+    /// new session starts in the current path of `origin`'s session when
+    /// `origin` is bound, otherwise by the project rule.
+    mutating func splitLaunchCommand(
+        newPane: SurfaceID,
+        splitting origin: SurfaceID,
+        registry: ProjectTerminalRegistry
+    ) -> String {
+        let start: TmuxStartDirectory = sessionName(for: origin)
+            .map { .inherit(fromSession: $0) } ?? .project
+        return launchCommand(forNewPane: newPane, start: start, registry: registry)
+    }
+
+    /// The pane command of `newPane`, about to replace the terminated pane
+    /// (must 132): the same attach command, re-attaching to the dead pane's
+    /// session or creating it again. `restartTerminatedPane` then moves the
+    /// binding over. A dead pane that was never bound (a save from before
+    /// tmux sessions) gives the new pane a fresh session.
+    ///
+    /// - Returns: `nil` (and changes nothing) when the project is not
+    ///   terminated.
+    mutating func restartLaunchCommand(
+        newPane: SurfaceID,
+        registry: ProjectTerminalRegistry
+    ) -> String? {
+        guard let deadPane = terminatedPane else { return nil }
+        if let binding = paneBindings[deadPane] {
+            return attachCommand(binding: binding, start: .project, registry: registry)
+        }
+        return launchCommand(forNewPane: newPane, start: .project, registry: registry)
+    }
+
+    /// The attach command of a session on its bound terminal. A terminal no
+    /// longer registered resolves to the local one, like the project's.
+    func attachCommand(
+        binding: TmuxPaneBinding,
+        start: TmuxStartDirectory,
+        registry: ProjectTerminalRegistry
+    ) -> String {
+        let terminal = registry.terminal(named: binding.terminalName)
+        return TmuxSession.attachCommand(
+            session: binding.sessionName(project: id),
+            title: name,
+            start: start,
+            terminal: terminal,
+            isLocal: registry.isLocal(terminal))
+    }
+
+    /// A new project whose single pane is made by `makePane` from the pane's
+    /// id and its attach command (must 129). The pane is bound before it
+    /// exists, so the surface starts with the command itself.
+    static func new(
+        id: ProjectID,
+        name: String,
+        createdAt: Date,
+        lastFocusedAt: Date? = nil,
+        registry: ProjectTerminalRegistry,
+        makePane: (UUID, String) -> Pane
+    ) -> Self {
+        var project = Self(id: id, name: name, paneTree: .init(), createdAt: createdAt)
+        let paneID = UUID()
+        let command = project.launchCommand(
+            forNewPane: SurfaceID(rawValue: paneID), start: .project, registry: registry)
+        let pane = makePane(paneID, command)
+        project.paneTree = SplitTree<Pane>(view: pane)
+        project.focusedSurface = SurfaceID(rawValue: pane.id)
+        project.lastFocusedAt = lastFocusedAt
+        return project
     }
 
     /// The tmux session name of a bound pane, or `nil` when it is unbound.
@@ -348,7 +437,30 @@ extension ProjectStateOf: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try c.decode(ProjectID.self, forKey: .id)
         self.name = try c.decode(String.self, forKey: .name)
-        self.paneTree = try c.decode(SplitTree<Pane>.self, forKey: .paneTree)
+        // Saves written before terminals existed have no key: the local
+        // terminal, the default.
+        self.terminalName = (try? c.decodeIfPresent(String.self, forKey: .terminal)) ?? nil
+        // The saved sessions are read before the tree: a restored surface
+        // starts with the attach command of its session (must 129), so the
+        // tree is decoded inside `TmuxPaneRestore.decoding`. Saves written
+        // before tmux sessions existed have neither key; their panes are bound
+        // as they are restored. Entries for panes not in the tree are dropped.
+        let sessions = (try? c.decodeIfPresent([PaneSessionRecord].self, forKey: .paneSessions)) ?? []
+        var saved: [SurfaceID: TmuxPaneBinding] = [:]
+        for record in sessions {
+            saved[record.pane] = TmuxPaneBinding(terminalName: record.terminal, index: record.index)
+        }
+        let storedLast = (try? c.decodeIfPresent(Int.self, forKey: .lastPaneIndex)) ?? nil
+        let (tree, restored, restoredLast) = try TmuxPaneRestore.decoding(
+            project: id,
+            title: name,
+            terminalName: terminalName,
+            bindings: saved,
+            lastIndex: max(storedLast ?? 0, saved.values.map(\.index).max() ?? 0)
+        ) {
+            try c.decode(SplitTree<Pane>.self, forKey: .paneTree)
+        }
+        self.paneTree = tree
         self.focusedSurface = try c.decodeIfPresent(SurfaceID.self, forKey: .focusedSurface)
         self.note = Self.normalizedNote(try c.decodeIfPresent(String.self, forKey: .note) ?? "")
         let flagged = try c.decodeIfPresent([SurfaceID].self, forKey: .primaryPanes) ?? []
@@ -365,20 +477,8 @@ extension ProjectStateOf: Codable {
         // §24.6): an unknown value in a save decodes as unset.
         self.nextTrigger =
             (try? c.decodeIfPresent(ProjectNextTrigger.self, forKey: .nextTrigger)) ?? nil
-        // Saves written before terminals existed have no key: the local
-        // terminal, the default.
-        self.terminalName = (try? c.decodeIfPresent(String.self, forKey: .terminal)) ?? nil
-        // Saves written before tmux sessions existed have neither key: every
-        // pane is unbound and binds on its next start. Entries for panes not
-        // in the decoded tree are dropped.
-        let sessions = (try? c.decodeIfPresent([PaneSessionRecord].self, forKey: .paneSessions)) ?? []
-        var bindings: [SurfaceID: TmuxPaneBinding] = [:]
-        for record in sessions where paneTree.find(id: record.pane.rawValue) != nil {
-            bindings[record.pane] = TmuxPaneBinding(terminalName: record.terminal, index: record.index)
-        }
-        self.paneBindings = bindings
-        let storedLast = (try? c.decodeIfPresent(Int.self, forKey: .lastPaneIndex)) ?? nil
-        self.lastPaneIndex = max(storedLast ?? 0, bindings.values.map(\.index).max() ?? 0)
+        self.paneBindings = restored.filter { tree.find(id: $0.key.rawValue) != nil }
+        self.lastPaneIndex = restoredLast
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
         self.lastFocusedAt = try c.decodeIfPresent(Date.self, forKey: .lastFocusedAt)
     }

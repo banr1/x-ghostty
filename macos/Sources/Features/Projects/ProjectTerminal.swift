@@ -128,6 +128,12 @@ struct ProjectTerminalRegistry: Equatable {
         return .some(storedName(for: terminal))
     }
 
+    /// The registry new and restored panes resolve their terminals against
+    /// when no workspace is at hand (a restore decodes surfaces before the
+    /// workspace model exists). Until the config registers terminals, only
+    /// the implicit local terminal exists.
+    static var shared = ProjectTerminalRegistry(registrations: [], hostname: machineHostname)
+
     /// This machine's hostname as the kernel reports it (`gethostname`), the
     /// name a registered host is compared against. Read without a DNS lookup.
     static var machineHostname: String {
@@ -165,6 +171,96 @@ struct TmuxClosedPane: Equatable, Hashable {
 
     var sessionName: String {
         binding.sessionName(project: project)
+    }
+}
+
+/// The tmux side of restoring a project's panes (must 129).
+///
+/// A restored surface is created while its project's pane tree is decoded,
+/// and its command must be known at that moment. The project's decode runs
+/// the tree decode inside `decoding`, and each surface asks `command(for:)`:
+/// a saved pane re-attaches to its session on its terminal, and a pane with
+/// no saved session (a save from before tmux sessions) is bound to the
+/// project's terminal and the next unused index. The bindings handed out are
+/// returned to the project. The context is task-local: it is seen only by
+/// the decode that installed it, never by a concurrent one.
+enum TmuxPaneRestore {
+    /// Mutated only by the synchronous decode of the task that installed it.
+    private final class Context: @unchecked Sendable {
+        let project: ProjectID
+        let title: String
+        let terminalName: String?
+        let registry: ProjectTerminalRegistry
+        var bindings: [SurfaceID: TmuxPaneBinding]
+        var lastIndex: Int
+
+        init(
+            project: ProjectID,
+            title: String,
+            terminalName: String?,
+            registry: ProjectTerminalRegistry,
+            bindings: [SurfaceID: TmuxPaneBinding],
+            lastIndex: Int
+        ) {
+            self.project = project
+            self.title = title
+            self.terminalName = terminalName
+            self.registry = registry
+            self.bindings = bindings
+            self.lastIndex = lastIndex
+        }
+    }
+
+    @TaskLocal private static var current: Context?
+
+    /// Runs `decodeTree` with the project's saved sessions available to the
+    /// surfaces it creates, and returns its result together with the
+    /// bindings after the decode — the saved ones plus any handed out — and
+    /// the highest index.
+    static func decoding<T>(
+        project: ProjectID,
+        title: String,
+        terminalName: String?,
+        bindings: [SurfaceID: TmuxPaneBinding],
+        lastIndex: Int,
+        registry: ProjectTerminalRegistry = .shared,
+        _ decodeTree: () throws -> T
+    ) rethrows -> (T, [SurfaceID: TmuxPaneBinding], Int) {
+        let context = Context(
+            project: project,
+            title: title,
+            terminalName: terminalName,
+            registry: registry,
+            bindings: bindings,
+            lastIndex: lastIndex)
+        let tree = try $current.withValue(context) { try decodeTree() }
+        return (tree, context.bindings, context.lastIndex)
+    }
+
+    /// The command a surface being restored with id `pane` starts with, or
+    /// `nil` outside a project's decode (the surface then keeps its default
+    /// command). An existing session is re-attached as is; tmux ignores the
+    /// start directory then.
+    static func command(for pane: UUID) -> String? {
+        guard let context = current else { return nil }
+        let id = SurfaceID(rawValue: pane)
+        let binding: TmuxPaneBinding
+        if let saved = context.bindings[id] {
+            binding = saved
+        } else {
+            let index = TmuxSession.nextIndex(
+                after: context.bindings.values.map(\.index) + [context.lastIndex])
+            binding = TmuxPaneBinding(terminalName: context.terminalName, index: index)
+            context.bindings[id] = binding
+            context.lastIndex = index
+        }
+        let terminal = context.registry.terminal(named: binding.terminalName)
+        return TmuxSession.attachCommand(
+            session: binding.sessionName(project: context.project),
+            title: context.title,
+            start: .project,
+            terminal: terminal,
+            isLocal: context.registry.isLocal(terminal))
     }
 }
 

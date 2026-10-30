@@ -808,17 +808,11 @@ extension XGhostty {
                 guard let controller = surfaceView.window?.windowController as? BaseTerminalController,
                       controller.workspace.paneOperationsEnabled else { return }
 
-                var config = SurfaceConfiguration(
+                // The new pane attaches to its own tmux session, which starts
+                // in the split pane's current path (must 129, 130); the
+                // controller sets the command.
+                let config = SurfaceConfiguration(
                     from: xghostty_surface_inherited_config(surface, XGHOSTTY_SURFACE_CONTEXT_SPLIT))
-
-                // Remote split (SPEC §29): when the pane being split is on
-                // another host, the new pane reconnects to it at the same path.
-                // Only splits do this - a new project always starts here.
-                let launch = surfaceView.paneSplitLaunch()
-                XGhostty.logger.debug("split launch decision=\(String(describing: launch), privacy: .public)")
-                if let reconnect = launch.initialInput {
-                    config.initialInput = reconnect
-                }
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyNewSplit,
