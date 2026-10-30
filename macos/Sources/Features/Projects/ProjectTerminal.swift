@@ -174,6 +174,13 @@ struct TmuxClosedPane: Equatable, Hashable {
     }
 }
 
+/// An open pane whose session's `status-left` is to show `title` after its
+/// project was renamed (must 131).
+struct TmuxRetitle: Equatable {
+    let pane: TmuxClosedPane
+    let title: String
+}
+
 /// The bound panes open across a workspace (must 133). Comparing two states
 /// finds the panes a change closed, whichever path closed them — `Cmd+W`,
 /// `close_project`, the list's row `Delete`, a redo — and, once their undo
@@ -181,15 +188,35 @@ struct TmuxClosedPane: Equatable, Hashable {
 struct TmuxOpenPanes: Equatable {
     private(set) var panes: [SurfaceID: TmuxClosedPane] = [:]
 
+    /// The title of each project, as its sessions' `status-left` shows it.
+    private(set) var titles: [ProjectID: String] = [:]
+
     init() {}
 
     init<Pane>(projects: some Sequence<ProjectStateOf<Pane>>)
     where Pane: Codable & Identifiable & Equatable, Pane.ID == UUID {
         for project in projects {
+            titles[project.id] = project.name
             for pane in project.tmuxPanesInTree {
                 panes[pane.pane] = pane
             }
         }
+    }
+
+    /// The sessions whose `status-left` a rename made stale when moving to
+    /// `next` (must 131): each pane open in both whose project's title
+    /// changed, with the new title. A pane first opened in `next` attached
+    /// with the new title already.
+    func retitles(to next: TmuxOpenPanes) -> [TmuxRetitle] {
+        next.panes.values
+            .sorted { $0.sessionName < $1.sessionName }
+            .compactMap { pane in
+                guard panes[pane.pane] != nil,
+                      let old = titles[pane.project],
+                      let new = next.titles[pane.project],
+                      old != new else { return nil }
+                return TmuxRetitle(pane: pane, title: new)
+            }
     }
 
     /// Moves to `next`, returning the panes open here but not in `next`.

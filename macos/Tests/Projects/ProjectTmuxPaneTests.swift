@@ -348,4 +348,54 @@ struct ProjectTmuxPaneTests {
         #expect(closed.isEmpty)
         #expect(Set(open.panes.keys) == [Self.sid(bound), Self.sid(added)])
     }
+
+    // MARK: Retitling renamed projects' sessions (must 131)
+
+    @Test func renamingAProjectRetitlesEachOfItsOpenSessions() throws {
+        let first = TestPane()
+        let second = TestPane()
+        var project = Self.makeProject(first, terminalName: "loop")
+        project.bindPane(Self.sid(first))
+        project.paneTree = try project.paneTree.inserting(view: second, at: first, direction: .right)
+        project.bindPane(Self.sid(second))
+        let otherPane = TestPane()
+        var other = Self.makeProject(otherPane)
+        other.bindPane(Self.sid(otherPane))
+        let open = TmuxOpenPanes(projects: [project, other])
+
+        project.name = "beta"
+        let retitles = open.retitles(to: TmuxOpenPanes(projects: [project, other]))
+
+        let s1 = try #require(project.sessionName(for: Self.sid(first)))
+        let s2 = try #require(project.sessionName(for: Self.sid(second)))
+        #expect(retitles.map(\.pane.sessionName) == [s1, s2].sorted())
+        #expect(retitles.allSatisfy { $0.title == "beta" })
+        #expect(retitles.allSatisfy { $0.pane.binding.terminalName == "loop" })
+    }
+
+    @Test func noRetitleWithoutARenameOrForPanesOpenedByTheChange() throws {
+        let first = TestPane()
+        let added = TestPane()
+        var project = Self.makeProject(first)
+        project.bindPane(Self.sid(first))
+        let open = TmuxOpenPanes(projects: [project])
+
+        project.setNote("edited")
+        #expect(open.retitles(to: TmuxOpenPanes(projects: [project])).isEmpty)
+
+        project.name = "beta"
+        project.paneTree = try project.paneTree.inserting(view: added, at: first, direction: .right)
+        project.bindPane(Self.sid(added))
+        let retitles = open.retitles(to: TmuxOpenPanes(projects: [project]))
+        #expect(retitles.map(\.pane.pane) == [Self.sid(first)])
+    }
+
+    @Test func aClosedProjectIsNotRetitled() {
+        let pane = TestPane()
+        var project = Self.makeProject(pane)
+        project.bindPane(Self.sid(pane))
+        let open = TmuxOpenPanes(projects: [project])
+
+        #expect(open.retitles(to: TmuxOpenPanes(projects: [TestProjectState]())).isEmpty)
+    }
 }

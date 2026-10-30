@@ -1024,9 +1024,16 @@ class BaseTerminalController: NSWindowController,
     /// Record the panes `state` closed and kill their sessions once the undo
     /// period expires. Whether a pane came back is decided then, against the
     /// workspace at that moment.
+    ///
+    /// The same comparison finds the open sessions of a renamed project and
+    /// updates their `status-left` (must 131), whichever path renamed it.
     private func scheduleTmuxSessionKills(for state: WorkspaceState) {
-        let closed = openTmuxPanes.advance(to: TmuxOpenPanes(projects: state.projects.values))
-        guard killsClosedTmuxSessions, !closed.isEmpty else { return }
+        let next = TmuxOpenPanes(projects: state.projects.values)
+        let retitles = openTmuxPanes.retitles(to: next)
+        let closed = openTmuxPanes.advance(to: next)
+        guard killsClosedTmuxSessions else { return }
+        retitleTmuxSessions(retitles)
+        guard !closed.isEmpty else { return }
         let delay = max(0, undoExpiration.timeInterval) + Self.tmuxKillGrace
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             self?.killTmuxSessions(of: closed)
@@ -1042,6 +1049,20 @@ class BaseTerminalController: NSWindowController,
         for (terminal, sessions) in targets {
             Self.runDetached(TmuxSession.killArguments(
                 sessions: sessions.sorted(),
+                terminal: terminal,
+                isLocal: registry.isLocal(terminal)))
+        }
+    }
+
+    /// Show the new title in each renamed session's `status-left`. A
+    /// terminal out of reach is given up on; the next attach sets it again.
+    private func retitleTmuxSessions(_ retitles: [TmuxRetitle]) {
+        let registry = workspace.terminalRegistry
+        for retitle in retitles {
+            let terminal = registry.terminal(named: retitle.pane.binding.terminalName)
+            Self.runDetached(TmuxSession.retitleArguments(
+                session: retitle.pane.sessionName,
+                title: retitle.title,
                 terminal: terminal,
                 isLocal: registry.isLocal(terminal)))
         }
