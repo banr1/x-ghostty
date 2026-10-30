@@ -19,6 +19,11 @@ struct ProjectListRow: Equatable, Identifiable {
     let deadline: ProjectDeadline?
     let nextTrigger: ProjectNextTrigger?
 
+    /// The project's stored terminal name, `nil` for the local terminal
+    /// (must 128). The cell shows the name it resolves to in the registry
+    /// (`terminalDisplayName(in:)`), so an unregistered name reads as local.
+    var terminalName: String? = nil
+
     /// The full note text: the note column normally shows only the first
     /// line, but the whole-list full-note toggle (`SPEC.md` §27.2) renders
     /// every line, so the row carries them all.
@@ -28,6 +33,13 @@ struct ProjectListRow: Equatable, Identifiable {
     /// empty note.
     var noteFirstLine: String {
         note.components(separatedBy: "\n").first ?? ""
+    }
+
+    /// What the terminal cell shows: the display name of the terminal the
+    /// project runs on. Never blank — a project always has a terminal, the
+    /// local one by default.
+    func terminalDisplayName(in terminals: ProjectTerminalRegistry) -> String {
+        terminals.terminal(named: terminalName).name
     }
 
     /// The text a cell edit of `column` starts from (`SPEC.md` §27.2): the
@@ -40,7 +52,7 @@ struct ProjectListRow: Equatable, Identifiable {
         case .title: return title
         case .deadline: return deadline?.displayText ?? ""
         case .note: return note
-        case .visibility, .priority, .nextTrigger: return nil
+        case .visibility, .terminal, .priority, .nextTrigger: return nil
         }
     }
 }
@@ -48,7 +60,7 @@ struct ProjectListRow: Equatable, Identifiable {
 /// A column of the project list (`SPEC.md` §27.1). The raw value is the
 /// persistence spelling of the column order.
 enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
-    case visibility, title, priority, deadline, nextTrigger, note
+    case visibility, title, terminal, priority, deadline, nextTrigger, note
 
     var id: String { rawValue }
 
@@ -57,12 +69,12 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     var isTextColumn: Bool {
         switch self {
         case .title, .deadline, .note: return true
-        case .visibility, .priority, .nextTrigger: return false
+        case .visibility, .terminal, .priority, .nextTrigger: return false
         }
     }
 
-    /// The selection columns — visibility (a two-value toggle), priority,
-    /// and next trigger — where typing never starts an edit.
+    /// The selection columns — visibility (a two-value toggle), terminal,
+    /// priority, and next trigger — where typing never starts an edit.
     var isSelectionColumn: Bool { !isTextColumn }
 
     /// Whether this column's cell edit is multi-line (`SPEC.md` §27.2): only
@@ -74,26 +86,30 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     /// — Enter operates on the cell, it never moves the cursor): the text
     /// columns start a seeded edit with the caret in the existing text; the
     /// visibility column toggles hide/show immediately (under the
-    /// at-least-one-visible protection); the value columns — deadline,
-    /// priority, next trigger — enumerate their candidates below the cell
-    /// (§27.6).
+    /// at-least-one-visible protection); the value columns — terminal,
+    /// deadline, priority, next trigger — enumerate their candidates below
+    /// the cell (§27.6).
     var enterAction: ProjectListEnterAction {
         switch self {
         case .title, .note: return .beginEdit
         case .visibility: return .toggleVisibility
-        case .deadline, .priority, .nextTrigger: return .enumerateCandidates
+        case .terminal, .deadline, .priority, .nextTrigger: return .enumerateCandidates
         }
     }
 
     /// The default column order (`SPEC.md` §27.1): visibility, title,
-    /// priority, deadline, next trigger, note.
+    /// terminal, priority, deadline, next trigger, note.
     static let defaultOrder: [ProjectListColumn] = [
-        .visibility, .title, .priority, .deadline, .nextTrigger, .note,
+        .visibility, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
     ]
 
     /// Repair a decoded column order so it is always a permutation of all
-    /// columns: duplicates collapse to their first occurrence and missing
-    /// columns append in default order.
+    /// columns: duplicates collapse to their first occurrence, and each
+    /// missing column is inserted right after the column that precedes it in
+    /// the default order (at the front when it has none). A save written
+    /// before a column existed therefore gains it where the default puts it —
+    /// the terminal column lands after the title — while the saved order of
+    /// the other columns is kept.
     static func normalizedOrder(_ columns: [ProjectListColumn]) -> [ProjectListColumn] {
         var seen = Set<ProjectListColumn>()
         var order: [ProjectListColumn] = []
@@ -101,7 +117,14 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
             seen.insert(column)
             order.append(column)
         }
-        order += defaultOrder.filter { !seen.contains($0) }
+        for (index, column) in defaultOrder.enumerated() where !seen.contains(column) {
+            let predecessor = index > 0 ? defaultOrder[index - 1] : nil
+            let position = predecessor
+                .flatMap { order.firstIndex(of: $0) }
+                .map { $0 + 1 } ?? 0
+            order.insert(column, at: position)
+            seen.insert(column)
+        }
         return order
     }
 }
@@ -134,7 +157,7 @@ extension ProjectListColumn {
     /// What Delete does on this column's cell (`SPEC.md` §27.2).
     var deleteAction: ProjectListDeleteAction {
         switch self {
-        case .title, .priority, .deadline, .nextTrigger: return .clearValue
+        case .title, .terminal, .priority, .deadline, .nextTrigger: return .clearValue
         case .note: return .confirmClearNote
         case .visibility: return .none
         }
@@ -222,6 +245,7 @@ extension WorkspaceStateOf {
             priority: project.priority,
             deadline: project.deadline,
             nextTrigger: project.nextTrigger,
+            terminalName: project.terminalName,
             note: project.note)
     }
 }
@@ -478,15 +502,29 @@ extension WorkspaceStateOf {
             project.setNote(text)
             projects[id] = project
             return true
-        case .visibility, .priority, .nextTrigger:
+        case .visibility, .terminal, .priority, .nextTrigger:
             return false
         }
+    }
+
+    /// Set project `id`'s terminal to the stored name `name` (`nil` = the
+    /// local terminal, must 128). The terminal is not a sort key, so the row
+    /// order never changes. Panes already open keep running where they are;
+    /// the change applies to panes started afterwards.
+    ///
+    /// - Returns: whether the stored name changed.
+    @discardableResult
+    mutating func setProjectTerminal(_ id: ProjectID, to name: String?) -> Bool {
+        guard var project = projects[id], project.terminalName != name else { return false }
+        project.terminalName = name
+        projects[id] = project
+        return true
     }
 
     /// Apply a Delete on `column`'s cell (`SPEC.md` §27.2): the title
     /// empties — deliberately bypassing the rename rule's empty-reject,
     /// which protects against *accidental* emptiness, not this explicit
-    /// deletion — the value columns unset (each is a sort key, so the
+    /// deletion — the terminal returns to the local one, the value columns unset (each is a sort key, so the
     /// change re-sorts immediately while a key state is active, §24.4),
     /// and the note loses every line. The note's confirmation is the
     /// caller's (`ProjectListColumn.deleteAction`); this is the mutation
@@ -503,6 +541,10 @@ extension WorkspaceStateOf {
         switch column {
         case .title:
             project.name = ""
+            projects[id] = project
+            return true
+        case .terminal:
+            project.terminalName = nil
             projects[id] = project
             return true
         case .priority:

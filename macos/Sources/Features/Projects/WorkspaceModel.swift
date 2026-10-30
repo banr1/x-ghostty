@@ -72,6 +72,13 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// closing it restores that scene untouched — it locks nothing.
     @Published private(set) var shortcutListActive = false
 
+    /// The registered terminals (must 127): what the list's terminal column
+    /// offers and resolves names against. Never persisted — it comes from the
+    /// config and this machine's hostname. Until the config registers any,
+    /// only the implicit local terminal exists.
+    @Published var terminalRegistry = ProjectTerminalRegistry(
+        registrations: [], hostname: ProjectTerminalRegistry.machineHostname)
+
     /// Whether any workspace-modal overlay session (note overview, layout
     /// selection, project list) currently owns the interaction: while one is
     /// up, focus moves and note editing are no-ops, and no other
@@ -658,6 +665,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ) -> Bool {
         guard projectListActive else { return false }
         switch value {
+        case .terminal(let terminal):
+            state.setProjectTerminal(id, to: terminalRegistry.storedName(for: terminal))
         case .priority(let priority):
             setProjectPriority(id, to: priority)
         case .nextTrigger(let trigger):

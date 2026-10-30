@@ -6,6 +6,7 @@ import Foundation
 /// values a selection cell can take. "Unset" is deliberately absent from
 /// every menu — clearing a value is Delete's job, not the menu's.
 enum ProjectListCandidateValue: Equatable {
+    case terminal(ProjectTerminal)
     case priority(ProjectPriority)
     case nextTrigger(ProjectNextTrigger)
     case deadline(ProjectDeadline)
@@ -14,6 +15,7 @@ enum ProjectListCandidateValue: Equatable {
     /// selection values, a real date like `Aug 19` for a date candidate.
     var displayText: String {
         switch self {
+        case .terminal(let terminal): return terminal.name
         case .priority(let priority): return priority.displayText
         case .nextTrigger(let trigger): return trigger.displayText
         case .deadline(let deadline): return deadline.monthDayText
@@ -36,14 +38,21 @@ struct ProjectListCandidateMenu: Equatable {
     /// does not enumerate candidates (`ProjectListColumn.enterAction`).
     ///
     /// The priority and next-trigger menus list every real value — never
-    /// unset (SPEC §27.6). The deadline menu lists the 10 date candidates
-    /// derived from `today` (`ProjectDeadline.dateCandidates`).
+    /// unset (SPEC §27.6). The terminal menu lists every registered
+    /// terminal, the local one included, in registration order (must 128).
+    /// The deadline menu lists the 10 date candidates derived from `today`
+    /// (`ProjectDeadline.dateCandidates`).
     static func opened(
-        on row: ProjectListRow, column: ProjectListColumn, today: ProjectDeadline
+        on row: ProjectListRow,
+        column: ProjectListColumn,
+        today: ProjectDeadline,
+        terminals: ProjectTerminalRegistry
     ) -> ProjectListCandidateMenu? {
         guard column.enterAction == .enumerateCandidates else { return nil }
         let items: [ProjectListCandidateValue]
         switch column {
+        case .terminal:
+            items = terminals.terminals.map { .terminal($0) }
         case .priority:
             items = ProjectPriority.allCases.map { .priority($0) }
         case .nextTrigger:

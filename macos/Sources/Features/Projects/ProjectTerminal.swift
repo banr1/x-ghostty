@@ -106,13 +106,34 @@ struct ProjectTerminalRegistry: Equatable {
         terminals.map(\.name)
     }
 
+    /// The registered terminal with exactly the display name `name`, or `nil`.
+    /// Unlike `terminal(named:)` there is no local fallback: this is the
+    /// lookup for input that must name a registered terminal.
+    func registeredTerminal(named name: String) -> ProjectTerminal? {
+        terminals.first { $0.name == name }
+    }
+
+    /// What a project stores when `terminal` is chosen for it: `nil` for the
+    /// local terminal (the default), the display name otherwise.
+    func storedName(for terminal: ProjectTerminal) -> String? {
+        isLocal(terminal) ? nil : terminal.name
+    }
+
     /// The stored terminal name a pasted string sets, or `nil` when the string
     /// is not a registered name and the paste must be ignored. Pasting the local
     /// terminal's name stores the default.
     func pastedTerminalName(_ text: String) -> String?? {
         let name = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let terminal = terminals.first(where: { $0.name == name }) else { return nil }
-        return .some(isLocal(terminal) ? nil : terminal.name)
+        guard let terminal = registeredTerminal(named: name) else { return nil }
+        return .some(storedName(for: terminal))
+    }
+
+    /// This machine's hostname as the kernel reports it (`gethostname`), the
+    /// name a registered host is compared against. Read without a DNS lookup.
+    static var machineHostname: String {
+        var buffer = [CChar](repeating: 0, count: 256)
+        guard gethostname(&buffer, buffer.count) == 0 else { return "" }
+        return String(cString: buffer)
     }
 }
 

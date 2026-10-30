@@ -99,6 +99,13 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     /// never touches it, and the label band never shows it.
     var nextTrigger: ProjectNextTrigger?
 
+    /// The display name of the registered terminal this project's panes run
+    /// on, or `nil` for the local terminal — the default (must 128).
+    /// Persisted like the priority. A name no longer registered is kept as is
+    /// and resolves to the local terminal (`ProjectTerminalRegistry
+    /// .terminal(named:)`), so re-registering it brings the project back.
+    var terminalName: String?
+
     var createdAt: Date
     var lastFocusedAt: Date?
 
@@ -112,6 +119,7 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         priority: ProjectPriority? = nil,
         deadline: ProjectDeadline? = nil,
         nextTrigger: ProjectNextTrigger? = nil,
+        terminalName: String? = nil,
         createdAt: Date,
         lastFocusedAt: Date? = nil
     ) {
@@ -128,6 +136,7 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         self.priority = priority
         self.deadline = deadline
         self.nextTrigger = nextTrigger
+        self.terminalName = terminalName
         self.createdAt = createdAt
         self.lastFocusedAt = lastFocusedAt
     }
@@ -261,6 +270,7 @@ extension ProjectStateOf: Codable {
         case priority
         case deadline
         case nextTrigger
+        case terminal
         case createdAt
         case lastFocusedAt
     }
@@ -293,6 +303,9 @@ extension ProjectStateOf: Codable {
         // §24.6): an unknown value in a save decodes as unset.
         self.nextTrigger =
             (try? c.decodeIfPresent(ProjectNextTrigger.self, forKey: .nextTrigger)) ?? nil
+        // Saves written before terminals existed have no key: the local
+        // terminal, the default.
+        self.terminalName = (try? c.decodeIfPresent(String.self, forKey: .terminal)) ?? nil
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
         self.lastFocusedAt = try c.decodeIfPresent(Date.self, forKey: .lastFocusedAt)
     }
@@ -312,6 +325,7 @@ extension ProjectStateOf: Codable {
         try c.encodeIfPresent(priority, forKey: .priority)
         try c.encodeIfPresent(deadline, forKey: .deadline)
         try c.encodeIfPresent(nextTrigger, forKey: .nextTrigger)
+        try c.encodeIfPresent(terminalName, forKey: .terminal)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encodeIfPresent(lastFocusedAt, forKey: .lastFocusedAt)
     }

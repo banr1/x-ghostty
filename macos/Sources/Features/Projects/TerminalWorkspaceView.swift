@@ -141,6 +141,7 @@ struct TerminalWorkspaceView: View {
                 ProjectListOverlay(
                     rows: workspace.projectListRows,
                     columns: workspace.state.listColumnOrder,
+                    terminals: workspace.terminalRegistry,
                     fullNotes: workspace.projectListFullNotes,
                     pendingTitleEdit: workspace.projectListPendingTitleEdit,
                     sortState: workspace.projectSortState,

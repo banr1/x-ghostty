@@ -297,7 +297,7 @@ struct ProjectListCellTests {
         let movedTitleLeft = state.moveListColumn(.title, by: -1)
         #expect(movedTitleLeft)
         #expect(state.listColumnOrder == [
-            .title, .visibility, .priority, .deadline, .nextTrigger, .note,
+            .title, .visibility, .terminal, .priority, .deadline, .nextTrigger, .note,
         ])
 
         // The ends absorb.
@@ -338,9 +338,9 @@ struct ProjectListCellTests {
         #expect(model.state.projectOrder == [b.id, a.id])
         // Clamped at the top now.
         #expect(model.moveProjectListRow(b.id, by: -1) == nil)
-        #expect(model.moveProjectListColumn(.note, by: -1) == 4)
+        #expect(model.moveProjectListColumn(.note, by: -1) == 5)
         #expect(model.state.listColumnOrder == [
-            .visibility, .title, .priority, .deadline, .note, .nextTrigger,
+            .visibility, .title, .terminal, .priority, .deadline, .note, .nextTrigger,
         ])
     }
 
@@ -398,8 +398,8 @@ struct ProjectListCellTests {
         // Priority right twice: each report is the moved column's new index.
         var cursor = model.state.listColumnOrder.firstIndex(of: .priority)!
         for expectedOrder: [ProjectListColumn] in [
-            [.visibility, .title, .deadline, .priority, .nextTrigger, .note],
-            [.visibility, .title, .deadline, .nextTrigger, .priority, .note],
+            [.visibility, .title, .terminal, .deadline, .priority, .nextTrigger, .note],
+            [.visibility, .title, .terminal, .deadline, .nextTrigger, .priority, .note],
         ] {
             let moved = model.moveProjectListColumn(
                 model.state.listColumnOrder[cursor], by: 1)
@@ -411,7 +411,7 @@ struct ProjectListCellTests {
         // One more lands on the end; the end then clamps and reports nothing.
         cursor = model.moveProjectListColumn(
             model.state.listColumnOrder[cursor], by: 1) ?? cursor
-        #expect(cursor == 5)
+        #expect(cursor == 6)
         #expect(model.state.listColumnOrder.last == .priority)
         #expect(model.moveProjectListColumn(
             model.state.listColumnOrder[cursor], by: 1) == nil)
@@ -571,7 +571,7 @@ struct ProjectListCellTests {
     @Test func onlyTheNoteColumnEditsMultiline() {
         #expect(ProjectListColumn.note.isMultilineEdit)
         for column: ProjectListColumn in [
-            .visibility, .title, .priority, .deadline, .nextTrigger,
+            .visibility, .title, .terminal, .priority, .deadline, .nextTrigger,
         ] {
             #expect(!column.isMultilineEdit)
         }

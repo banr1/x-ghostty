@@ -124,7 +124,7 @@ struct ProjectLedgerTests {
     @Test func defaultColumnOrderIsVisibilityTitlePriorityDeadlineNextTriggerNote() throws {
         let (state, _) = Self.makeState(1)
         #expect(state.listColumnOrder == [
-            .visibility, .title, .priority, .deadline, .nextTrigger, .note,
+            .visibility, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
         ])
         // A save without the key — written before the column order existed —
         // decodes to the default.
@@ -134,17 +134,29 @@ struct ProjectLedgerTests {
 
     @Test func columnOrderRoundTripsAndNormalizesCorruptSaves() throws {
         var (state, _) = Self.makeState(1)
-        let custom: [ProjectListColumn] = [.title, .note, .visibility, .priority, .deadline, .nextTrigger]
+        let custom: [ProjectListColumn] = [
+            .title, .note, .visibility, .terminal, .priority, .deadline, .nextTrigger,
+        ]
         state.listColumnOrder = custom
 
         let decoded = try Self.roundTrip(state)
         #expect(decoded.listColumnOrder == custom)
 
-        // Repair: duplicates collapse to their first occurrence and missing
-        // columns append in default order.
+        // Repair: duplicates collapse to their first occurrence and each
+        // missing column is inserted right after its default predecessor
+        // (at the front when it has none).
         #expect(ProjectListColumn.normalizedOrder([.note, .note, .title])
-            == [.note, .title, .visibility, .priority, .deadline, .nextTrigger])
+            == [.visibility, .note, .title, .terminal, .priority, .deadline, .nextTrigger])
         #expect(ProjectListColumn.normalizedOrder([]) == ProjectListColumn.defaultOrder)
+
+        // A six-column save written before the terminal column existed gains
+        // it right after the title, keeping the saved order of the rest.
+        #expect(ProjectListColumn.normalizedOrder(
+            [.visibility, .title, .priority, .deadline, .nextTrigger, .note])
+            == ProjectListColumn.defaultOrder)
+        #expect(ProjectListColumn.normalizedOrder(
+            [.note, .title, .visibility, .priority, .deadline, .nextTrigger])
+            == [.note, .title, .terminal, .visibility, .priority, .deadline, .nextTrigger])
     }
 
     // MARK: Layout type persists with the wide/row-major default (SPEC §26.4)

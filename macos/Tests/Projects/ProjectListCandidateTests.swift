@@ -62,12 +62,16 @@ struct ProjectListCandidateTests {
 
     private static let today = ProjectDeadline(parsing: "2026-08-19")!
 
+    private static let terminals = ProjectTerminalRegistry(
+        registrations: ["mini,mac-mini,colour33", "loop,mini-loopback,colour166"],
+        hostname: "mac-mini")
+
     // MARK: Menu content (SPEC §27.6)
 
     @Test func priorityMenuListsEveryRealValueAndNeverUnset() {
         let row = Self.makeRow(Self.makeProject(name: "alpha"))
         let menu = ProjectListCandidateMenu.opened(
-            on: row, column: .priority, today: Self.today)
+            on: row, column: .priority, today: Self.today, terminals: Self.terminals)
 
         // All three real values, in the fixed high → medium → low order —
         // and nothing standing for "unset" (clearing is Delete's job).
@@ -80,7 +84,7 @@ struct ProjectListCandidateTests {
     @Test func nextTriggerMenuListsEveryRealValueAndNeverUnset() {
         let row = Self.makeRow(Self.makeProject(name: "alpha"))
         let menu = ProjectListCandidateMenu.opened(
-            on: row, column: .nextTrigger, today: Self.today)
+            on: row, column: .nextTrigger, today: Self.today, terminals: Self.terminals)
 
         #expect(menu?.items == [
             .nextTrigger(.myself), .nextTrigger(.externalPerson), .nextTrigger(.event),
@@ -91,10 +95,10 @@ struct ProjectListCandidateTests {
         let row = Self.makeRow(Self.makeProject(name: "alpha"))
         for column: ProjectListColumn in [.visibility, .title, .note] {
             #expect(ProjectListCandidateMenu.opened(
-                on: row, column: column, today: Self.today) == nil)
+                on: row, column: column, today: Self.today, terminals: Self.terminals) == nil)
         }
         #expect(ProjectListCandidateMenu.opened(
-            on: row, column: .deadline, today: Self.today) != nil)
+            on: row, column: .deadline, today: Self.today, terminals: Self.terminals) != nil)
     }
 
     // MARK: Date candidates (SPEC §27.6)
@@ -138,7 +142,7 @@ struct ProjectListCandidateTests {
     @Test func selectionMovesWithUpDownAndClampsAtTheEnds() {
         let row = Self.makeRow(Self.makeProject(name: "alpha"))
         var menu = ProjectListCandidateMenu.opened(
-            on: row, column: .priority, today: Self.today)!
+            on: row, column: .priority, today: Self.today, terminals: Self.terminals)!
 
         // Up on the first entry is absorbed.
         #expect(menu.moved(by: -1).selection == 0)

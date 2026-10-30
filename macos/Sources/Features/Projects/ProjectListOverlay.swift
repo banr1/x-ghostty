@@ -3,8 +3,9 @@ import SwiftUI
 /// The project-list overlay (`list_projects`, Cmd+L, `SPEC.md` §27).
 ///
 /// The ledger's table form: every project — hidden ones included — as one row
-/// in the single ledger order, with the six columns (visibility, title,
-/// priority, deadline, next trigger, note) in the persisted column order.
+/// in the single ledger order, with the seven columns (visibility, title,
+/// terminal, priority, deadline, next trigger, note) in the persisted column
+/// order.
 /// Unset cells render blank. The panel takes ~80% of the window in both
 /// dimensions, exists only while the session is up, and scrolls with the cell
 /// cursor when the rows do not fit.
@@ -49,6 +50,10 @@ struct ProjectListOverlay: View {
 
     /// The persisted column order the table renders (`SPEC.md` §27.1).
     let columns: [ProjectListColumn]
+
+    /// The registered terminals: the terminal column's candidates, and what
+    /// its stored names resolve to (must 128).
+    let terminals: ProjectTerminalRegistry
 
     /// Whether the note column shows every line instead of first lines only
     /// (`Cmd+Opt+E` inside the list, viewing-only, transient).
@@ -461,7 +466,8 @@ struct ProjectListOverlay: View {
            character == "c" || character == "v",
            let row = cursorRow, let column = cursorColumn {
             if character == "c" {
-                if let text = ProjectListClipboard.copyText(of: row, column: column) {
+                if let text = ProjectListClipboard.copyText(
+                    of: row, column: column, terminals: terminals) {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(text, forType: .string)
                 }
@@ -644,7 +650,8 @@ struct ProjectListOverlay: View {
             // (`ProjectListCandidateMenu.opened`); the view only supplies
             // "today" for the date candidates (SPEC §27.6).
             candidateMenu = ProjectListCandidateMenu.opened(
-                on: row, column: column, today: ProjectDeadline(from: Date()))
+                on: row, column: column, today: ProjectDeadline(from: Date()),
+                terminals: terminals)
         }
     }
 
@@ -759,11 +766,14 @@ struct ProjectListOverlay: View {
     /// any other note save (§21.1).
     private func pasteOnCursorCell(row: ProjectListRow, column: ProjectListColumn) {
         guard let text = NSPasteboard.general.string(forType: .string) else { return }
-        switch ProjectListClipboard.pasteApplication(of: text, column: column) {
+        switch ProjectListClipboard.pasteApplication(
+            of: text, column: column, terminals: terminals) {
         case .ignore:
             break
         case .setTitle(let title):
             onCommitEdit(title, .title, row.id)
+        case .setTerminal(let terminal):
+            onCommitCandidate(.terminal(terminal), row.id)
         case .setNote(let note):
             if ProjectState.noteExceedsLimit(note), !confirmOverLimitNoteSave() {
                 return
@@ -866,11 +876,13 @@ struct ProjectListOverlay: View {
     /// The fixed width of a column's cells, or `nil` for the flexible title
     /// and note columns, which share the panel width left by the fixed ones.
     /// Fixed widths hold each column's widest value at the 12pt monospaced
-    /// cell font: "●" / "·", "high", "YYYY-MM-DD", "external".
+    /// cell font: "●" / "·", "high", "YYYY-MM-DD", "external"; the terminal
+    /// column holds a short machine name and truncates a longer one.
     private static func width(of column: ProjectListColumn) -> CGFloat? {
         switch column {
         case .visibility: return 34
         case .title: return nil
+        case .terminal: return 84
         case .priority: return 48
         case .deadline: return 92
         case .nextTrigger: return 72
@@ -896,6 +908,7 @@ struct ProjectListOverlay: View {
         switch column {
         case .visibility: return "show"
         case .title: return "title"
+        case .terminal: return "terminal"
         case .priority: return "prio"
         case .deadline: return "deadline"
         case .nextTrigger: return "next"
@@ -1106,6 +1119,12 @@ struct ProjectListOverlay: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
 
+        case .terminal:
+            Text(row.terminalDisplayName(in: terminals))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .opacity(0.6)
+
         case .priority:
             Text(row.priority?.displayText ?? "")
                 .opacity(0.75)
@@ -1211,6 +1230,8 @@ struct ProjectListOverlay: View {
             return canToggle(row.id)
                 ? "↩ hides \(row.title)"
                 : "at least one project must stay visible"
+        case .terminal:
+            return "↩ lists terminals"
         case .priority:
             return "↩ lists priorities"
         case .nextTrigger:

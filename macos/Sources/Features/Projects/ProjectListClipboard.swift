@@ -17,10 +17,15 @@ enum ProjectListClipboard {
     /// would parse back — and the note as every line. An unset value copies
     /// as the blank the cell shows. `nil` for the visibility column, where
     /// Cmd+C does nothing at all (the pasteboard keeps its old contents).
-    static func copyText(of row: ProjectListRow, column: ProjectListColumn) -> String? {
+    static func copyText(
+        of row: ProjectListRow,
+        column: ProjectListColumn,
+        terminals: ProjectTerminalRegistry
+    ) -> String? {
         switch column {
         case .visibility: return nil
         case .title: return row.title
+        case .terminal: return row.terminalDisplayName(in: terminals)
         case .priority: return row.priority?.displayText ?? ""
         case .deadline: return row.deadline?.displayText ?? ""
         case .nextTrigger: return row.nextTrigger?.displayText ?? ""
@@ -31,11 +36,14 @@ enum ProjectListClipboard {
     /// What a paste of `text` sets `column`'s cell to (`SPEC.md` §27.7), or
     /// `.ignore` for a string the column does not accept. The title takes any
     /// text the shared rename rule would (non-blank after trimming); the
+    /// terminal takes only a registered display name (must 128); the other
     /// value columns parse their own spellings; the note takes every line of
     /// any non-blank text (the save-time line cap still applies on commit,
     /// §21.1); the visibility column never changes by paste.
     static func pasteApplication(
-        of text: String, column: ProjectListColumn
+        of text: String,
+        column: ProjectListColumn,
+        terminals: ProjectTerminalRegistry
     ) -> ProjectListPasteApplication {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         switch column {
@@ -43,6 +51,11 @@ enum ProjectListClipboard {
             return .ignore
         case .title:
             return trimmed.isEmpty ? .ignore : .setTitle(trimmed)
+        case .terminal:
+            guard let terminal = terminals.registeredTerminal(named: trimmed) else {
+                return .ignore
+            }
+            return .setTerminal(terminal)
         case .priority:
             guard let priority = ProjectPriority.parsed(from: trimmed) else {
                 return .ignore
@@ -68,6 +81,7 @@ enum ProjectListClipboard {
 /// value the accepted string sets, or `.ignore` — no mutation at all.
 enum ProjectListPasteApplication: Equatable {
     case setTitle(String)
+    case setTerminal(ProjectTerminal)
     case setPriority(ProjectPriority)
     case setDeadline(ProjectDeadline)
     case setNextTrigger(ProjectNextTrigger)

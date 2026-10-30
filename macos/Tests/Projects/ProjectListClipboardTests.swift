@@ -8,6 +8,10 @@ import Testing
 /// routes to its own editor, and the candidate menu's Tab / Shift+Tab
 /// lateral move that closes the menu without changing the value.
 struct ProjectListClipboardTests {
+    private static let terminals = ProjectTerminalRegistry(
+        registrations: ["mini,mac-mini,colour33", "loop,mini-loopback,colour166"],
+        hostname: "mac-mini")
+
     private static func makeRow(
         title: String = "alpha",
         priority: ProjectPriority? = nil,
@@ -37,56 +41,56 @@ struct ProjectListClipboardTests {
             nextTrigger: .externalPerson,
             note: "line 1\nline 2\nline 3")
 
-        #expect(ProjectListClipboard.copyText(of: row, column: .title) == "atlas")
-        #expect(ProjectListClipboard.copyText(of: row, column: .priority) == "med")
-        #expect(ProjectListClipboard.copyText(of: row, column: .deadline) == "2026-08-20")
-        #expect(ProjectListClipboard.copyText(of: row, column: .nextTrigger) == "external")
+        #expect(ProjectListClipboard.copyText(of: row, column: .title, terminals: Self.terminals) == "atlas")
+        #expect(ProjectListClipboard.copyText(of: row, column: .priority, terminals: Self.terminals) == "med")
+        #expect(ProjectListClipboard.copyText(of: row, column: .deadline, terminals: Self.terminals) == "2026-08-20")
+        #expect(ProjectListClipboard.copyText(of: row, column: .nextTrigger, terminals: Self.terminals) == "external")
     }
 
     @Test("the note column copies every line, not the displayed first line")
     func copyLiftsTheWholeNote() {
         let note = (1...12).map { "line \($0)" }.joined(separator: "\n")
         let row = Self.makeRow(note: note)
-        #expect(ProjectListClipboard.copyText(of: row, column: .note) == note)
+        #expect(ProjectListClipboard.copyText(of: row, column: .note, terminals: Self.terminals) == note)
     }
 
     @Test("unset values copy as the blank the cell shows")
     func copyOfUnsetValuesIsBlank() {
         let row = Self.makeRow()
-        #expect(ProjectListClipboard.copyText(of: row, column: .priority) == "")
-        #expect(ProjectListClipboard.copyText(of: row, column: .deadline) == "")
-        #expect(ProjectListClipboard.copyText(of: row, column: .nextTrigger) == "")
-        #expect(ProjectListClipboard.copyText(of: row, column: .note) == "")
+        #expect(ProjectListClipboard.copyText(of: row, column: .priority, terminals: Self.terminals) == "")
+        #expect(ProjectListClipboard.copyText(of: row, column: .deadline, terminals: Self.terminals) == "")
+        #expect(ProjectListClipboard.copyText(of: row, column: .nextTrigger, terminals: Self.terminals) == "")
+        #expect(ProjectListClipboard.copyText(of: row, column: .note, terminals: Self.terminals) == "")
     }
 
     @Test("the visibility column has nothing to copy")
     func copyOfVisibilityIsNil() {
-        #expect(ProjectListClipboard.copyText(of: Self.makeRow(), column: .visibility) == nil)
+        #expect(ProjectListClipboard.copyText(of: Self.makeRow(), column: .visibility, terminals: Self.terminals) == nil)
     }
 
     // MARK: Paste (value application)
 
     @Test func pasteAppliesAcceptedValuesPerColumn() throws {
-        #expect(ProjectListClipboard.pasteApplication(of: "beta", column: .title)
+        #expect(ProjectListClipboard.pasteApplication(of: "beta", column: .title, terminals: Self.terminals)
             == .setTitle("beta"))
-        #expect(ProjectListClipboard.pasteApplication(of: "  beta  ", column: .title)
+        #expect(ProjectListClipboard.pasteApplication(of: "  beta  ", column: .title, terminals: Self.terminals)
             == .setTitle("beta"))
-        #expect(ProjectListClipboard.pasteApplication(of: "high", column: .priority)
+        #expect(ProjectListClipboard.pasteApplication(of: "high", column: .priority, terminals: Self.terminals)
             == .setPriority(.high))
-        #expect(ProjectListClipboard.pasteApplication(of: "med", column: .priority)
+        #expect(ProjectListClipboard.pasteApplication(of: "med", column: .priority, terminals: Self.terminals)
             == .setPriority(.medium))
-        #expect(ProjectListClipboard.pasteApplication(of: "Medium", column: .priority)
+        #expect(ProjectListClipboard.pasteApplication(of: "Medium", column: .priority, terminals: Self.terminals)
             == .setPriority(.medium))
         let deadline = try #require(ProjectDeadline(year: 2026, month: 8, day: 20))
-        #expect(ProjectListClipboard.pasteApplication(of: "2026-08-20", column: .deadline)
+        #expect(ProjectListClipboard.pasteApplication(of: "2026-08-20", column: .deadline, terminals: Self.terminals)
             == .setDeadline(deadline))
-        #expect(ProjectListClipboard.pasteApplication(of: "2026/8/20", column: .deadline)
+        #expect(ProjectListClipboard.pasteApplication(of: "2026/8/20", column: .deadline, terminals: Self.terminals)
             == .setDeadline(deadline))
-        #expect(ProjectListClipboard.pasteApplication(of: "me", column: .nextTrigger)
+        #expect(ProjectListClipboard.pasteApplication(of: "me", column: .nextTrigger, terminals: Self.terminals)
             == .setNextTrigger(.myself))
-        #expect(ProjectListClipboard.pasteApplication(of: "external", column: .nextTrigger)
+        #expect(ProjectListClipboard.pasteApplication(of: "external", column: .nextTrigger, terminals: Self.terminals)
             == .setNextTrigger(.externalPerson))
-        #expect(ProjectListClipboard.pasteApplication(of: "a\nb\nc", column: .note)
+        #expect(ProjectListClipboard.pasteApplication(of: "a\nb\nc", column: .note, terminals: Self.terminals)
             == .setNote("a\nb\nc"))
     }
 
@@ -101,33 +105,33 @@ struct ProjectListClipboardTests {
             (.deadline, .setDeadline(deadline)),
             (.nextTrigger, .setNextTrigger(.event)),
         ] {
-            let copied = try #require(ProjectListClipboard.copyText(of: row, column: column))
-            #expect(ProjectListClipboard.pasteApplication(of: copied, column: column) == expected)
+            let copied = try #require(ProjectListClipboard.copyText(of: row, column: column, terminals: Self.terminals))
+            #expect(ProjectListClipboard.pasteApplication(of: copied, column: column, terminals: Self.terminals) == expected)
         }
     }
 
     @Test("strings a column does not accept are ignored — no mutation")
     func pasteIgnoresUnacceptableStrings() {
-        #expect(ProjectListClipboard.pasteApplication(of: "urgent", column: .priority)
+        #expect(ProjectListClipboard.pasteApplication(of: "urgent", column: .priority, terminals: Self.terminals)
             == .ignore)
-        #expect(ProjectListClipboard.pasteApplication(of: "tomorrow", column: .deadline)
+        #expect(ProjectListClipboard.pasteApplication(of: "tomorrow", column: .deadline, terminals: Self.terminals)
             == .ignore)
-        #expect(ProjectListClipboard.pasteApplication(of: "2026-13-40", column: .deadline)
+        #expect(ProjectListClipboard.pasteApplication(of: "2026-13-40", column: .deadline, terminals: Self.terminals)
             == .ignore)
-        #expect(ProjectListClipboard.pasteApplication(of: "team", column: .nextTrigger)
+        #expect(ProjectListClipboard.pasteApplication(of: "team", column: .nextTrigger, terminals: Self.terminals)
             == .ignore)
         // Blank never sets anything: clearing a value is Delete's job.
         for column in ProjectListColumn.allCases {
-            #expect(ProjectListClipboard.pasteApplication(of: "  \n ", column: column)
+            #expect(ProjectListClipboard.pasteApplication(of: "  \n ", column: column, terminals: Self.terminals)
                 == .ignore)
         }
     }
 
     @Test("the visibility column never changes by paste")
     func pasteIntoVisibilityIsIgnored() {
-        #expect(ProjectListClipboard.pasteApplication(of: "shown", column: .visibility)
+        #expect(ProjectListClipboard.pasteApplication(of: "shown", column: .visibility, terminals: Self.terminals)
             == .ignore)
-        #expect(ProjectListClipboard.pasteApplication(of: "●", column: .visibility)
+        #expect(ProjectListClipboard.pasteApplication(of: "●", column: .visibility, terminals: Self.terminals)
             == .ignore)
     }
 
