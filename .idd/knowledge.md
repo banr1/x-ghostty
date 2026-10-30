@@ -53,7 +53,8 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - `set-option -t` は pane target を取るので、セッションの完全一致は `=<name>:`(末尾の `:` が要る)。`=<name>` だけだと「no such session」。`kill-session -t` / `has-session -t` は `=<name>` で効く。
 - zsh では行頭の `=word` が equals 展開(コマンドのパスへの置換)になる。zsh から tmux を叩くときは `-t "=name:"` と引用する。生成するスクリプトは `/bin/sh -c` で走らせているので影響しない。
 - attach コマンドを tty 無しで試すには、`(perl -e 'sleep 15' \| script -q /dev/null /bin/zsh -c "<cmd>" > out.txt 2>&1 &)` で擬似端末を与える(stdin を開いておかないと client が即 detach する)。`tmux new-session -A ... ';' set-option ...` の連鎖は、新規作成と再 attach のどちらでも後続の set-option が走る。
-- Mac mini の ssh ループバックは未設定(`ssh 127.0.0.1` は Host key verification failed)。
+- Mac mini の ssh ループバックは未設定(`ssh 127.0.0.1` は Host key verification failed)。2026-10-30 時点で、周回を動かすハーネスの権限設定が `~/.ssh` 配下の読み書き(`ls`・ファイル読込とも)を拒否するので、周回からは鍵も別名も置けない。
+- OSC 7 によるリモート split の検出は撤去済み。コアの `reportPwd` は非ローカルのホストを上流どおり警告して捨て、`xghostty_action_pwd_s` は `pwd` だけを持つ。`xghostty_surface_foreground_pid` は上流由来の `XGhostty.Surface.swift` も使うので残っている。
 
 ## SwiftUI / AppKit の癖
 
