@@ -124,6 +124,11 @@ class AppDelegate: NSObject,
         super.init()
 
         ghostty.delegate = self
+
+        // Project panes resolve their terminals against this registry, and a
+        // restore decodes them before applicationDidFinishLaunching runs.
+        ProjectTerminalRegistry.shared = ProjectTerminalRegistry(
+            registrations: ghostty.config.projectTerminals)
     }
 
     // MARK: - NSApplicationDelegate
@@ -678,6 +683,11 @@ class AppDelegate: NSObject,
     }
 
     private func ghosttyConfigDidChange(config: XGhostty.Config) {
+        // Terminal registrations take effect on reload: panes started from
+        // now on resolve against the new registry.
+        ProjectTerminalRegistry.shared = ProjectTerminalRegistry(
+            registrations: config.projectTerminals)
+
         // Depending on the "window-save-state" setting we have to set the NSQuitAlwaysKeepsWindows
         // configuration. This is the only way to carefully control whether macOS invokes the
         // state restoration system.

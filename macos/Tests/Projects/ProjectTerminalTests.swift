@@ -19,6 +19,30 @@ struct ProjectTerminalTests {
         #expect(registry.candidateNames == ["mini", "loop"])
     }
 
+    @Test func configLinesSplitIntoRegistrations() {
+        // The config hands `project-terminal` over as one value per line.
+        let lines = "\(mini)\n\n  \n\(loop)"
+        let registrations = ProjectTerminalRegistry.registrations(fromConfigLines: lines)
+        #expect(registrations == [mini, loop])
+        let registry = ProjectTerminalRegistry(registrations: registrations, hostname: "mac-mini")
+        #expect(registry.candidateNames == ["mini", "loop"])
+        #expect(registry.local.name == "mini")
+        #expect(ProjectTerminalRegistry.registrations(fromConfigLines: "").isEmpty)
+    }
+
+    @Test func reloadedRegistrationsReplaceTheRegistry() {
+        // A reload builds a new registry from the new registrations: an added
+        // terminal becomes a candidate, and a project stored on a removed one
+        // runs locally until it is registered again.
+        let before = ProjectTerminalRegistry(registrations: [mini], hostname: "mac-mini")
+        let after = ProjectTerminalRegistry(registrations: [mini, loop], hostname: "mac-mini")
+        #expect(before != after)
+        #expect(before.terminal(named: "loop") == before.local)
+        #expect(after.terminal(named: "loop").name == "loop")
+        let removed = ProjectTerminalRegistry(registrations: [], hostname: "mac-mini")
+        #expect(removed.terminal(named: "loop") == removed.local)
+    }
+
     @Test func onlyTheTerminalMatchingTheHostnameIsLocal() {
         let registry = ProjectTerminalRegistry(registrations: [mini, loop], hostname: "MAC-MINI")
         #expect(registry.local.name == "mini")

@@ -1138,6 +1138,13 @@ class BaseTerminalController: NSWindowController,
 
         // Update our derived config
         self.derivedConfig = DerivedConfig(config)
+
+        // Reloaded terminal registrations reach the project list and the
+        // panes started from now on. Open panes keep their sessions.
+        let registry = ProjectTerminalRegistry(registrations: config.projectTerminals)
+        if workspace.terminalRegistry != registry {
+            workspace.terminalRegistry = registry
+        }
     }
 
     @objc private func ghosttyCommandPaletteDidToggle(_ notification: Notification) {

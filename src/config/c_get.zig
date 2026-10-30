@@ -146,6 +146,23 @@ test "c_get: enum" {
     try testing.expectEqualStrings("dark", str);
 }
 
+test "c_get: project-terminal" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var c = try Config.default(alloc);
+    defer c.deinit();
+    try c.@"project-terminal".parseCLI(c._arena.?.allocator(), "mini,mac-mini,colour25");
+    try c.@"project-terminal".parseCLI(c._arena.?.allocator(), "air,MacBook-Air.local");
+
+    var cval: [*:0]const u8 = undefined;
+    try testing.expect(get(&c, .@"project-terminal", @ptrCast(&cval)));
+    try testing.expectEqualStrings(
+        "mini,mac-mini,colour25\nair,MacBook-Air.local",
+        std.mem.sliceTo(cval, 0),
+    );
+}
+
 test "c_get: color" {
     const testing = std.testing;
     const alloc = testing.allocator;

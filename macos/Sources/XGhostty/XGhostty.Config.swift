@@ -207,6 +207,17 @@ extension XGhostty {
             return String(cString: ptr)
         }
 
+        /// The `project-terminal` registrations, in config order. Parsed by
+        /// `ProjectTerminalRegistry`.
+        var projectTerminals: [String] {
+            guard let config = self.config else { return [] }
+            var v: UnsafePointer<Int8>?
+            let key = "project-terminal"
+            guard xghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return [] }
+            guard let ptr = v else { return [] }
+            return ProjectTerminalRegistry.registrations(fromConfigLines: String(cString: ptr))
+        }
+
         var windowPositionX: Int16? {
             guard let config = self.config else { return nil }
             var v: Int16 = 0

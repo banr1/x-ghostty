@@ -130,9 +130,25 @@ struct ProjectTerminalRegistry: Equatable {
 
     /// The registry new and restored panes resolve their terminals against
     /// when no workspace is at hand (a restore decodes surfaces before the
-    /// workspace model exists). Until the config registers terminals, only
+    /// workspace model exists). The app replaces it with the config's
+    /// registrations at launch and on every config reload; until then only
     /// the implicit local terminal exists.
     static var shared = ProjectTerminalRegistry(registrations: [], hostname: machineHostname)
+
+    /// The registry for the config's `project-terminal` registrations on this
+    /// machine.
+    init(registrations: [String]) {
+        self.init(registrations: registrations, hostname: Self.machineHostname)
+    }
+
+    /// Splits the `project-terminal` value the config hands over (one
+    /// registration per line) into registrations, dropping blank lines.
+    static func registrations(fromConfigLines lines: String) -> [String] {
+        lines
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map(String.init)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
 
     /// This machine's hostname as the kernel reports it (`gethostname`), the
     /// name a registered host is compared against. Read without a DNS lookup.

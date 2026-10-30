@@ -2286,6 +2286,24 @@ keybind: Keybinds = .{},
 /// Available since: 1.2.0
 @"undo-timeout": Duration = .{ .duration = 5 * std.time.ns_per_s },
 
+/// A machine a project's panes can run on (XGhostty projects). Every pane
+/// of a project opens inside a tmux session on the project's terminal.
+///
+/// The value is `<name>,<host>[,<color>]`:
+///
+///   * `name` - the name shown in the project list's terminal column.
+///   * `host` - the host name handed to `ssh -t`. User, key and port are
+///     left to the ssh config. The terminal whose host matches this
+///     machine's hostname (ignoring a trailing `.local` and letter case)
+///     is the local one and is reached without ssh.
+///   * `color` - optional tmux colour of the session's status bar
+///     background, such as `colour25` or `#2f6f4f`.
+///
+/// This can be repeated to register multiple terminals. An empty value
+/// clears the list. When nothing is registered, only an implicit local
+/// terminal named after this machine's hostname exists.
+@"project-terminal": ProjectTerminals = .{},
+
 /// Whether to enable shell integration auto-injection or not. Shell integration
 /// greatly enhances the terminal experience by enabling a number of features:
 ///
@@ -5193,6 +5211,102 @@ pub const RepeatableString = struct {
         try list.parseCLI(alloc, "B");
         try list.formatEntry(formatterpkg.entryFormatter("a", &buf.writer));
         try std.testing.expectEqualSlices(u8, "a = A\na = B\n", buf.written());
+    }
+};
+
+/// ProjectTerminals is the repeatable `project-terminal` registration list.
+///
+/// The registrations themselves are parsed by the macOS app (the project
+/// layer), so this only collects the raw values. To the C API they are
+/// exposed as a single string with one registration per line, which keeps
+/// the C header free of a new list type. A value can't contain a newline
+/// because the config is line-based.
+pub const ProjectTerminals = struct {
+    const Self = @This();
+
+    list: RepeatableString = .{},
+
+    /// The registrations joined with `\n`, rebuilt whenever the list changes.
+    joined: [:0]const u8 = "",
+
+    pub fn parseCLI(self: *Self, alloc: Allocator, input: ?[]const u8) !void {
+        try self.list.parseCLI(alloc, input);
+        self.joined = try join(alloc, self.list);
+    }
+
+    /// Deep copy of the struct. Required by Config.
+    pub fn clone(self: *const Self, alloc: Allocator) Allocator.Error!Self {
+        const list = try self.list.clone(alloc);
+        return .{ .list = list, .joined = try join(alloc, list) };
+    }
+
+    /// Compare if two of our value are equal. Required by Config.
+    pub fn equal(self: Self, other: Self) bool {
+        return self.list.equal(other.list);
+    }
+
+    /// Used by Formatter
+    pub fn formatEntry(self: Self, formatter: formatterpkg.EntryFormatter) !void {
+        try self.list.formatEntry(formatter);
+    }
+
+    /// The registrations, one per line (xghostty_config_get as `const char*`).
+    pub fn cval(self: Self) [*:0]const u8 {
+        return self.joined.ptr;
+    }
+
+    fn join(alloc: Allocator, list: RepeatableString) Allocator.Error![:0]const u8 {
+        return try std.mem.joinZ(alloc, "\n", list.list.items);
+    }
+
+    test "parseCLI joins registrations by line" {
+        const testing = std.testing;
+        var arena = ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var terminals: Self = .{};
+        try testing.expectEqualStrings("", std.mem.span(terminals.cval()));
+
+        try terminals.parseCLI(alloc, "air,MacBook-Air.local,colour25");
+        try terminals.parseCLI(alloc, "mini,mac-mini");
+        try testing.expectEqualStrings(
+            "air,MacBook-Air.local,colour25\nmini,mac-mini",
+            std.mem.span(terminals.cval()),
+        );
+
+        // An empty value resets the list.
+        try terminals.parseCLI(alloc, "");
+        try testing.expectEqualStrings("", std.mem.span(terminals.cval()));
+    }
+
+    test "clone keeps the joined registrations" {
+        const testing = std.testing;
+        var arena = ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var terminals: Self = .{};
+        try terminals.parseCLI(alloc, "a,host-a");
+        try terminals.parseCLI(alloc, "b,host-b,red");
+        const copy = try terminals.clone(alloc);
+        try testing.expect(copy.equal(terminals));
+        try testing.expectEqualStrings("a,host-a\nb,host-b,red", std.mem.span(copy.cval()));
+    }
+
+    test "formatConfig" {
+        const testing = std.testing;
+        var buf: std.Io.Writer.Allocating = .init(testing.allocator);
+        defer buf.deinit();
+
+        var arena = ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var terminals: Self = .{};
+        try terminals.parseCLI(alloc, "a,host-a");
+        try terminals.formatEntry(formatterpkg.entryFormatter("project-terminal", &buf.writer));
+        try testing.expectEqualSlices(u8, "project-terminal = a,host-a\n", buf.written());
     }
 };
 
