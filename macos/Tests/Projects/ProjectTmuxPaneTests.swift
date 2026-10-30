@@ -246,4 +246,106 @@ struct ProjectTmuxPaneTests {
         let session = try #require(project.sessionName(for: Self.sid(bound)))
         #expect(targets == [Self.terminals.local: [session]])
     }
+
+    // MARK: Closed panes across workspace changes (must 133)
+
+    @Test func aPaneLeavingTheTreeIsClosedAndKilledAfterTheUndoPeriod() throws {
+        let first = TestPane()
+        let second = TestPane()
+        var project = Self.makeProject(first, terminalName: "loop")
+        project.bindPane(Self.sid(first))
+        project.paneTree = try project.paneTree.inserting(view: second, at: first, direction: .right)
+        project.bindPane(Self.sid(second))
+        var open = TmuxOpenPanes(projects: [project])
+
+        project.paneTree = project.paneTree.removing(.leaf(view: second))
+        let closed = open.advance(to: TmuxOpenPanes(projects: [project]))
+
+        let s2 = try #require(project.sessionName(for: Self.sid(second)))
+        #expect(closed.map(\.pane) == [Self.sid(second)])
+        #expect(Set(open.panes.keys) == [Self.sid(first)])
+        let loop = try #require(Self.terminals.registeredTerminal(named: "loop"))
+        #expect(open.killTargets(closed: closed, registry: Self.terminals) == [loop: [s2]])
+    }
+
+    @Test func closedProjectsCloseAllTheirPanesIncludingATerminatedOne() throws {
+        let keptPane = TestPane()
+        var kept = Self.makeProject(keptPane)
+        kept.bindPane(Self.sid(keptPane))
+        let first = TestPane()
+        let second = TestPane()
+        var split = Self.makeProject(first, terminalName: "mini")
+        split.bindPane(Self.sid(first))
+        split.paneTree = try split.paneTree.inserting(view: second, at: first, direction: .right)
+        split.bindPane(Self.sid(second))
+        let dead = TestPane()
+        var terminated = Self.makeProject(dead, terminalName: "mini")
+        terminated.bindPane(Self.sid(dead))
+        let marked = terminated.markPaneTerminated(Self.sid(dead))
+        #expect(marked)
+        var open = TmuxOpenPanes(projects: [kept, split, terminated])
+
+        let closed = open.advance(to: TmuxOpenPanes(projects: [kept]))
+
+        #expect(Set(closed.map(\.pane)) == [Self.sid(first), Self.sid(second), Self.sid(dead)])
+        let mini = try #require(Self.terminals.registeredTerminal(named: "mini"))
+        let s1 = try #require(split.sessionName(for: Self.sid(first)))
+        let s2 = try #require(split.sessionName(for: Self.sid(second)))
+        let s3 = try #require(terminated.sessionName(for: Self.sid(dead)))
+        #expect(open.killTargets(closed: closed, registry: Self.terminals) == [mini: [s1, s2, s3]])
+    }
+
+    @Test func aPaneBackByUndoBeforeTheUndoPeriodExpiresIsNotKilled() throws {
+        let first = TestPane()
+        let second = TestPane()
+        var project = Self.makeProject(first)
+        project.bindPane(Self.sid(first))
+        project.paneTree = try project.paneTree.inserting(view: second, at: first, direction: .right)
+        project.bindPane(Self.sid(second))
+        let before = project
+        var open = TmuxOpenPanes(projects: [project])
+
+        project.paneTree = project.paneTree.removing(.leaf(view: second))
+        let closed = open.advance(to: TmuxOpenPanes(projects: [project]))
+        let reopened = open.advance(to: TmuxOpenPanes(projects: [before]))
+
+        #expect(closed.map(\.pane) == [Self.sid(second)])
+        #expect(reopened.isEmpty)
+        #expect(open.killTargets(closed: closed, registry: Self.terminals).isEmpty)
+    }
+
+    @Test func aRestartedTerminatedPaneKeepsTheSessionItTookOver() throws {
+        let dead = TestPane()
+        let fresh = TestPane()
+        var project = Self.makeProject(dead)
+        project.bindPane(Self.sid(dead))
+        let marked = project.markPaneTerminated(Self.sid(dead))
+        #expect(marked)
+        var open = TmuxOpenPanes(projects: [project])
+
+        let restarted = project.restartTerminatedPane(with: fresh)
+        #expect(restarted)
+        let closed = open.advance(to: TmuxOpenPanes(projects: [project]))
+
+        #expect(closed.map(\.pane) == [Self.sid(dead)])
+        #expect(open.killTargets(closed: closed, registry: Self.terminals).isEmpty)
+    }
+
+    @Test func unboundPanesAreNotTrackedAndAddingPanesClosesNothing() throws {
+        let bound = TestPane()
+        let unbound = TestPane()
+        let added = TestPane()
+        var project = Self.makeProject(bound)
+        project.bindPane(Self.sid(bound))
+        project.paneTree = try project.paneTree.inserting(view: unbound, at: bound, direction: .right)
+        var open = TmuxOpenPanes(projects: [project])
+        #expect(Set(open.panes.keys) == [Self.sid(bound)])
+
+        project.paneTree = try project.paneTree.inserting(view: added, at: bound, direction: .down)
+        project.bindPane(Self.sid(added))
+        let closed = open.advance(to: TmuxOpenPanes(projects: [project]))
+
+        #expect(closed.isEmpty)
+        #expect(Set(open.panes.keys) == [Self.sid(bound), Self.sid(added)])
+    }
 }

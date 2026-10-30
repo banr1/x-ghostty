@@ -159,6 +159,14 @@ class BaseTerminalController: NSWindowController,
     /// first sync treats every surface as born.
     private var appliedRenderTarget = RenderTargetSnapshot()
 
+    /// The bound panes open at the last workspace change (must 133): the
+    /// `before` that tells which panes the next change closed.
+    private var openTmuxPanes = TmuxOpenPanes()
+
+    /// Off once the window tears down every project for good: closing the
+    /// window or quitting never kills a session (must 133).
+    private var killsClosedTmuxSessions = true
+
     /// An override title for the window set by the user.
     /// When set, this takes precedence over the computed title from the terminal.
     var titleOverride: String? {
@@ -258,11 +266,16 @@ class BaseTerminalController: NSWindowController,
         // instead of being re-derived at each call site. `$state` publishes
         // before the property is assigned, so the sink syncs off the emitted
         // value, not `workspace.state`.
+        //
+        // Every close path lands here too, so the same hook finds the panes
+        // whose tmux sessions to kill after the undo period (must 133).
+        openTmuxPanes = TmuxOpenPanes(projects: workspace.state.projects.values)
         workspaceStateCancellable = workspace.$state
             .dropFirst()
             .sink { [weak self] newState in
                 self?.invalidateRestorableState()
                 self?.syncRenderTargetOcclusion(for: newState)
+                self?.scheduleTmuxSessionKills(for: newState)
             }
 
         // Setup our bell state for the window
@@ -971,6 +984,7 @@ class BaseTerminalController: NSWindowController,
     /// workspace is dropped first so the `surfaceTreeDidChange` mirror that follows
     /// has no project left to write into.
     func removeAllSurfaces() {
+        killsClosedTmuxSessions = false
         workspace.removeAllProjects()
         surfaceTree = .init()
     }
@@ -999,6 +1013,50 @@ class BaseTerminalController: NSWindowController,
             target.restoreWorkspaceState(undoState)
             target.registerWorkspaceUndo(actionName, undo: redoState, redo: undoState)
         }
+    }
+
+    // MARK: tmux sessions of closed panes (must 133)
+
+    /// A margin past the undo period, so the kill runs after the close's undo
+    /// has expired rather than racing it.
+    private static let tmuxKillGrace: TimeInterval = 1
+
+    /// Record the panes `state` closed and kill their sessions once the undo
+    /// period expires. Whether a pane came back is decided then, against the
+    /// workspace at that moment.
+    private func scheduleTmuxSessionKills(for state: WorkspaceState) {
+        let closed = openTmuxPanes.advance(to: TmuxOpenPanes(projects: state.projects.values))
+        guard killsClosedTmuxSessions, !closed.isEmpty else { return }
+        let delay = max(0, undoExpiration.timeInterval) + Self.tmuxKillGrace
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.killTmuxSessions(of: closed)
+        }
+    }
+
+    /// Kill the sessions of `closed` that no open pane uses, once per
+    /// terminal. A terminal out of reach is given up on, never retried.
+    private func killTmuxSessions(of closed: [TmuxClosedPane]) {
+        guard killsClosedTmuxSessions else { return }
+        let registry = workspace.terminalRegistry
+        let targets = openTmuxPanes.killTargets(closed: closed, registry: registry)
+        for (terminal, sessions) in targets {
+            Self.runDetached(TmuxSession.killArguments(
+                sessions: sessions.sorted(),
+                terminal: terminal,
+                isLocal: registry.isLocal(terminal)))
+        }
+    }
+
+    /// Start `argv` without waiting for it or reading its output.
+    private static func runDetached(_ argv: [String]) {
+        guard let executable = argv.first else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = Array(argv.dropFirst())
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
     }
 
     // MARK: Notifications

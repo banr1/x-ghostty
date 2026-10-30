@@ -174,6 +174,54 @@ struct TmuxClosedPane: Equatable, Hashable {
     }
 }
 
+/// The bound panes open across a workspace (must 133). Comparing two states
+/// finds the panes a change closed, whichever path closed them — `Cmd+W`,
+/// `close_project`, the list's row `Delete`, a redo — and, once their undo
+/// period expires, which of their sessions still have to be killed.
+struct TmuxOpenPanes: Equatable {
+    private(set) var panes: [SurfaceID: TmuxClosedPane] = [:]
+
+    init() {}
+
+    init<Pane>(projects: some Sequence<ProjectStateOf<Pane>>)
+    where Pane: Codable & Identifiable & Equatable, Pane.ID == UUID {
+        for project in projects {
+            for pane in project.tmuxPanesInTree {
+                panes[pane.pane] = pane
+            }
+        }
+    }
+
+    /// Moves to `next`, returning the panes open here but not in `next`.
+    mutating func advance(to next: TmuxOpenPanes) -> [TmuxClosedPane] {
+        let closed = panes.values
+            .filter { next.panes[$0.pane] == nil }
+            .sorted { $0.sessionName < $1.sessionName }
+        self = next
+        return closed
+    }
+
+    /// The sessions of `closed` to kill now that their undo period expired,
+    /// grouped by terminal. A pane open again (brought back by undo) keeps
+    /// its session, and so does any session an open pane attaches to: a
+    /// restarted terminated pane takes over the dead pane's session.
+    func killTargets(
+        closed: some Sequence<TmuxClosedPane>,
+        registry: ProjectTerminalRegistry
+    ) -> [ProjectTerminal: Set<String>] {
+        var targets = TmuxSession.killTargets(
+            closed: closed, open: Set(panes.keys), registry: registry)
+        for pane in panes.values {
+            let terminal = registry.terminal(named: pane.binding.terminalName)
+            targets[terminal]?.remove(pane.sessionName)
+            if targets[terminal]?.isEmpty == true {
+                targets[terminal] = nil
+            }
+        }
+        return targets
+    }
+}
+
 /// The tmux side of restoring a project's panes (must 129).
 ///
 /// A restored surface is created while its project's pane tree is decoded,
