@@ -37,6 +37,14 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - SPEC の読み合わせでは、節内の backtick 識別子を抜き出して `grep -rlw` で `macos/Sources macos/Tests src include` に在るかを一括で調べると、廃止済みの識別子(例: `isDrawing`)が機械的に見つかる。テスト件数は `grep -c '@Test'` で節見出しと突き合わせる(1 ファイルに複数 struct があるスイートは struct 単位で数える)。
 - fork の機能を作る前に、上流が同等の機構を既に持っていないかを確かめる。欠けているのは API ではなく呼び出し側の走査範囲、ということがあった。
 
+## tmux
+
+- Mac mini の tmux は `/opt/homebrew/bin/tmux`(3.8)。hostname は `Mac-mini-M6.local`。人間の常用セッション(`main` など)が既定ソケットに居るので、実験は名前で絞ったセッションだけを作り・kill する。
+- `set-option -t` は pane target を取るので、セッションの完全一致は `=<name>:`(末尾の `:` が要る)。`=<name>` だけだと「no such session」。`kill-session -t` / `has-session -t` は `=<name>` で効く。
+- zsh では行頭の `=word` が equals 展開(コマンドのパスへの置換)になる。zsh から tmux を叩くときは `-t "=name:"` と引用する。生成するスクリプトは `/bin/sh -c` で走らせているので影響しない。
+- attach コマンドを tty 無しで試すには、`(perl -e 'sleep 15' \| script -q /dev/null /bin/zsh -c "<cmd>" > out.txt 2>&1 &)` で擬似端末を与える(stdin を開いておかないと client が即 detach する)。`tmux new-session -A ... ';' set-option ...` の連鎖は、新規作成と再 attach のどちらでも後続の set-option が走る。
+- Mac mini の ssh ループバックは未設定(`ssh 127.0.0.1` は Host key verification failed)。
+
 ## SwiftUI / AppKit の癖
 
 - SwiftUI(macOS)の hover / pointer-style の追跡は、最後のマウスイベントの時点でポインタの下にあった responder 連鎖を次のマウスイベントまで保持する。キーボードだけで view を消すと、その view(とそれが持つ `SurfaceView`)がマウスを動かすまで解放されない。ポインタ位置への合成 mouse-moved を window に `sendEvent` すれば取り直される(`BaseTerminalController.refreshPointerTracking`)。この保持は「マウスの位置」に依存するので、解放の実機再現ではポインタの置き場所を固定しないと結果が揺れる。
