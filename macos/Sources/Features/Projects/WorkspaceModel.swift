@@ -1603,6 +1603,31 @@ enum WorkspaceChildExitOutcome: Equatable {
     case keepPaneAwaitingKey(ProjectID)
 }
 
+/// Where a key press on a pane whose child process has exited goes
+/// (`SPEC.md` §23.3). Keybinds keep working on an exited pane as on a live
+/// one (upstream runs bindings before it looks at the exit); only the rest
+/// belongs to the project layer, where a plain Return / Enter is the restart
+/// key of a terminated pane.
+enum ExitedPaneKeyRoute: Equatable {
+    /// A keybind (`Cmd+L`, `Cmd+Shift+,`, `Cmd+Opt+Enter`, …): the core runs
+    /// its action.
+    case binding
+
+    /// Any other key: handed to the project layer. `isRestart` is true only
+    /// for a Return / Enter without modifiers — the key that restarts a
+    /// terminated pane; an exited sibling pane closes on any key.
+    case project(isRestart: Bool)
+
+    /// - Parameters:
+    ///   - isBinding: the core reports the key as a keybind.
+    ///   - isReturn: the key is Return or keypad Enter.
+    ///   - hasModifiers: any of Shift / Control / Option / Command is held.
+    static func route(isBinding: Bool, isReturn: Bool, hasModifiers: Bool) -> Self {
+        if isBinding { return .binding }
+        return .project(isRestart: isReturn && !hasModifiers)
+    }
+}
+
 /// The result of closing the focused project (`SPEC.md` §11.9).
 enum WorkspaceCloseProjectOutcome: Equatable {
     /// Focus moved to `target` (its stored last-focused surface in `focus`).

@@ -1742,10 +1742,15 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   等幅タイポ・端末自身の背景色と split divider ストローク)を重ねる。
   hit-test 無効なので、終了済みプロジェクトのクリックは従来どおりプロジェクト focus に
   落ち、続く Enter が再開経路へ届く。
-- キー配線:`SurfaceView.keyDown` は exited ペインでは死んだ pty へ書き込む
-  代わりに `ghosttyExitedSurfaceKeyDown`(`isReturn` フラグ付き)を post する。
-  素の keyDown だけが対象で、コマンド chord(`Cmd+W` 等)は exited ペインでも
-  従来どおり効く。
+- キー配線:`SurfaceView.keyDown` は exited ペインのキーを
+  `ExitedPaneKeyRoute.route` で振り分ける。キーバインド(`keyIsBinding`。
+  `performKeyEquivalent` から keyDown へ回ってくる `Cmd+L`・`Cmd+Shift+,`・
+  `Cmd+Opt+Enter` 等を含む)は `.binding` で、生きたペインと同じくコアへ渡し、
+  コアがアクションを実行する(それ以外の入力はコアが死んだ pty へ書かずに捨てる)。
+  キーバインドでないキーは `.project` で、死んだ pty へ書き込む代わりに
+  `ghosttyExitedSurfaceKeyDown` を post する。`isReturn` フラグは修飾キー
+  (Shift / Control / Option / Command)なしの Return・Enter のときだけ真で、
+  再開を起こすのはこのキーだけ。
 - ペインのコマンドは tmux セッションへの attach(§29.3)なので、最終ペインの
   「exit」は tmux クライアントまたは ssh の終了 — detach・セッションの終了・
   ssh の失敗や切断 — を含み、いずれも同じ終了済み経路に乗る。出力(ssh の
@@ -1776,7 +1781,7 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   プロジェクトの close は "Close Project" の undo を登録するため、undo 期限内は
   取り消せる(§31.4)。
 
-### 23.5 テスト(ProjectTerminatedTests、16 件)
+### 23.5 テスト(ProjectTerminatedTests、18 件)
 
 ```text
 - 常時確認: 実行中プロセスの有無によらず確認要求
@@ -1791,6 +1796,8 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   runtime-only、復元は生きて戻る)
 - 再開: 同一スロットへ新ペイン(プライマリー化・focused 化・ノート保持・
   状態クリア)/ 非 terminated では拒否
+- exited ペインのキー: キーバインドは Return を含めて .binding(コアへ)/
+  再開は修飾キーなしの Return・Enter だけ
 ```
 
 ## 24. 優先度・締切・次トリガー仕様
@@ -2549,8 +2556,10 @@ project-terminal = <name>,<host>[,<color>]    # 繰り返し可。空値でリ�
   端末の表示名を登録順に候補列挙して選ぶ(§27.2)。`Delete` は手元へ戻す。
   `Cmd+C` は表示名をコピーし、`Cmd+V` は登録済みの表示名だけを受け付けて
   それ以外を無視する(§27.7)。端末はソートキーではない。
-- 端末の変更は**その後に起動するペイン**(split・終了済みからの再開)に効き、
-  開いているペインはそのまま。
+- 端末の変更は**その後に新しく作るペイン**(split・新規プロジェクトの初期
+  ペイン)にだけ効き、開いているペインはそのまま。終了済みペインの `Enter` 再開は
+  ペインの束縛(§29.3)に従い、元の端末の同じセッションへ戻る(端末の変更の
+  影響を受けない)。
 
 ### 29.3 ペインの tmux セッション(TmuxPaneBinding / TmuxSession)
 

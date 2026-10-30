@@ -1085,19 +1085,31 @@ extension XGhostty {
 
         override func keyDown(with event: NSEvent) {
             // Once the child process has exited the pane no longer talks to a
-            // live pty, so its key input belongs to the project layer: Enter
-            // restarts a terminated pane's shell, any key closes an exited
-            // sibling pane. Only plain keyDowns land here — command chords go
-            // through the key-equivalent path first, so keybinds such as
-            // Cmd+W keep working on an exited pane.
+            // live pty, so its non-keybind input belongs to the project layer:
+            // a plain Enter restarts a terminated pane's shell, any key closes
+            // an exited sibling pane. Keybinds (also those routed here from
+            // performKeyEquivalent, such as Cmd+L) fall through to the core,
+            // which runs them and swallows any other input of an exited pane.
             if processExited {
-                let isReturn = event.specialKey == .carriageReturn
-                    || event.specialKey == .enter
-                NotificationCenter.default.post(
-                    name: XGhostty.Notification.ghosttyExitedSurfaceKeyDown,
-                    object: self,
-                    userInfo: [XGhostty.Notification.ExitedSurfaceKeyIsReturnKey: isReturn])
-                return
+                let isBinding = surfaceModel.flatMap { surface in
+                    var ghosttyEvent = event.ghosttyKeyEvent(XGHOSTTY_ACTION_PRESS)
+                    return (event.characters ?? "").withCString { ptr in
+                        ghosttyEvent.text = ptr
+                        return surface.keyIsBinding(ghosttyEvent)
+                    }
+                } != nil
+                let route = ExitedPaneKeyRoute.route(
+                    isBinding: isBinding,
+                    isReturn: event.specialKey == .carriageReturn || event.specialKey == .enter,
+                    hasModifiers: !event.modifierFlags
+                        .intersection([.shift, .control, .option, .command]).isEmpty)
+                if case .project(let isRestart) = route {
+                    NotificationCenter.default.post(
+                        name: XGhostty.Notification.ghosttyExitedSurfaceKeyDown,
+                        object: self,
+                        userInfo: [XGhostty.Notification.ExitedSurfaceKeyIsReturnKey: isRestart])
+                    return
+                }
             }
 
             guard let surface = self.surface else {

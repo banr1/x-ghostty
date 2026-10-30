@@ -262,4 +262,24 @@ struct ProjectTerminatedTests {
         #expect(!model.restartTerminatedPane(in: projectID, with: TestPane()))
         #expect(model.state.projects[projectID]?.paneTree.find(id: pane.id) != nil)
     }
+
+    // MARK: Keys on an exited pane (SPEC §23.3)
+
+    @Test func keybindsOnAnExitedPaneGoToTheCore() {
+        // Cmd+L, Cmd+Shift+, or Cmd+Opt+Enter keep working on an exited pane:
+        // a keybind is never a restart or a close, even when it is Return.
+        #expect(ExitedPaneKeyRoute.route(isBinding: true, isReturn: false, hasModifiers: true)
+                == .binding)
+        #expect(ExitedPaneKeyRoute.route(isBinding: true, isReturn: true, hasModifiers: true)
+                == .binding)
+    }
+
+    @Test func onlyAPlainReturnRestartsATerminatedPane() {
+        #expect(ExitedPaneKeyRoute.route(isBinding: false, isReturn: true, hasModifiers: false)
+                == .project(isRestart: true))
+        #expect(ExitedPaneKeyRoute.route(isBinding: false, isReturn: true, hasModifiers: true)
+                == .project(isRestart: false))
+        #expect(ExitedPaneKeyRoute.route(isBinding: false, isReturn: false, hasModifiers: false)
+                == .project(isRestart: false))
+    }
 }
