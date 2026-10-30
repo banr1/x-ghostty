@@ -106,6 +106,20 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     /// .terminal(named:)`), so re-registering it brings the project back.
     var terminalName: String?
 
+    /// The tmux session each started pane lives in (must 129): its terminal
+    /// and pane index, fixed by `bindPane` when the pane is first started.
+    ///
+    /// Persisted with the pane layout for the panes in `paneTree`, so a
+    /// restored pane re-attaches to the same session on the same terminal.
+    /// In memory a pane that left the tree keeps its entry: undo may bring it
+    /// back, and the session kill after the undo period needs it.
+    private(set) var paneBindings: [SurfaceID: TmuxPaneBinding] = [:]
+
+    /// The highest pane index ever handed out in this project. Persisted, so
+    /// an index is not reused even after a restart — a session left behind by
+    /// a pane closed just before quitting is never attached by a new pane.
+    private(set) var lastPaneIndex: Int = 0
+
     var createdAt: Date
     var lastFocusedAt: Date?
 
@@ -249,11 +263,57 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     ///   terminated.
     @discardableResult
     mutating func restartTerminatedPane(with newPane: Pane) -> Bool {
-        guard isTerminated else { return false }
+        guard let deadPane = terminatedPane else { return false }
+        // Enter re-runs the same attach command (must 132): the new pane takes
+        // over the dead pane's session rather than starting another one.
+        let newID = SurfaceID(rawValue: newPane.id)
+        if let binding = paneBindings.removeValue(forKey: deadPane), newID != deadPane {
+            paneBindings[newID] = binding
+        }
         // The tree observer clears `terminatedPane` (the dead pane leaves the
         // tree) and re-resolves the primary onto the sole new leaf.
         paneTree = SplitTree<Pane>(view: newPane)
         return true
+    }
+
+    // MARK: tmux sessions (must 129, 133)
+
+    /// The tmux session of `paneID`, binding it on first use: a pane not yet
+    /// bound takes the project's current terminal and the next unused pane
+    /// index. A bound pane keeps its binding, so changing the project's
+    /// terminal never moves an open pane.
+    ///
+    /// - Returns: `nil` (and changes nothing) when `paneID` is not a leaf of
+    ///   `paneTree`.
+    @discardableResult
+    mutating func bindPane(_ paneID: SurfaceID) -> TmuxPaneBinding? {
+        guard paneTree.find(id: paneID.rawValue) != nil else { return nil }
+        if let existing = paneBindings[paneID] { return existing }
+        let index = TmuxSession.nextIndex(
+            after: paneBindings.values.map(\.index) + [lastPaneIndex])
+        let binding = TmuxPaneBinding(terminalName: terminalName, index: index)
+        paneBindings[paneID] = binding
+        lastPaneIndex = index
+        return binding
+    }
+
+    /// The tmux session name of a bound pane, or `nil` when it is unbound.
+    func sessionName(for paneID: SurfaceID) -> String? {
+        paneBindings[paneID]?.sessionName(project: id)
+    }
+
+    /// The bound panes among `paneIDs`, as recorded when they are closed.
+    /// Unbound panes never started a session and have nothing to kill.
+    func closedTmuxPanes(_ paneIDs: some Sequence<SurfaceID>) -> [TmuxClosedPane] {
+        paneIDs.compactMap { pane in
+            paneBindings[pane].map { TmuxClosedPane(project: id, pane: pane, binding: $0) }
+        }
+    }
+
+    /// Every bound pane of the tree — what closing the whole project records,
+    /// a terminated pane included.
+    var tmuxPanesInTree: [TmuxClosedPane] {
+        closedTmuxPanes(paneTree.map { SurfaceID(rawValue: $0.id) })
     }
 }
 
@@ -271,6 +331,8 @@ extension ProjectStateOf: Codable {
         case deadline
         case nextTrigger
         case terminal
+        case paneSessions
+        case lastPaneIndex
         case createdAt
         case lastFocusedAt
     }
@@ -306,6 +368,17 @@ extension ProjectStateOf: Codable {
         // Saves written before terminals existed have no key: the local
         // terminal, the default.
         self.terminalName = (try? c.decodeIfPresent(String.self, forKey: .terminal)) ?? nil
+        // Saves written before tmux sessions existed have neither key: every
+        // pane is unbound and binds on its next start. Entries for panes not
+        // in the decoded tree are dropped.
+        let sessions = (try? c.decodeIfPresent([PaneSessionRecord].self, forKey: .paneSessions)) ?? []
+        var bindings: [SurfaceID: TmuxPaneBinding] = [:]
+        for record in sessions where paneTree.find(id: record.pane.rawValue) != nil {
+            bindings[record.pane] = TmuxPaneBinding(terminalName: record.terminal, index: record.index)
+        }
+        self.paneBindings = bindings
+        let storedLast = (try? c.decodeIfPresent(Int.self, forKey: .lastPaneIndex)) ?? nil
+        self.lastPaneIndex = max(storedLast ?? 0, bindings.values.map(\.index).max() ?? 0)
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
         self.lastFocusedAt = try c.decodeIfPresent(Date.self, forKey: .lastFocusedAt)
     }
@@ -326,8 +399,25 @@ extension ProjectStateOf: Codable {
         try c.encodeIfPresent(deadline, forKey: .deadline)
         try c.encodeIfPresent(nextTrigger, forKey: .nextTrigger)
         try c.encodeIfPresent(terminalName, forKey: .terminal)
+        // Pane sessions ride the same record as the pane layout (must 129),
+        // in tree order, only for the panes in the tree.
+        let sessions = paneTree.compactMap { pane -> PaneSessionRecord? in
+            let id = SurfaceID(rawValue: pane.id)
+            return paneBindings[id].map {
+                PaneSessionRecord(pane: id, terminal: $0.terminalName, index: $0.index)
+            }
+        }
+        try c.encode(sessions, forKey: .paneSessions)
+        try c.encode(lastPaneIndex, forKey: .lastPaneIndex)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encodeIfPresent(lastFocusedAt, forKey: .lastFocusedAt)
+    }
+
+    /// One pane's saved tmux session.
+    private struct PaneSessionRecord: Codable {
+        let pane: SurfaceID
+        let terminal: String?
+        let index: Int
     }
 }
 

@@ -137,6 +137,37 @@ struct ProjectTerminalRegistry: Equatable {
     }
 }
 
+/// Which tmux session one pane lives in: the terminal it was started on and
+/// its pane index within the project (the session is `<project id>-<index>`).
+///
+/// Fixed when the pane is first started. Changing the project's terminal
+/// afterwards only affects panes started later, so an open pane keeps
+/// re-attaching to the terminal it was started on.
+struct TmuxPaneBinding: Codable, Equatable, Hashable {
+    /// The stored terminal name (`nil` for the local terminal), resolved
+    /// through `ProjectTerminalRegistry.terminal(named:)` like a project's.
+    let terminalName: String?
+
+    /// The pane index, unique within the project and never reused.
+    let index: Int
+
+    func sessionName(project: ProjectID) -> String {
+        TmuxSession.name(project: project, index: index)
+    }
+}
+
+/// A pane closed by `Cmd+W`, `close_project` or the list's row `Delete`, whose
+/// session is killed when the undo period expires unless the pane came back.
+struct TmuxClosedPane: Equatable, Hashable {
+    let project: ProjectID
+    let pane: SurfaceID
+    let binding: TmuxPaneBinding
+
+    var sessionName: String {
+        binding.sessionName(project: project)
+    }
+}
+
 /// Where a new tmux session starts.
 enum TmuxStartDirectory: Equatable {
     /// `~/workspace/<title>` if it exists on the terminal, else `~/workspace`,
@@ -242,6 +273,26 @@ enum TmuxSession {
         let kills = sessions.map { "tmux kill-session -t \(quote("=\($0)")) 2>/dev/null" }
         let script = ([pathPrefix] + kills + ["true"]).joined(separator: "; ")
         return arguments(script: script, terminal: terminal, isLocal: isLocal)
+    }
+
+    /// The sessions to kill once the undo period of `closed` expires, grouped
+    /// by the terminal they live on.
+    ///
+    /// A pane in `open` — brought back by undo — keeps its session. Each
+    /// stored terminal name resolves through `registry` like a project's, so a
+    /// pane whose terminal was unregistered is killed on the local terminal,
+    /// where it was attached. A terminal with nothing to kill is absent.
+    static func killTargets(
+        closed: some Sequence<TmuxClosedPane>,
+        open: Set<SurfaceID>,
+        registry: ProjectTerminalRegistry
+    ) -> [ProjectTerminal: Set<String>] {
+        var targets: [ProjectTerminal: Set<String>] = [:]
+        for pane in closed where !open.contains(pane.pane) {
+            let terminal = registry.terminal(named: pane.binding.terminalName)
+            targets[terminal, default: []].insert(pane.sessionName)
+        }
+        return targets
     }
 
     /// The text tmux shows as `status-left`. `#` starts a tmux format, so it
