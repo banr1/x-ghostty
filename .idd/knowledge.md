@@ -60,7 +60,8 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - 手元は「ホストが機体の hostname と一致する最初の登録」だけ。2 つ目の一致は手元でなく ssh を通る。`MAC-MINI-M6` への ssh は Tailscale の 100.99.27.17 に解決され、ホスト鍵の確認で止まる(ssh の待機中のペインは閉じずに残るので、最後のペインに仕立てるのに使える)。到達不能な端末は `<name>,nonexistent.invalid,<color>` で作れる。
 - ssh ループバックは人間が用意済み: `ssh -o BatchMode=yes xg-loop` が対話なしで通る(HostName 127.0.0.1)。端末登録 `loop,xg-loop,colour33` で手元でない端末の経路を試せる。リモートの非対話 PATH に Homebrew は無いが、attach コマンドが `PATH=/opt/homebrew/bin:…` を前置するので tmux は見つかる。ハーネスは `~/.ssh` の読み取りを拒否するので、`~/.ssh` には触れない。
 - 到達不能な端末で再試行を観測するには、ssh 先のペインを最後のペインにする。次に設定ファイルの当該端末のホストを `nonexistent.invalid` に書き換えて再読み込みし、`C-s d` の後に Enter を押す。再開のコマンドは再開時の登録から組み直される(`restartLaunchCommand`)。最後でないペインのコマンドが終わると、ペインは閉じ、undo 期限後にセッションが kill される。
-- 終了済みペインのキーは `SurfaceView.keyDown` の `processExited` 分岐が振り分ける。`performKeyEquivalent` はキーバインドを keyDown へ回すので、この分岐がバインドを握りつぶすと `Cmd+L`・`Cmd+Shift+,` が効かなくなる(周回 43 より前の版の症状)。どの版でも、設定の再読み込みはメニュー「Reload Configuration」(menu bar item 2)からなら確実に効く。zoom 中の `Cmd+[` では隣のペインへ focus が移らなかった。打鍵の前に、どのペインにフォーカスがあるかを screencapture で確かめる。
+- 終了済みペインのキーは `SurfaceView.keyDown` の `processExited` 分岐が振り分ける。`performKeyEquivalent` はキーバインドを keyDown へ回すので、この分岐がバインドを握りつぶすと `Cmd+L`・`Cmd+Shift+,` が効かなくなる(周回 43 より前の版の症状。周回 43 以降の版では効く)。設定の再読み込みはメニュー「Reload Configuration」(menu bar item 2)からも押せる。
+- 観測の補助: 打鍵ツールは `/tmp/c40tools/ks <pid> key <code> [cmd,opt,shift,ctrl]` / `type <str>` / `win`(ソースは同じ場所の ks.swift。/tmp は消えうる)。一覧を開いた直後の打鍵は取りこぼすことがあるので 0.5 秒ほど待つ。兄弟のあるペインのセッションを外から `tmux kill-session` するとそのペインは閉じ、最後のペインなら終了済みになる。login(1) 経由のペインは前回のログイン記録(`from 127.0.0.1` を含む)を表示するので、ssh 経由かどうかの判定には使えない。zoom 中の `Cmd+[` では隣のペインへ focus が移らなかった。打鍵の前に、どのペインにフォーカスがあるかを screencapture で確かめる。
 - OSC 7 によるリモート split の検出は撤去済み。コアの `reportPwd` は非ローカルのホストを上流どおり警告して捨て、`xghostty_action_pwd_s` は `pwd` だけを持つ。`xghostty_surface_foreground_pid` は上流由来の `XGhostty.Surface.swift` も使うので残っている。
 
 ## SwiftUI / AppKit の癖
