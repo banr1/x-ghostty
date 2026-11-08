@@ -63,7 +63,7 @@ ideal_sha: 3e6f1e8a2583a52baaea243bc260ba44b7f166443bd7862b4ffb344d2d1cbed2
 | C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | unmet | - (C101 が周回 50 の対象ファイル変更で失効) |
 | C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 53: just swift-test exit 0 (C100 は met) |
 | C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | unmet | - (C107 は周回 52 で met。C108 は人間の確認待ち) |
-| C49 | 必須 | レイアウト型 = 形 2 種 × 向き 2 種(台座型廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置(検証: C102 + C103・C139) | unmet | - (周回 51 で実装し C102 は met。C103 は人間の確認待ち、C139 は実機観測待ち) |
+| C49 | 必須 | レイアウト型 = 形 2 種 × 向き 2 種(台座型廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置(検証: C102 + C103・C139) | unmet | - (周回 51 で実装し C102 は met。C139 は周回 54 で met。C103 は人間の確認待ち) |
 | C50 | 必須 | visible 1〜24 で完全一致する型を畳み、選択肢 1 つなら選ぶものが無い旨(検証: C102 + C103) | unmet | - (周回 51 で実装し C102 は met。C103 は人間の確認待ち) |
 | C51 | 必須 | `Cmd+Opt+L` でレイアウト型の選択オーバーレイ(検証: C103) | unmet | - (C103 が周回 50 の対象ファイル変更で失効) |
 | C52 | 必須 | レイアウト型は永続化、既定は横長型・行送り、保存された台座型は横長型へ移行(検証: C102 + C103) | unmet | - (周回 51 で実装し C102 は met。C103 は人間の確認待ち) |
@@ -79,7 +79,7 @@ ideal_sha: 3e6f1e8a2583a52baaea243bc260ba44b7f166443bd7862b4ffb344d2d1cbed2
 | C65 | 必須 | Notion 流儀のセルカーソル・Enter 編集・候補列挙(端末・種別列を含む)(検証: C107 + C108) | unmet | - (種別列の候補は周回 50 で実装。C107 は周回 52 で met。C108 は人間の確認待ち) |
 | C66 | 必須 | ノート列編集は全行対象、Shift+Enter で改行、一覧内 `Cmd+Opt+E` は全行表示トグル(検証: C107 + C108) | unmet | - (C107 は周回 52 で met。C108 は人間の確認待ち) |
 | C67 | 必須 | `Cmd+矢印` は端移動、`Opt+矢印` で行・列並べ替え(検証: C107 + C108) | unmet | - (C107 は周回 52 で met。C108 は人間の確認待ち) |
-| C68 | 必須 | `Cmd+N` は一覧での新規プロジェクト作成、visible 24 未満なら visible・24 なら hidden、種別は Core(検証: C107 + C108) | unmet | - (周回 52 で上限 24 を実装し C107 は met。周回 53 の実機で、一覧内の Cmd+N でカーソルが新しい行へ移らない不具合を見つけて直した。C108 は人間の確認待ち) |
+| C68 | 必須 | `Cmd+N` は一覧での新規プロジェクト作成、visible 24 未満なら visible・24 なら hidden、種別は Core(検証: C107 + C108) | unmet | - (周回 52 で上限 24 を実装し C107 は met。周回 53 の実機で、一覧内の Cmd+N でカーソルが新しい行へ移らない不具合を見つけて直し、周回 54 の実機で 21 回続けて新しい行のタイトル列に入ることを確かめた。C108 は人間の確認待ち) |
 | C69 | 必須 | 一覧の `Cmd+Enter` で focus(hidden 行は近傍 visible へ)(検証: C107 + C108) | unmet | - (C107 は周回 52 で met。C108 は人間の確認待ち) |
 | C70 | 必須 | 一覧の判断ロジック(端末・種別の候補を含む)はモデル層(検証: C107) | met | cycle 53: just swift-test exit 0 (C107 は met) |
 | C71 | 必須 | 次トリガー 4 値(チームメンバーは外部へ移行)(検証: C107・C111 + C112) | unmet | - (C107 は改訂で未達、C112 は周回 50 で失効) |
@@ -133,21 +133,21 @@ ideal_sha: 3e6f1e8a2583a52baaea243bc260ba44b7f166443bd7862b4ffb344d2d1cbed2
 | C124 | 必須 | `XGhostty.Surface.deinit` はメインスレッドなら同期的に `xghostty_surface_free`(検証: 読み合わせ + C88〜C90 + C117) | unmet | - (C117 が周回 50 の対象ファイル変更で失効。読み合わせと C88〜C90 は周回 50 で確認済み) |
 | C125 | 必須 | 一覧の行選択 Delete で閉じたとき新しい focus 先へキーボードフォーカスを移す(検証: C126 + 読み合わせ + C117) | unmet | - (C117 が周回 50 の対象ファイル変更で失効) |
 | C126 | 必須 | 一覧セッション中の closeProject の focus 先・保持集合・セッション継続のテスト(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 53: just swift-test exit 0 (ProjectListRowSelectionTests の 2 件が passed) |
-| C127 | 必須 | 端末を設定ファイルに登録(表示名・ホスト・色)、hostname 一致を手元、登録なしは暗黙の手元、再読み込みで反映(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C128 | 必須 | プロジェクトの端末(既定は手元)、一覧の端末列で候補選択・Delete で手元・登録名のみ貼り付け、永続化、欠落は手元扱い、変更は以後の新しいペインだけに効き終了済みの再開は元の端末の同じセッションへ(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C129 | 必須 | 全ペインを端末上の tmux セッションへ attach するコマンドで起動、セッション名 `<ID>-<n>`、ペインごとの端末・セッション名を永続化(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C130 | 必須 | 開始ディレクトリ `~/workspace/<タイトル>` → `~/workspace` → ホーム、split は `#{pane_current_path}` を引き継ぐ(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C131 | 必須 | attach 時にそのセッションだけへ status-style・status-left・prefix C-s を設定、リネームで status-left を更新(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C132 | 必須 | tmux / ssh の終了でペインは終了済み、Enter で同じ attach を再実行(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C133 | 必須 | 閉じたペインのセッションを undo 期限後に kill、undo で戻せば kill しない(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
-| C134 | 必須 | 手元でない端末への ssh に TERM=xterm-256color を渡す(検証: C136 + C137) | unmet | - (C137 が周回 50 の対象ファイル変更で失効) |
+| C127 | 必須 | 端末を設定ファイルに登録(表示名・ホスト・色)、hostname 一致を手元、登録なしは暗黙の手元、再読み込みで反映(検証: C136 + C137) | met | observed 54: 登録 mini・loop・nowhere が端末列の候補に出て、mini は ssh を介さず bg=colour28。loop のホストを変えて再読み込みすると次の再開から反映された(C136 は cycle 53: just swift-test exit 0) |
+| C128 | 必須 | プロジェクトの端末(既定は手元)、一覧の端末列で候補選択・Delete で手元・登録名のみ貼り付け、永続化、欠落は手元扱い、変更は以後の新しいペインだけに効き終了済みの再開は元の端末の同じセッションへ(検証: C136 + C137) | met | observed 54: p06 の端末を loop へ変えると新しい split だけが ssh になり元のペインは mini のまま。再起動後も一覧の端末列は loop。終了済みの再開は同じセッションへ戻った(Delete・貼り付けは C136 の cycle 53: just swift-test exit 0) |
+| C129 | 必須 | 全ペインを端末上の tmux セッションへ attach するコマンドで起動、セッション名 `<ID>-<n>`、ペインごとの端末・セッション名を永続化(検証: C136 + C137) | met | observed 54: 新規プロジェクトで `tmux ls` に db42e9dc-…-1 が現れ、split は f512cc87-…-2・-3 と連番になった。再起動で全 12 セッションが attached 1 に戻り、セッションは増減しなかった(C136 は cycle 53: just swift-test exit 0) |
+| C130 | 必須 | 開始ディレクトリ `~/workspace/<タイトル>` → `~/workspace` → ホーム、split は `#{pane_current_path}` を引き継ぐ(検証: C136 + C137) | met | observed 54: x-ghostty の作り直したセッションは session_path・pane_current_path とも ~/workspace/x-ghostty、~/workspace/<タイトル> の無い qa などは ~/workspace。split の新ペインは元ペインと同じ /private/tmp(C136 は cycle 53: just swift-test exit 0) |
+| C131 | 必須 | attach 時にそのセッションだけへ status-style・status-left・prefix C-s を設定、リネームで status-left を更新(検証: C136 + C137) | met | observed 54: show-options は prefix C-s・bg=colour28・status-left を示し、リネームで "[x-ghostty] " になった。xghostty が作っていないセッションとグローバルのオプションは開始前と diff なし(C136 は cycle 53: just swift-test exit 0) |
+| C132 | 必須 | tmux / ssh の終了でペインは終了済み、Enter で同じ attach を再実行(検証: C136 + C137) | met | observed 54: `C-s d` で detach の表示が残ったまま終了済みになり、Return で同じセッションへ戻って keep-c54 が残っていた。到達不能なホストでは ssh のエラーが見えたまま終了済みになり、Return のたびに再試行された(C136 は cycle 53: just swift-test exit 0) |
+| C133 | 必須 | 閉じたペインのセッションを undo 期限後に kill、undo で戻せば kill しない(検証: C136 + C137) | met | observed 54: Cmd+W で閉じた -2 は 2 秒後に残り 10 秒後に消えた。Cmd+Z で戻した -3 は 11 秒後も attached 1。一覧の行 Delete で閉じた 14 個も消えた。終了ではセッションは残った(C136 は cycle 53: just swift-test exit 0) |
+| C134 | 必須 | 手元でない端末への ssh に TERM=xterm-256color を渡す(検証: C136 + C137) | met | observed 54: ps に `env TERM=xterm-256color ssh -t xg-loop` があり、ssh 先の `tmux display -p` は client.xterm-256color.end を返した(C136 は cycle 53: just swift-test exit 0) |
 | C135 | 必須 | 端末・セッション・コマンド・候補・kill 対象の判断ロジックはモデル層(検証: C136) | met | cycle 53: just swift-test exit 0 (C136 は met。配置は周回 43 の記録どおりで、周回 50 の差分は端末の判断に触れていない) |
 | C136 | 必須 | 端末登録と tmux セッションのテスト群(9 項目)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 53: just swift-test exit 0 (failed 0 件。項目とテストの対応は cycle 39 の台帳どおり。ProjectTerminalColumnTests は既定列順の期待値だけを 8 列へ更新した) |
-| C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | unmet | - (周回 50 で対象ファイルを変えたので observed 44 は失効。全実装の後に取り直す) |
+| C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | met | observed 54: HEAD fbdac24 の zig-out 版で 9 項目すべてを確かめた(詳細は記録 0054 の検証表)。~/.tmux.conf の sha・グローバルと開始前 12 セッションのオプションは開始前と diff なし |
 | C138 | 必須 | 2 台の実機での目視(Mac mini の tmux・再起動後の再 attach・切断後の再 attach)(検証: 人間) | unmet | - (2026-10-30T16:21:09Z の刻印で「後日行う」とされ未確認のまま) |
-| C139 | 必須 | 種別と重み付きレイアウトの実機観測(8 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・台座型なし・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | unmet | - (周回 53 に修正前の HEAD で全 7 項目を観測し、期待どおりだった。ただし同じ周回で対象ファイルを変えたので出典にならない。次の周回の冒頭で取り直す) |
-| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、ソートキーにしない、大きさ以外に差を付けない(検証: C107 + C139) | unmet | - (モデル・列・保存は周回 50、全体ビューの大きさは周回 51 で実装し、C107 は周回 52 で met。C139 は実機観測待ち) |
-| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は配置順の先頭 9 つ(検証: C107 + C139) | unmet | - (周回 52 で実装し C107 は met。C139 は実機観測待ち) |
+| C139 | 必須 | 種別と重み付きレイアウトの実機観測(8 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・台座型なし・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | met | observed 54: HEAD fbdac24 の zig-out 版で 7 項目すべてを確かめた。Side の幅と高さは Core の半分(約 380 対 760、約 170 対 347)、Side の zoom・一望も Core と同じで印なし。24 は 4+5+5+5+5 で 25 個目は hidden(詳細は記録 0054 の検証表) |
+| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、ソートキーにしない、大きさ以外に差を付けない(検証: C107 + C139) | met | observed 54: C139 の項目 1・2・7 のとおりで、再起動後も lucky-moon は Side のまま(C107 は cycle 53: just swift-test exit 0) |
+| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は配置順の先頭 9 つ(検証: C107 + C139) | met | observed 54: 24 visible で新規行は hidden になり、その行の表示トグルは「no room to show」で拒否された。序数は 9 までで、序数の無い p11 へ一覧の Cmd+Enter で focus して入力が届いた(C107 は cycle 53: just swift-test exit 0) |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |
 | C120 | 望ましい | 全体ビューの非プライマリーペインのインジケータ(検証: 人間) | unmet | - |
