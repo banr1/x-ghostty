@@ -203,16 +203,14 @@ enum ProjectListKeyboardMode: Equatable {
 extension WorkspaceStateOf {
     /// Every project — hidden ones included — as list rows, in the ledger's
     /// single row order (`SPEC.md` §27.1): the rows are *not* partitioned by
-    /// visibility, and a row's ordinal is its 1-based position among the
-    /// visible rows counted from the top (`nil` for hidden rows, which the
-    /// numbering skips).
+    /// visibility, and a row's ordinal is the project's own display number
+    /// (`projectOrdinals`, the placement order — `nil` for hidden rows, which
+    /// the numbering skips).
     var projectListRows: [ProjectListRow] {
-        var ordinal = 0
+        let ordinals = projectOrdinals
         return projectOrder.compactMap { id in
             guard let project = projects[id] else { return nil }
-            let hidden = hiddenProjectIDs.contains(id)
-            if !hidden { ordinal += 1 }
-            return Self.listRow(id: id, project: project, ordinal: hidden ? nil : ordinal)
+            return Self.listRow(id: id, project: project, ordinal: ordinals[id])
         }
     }
 
@@ -513,7 +511,8 @@ extension WorkspaceStateOf {
     }
 
     /// Set project `id`'s kind (must 140). The kind is not a sort key, so the
-    /// row order never changes.
+    /// row order never changes; a visible project's arrangement re-derives
+    /// with it (`SPEC.md` §26.3).
     ///
     /// - Returns: whether the kind changed.
     @discardableResult
@@ -521,6 +520,7 @@ extension WorkspaceStateOf {
         guard var project = projects[id], project.kind != kind else { return false }
         project.kind = kind
         projects[id] = project
+        if !hiddenProjectIDs.contains(id) { relayout() }
         return true
     }
 
@@ -561,8 +561,7 @@ extension WorkspaceStateOf {
             projects[id] = project
             return true
         case .kind:
-            project.kind = .core
-            projects[id] = project
+            setProjectKind(id, to: .core)
             return true
         case .terminal:
             project.terminalName = nil

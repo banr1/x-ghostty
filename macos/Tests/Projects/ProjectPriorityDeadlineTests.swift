@@ -267,6 +267,30 @@ struct ProjectPriorityDeadlineTests {
         #expect(model.state.visibleProjectID(ordinal: 5) == unset.id)
     }
 
+    @Test func ordinalsAfterASortFollowThePlacementOrder() throws {
+        // Must 41: the sort orders the rows, the placement puts Core before
+        // Side, and the ordinals count the placement. A high-priority Side
+        // sits first in the list but after every Core on screen.
+        var sideHigh = Self.makeProject(name: "side high")
+        sideHigh.kind = .side
+        let coreLow = Self.makeProject(name: "core low")
+        let coreMedium = Self.makeProject(name: "core medium")
+        var sideLow = Self.makeProject(name: "side low")
+        sideLow.kind = .side
+        let model = try Self.makeModel(visible: [sideLow, coreLow, coreMedium, sideHigh])
+        model.setProjectPriority(sideHigh.id, to: .high)
+        model.setProjectPriority(coreLow.id, to: .low)
+        model.setProjectPriority(coreMedium.id, to: .medium)
+        model.setProjectPriority(sideLow.id, to: .low)
+
+        #expect(model.setProjectSortState(.priority))
+        #expect(model.state.projectOrder == [sideHigh.id, coreMedium.id, sideLow.id, coreLow.id])
+        #expect(model.state.visibleProjectIDs == [coreMedium.id, coreLow.id, sideHigh.id, sideLow.id])
+        #expect(model.state.ordinal(of: coreMedium.id) == 1)
+        #expect(model.state.ordinal(of: sideHigh.id) == 3)
+        #expect(model.gotoProjectIndexTarget(3) == sideHigh.id)
+    }
+
     @Test func deadlineSortStateReordersTheRealLayout() throws {
         let unset = Self.makeProject(name: "unset")
         let december = Self.makeProject(name: "december")

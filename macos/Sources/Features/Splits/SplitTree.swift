@@ -1312,19 +1312,8 @@ extension SplitTree {
     /// widths. Traversal order is row-major (top row first, left to right
     /// within a row). Rows may hold different element counts; empty rows are
     /// skipped, and an empty `rows` yields an empty tree.
-    ///
-    /// The project layer uses this for the registered layouts (arrange the
-    /// visible projects into a fixed grid); it is element-agnostic so other
-    /// callers can reuse it.
     init(gridRows rows: [[Element]]) {
-        let rowNodes = rows.filter { !$0.isEmpty }.map { row in
-            Self.equalChain(row.map { Node.leaf(view: $0) }, direction: .horizontal)
-        }
-        guard !rowNodes.isEmpty else {
-            self.init()
-            return
-        }
-        self.init(root: Self.equalChain(rowNodes, direction: .vertical), zoomed: nil)
+        self.init(weightedRows: rows.map { $0.map { (element: $0, weight: 1) } })
     }
 
     /// The transpose of `init(gridRows:)`: `columns` sit side by side at
@@ -1333,43 +1322,50 @@ extension SplitTree {
     /// bottom within a column). Empty columns are skipped, and an empty
     /// `columns` yields an empty tree.
     init(gridColumns columns: [[Element]]) {
-        let columnNodes = columns.filter { !$0.isEmpty }.map { column in
-            Self.equalChain(column.map { Node.leaf(view: $0) }, direction: .vertical)
-        }
-        guard !columnNodes.isEmpty else {
-            self.init()
-            return
-        }
-        self.init(root: Self.equalChain(columnNodes, direction: .horizontal), zoomed: nil)
+        self.init(weightedColumns: columns.map { $0.map { (element: $0, weight: 1) } })
     }
 
-    /// Stacks `top` over a single full-width `bottom` element: a vertical
-    /// split whose upper part takes `topRatio` of the height. An empty `top`
-    /// yields just the bottom leaf.
-    init(stacking top: Self, over bottom: Element, topRatio: Double) {
-        guard let topRoot = top.root else {
-            self.init(view: bottom)
-            return
-        }
-        self.init(root: .split(.init(
-            direction: .vertical,
-            ratio: Swift.min(Swift.max(topRatio, 0.05), 0.95),
-            left: topRoot,
-            right: .leaf(view: bottom))), zoomed: nil)
+    /// `init(gridRows:)` with each row's width shared by element weight. The
+    /// project layer sizes its layout types with this.
+    init(weightedRows rows: [[(element: Element, weight: Double)]]) {
+        self.init(root: Self.weightedGrid(rows, tier: .vertical, within: .horizontal), zoomed: nil)
     }
 
-    /// Chains `nodes` into nested splits along `direction` with equal
-    /// effective sizes: the first node takes 1/n of the total, the second
-    /// 1/(n-1) of the remainder, and so on — every node ends up at 1/n.
-    private static func equalChain(_ nodes: [Node], direction: Direction) -> Node {
-        var result = nodes[nodes.count - 1]
-        var count = 1
-        for node in nodes.dropLast().reversed() {
-            count += 1
+    /// `init(gridColumns:)` with each column's height shared by element weight.
+    init(weightedColumns columns: [[(element: Element, weight: Double)]]) {
+        self.init(root: Self.weightedGrid(columns, tier: .horizontal, within: .vertical), zoomed: nil)
+    }
+
+    /// Tiers at equal shares along `tier`, each dividing its length along
+    /// `within` by element weight. `nil` when no tier holds an element.
+    private static func weightedGrid(
+        _ tiers: [[(element: Element, weight: Double)]],
+        tier: Direction,
+        within: Direction
+    ) -> Node? {
+        let nodes = tiers.filter { !$0.isEmpty }.map { elements in
+            weightedChain(
+                elements.map { (node: Node.leaf(view: $0.element), weight: $0.weight) },
+                direction: within)
+        }
+        guard !nodes.isEmpty else { return nil }
+        return weightedChain(nodes.map { (node: $0, weight: 1) }, direction: tier)
+    }
+
+    /// Chains `parts` into nested splits along `direction` so each ends up
+    /// with its weight's share of the total: the first takes w₀/Σw of the
+    /// total, the second w₁/Σ(rest) of the remainder, and so on.
+    private static func weightedChain(
+        _ parts: [(node: Node, weight: Double)], direction: Direction
+    ) -> Node {
+        var result = parts[parts.count - 1].node
+        var total = parts[parts.count - 1].weight
+        for part in parts.dropLast().reversed() {
+            total += part.weight
             result = .split(.init(
                 direction: direction,
-                ratio: 1.0 / Double(count),
-                left: node,
+                ratio: part.weight / total,
+                left: part.node,
                 right: result))
         }
         return result

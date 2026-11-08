@@ -3,9 +3,9 @@ import SwiftUI
 /// The layout-type selection overlay, opened by the `choose_project_layout`
 /// action (Cmd+Opt+L) over the whole workspace (`SPEC.md` §26.2).
 ///
-/// Lists only the choices for the *current* visible count — the shape ×
+/// Lists only the choices for the *current* visible projects — the shape ×
 /// orientation combinations left after exact-match collapsing
-/// (`ProjectLayoutType.choices(forVisibleCount:)`): ↑/↓ move the cursor,
+/// (`ProjectLayoutType.choices(forKinds:)`): ↑/↓ move the cursor,
 /// Enter (or a row click) applies the highlighted type, Escape (or a
 /// backdrop click) closes changing nothing. The project count never changes.
 /// When only one choice exists there is nothing to choose, and the panel

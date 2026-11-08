@@ -9,7 +9,8 @@ import Foundation
 /// (`hiddenProjectIDs`), and the on-screen arrangement is a *projection*:
 /// `canonicalProjectTree` is re-derived from the visible rows in row order and
 /// the remembered `layoutType` by `relayout()`, and is never persisted or
-/// hand-edited. Ordinals (Cmd+1–9) are the visible rows counted from the top.
+/// hand-edited. Ordinals (Cmd+1–9) count the visible projects in placement
+/// order: Core before Side, each kind in row order (`visibleProjectIDs`).
 /// `zoomedProject` stays runtime-only display state (§12.2, §13).
 ///
 /// Generic over the pane element for the same reason as `ProjectStateOf`:
@@ -143,14 +144,15 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     // MARK: Project numbering (SPEC §4.1)
 
-    /// Every visible project in **list row order** — the visible rows of the
-    /// ledger counted from the top (`SPEC.md` §27.1). This, not the tree's
+    /// Every visible project in **placement order** — Core before Side, each
+    /// kind in list row order (`SPEC.md` §26.3). This, not the tree's
     /// traversal, defines the ordinals: the layout type places the k-th
-    /// visible row into its k-th slot, so the numbering follows the list and
-    /// the arrangement follows the numbering. A zoomed project keeps its
-    /// number.
+    /// project here into its k-th slot, so the numbering and the arrangement
+    /// follow the same order. A zoomed project keeps its number.
     var visibleProjectIDs: [ProjectID] {
-        projectOrder.filter { !hiddenProjectIDs.contains($0) }
+        let visible = projectOrder.filter { !hiddenProjectIDs.contains($0) }
+        return visible.filter { projects[$0]?.kind != .side }
+            + visible.filter { projects[$0]?.kind == .side }
     }
 
     /// The number of currently visible projects. Capped at `maxVisibleProjects`.
@@ -166,12 +168,19 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     // MARK: Ledger → arrangement (SPEC §26.3)
 
-    /// Re-derive the arrangement from the ledger: the visible rows in row
-    /// order take the remembered layout type's slots. Called after every
-    /// change to `projectOrder` / `hiddenProjectIDs` / `layoutType` and on
-    /// restore. A zoom on a project that is no longer visible is released.
+    /// The kinds of the visible projects in placement order: what the layout
+    /// type sizes its slots by.
+    var visibleProjectKinds: [ProjectKind] {
+        visibleProjectIDs.map { projects[$0]?.kind ?? .core }
+    }
+
+    /// Re-derive the arrangement from the ledger: the visible projects in
+    /// placement order take the remembered layout type's slots. Called after
+    /// every change to `projectOrder` / `hiddenProjectIDs` / `layoutType` / a
+    /// visible project's kind and on restore. A zoom on a project that is no
+    /// longer visible is released.
     mutating func relayout() {
-        canonicalProjectTree = layoutType.tree(over: visibleProjectIDs)
+        canonicalProjectTree = layoutType.tree(over: visibleProjectIDs, kinds: visibleProjectKinds)
         if let zoomedProject, hiddenProjectIDs.contains(zoomedProject) || projects[zoomedProject] == nil {
             self.zoomedProject = nil
         }
@@ -379,9 +388,9 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     }
 
     /// Apply `order` — a permutation of every row — as the new ledger order
-    /// (SPEC §24.4) and relayout: ordinals are the visible rows counted from
-    /// the top, so they follow the sort, and the arrangement follows the
-    /// ordinals. Called by `resortProjects()` (the sort state's re-sort
+    /// (SPEC §24.4) and relayout: ordinals count the visible projects in
+    /// placement order, so they follow the sort within each kind, and the
+    /// arrangement follows the ordinals. Called by `resortProjects()` (the sort state's re-sort
     /// trigger) and the list's manual row moves.
     ///
     /// - Returns: whether the order changed (`order` must be a permutation

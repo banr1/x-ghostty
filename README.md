@@ -73,7 +73,7 @@ its window management with a single model:
   re-sorts immediately on every value change, creation, load, and the morning
   reset — every row, hidden ones included, with a fixed direction per key and
   stable ties — whether or not the list is open, and the `Cmd+1-9` ordinals
-  follow the visible rows of the order. Picking manual (directly, or by
+  follow that order within each kind. Picking manual (directly, or by
   confirming a row move while sorted) inherits the current display order.
   Priority means "today's focus", so it clears itself every morning: at local
   06:00 every project's priority — hidden ones included — goes back to unset,
@@ -97,8 +97,8 @@ its window management with a single model:
   the same color as visible rows), in one unpartitioned row order with eight
   columns — visibility, kind (Core or Side), title, terminal, priority, deadline, next trigger,
   and the note's first line. This row order is the source of truth: the on-screen
-  arrangement is derived from it, and the `Cmd+1-9` ordinals are its visible
-  rows counted from the top. Cell operations follow the Notion idiom. The
+  arrangement is derived from it, and the `Cmd+1-9` ordinals count its visible
+  rows, Cores first and then Sides, each kind in row order. Cell operations follow the Notion idiom. The
   cell cursor moves with the arrows and Tab / Shift+Tab (row-end wrap, edge
   stop); `Cmd+arrows` jump it to the edges. Enter operates on the cell: text
   cells start an edit with the caret in the existing text (typing instead
@@ -176,15 +176,19 @@ its window management with a single model:
   passed (not if undone); quitting never kills them. The former OSC 7
   remote-split detection is gone, and the upstream core is back to its
   original OSC 7 handling. See SPEC.md §29.
-- **Layout types.** The screen arrangement is a layout type — a shape (wide,
-  tall, or pedestal: n−1 on top plus one full-width across the bottom) times
-  an ordinal direction (row-major or column-major; the wide shape uses about
-  √n rows and gives any remainder to the later rows, so the top rows hold
-  fewer, wider slots — eight projects go 2+3+3) — remembered persistently
-  and re-applied automatically whenever the number of visible projects
-  changes (hiding, showing, creating, closing). `Cmd+Opt+L` lists only the
-  distinct choices for the current visible count (identical arrangements are
-  collapsed; with a single choice it just says there is nothing to choose):
+- **Layout types.** The screen arrangement is a layout type — a shape (wide or
+  its transpose, tall) times an ordinal direction (row-major or column-major;
+  the wide shape uses about √n rows and gives any remainder to the later rows,
+  so the top rows hold fewer, wider slots — eight projects go 2+3+3) —
+  remembered persistently and re-applied automatically whenever the number of
+  visible projects or a visible project's kind changes (hiding, showing,
+  creating, closing, changing the kind). Each project is a Core or a Side: every
+  project takes one slot, but a Side is half as wide as a Core in the same row
+  (half as tall in the same column, on the tall shape), and the Cores are placed
+  first. `Cmd+1`–`9` follow that placement. A saved pedestal layout from an older
+  version loads as wide. `Cmd+Opt+L` lists only the distinct choices for the
+  current visible projects (identical arrangements are collapsed; with a single
+  choice it just says there is nothing to choose):
   arrow keys + Enter apply one, Esc closes without changing anything, and
   the project count never changes. Project boundaries cannot be resized or
   equalized by hand — pane resizing inside a zoomed project still works. See

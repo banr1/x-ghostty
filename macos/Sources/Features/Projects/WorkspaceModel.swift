@@ -936,26 +936,26 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// The choices the open selector lists (`SPEC.md` §26.2): the
-    /// exact-match-collapsed layout types for the current visible count, in
+    /// exact-match-collapsed layout types for the current visible projects, in
     /// canonical enumeration order. Empty while the selector is closed. A
     /// single entry means there is nothing to choose — the selector shows
     /// that instead of a list.
     var layoutTypeChoices: [ProjectLayoutType] {
         guard layoutSelectionActive else { return [] }
-        return ProjectLayoutType.choices(forVisibleCount: state.visibleProjectCount)
+        return ProjectLayoutType.choices(forKinds: state.visibleProjectKinds)
     }
 
     /// The choice standing for the remembered type at the current visible
-    /// count — what the selector highlights as current, even when the saved
+    /// projects — what the selector highlights as current, even when the saved
     /// spelling collapsed into another representative.
     var currentLayoutTypeChoice: ProjectLayoutType {
-        state.layoutType.representative(forVisibleCount: state.visibleProjectCount)
+        state.layoutType.representative(forKinds: state.visibleProjectKinds)
     }
 
     /// Choose `type` in the open selector (Enter, `SPEC.md` §26.2–26.4): the
     /// type is remembered (persisted with the ledger, and re-applied whenever
     /// the visible count changes), the arrangement re-derives as its
-    /// projection over the visible rows in row order, and the selector
+    /// projection over the visible projects in placement order, and the selector
     /// closes. The project count never changes; a zoom re-entered mid-session
     /// is cleared, since applying arranges the overall view.
     ///

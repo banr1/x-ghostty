@@ -128,7 +128,7 @@ struct ProjectLayoutSelectionTests {
 
     @Test func chosenTypeSurvivesACodableRoundTrip() throws {
         let (model, ids) = Self.makeModel(3)
-        let type = ProjectLayoutType(shape: .pedestal, orientation: .columnMajor)
+        let type = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
         model.beginLayoutSelection()
         #expect(model.chooseLayoutType(type))
 

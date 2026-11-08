@@ -285,7 +285,7 @@ struct ProjectView: View {
 └────────────────────────────┘
 ```
 
-ラベル表示形式は `"{ordinal}. {name}"` 。序数は表示専用（1～9、canonical tree の葉走査順で動的決定）で、
+ラベル表示形式は `"{ordinal}. {name}"` 。序数は表示専用（配置順で動的決定、§7.3）で、
 `ProjectState.name` には保存されない。inline rename 時は裸の名前を編集し、`show_project:<name>` の引数も裸の名前とマッチする。
 zoom 中のプロジェクトは canonical 序数をそのまま表示する。
 
@@ -355,10 +355,10 @@ visible project は最大 9 個まで。`WorkspaceState.maxVisibleProjects = 9` 
 
 #### 動的序数
 
-visible project は**台帳の visible な行を上から数えた順**(§27.1、
+visible project は**配置順**(Core → Side、各種別内は台帳の行順。§26.3、
 `visibleProjectIDs` / `ordinal(of:)`)で 1～N(N = visible count)の序数を
-自動付与する。序数は display-only で内部保持しない。配置は台帳から序数順に
-導出される(§26.3)ため、canonical tree の葉走査順とも一致する。
+自動付与する。序数は display-only で内部保持しない。配置は同じ順に導出される
+(§26.3)が、canonical tree の葉走査順とは一般に一致しない。
 
 枚数変化時(hide / close / show / 新規作成)や行移動(move_project・一覧の
 `Opt+↑↓`)・再ソート(§24.4)の後、序数は自動的に再計算・再配置される。
@@ -673,7 +673,7 @@ zoom中の `goto_project` 方向移動は no-op でよい。
 
 #### 序数ジャンプ形式（`goto_project:1`～`goto_project:9`）
 
-N 番目の visible project にジャンプする（traversal order の序数 1～9）。
+N 番目の visible project にジャンプする（配置順の序数 1～9、§7.3）。
 
 ```swift
 func gotoProject(index: UInt8) {
@@ -975,7 +975,7 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
     confirmation に昇格する（唯一の project では通常の close_surface として
     window close → app 終了になる。§11.10, §18.5）
 19. visible project 数は常に ≤ 9（§7.3。登録総数は無制限）
-20. visible project の序数は台帳の visible な行を上から数えた順で
+20. visible project の序数は配置順(Core → Side、各種別内は行順)で
     1～visibleCount となり、台帳の変更時に自動 re-pack される
     (表示のみ、保存しない。§7.3, §27.1)
 21. restore 時は normalizeLedger が台帳を修復し(順列・生存・上限 9・
@@ -1890,7 +1890,7 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   直前の表示順を維持し、**手動を選ぶと現在の表示順がそのまま手動順として
   引き継がれる**(再ソートが止まるだけ。`setSortState(.manual)`)。
 - **状態なので一覧を開いていない間も並びを規定し続ける**:序数(Cmd+1〜9)は
-  表示順の visible 行を上から数えた順で、再ソートに自動追従する(配置は
+  配置順(Core → Side、各種別内は表示順)で、再ソートに自動追従する(配置は
   `relayout()` の再導出、§26.3)。focus は id ベースなので不変。
 - **選択 UI はソートバー**(§27.2):一覧の表の最上部。セルカーソルが最上行に
   あるとき `↑` で乗り、`←→` で 5 値から選び、`Enter` で適用して表へ戻る。
@@ -1900,7 +1900,7 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   として引き継いでソート状態を手動へ戻した上で入替を実行する。Cancel なら
   何もしない。手動状態では確認なしで入れ替わる(§27.2)。
 
-### 24.5 テスト(ProjectPriorityDeadlineTests 18 件 / ProjectSortStateTests 13 件)
+### 24.5 テスト(ProjectPriorityDeadlineTests 19 件 / ProjectSortStateTests 13 件)
 
 ```text
 - 既定: 新規プロジェクトは優先度・締切とも未設定
@@ -1915,8 +1915,8 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 - ソート状態: 永続化 round trip・既定は手動・レガシー保存は手動 /
   キー状態の適用で全行が固定の向きに並ぶ / セル値変更・新規作成・
   読み込み・毎朝リセットで即座に再ソート / 手動選択・承認付き行移動は
-  現在の表示順を手動順として引き継ぐ / ソート後の序数が visible 行を
-  上から数えた順 / focus 不変
+  現在の表示順を手動順として引き継ぐ / ソート後の序数が配置順
+  (Core → Side)/ focus 不変
 ```
 
 ### 24.6 次トリガー(ProjectNextTrigger)
@@ -2001,67 +2001,73 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
 
 ### 26.1 レイアウト型とスロット計算(ProjectLayoutType)
 
-- `ProjectLayoutType` = `Shape`(`wide` 横長型 / `tall` 縦長型 / `pedestal`
-  台座型)× `Orientation`(`rowMajor` 行送り / `columnMajor` 列送り)。
-  ユーザー定義レイアウトは存在しない(非対応事項)。
+- `ProjectLayoutType` = `Shape`(`wide` 横長型 / `tall` 縦長型)×
+  `Orientation`(`rowMajor` 行送り / `columnMajor` 列送り)の 4 通り。
+  台座型は廃止した(復活もしない)。ユーザー定義レイアウトは存在しない
+  (非対応事項)。
+- n は visible なプロジェクトの数で、**種別を問わず 1 つを 1 枠と数える**。
+  種別は枠数の配り方を変えず、段の中の長さの割り方だけを変える。
 - **横長型**:行数 = √n に最も近い整数のグリッドに、できるだけ均等に、
-  **割り切れない余りは後半の行に付くように**配る(2026-08-19 改訂で前半寄せ
-  から変更。必須対応事項 49)— 4 = 2+2、5 = 2+3、6 = 3+3、7 = 2+2+3、
-  8 = 2+3+3、9 = 3+3+3。**前半の行ほど枠数が少なく、1 枠が広い**:ソートで
-  上位に来る重要なプロジェクトほど広い枠を得る。行高・行内幅は等分。
+  **割り切れない余りは後半の行に付くように**配る — 4 = 2+2、5 = 2+3、6 = 3+3、
+  7 = 2+2+3、8 = 2+3+3、9 = 3+3+3、24 = 4+5+5+5+5。**前半の行ほど枠数が少なく、
+  1 枠が広い**:ソートで上位に来る重要なプロジェクトほど広い枠を得る。行高は等分し、
+  行内の幅は `ProjectKind.layoutWeight`(Core 1・Side 1/2)の重みで配分する
+  (Side の幅は同じ行の Core の半分。Side だけの行は等分になる)。
 - **縦長型**:横長型の転置。列数 = √n に最も近い整数、余りは後半の列に付き
-  (左の列ほど枠数が少ない)、列幅・列内高を等分。
-- **台座型**:n−1 個を上部に(行送りは横長型・列送りは縦長型の規則で)配置し、
-  1 個を最下段に全幅で置く。
+  (左の列ほど枠数が少ない)、列幅は等分し、列内の高さを重みで配分する。
 - **向きは序数の進み方**:行送りは上の行から左→右、列送りは左の列から上→下。
-  横長型・縦長型では向きは割り当て順だけを変え、形は変えない。台座型の最下段は
-  常に最後。
-- `slots(forVisibleCount:)` が単位正方形上の `Slot`(frame + row/column)列を
-  **割り当て順**で返す。`tree(over:)` がスロット列を入れ子の等比 split
-  (`SplitTree`)として構築する(横長型は行の積み重ね、縦長型は列の並び、
-  台座型は上部の木と最下段の積み重ね)。k 番目の visible 行が k 番目の
-  スロットに入るが、木の走査順は一般に割り当て順と一致しない(横長型の
-  列送りは列を下る)。序数は常に一覧の行順から導き、木の走査順からは導かない。
+  向きは割り当て順だけを変え、段の枠数は変えない。割り当て順はセルの位置で
+  決まり、種別に依らない。
+- `slotFrames(forKinds:)` が単位正方形上の矩形列を**割り当て順**で返す
+  (`slotFrames(forVisibleCount:)` は全 Core のとき)。`tree(over:kinds:)` が同じ
+  配分を入れ子の split(`SplitTree(weightedRows:)` / `(weightedColumns:)`)として
+  構築する(横長型は行の積み重ね、縦長型は列の並び)。k 番目のプロジェクトが
+  k 番目のスロットに入るが、木の走査順は一般に割り当て順と一致しない(横長型の
+  列送りは列を下る)。序数は常に配置順から導き、木の走査順からは導かない。
 
 ### 26.2 選択肢の畳み込みと選択オーバーレイ(choose_project_layout / Cmd+Opt+L)
 
-- 各 visible 数(1〜9)の選択肢は `choices(forVisibleCount:)`:形 3 × 向き 2 の
-  6 通りから、**配置と序数の進み方が完全一致するものを 1 つに畳んだ**集合
-  (例:n=9 は横長型と縦長型が形は同じでも向きが違うため畳まれない。n=3 は
-  横長型(1+2)と台座型(2+1)が余りの後半寄せで一致しなくなり、それぞれ
-  独立の選択肢になる。n=1 は 1 択)。
+- 選択肢は `choices(forKinds:)`:形 2 × 向き 2 の 4 通りから、**配置と序数の
+  進み方が完全一致するものを 1 つに畳んだ**集合(全 Core のときが
+  `choices(forVisibleCount:)`。1〜24 をテストで確かめる)。例:n=1 は 1 択。n=2 と
+  n=3 は向きが効かず横長型・縦長型の 2 択。全 Core の n=9 は 3×3 が同じ形でも
+  向きの違う 2 つ(行送り・列送り)は畳まれない。一方 **Side が混ざると実際の配置で
+  比べる**ので、n=9 でも Side の半分が幅か高さかで横長型と縦長型が分かれ、4 択になる。
 - `choose_project_layout`(既定 `Cmd+Opt+L`、§10.5)が選択オーバーレイ
   `ProjectLayoutSelector` を開く。performability は `canBeginLayoutSelection`
   (visible プロジェクト 1 つ以上 + ノート編集・他のオーバーレイなし)で、不成立時は
   キー未消費で fall through する。`beginLayoutSelection` は zoom を先に解除する
   (zoom 中呼び出しの挙動は Essence が実装に委ねた部分)。セッション状態は
   transient で、`restoreState` / `removeAllProjects` が終了する。
-- オーバーレイは**現在の visible 数に対する選択肢だけ**を列挙し、矢印で選んで
-  Enter で適用、Esc で何も変えずに閉じる。**プロジェクト数は一切変えない**
+- オーバーレイは**現在の visible なプロジェクトに対する選択肢だけ**を列挙し、矢印で
+  選んで Enter で適用、Esc で何も変えずに閉じる。**プロジェクト数は一切変えない**
   (旧設計の不足分新規作成・超過分 hide-pick は廃止)。選択肢が 1 つのときは
   選ぶものが無い旨を表示するだけとする(必須対応事項 50)。
 - オーバーレイは呼び出し中のみ描画され、抜ければ端末が全面に戻る。
 
 ### 26.3 台帳 → 配置の導出(relayout)
 
+- **配置順**:`visibleProjectIDs` は台帳(§27.1)の visible な行を **Core → Side**
+  の順(各種別内は行順)に並べたもの。序数(Cmd+1〜9)もスロットの割り当ても
+  これを数えるので、一覧の行順とは別に、Side は常に Core の後に来る。
 - 配置の導出は `WorkspaceState.relayout()` の 1 点:
-  `canonicalProjectTree = layoutType.tree(over: visibleProjectIDs)` —
-  台帳(§27.1)の visible な行を行順のまま、記憶している型のスロットへ
-  割り当てる(行送りは上の行から左→右、列送りは左の列から上→下、台座型の
-  最下段は最後)。序数(Cmd+1〜9)は visible 行を上から数えた順なので、
-  配置は常に序数に追従する。
-- **自動適用**:`projectOrder` / `hiddenProjectIDs` / `layoutType` を変える
-  すべての変更(一覧の表示トグル・`Cmd+Opt+H`・新規作成・close・行移動・
-  ソート・型選択)と復元の後に `relayout()` が呼ばれる。visible 数が変わらない
-  操作(終了済み状態への遷移等)は台帳に触れないため発火しない
-  (必須対応事項 54)。
+  `canonicalProjectTree = layoutType.tree(over: visibleProjectIDs, kinds: visibleProjectKinds)` —
+  配置順のプロジェクトを、記憶している型のスロットへ割り当てる(行送りは上の行から
+  左→右、列送りは左の列から上→下)。配置は常に序数に追従する。
+- **自動適用**:`projectOrder` / `hiddenProjectIDs` / `layoutType` / visible な
+  プロジェクトの種別を変えるすべての変更(一覧の表示トグル・`Cmd+Opt+H`・新規作成・
+  close・行移動・ソート・型選択・種別セルの候補と `Delete`・貼り付け)と復元の後に
+  `relayout()` が呼ばれる。visible 数も種別も変わらない操作(終了済み状態への遷移
+  等)は台帳に触れないため発火しない。hidden なプロジェクトの種別を変えても配置は
+  変わらない(必須対応事項 54)。
 - visible でなくなったプロジェクトへの zoom は relayout が解除する。
 
 ### 26.4 永続化と既定
 
 - 選んだ型は `WorkspaceState.layoutType` として永続化され、再起動後も維持
   される。保存が無いとき(レガシー保存・新規ワークスペース)の既定は
-  **横長型・行送り**(`ProjectLayoutType.default`)。
+  **横長型・行送り**(`ProjectLayoutType.default`)。保存された台座型は読み込み時に
+  横長型へ移行する(向きは保持)。未知の形は壊れた保存として既定へ落ちる。
 - `canonicalProjectTree` は台帳と型からの投影なので**永続化しない**(§12)。
   旧保存の tree は decode 時に行順の種としてのみ読まれる。
 - プロジェクト単位のレイアウト resize / equalize は**廃止**
@@ -2069,24 +2075,28 @@ var deadline: ProjectDeadline?     // 日付のみ、時刻なし
   プロジェクト境界は動かせない。zoom 中のプロジェクト内ペイン(split)の
   resize / equalize は従来どおり有効(必須対応事項 55)。
 
-### 26.5 テスト(ProjectLayoutTypeTests 14 件 / ProjectLayoutSelectionTests 10 件)
+### 26.5 テスト(ProjectLayoutTypeTests 31 件 / ProjectLayoutSelectionTests 10 件)
 
 ```text
-- スロット計算: visible 数 1〜9 の各々で横長・縦長・台座 × 行送り・列送りの
-  スロットが定義どおり(√n 行配分・余りは後半の行/列・転置・台座の最下段
-  全幅・等分。n=8 の横長は上から 2+3+3)
-- 割り当て順: 行送りは上の行から左→右、列送りは左の列から上→下、台座の
-  最下段は最後 — 序数がそれに追従する
-- 畳み込み: 配置と序数の進み方が完全一致する選択肢は 1 つに畳まれる
-  (n=9 の横長/縦長は畳まれない、n=3 の横長(1+2)と台座(2+1)は
-  一致しないため独立の選択肢)
+- スロット計算: visible 数 1〜24 の各々で横長・縦長 × 行送り・列送りのスロットが
+  定義どおり(√n 行配分・余りは後半の行/列・転置・行高/列幅は等分。n=8 の横長は
+  上から 2+3+3)
+- 重み: 段の中で長さ / 重みが一定(Side は同じ段の Core の半分)で、段を覆い切る。
+  1〜24 の全ての Core/Side の混ざり方で確かめ、木が同じ矩形を実現する
+- 配置順: Core → Side(各種別内は行順)、hidden を飛ばす。序数・スロットが追従し、
+  一覧の行の序数も同じ導出から来る
+- 割り当て順: 行送りは上の行から左→右、列送りは左の列から上→下
+- 畳み込み: 配置と序数の進み方が完全一致する選択肢は 1 つに畳まれる(全 Core の
+  n=9 は行送り・列送りが畳まれない。Side が混ざると形も分かれて 4 択)
 - 代表: どの型も各 visible 数で残った選択肢のいずれかへ解決される
-  (`representative(forVisibleCount:)` — 選択画面が現在の型を強調するのに使う)
-- 永続化: 型の round trip 復元 / 保存が無ければ横長型・行送り
-- 自動適用: visible 数が変わる操作の後、記憶している型で新しい数の配置が
-  導かれる / 変わらない操作では配置が変わらない(ProjectLedgerTests)
-- 選択セッション: 現在の visible 数の選択肢だけを列挙 / 1 択のときは選ぶ
-  ものが無い / Enter で適用・Esc で無変化 / プロジェクト数は変わらない
+  (`representative(forKinds:)` — 選択画面が現在の型を強調するのに使う)
+- 永続化: 型の round trip 復元 / 保存が無ければ横長型・行送り / 保存された台座型は
+  横長型(向きは保持)/ 未知の形は既定へ
+- 自動適用: visible 数または visible な種別が変わる操作の後、記憶している型で配置が
+  導かれる / hidden の種別変更や数の変わらない操作では配置が変わらない
+  (ProjectLedgerTests と本テスト)
+- 選択セッション: 現在の visible なプロジェクトの選択肢だけを列挙 / 1 択のときは
+  選ぶものが無い / Enter で適用・Esc で無変化 / プロジェクト数は変わらない
 ```
 
 ## 27. プロジェクト一覧仕様(台帳)
@@ -2120,9 +2130,9 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     decode は `ProjectListColumn.normalizedOrder` で常に全列の順列へ修復し、
     列が無かった頃の保存では、種別列は既定どおり表示の直後に、端末列は
     タイトルの直後に入り、他の列の保存順は保たれる。
-- **序数(Cmd+1〜9)は visible な行を上から数えた順**
-  (`visibleProjectIDs = projectOrder.filter { !hidden }`、`ordinal(of:)`)。
-  ツリーの走査順ではなく台帳が序数を定義し、配置が序数に追従する(§26.3)。
+- **序数(Cmd+1〜9)は配置順**:visible な行を Core → Side(各種別内は行順)に
+  並べた順(`visibleProjectIDs`、`ordinal(of:)`、§26.3)。ツリーの走査順ではなく
+  台帳と種別が序数を定義し、配置が序数に追従する。行の並びは種別で変わらない。
 - `ProjectListRow` は行の純粋導出(`projectListRows`):種別・タイトル・序数
   (hidden は nil)・端末・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
   まま運び、空欄に描くのは view の仕事。端末セルは空欄にならない

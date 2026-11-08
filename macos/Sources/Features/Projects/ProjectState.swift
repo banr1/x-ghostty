@@ -557,6 +557,15 @@ enum ProjectKind: String, Codable, CaseIterable, Equatable {
         case .side: return "Side"
         }
     }
+
+    /// The share of a layout tier's length this kind takes (`SPEC.md` §26.1):
+    /// a Side is half a Core.
+    var layoutWeight: Double {
+        switch self {
+        case .core: return 1
+        case .side: return 0.5
+        }
+    }
 }
 
 /// A project's priority (`SPEC.md` §24.1).
