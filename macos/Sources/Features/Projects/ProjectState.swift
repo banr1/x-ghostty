@@ -106,6 +106,12 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     /// .terminal(named:)`), so re-registering it brings the project back.
     var terminalName: String?
 
+    /// How much of the overall view this project takes (must 140): Core — the
+    /// default — or Side. Persisted like the priority. It changes nothing but
+    /// the size in the overall view: the label band, the note overview and the
+    /// zoom show no mark for it, and it is not a sort key.
+    var kind: ProjectKind
+
     /// The tmux session each started pane lives in (must 129): its terminal
     /// and pane index, fixed by `bindPane` when the pane is first started.
     ///
@@ -134,6 +140,7 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         deadline: ProjectDeadline? = nil,
         nextTrigger: ProjectNextTrigger? = nil,
         terminalName: String? = nil,
+        kind: ProjectKind = .core,
         createdAt: Date,
         lastFocusedAt: Date? = nil
     ) {
@@ -151,6 +158,7 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         self.deadline = deadline
         self.nextTrigger = nextTrigger
         self.terminalName = terminalName
+        self.kind = kind
         self.createdAt = createdAt
         self.lastFocusedAt = lastFocusedAt
     }
@@ -420,6 +428,7 @@ extension ProjectStateOf: Codable {
         case deadline
         case nextTrigger
         case terminal
+        case kind
         case paneSessions
         case lastPaneIndex
         case createdAt
@@ -440,6 +449,9 @@ extension ProjectStateOf: Codable {
         // Saves written before terminals existed have no key: the local
         // terminal, the default.
         self.terminalName = (try? c.decodeIfPresent(String.self, forKey: .terminal)) ?? nil
+        // Saves written before kinds existed have no key, and an unknown value
+        // follows the invalid-to-default rule: Core (must 140).
+        self.kind = (try? c.decodeIfPresent(ProjectKind.self, forKey: .kind)) ?? .core
         // The saved sessions are read before the tree: a restored surface
         // starts with the attach command of its session (must 129), so the
         // tree is decoded inside `TmuxPaneRestore.decoding`. Saves written
@@ -499,6 +511,8 @@ extension ProjectStateOf: Codable {
         try c.encodeIfPresent(deadline, forKey: .deadline)
         try c.encodeIfPresent(nextTrigger, forKey: .nextTrigger)
         try c.encodeIfPresent(terminalName, forKey: .terminal)
+        // Core is the default and writes no key, like the local terminal.
+        if kind != .core { try c.encode(kind, forKey: .kind) }
         // Pane sessions ride the same record as the pane layout (must 129),
         // in tree order, only for the panes in the tree.
         let sessions = paneTree.compactMap { pane -> PaneSessionRecord? in
@@ -530,6 +544,22 @@ typealias ProjectState = ProjectStateOf<XGhostty.SurfaceView>
 /// the default — is the absence of a value (`ProjectState.priority == nil`),
 /// mirroring how the deadline models it, so a fourth case cannot drift from
 /// the optional's semantics.
+/// A project's kind (must 140): the size class it takes in the overall view.
+/// `allCases` is the candidate order, Core then Side.
+enum ProjectKind: String, Codable, CaseIterable, Equatable {
+    case core
+    case side
+
+    /// The spelling the list cell, the candidate menu, and the clipboard share.
+    var displayText: String {
+        switch self {
+        case .core: return "Core"
+        case .side: return "Side"
+        }
+    }
+}
+
+/// A project's priority (`SPEC.md` §24.1).
 enum ProjectPriority: String, Codable, CaseIterable, Equatable {
     case high
     case medium

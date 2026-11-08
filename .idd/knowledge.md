@@ -19,6 +19,9 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - テストの `ProjectStateOf(... paneTree:)` は `focusedSurface` を nil で作る。閉じる・zoom 解除などで `snapFocusToPrimaryInOverallView` が走って初めてプライマリーが入るので、期待値は操作前の `focusedSurface` ではなくペインの id から作る。
 - Swift Testing の `#expect` は、ローカル変数の mutating メソッド呼び出しを包めない(コンパイルエラー)。`let applied = state.mutatingCall(...)` としてから `#expect(applied)` と書く。
 - macOS 27 / Xcode 27(27A266a)環境の注意。(1) Metal Toolchain は Xcode 27 では別途ダウンロードする部品で、無いと metallib 生成が失敗する(`xcodebuild -showComponent MetalToolchain` で確認、`xcodebuild -downloadComponent MetalToolchain` で導入。2026-09-30 導入済み)。(2) MacOSX27 SDK の math.h は modules 有効時に `INFINITY` を float.h に委ねるが、zig 0.15/0.16 同梱の float.h は strict モードで定義しないため、zig 同梱 libc++ のビルドが `INFINITY` 未定義で落ちる(zig 0.16 でも再現。zig を上げても直らない)。`pkg/apple-sdk/build.zig` の `libcOverlay` が `math.h` の上書きヘッダを libc の include_dir に挟んで補っている。(3) `macos/build` に古い未署名の `xghostty.debug.dylib` が残ると CodeSign が「code object is not signed at all」で失敗する。`macos/build/Debug/XGhostty.app` を消して再ビルドすれば直る。2026-09-30 時点で 3 ゲートはこの環境で exit 0。
+- Xcode 27.2(27B52、2026-10-31 に更新)は pbxproj の `membershipExceptions` に載った実在しないパスをコンパイル入力へ足す。`XXGhostty/…` の誤記で「Multiple commands produce …stringsdata」になり、周回 50 で直した。同種の失敗は `Build/Intermediates.noindex/XCBuildData/<signature>.xcbuilddata/manifest.json` のコンパイルタスクの inputs を読むと原因のパスが分かる。`xcodebuild -showComponent MetalToolchain` は 27.2 で `uninstalled` と出るが、`zig build` と `just swift-test` は exit 0 だった。
+- 周回の Bash は、コマンド文字列に `IDEAL.md` を含むと hook が拒否する(`git show HEAD -- IDEAL.md` も同じ)。IDEAL の改訂内容は Read で読み、台帳の条件文と突き合わせる。
+- 種別は `ProjectState.kind`(`ProjectKind`、保存キー `kind`、既定の Core はキーを書かない)。列を足すときの修正箇所は端末列と同じで、コンパイラの網羅性エラーが overlay の switch を教えてくれる。既定列順の期待値はテスト 3 ファイル(ProjectLedgerTests / ProjectListCellTests / ProjectTerminalColumnTests)にある。
 - テストの削除・無効化の検査(C14)の基準は Atlas Builder 移行時点の commit `9cb808d`。当時は `x-ghostty/` 配下にあったため、`git diff -M 9cb808d HEAD` とリネーム検出を付けて比べる。fork 開始時点(`5307c05`)からは、`f93d9b1`(タブ・複数ウィンドウ・非 macOS の撤去)でタブ・ウィンドウ・quick terminal・update 系のテストが消えており、Zig の `test "ghostty.h ..."` は `xghostty.h` へ改名されている。
 - `.idd/` の台帳・記録はシェルコマンド(grep 等)からは読めない(hook が拒否する)。ファイルとして直接読む。
 - 実機観測(サンドボックス off の周回で使える): `zig build` 後、`(nohup zig-out/XGhostty.app/Contents/MacOS/xghostty > /tmp/app.log 2>&1 &)` で別プロセスとして起動できる(`open -n` は -54 で失敗した)。保存状態を復元して起動する。打鍵は Swift の小さなツールで `NSRunningApplication(processIdentifier:).activate` の後 `CGEvent(keyboardEventSource:virtualKey:keyDown:)` を `.cghidEventTap` へ post、窓 ID は `CGWindowListCopyWindowInfo` で pid から引き、`screencapture -x -l <窓ID> out.png` で撮る(swiftc のコンパイルは数分かかる)。終わったら自分の pid だけ kill する。
@@ -48,7 +51,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - `pgrep -x xghostty` には人間が起動したままの `macos/build/Debug/XGhostty.app`(`--window-save-state=always`)も出る。自分が起動したものの pid は `pgrep -f zig-out/XGhostty.app` で引き、それだけを kill する。
 - 実機の打鍵: zoom は `Cmd+Opt+Enter`(keycode 36)、split は zoom 中の `Cmd+D`(2)、close は `Cmd+W`(13)の後に確認ダイアログへ Return、undo は `Cmd+Z`(6)。
 - zig-out 版を起動すると、復元された全ペインが既定ソケットの tmux に `<uuid>-<n>` のセッションを作る。起動前の `tmux ls -F '#{session_name}'` を控え、終了後にそれ以外の `^[0-9a-f-]{36}-[0-9]+$` だけを kill すれば人間のセッションに触れない。
-- 保存済みの列順に無い列は `ProjectListColumn.normalizedOrder` が既定順の直前の列の後ろへ挿入する(6 列の保存は端末列がタイトルの後に入る)。
+- 保存済みの列順に無い列は `ProjectListColumn.normalizedOrder` が既定順の直前の列の後ろへ挿入する(種別列は表示の後、端末列はタイトルの後に入る)。
 - fork の機能を作る前に、上流が同等の機構を既に持っていないかを確かめる。欠けているのは API ではなく呼び出し側の走査範囲、ということがあった。
 
 ## tmux

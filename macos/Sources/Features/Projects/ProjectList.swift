@@ -24,6 +24,9 @@ struct ProjectListRow: Equatable, Identifiable {
     /// (`terminalDisplayName(in:)`), so an unregistered name reads as local.
     var terminalName: String? = nil
 
+    /// The project's kind (must 140), shown by the kind column.
+    var kind: ProjectKind = .core
+
     /// The full note text: the note column normally shows only the first
     /// line, but the whole-list full-note toggle (`SPEC.md` §27.2) renders
     /// every line, so the row carries them all.
@@ -52,7 +55,7 @@ struct ProjectListRow: Equatable, Identifiable {
         case .title: return title
         case .deadline: return deadline?.displayText ?? ""
         case .note: return note
-        case .visibility, .terminal, .priority, .nextTrigger: return nil
+        case .visibility, .kind, .terminal, .priority, .nextTrigger: return nil
         }
     }
 }
@@ -60,7 +63,7 @@ struct ProjectListRow: Equatable, Identifiable {
 /// A column of the project list (`SPEC.md` §27.1). The raw value is the
 /// persistence spelling of the column order.
 enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
-    case visibility, title, terminal, priority, deadline, nextTrigger, note
+    case visibility, kind, title, terminal, priority, deadline, nextTrigger, note
 
     var id: String { rawValue }
 
@@ -69,11 +72,11 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     var isTextColumn: Bool {
         switch self {
         case .title, .deadline, .note: return true
-        case .visibility, .terminal, .priority, .nextTrigger: return false
+        case .visibility, .kind, .terminal, .priority, .nextTrigger: return false
         }
     }
 
-    /// The selection columns — visibility (a two-value toggle), terminal,
+    /// The selection columns — visibility (a two-value toggle), kind, terminal,
     /// priority, and next trigger — where typing never starts an edit.
     var isSelectionColumn: Bool { !isTextColumn }
 
@@ -86,21 +89,21 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     /// — Enter operates on the cell, it never moves the cursor): the text
     /// columns start a seeded edit with the caret in the existing text; the
     /// visibility column toggles hide/show immediately (under the
-    /// at-least-one-visible protection); the value columns — terminal,
+    /// at-least-one-visible protection); the value columns — kind, terminal,
     /// deadline, priority, next trigger — enumerate their candidates below
     /// the cell (§27.6).
     var enterAction: ProjectListEnterAction {
         switch self {
         case .title, .note: return .beginEdit
         case .visibility: return .toggleVisibility
-        case .terminal, .deadline, .priority, .nextTrigger: return .enumerateCandidates
+        case .kind, .terminal, .deadline, .priority, .nextTrigger: return .enumerateCandidates
         }
     }
 
-    /// The default column order (`SPEC.md` §27.1): visibility, title,
+    /// The default column order (`SPEC.md` §27.1): visibility, kind, title,
     /// terminal, priority, deadline, next trigger, note.
     static let defaultOrder: [ProjectListColumn] = [
-        .visibility, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
+        .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
     ]
 
     /// Repair a decoded column order so it is always a permutation of all
@@ -108,7 +111,8 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     /// missing column is inserted right after the column that precedes it in
     /// the default order (at the front when it has none). A save written
     /// before a column existed therefore gains it where the default puts it —
-    /// the terminal column lands after the title — while the saved order of
+    /// the kind column after the visibility, the terminal column after the
+    /// title — while the saved order of
     /// the other columns is kept.
     static func normalizedOrder(_ columns: [ProjectListColumn]) -> [ProjectListColumn] {
         var seen = Set<ProjectListColumn>()
@@ -157,7 +161,7 @@ extension ProjectListColumn {
     /// What Delete does on this column's cell (`SPEC.md` §27.2).
     var deleteAction: ProjectListDeleteAction {
         switch self {
-        case .title, .terminal, .priority, .deadline, .nextTrigger: return .clearValue
+        case .title, .kind, .terminal, .priority, .deadline, .nextTrigger: return .clearValue
         case .note: return .confirmClearNote
         case .visibility: return .none
         }
@@ -246,6 +250,7 @@ extension WorkspaceStateOf {
             deadline: project.deadline,
             nextTrigger: project.nextTrigger,
             terminalName: project.terminalName,
+            kind: project.kind,
             note: project.note)
     }
 }
@@ -502,9 +507,21 @@ extension WorkspaceStateOf {
             project.setNote(text)
             projects[id] = project
             return true
-        case .visibility, .terminal, .priority, .nextTrigger:
+        case .visibility, .kind, .terminal, .priority, .nextTrigger:
             return false
         }
+    }
+
+    /// Set project `id`'s kind (must 140). The kind is not a sort key, so the
+    /// row order never changes.
+    ///
+    /// - Returns: whether the kind changed.
+    @discardableResult
+    mutating func setProjectKind(_ id: ProjectID, to kind: ProjectKind) -> Bool {
+        guard var project = projects[id], project.kind != kind else { return false }
+        project.kind = kind
+        projects[id] = project
+        return true
     }
 
     /// Set project `id`'s terminal to the stored name `name` (`nil` = the
@@ -524,8 +541,8 @@ extension WorkspaceStateOf {
     /// Apply a Delete on `column`'s cell (`SPEC.md` §27.2): the title
     /// empties — deliberately bypassing the rename rule's empty-reject,
     /// which protects against *accidental* emptiness, not this explicit
-    /// deletion — the terminal returns to the local one, the value columns unset (each is a sort key, so the
-    /// change re-sorts immediately while a key state is active, §24.4),
+    /// deletion — the kind returns to Core, the terminal returns to the local
+    /// one, the value columns unset (each is a sort key, so the change re-sorts immediately while a key state is active, §24.4),
     /// and the note loses every line. The note's confirmation is the
     /// caller's (`ProjectListColumn.deleteAction`); this is the mutation
     /// an approved deletion applies. The visibility column has no value
@@ -541,6 +558,10 @@ extension WorkspaceStateOf {
         switch column {
         case .title:
             project.name = ""
+            projects[id] = project
+            return true
+        case .kind:
+            project.kind = .core
             projects[id] = project
             return true
         case .terminal:

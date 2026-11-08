@@ -94,8 +94,8 @@ its window management with a single model:
   hiding the last visible project is refused. See SPEC.md §25.
 - **Project list.** `Cmd+L` toggles the ledger: a table covering roughly 80%
   of the window that lists *every* project, hidden ones included (drawn in
-  the same color as visible rows), in one unpartitioned row order with seven
-  columns — visibility, title, terminal, priority, deadline, next trigger,
+  the same color as visible rows), in one unpartitioned row order with eight
+  columns — visibility, kind (Core or Side), title, terminal, priority, deadline, next trigger,
   and the note's first line. This row order is the source of truth: the on-screen
   arrangement is derived from it, and the `Cmd+1-9` ordinals are its visible
   rows counted from the top. Cell operations follow the Notion idiom. The

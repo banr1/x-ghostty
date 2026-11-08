@@ -25,6 +25,7 @@ enum ProjectListClipboard {
         switch column {
         case .visibility: return nil
         case .title: return row.title
+        case .kind: return row.kind.displayText
         case .terminal: return row.terminalDisplayName(in: terminals)
         case .priority: return row.priority?.displayText ?? ""
         case .deadline: return row.deadline?.displayText ?? ""
@@ -36,7 +37,8 @@ enum ProjectListClipboard {
     /// What a paste of `text` sets `column`'s cell to (`SPEC.md` §27.7), or
     /// `.ignore` for a string the column does not accept. The title takes any
     /// text the shared rename rule would (non-blank after trimming); the
-    /// terminal takes only a registered display name (must 128); the other
+    /// kind takes only Core or Side (must 140); the terminal takes only a
+    /// registered display name (must 128); the other
     /// value columns parse their own spellings; the note takes every line of
     /// any non-blank text (the save-time line cap still applies on commit,
     /// §21.1); the visibility column never changes by paste.
@@ -51,6 +53,12 @@ enum ProjectListClipboard {
             return .ignore
         case .title:
             return trimmed.isEmpty ? .ignore : .setTitle(trimmed)
+        case .kind:
+            guard let kind = ProjectKind.allCases.first(where: { $0.displayText == trimmed })
+            else {
+                return .ignore
+            }
+            return .setKind(kind)
         case .terminal:
             guard let terminal = terminals.registeredTerminal(named: trimmed) else {
                 return .ignore
@@ -81,6 +89,7 @@ enum ProjectListClipboard {
 /// value the accepted string sets, or `.ignore` — no mutation at all.
 enum ProjectListPasteApplication: Equatable {
     case setTitle(String)
+    case setKind(ProjectKind)
     case setTerminal(ProjectTerminal)
     case setPriority(ProjectPriority)
     case setDeadline(ProjectDeadline)

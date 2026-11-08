@@ -3,8 +3,8 @@ import SwiftUI
 /// The project-list overlay (`list_projects`, Cmd+L, `SPEC.md` §27).
 ///
 /// The ledger's table form: every project — hidden ones included — as one row
-/// in the single ledger order, with the seven columns (visibility, title,
-/// terminal, priority, deadline, next trigger, note) in the persisted column
+/// in the single ledger order, with the eight columns (visibility, kind,
+/// title, terminal, priority, deadline, next trigger, note) in the persisted column
 /// order.
 /// Unset cells render blank. The panel takes ~80% of the window in both
 /// dimensions, exists only while the session is up, and scrolls with the cell
@@ -772,6 +772,8 @@ struct ProjectListOverlay: View {
             break
         case .setTitle(let title):
             onCommitEdit(title, .title, row.id)
+        case .setKind(let kind):
+            onCommitCandidate(.kind(kind), row.id)
         case .setTerminal(let terminal):
             onCommitCandidate(.terminal(terminal), row.id)
         case .setNote(let note):
@@ -876,11 +878,12 @@ struct ProjectListOverlay: View {
     /// The fixed width of a column's cells, or `nil` for the flexible title
     /// and note columns, which share the panel width left by the fixed ones.
     /// Fixed widths hold each column's widest value at the 12pt monospaced
-    /// cell font: "●" / "·", "high", "YYYY-MM-DD", "external"; the terminal
+    /// cell font: "●" / "·", "Core", "high", "YYYY-MM-DD", "external"; the terminal
     /// column holds a short machine name and truncates a longer one.
     private static func width(of column: ProjectListColumn) -> CGFloat? {
         switch column {
         case .visibility: return 34
+        case .kind: return 48
         case .title: return nil
         case .terminal: return 84
         case .priority: return 48
@@ -907,6 +910,7 @@ struct ProjectListOverlay: View {
     private static func headerLabel(of column: ProjectListColumn) -> String {
         switch column {
         case .visibility: return "show"
+        case .kind: return "kind"
         case .title: return "title"
         case .terminal: return "terminal"
         case .priority: return "prio"
@@ -1119,6 +1123,10 @@ struct ProjectListOverlay: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
 
+        case .kind:
+            Text(row.kind.displayText)
+                .opacity(0.6)
+
         case .terminal:
             Text(row.terminalDisplayName(in: terminals))
                 .lineLimit(1)
@@ -1230,6 +1238,8 @@ struct ProjectListOverlay: View {
             return canToggle(row.id)
                 ? "↩ hides \(row.title)"
                 : "at least one project must stay visible"
+        case .kind:
+            return "↩ lists kinds"
         case .terminal:
             return "↩ lists terminals"
         case .priority:

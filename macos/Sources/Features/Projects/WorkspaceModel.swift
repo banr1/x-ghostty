@@ -669,6 +669,8 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ) -> Bool {
         guard projectListActive else { return false }
         switch value {
+        case .kind(let kind):
+            state.setProjectKind(id, to: kind)
         case .terminal(let terminal):
             state.setProjectTerminal(id, to: terminalRegistry.storedName(for: terminal))
         case .priority(let priority):

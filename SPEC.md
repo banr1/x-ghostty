@@ -2116,14 +2116,14 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   - `hiddenProjectIDs: Set<ProjectID>` — 一覧の visibility 列。**永続化される**
     (2026-08-18 改訂で runtime-only から昇格、§12.1)。
   - `listColumnOrder: [ProjectListColumn]` — 列順。既定は
-    **表示・タイトル・端末・優先度・締切・次トリガー・ノート**の 7 列。
+    **表示・種別・タイトル・端末・優先度・締切・次トリガー・ノート**の 8 列。
     decode は `ProjectListColumn.normalizedOrder` で常に全列の順列へ修復し、
-    端末列が無かった頃の 6 列の保存では端末列が既定どおりタイトルの直後に
-    入り、他の列の保存順は保たれる。
+    列が無かった頃の保存では、種別列は既定どおり表示の直後に、端末列は
+    タイトルの直後に入り、他の列の保存順は保たれる。
 - **序数(Cmd+1〜9)は visible な行を上から数えた順**
   (`visibleProjectIDs = projectOrder.filter { !hidden }`、`ordinal(of:)`)。
   ツリーの走査順ではなく台帳が序数を定義し、配置が序数に追従する(§26.3)。
-- `ProjectListRow` は行の純粋導出(`projectListRows`):タイトル・序数
+- `ProjectListRow` は行の純粋導出(`projectListRows`):種別・タイトル・序数
   (hidden は nil)・端末・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
   まま運び、空欄に描くのは view の仕事。端末セルは空欄にならない
   (`terminalDisplayName(in:)` — 保存値が手元(nil)か登録から消えた名前なら
@@ -2178,10 +2178,11 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     台帳を書き、`relayout()` が背後の配置を即座に組み直す(§26.3)。可否は
     `canToggleProjectVisibility`:hidden → visible は表示上限 9(§7.3)、
     visible → hidden は**最低 1 つは visible に残す**(§25 と同じ規則)。
-  - **優先度・次トリガー・端末列** — **候補メニュー**がセルの下に開く
+  - **優先度・次トリガー・端末・種別列** — **候補メニュー**がセルの下に開く
     (`ProjectListCandidateMenu`):実値のみの全列挙(優先度は
     high/medium/low、次トリガーは自分/外部/イベント。**未設定は含めない**。
-    端末は手元を含む登録済み端末の表示名を登録順に、§29.1)。
+    端末は手元を含む登録済み端末の表示名を登録順に、§29.1。種別は
+    Core → Side の順、§27.8)。
     `↑↓` で選び `Enter` で確定(`commitProjectListCandidate` — 通常の setter と
     同じ書込み口)、`Esc` は何も変えずに閉じる。`Tab` / `Shift+Tab` は**値を
     変えずに**候補を閉じて右・左のセルへ移る(§27.7)。旧 `Space` 循環は
@@ -2330,9 +2331,9 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は
-  visible 行を上から数えた順で hidden を飛ばす / 既定列順 = 表示・タイトル・
-  端末・優先度・締切・次トリガー・ノート / 6 列の保存はタイトルの直後に端末列を
-  得る / 行順・列順の入れ替えと round trip 復元 /
+  visible 行を上から数えた順で hidden を飛ばす / 既定列順 = 表示・種別・タイトル・
+  端末・優先度・締切・次トリガー・ノート / 6 列の保存は表示の直後に種別列を、
+  タイトルの直後に端末列を得る / 7 列の保存は種別列だけを得る / 行順・列順の入れ替えと round trip 復元 /
   配置が台帳の全変更と復元で再導出される / 挿入はアンカー行の直下・上限では
   hidden / 連続 N 回の行・列入替の結果順と、返る index が常に移動対象の
   現在位置(カーソル追従)・端のクランプは nil
@@ -2373,6 +2374,7 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   6 ショートカットの chord 対応と対象外 chord の素通し / 候補列挙中の
   Tab / Shift+Tab が値を変えずに閉じて横移動(ProjectListClipboardTests)
 - 端末列(候補・Delete・コピー・貼り付け)は §29.5 の ProjectTerminalColumnTests
+- 種別列(候補・Delete・コピー・貼り付け)は §27.8 の ProjectKindTests
 ```
 
 ### 27.7 セルのクリップボード操作と候補列挙中の横移動(2026-08-20 改訂・必須 83)
@@ -2401,7 +2403,8 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   優先度綴り・空白のみ等)は**無視**して何も変えない — §24.1 の「不正入力は
   未設定へ」と違い未設定 fallback は無い(**未設定へ戻すのは `Delete` の
   仕事**)。端末列は**登録済みの表示名だけ**を受け付ける(前後の空白は無視。
-  手元の表示名は既定値 = 手元として保存する)。表示列は `Cmd+C` / `Cmd+V` とも
+  手元の表示名は既定値 = 手元として保存する)。種別列は `Core` / `Side` の綴り
+  だけを受け付ける(前後の空白は無視)。表示列は `Cmd+C` / `Cmd+V` とも
   何もしない。書込みは既存の確定
   経路(テキスト列は `commitListCellEdit`、値列は候補確定と同じ setter)を
   通り、再ソート(§24.4)・永続化の挙動はセル編集・候補確定と同一。ノートの
@@ -2411,6 +2414,22 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   セルカーソルを移す(行末の折り返しと端での停止は §27.2 と同じ)。
   振り分けは `ProjectListCandidateMenu.routing(for:shifted:)` の
   `.closeAndMoveCursor` — commit を伴わないことが型で読める。
+
+### 27.8 種別列(ProjectKind・必須 140)
+
+- `ProjectState.kind: ProjectKind` — `core`(既定)/ `side` の 2 値。プロジェクトの
+  レコードのキー `kind` で永続化する。既定の Core はキーを書かず、キーが無い
+  保存と未知の値は Core として読む。
+- 一覧の種別列(既定列順で表示の直後):`Enter` で Core → Side の順に候補を列挙し、
+  `setProjectKind` で確定する。`Delete` は Core に戻す。`Cmd+C` は `Core` / `Side` を
+  コピーし、`Cmd+V` はこの 2 つの綴りだけを受け付ける(§27.7)。文字入力では編集に
+  入らない選択列である。
+- 種別はソートキーにしない(ソート状態は 5 値のまま、§24.4)。種別を変えても行順は
+  変わらない。ラベル帯・一望・zoom に印や差は付けない。
+- テスト: ProjectKindTests 12 件(既定 Core / 保存と復元・キーの省略 / キー欠落と
+  未知の値は Core / 表示の直後の選択列 / 候補は Core → Side / 候補の確定 /
+  `Delete` で Core / setter の変更報告 / ソートキーにならない / コピー / 貼り付けは
+  `Core` / `Side` のみ / 一望の内容が種別に依らない)
 
 ## 28. 優先度の毎朝リセット仕様
 

@@ -124,7 +124,7 @@ struct ProjectTerminalColumnTests {
         #expect(column.enterAction == .enumerateCandidates)
         #expect(column.deleteAction == .clearValue)
         #expect(ProjectListColumn.defaultOrder == [
-            .visibility, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
+            .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
         ])
         let row = ProjectListRow(
             id: ProjectID(), title: "alpha", ordinal: 1, isHidden: false,
