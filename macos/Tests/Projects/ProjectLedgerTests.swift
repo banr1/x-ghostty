@@ -224,12 +224,12 @@ struct ProjectLedgerTests {
         #expect(state.projectOrder == [ids[0], inserted.id, ids[1], ids[2]])
         #expect(state.isProjectHidden(inserted.id) == false)
 
-        // At the cap (9 visible), a new row comes in hidden.
+        // At the visible cap, a new row comes in hidden.
         var (full, fullIDs) = Self.makeState(TestWorkspaceState.maxVisibleProjects)
-        let tenth = Self.makeProject(name: "tenth", at: base)
-        full.insertProject(tenth, after: fullIDs.last)
-        #expect(full.projectOrder.count == 10)
-        #expect(full.isProjectHidden(tenth.id) == true)
+        let extra = Self.makeProject(name: "extra", at: base)
+        full.insertProject(extra, after: fullIDs.last)
+        #expect(full.projectOrder.count == TestWorkspaceState.maxVisibleProjects + 1)
+        #expect(full.isProjectHidden(extra.id) == true)
         #expect(full.visibleProjectCount == TestWorkspaceState.maxVisibleProjects)
     }
 }

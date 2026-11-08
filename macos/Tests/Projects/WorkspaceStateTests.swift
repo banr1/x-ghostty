@@ -282,7 +282,7 @@ struct WorkspaceStateTests {
 
         let state = WorkspaceState(canonicalProjectTree: tree, projects: projects, focusedProject: ids[0])
         // The ledger caps the visible rows at construction already: rows past
-        // the ninth visible one start hidden.
+        // the cap start hidden.
         #expect(state.canonicalProjectTree.map(\.id)
             == Array(ids.prefix(WorkspaceState.maxVisibleProjects)))
         return (state, ids)
@@ -303,7 +303,7 @@ struct WorkspaceStateTests {
     }
 
     @Test func restoringLeavesEverythingVisibleUnderTheCap() throws {
-        // At most 9 projects: unchanged behaviour, everything comes back visible.
+        // Up to the cap: unchanged behaviour, everything comes back visible.
         let (state, ids) = try Self.makeRowState(WorkspaceState.maxVisibleProjects)
 
         let restored = WorkspaceState.restoring(state)
@@ -314,26 +314,26 @@ struct WorkspaceStateTests {
         Self.expectInvariants(restored)
     }
 
-    @Test func restoringPrunesALegacyTreeWithMoreThanNineLeaves() throws {
-        // A save with more than 9 rows visible keeps the first 9 rows visible;
-        // the rest are hidden, still alive in `projects`.
-        let (state, ids) = try Self.makeRowState(12)
+    @Test func restoringPrunesALegacyTreeWithMoreLeavesThanTheCap() throws {
+        // A save with more rows visible than the cap keeps the first rows up to
+        // the cap visible; the rest are hidden, still alive in `projects`.
+        let cap = WorkspaceState.maxVisibleProjects
+        let (state, ids) = try Self.makeRowState(cap + 3)
 
         let restored = WorkspaceState.restoring(state)
 
-        #expect(restored.visibleProjectCount == WorkspaceState.maxVisibleProjects)
-        #expect(restored.canonicalProjectTree.map(\.id) == Array(ids.prefix(9)))
-        #expect(restored.hiddenProjectIDs == Set(ids.dropFirst(9)))
+        #expect(restored.visibleProjectCount == cap)
+        #expect(restored.canonicalProjectTree.map(\.id) == Array(ids.prefix(cap)))
+        #expect(restored.hiddenProjectIDs == Set(ids.dropFirst(cap)))
         #expect(Set(restored.projects.keys) == Set(ids))
         Self.expectInvariants(restored)
     }
 
     @Test func restoringKeepsHiddenRowsHiddenUnderTheCap() throws {
-        // 12 projects of which 8 were hidden at save time (rows 5..12, of
-        // which 10..12 started hidden by the cap): visibility is a persisted
-        // ledger fact, so exactly the 4 visible rows come back visible — no
-        // re-attachment happens.
-        let (base, ids) = try Self.makeRowState(12)
+        // Rows past the fourth were hidden at save time (the last three started
+        // hidden by the cap): visibility is a persisted ledger fact, so exactly
+        // the 4 visible rows come back visible — no re-attachment happens.
+        let (base, ids) = try Self.makeRowState(WorkspaceState.maxVisibleProjects + 3)
         var state = base
         for id in ids.dropFirst(4) {
             state = Self.hiding(id, in: state)
@@ -350,11 +350,11 @@ struct WorkspaceStateTests {
     }
 
     @Test func restoringNumbersTheCappedVisibleProjectsOneThroughNine() throws {
-        let (state, ids) = try Self.makeRowState(12)
+        let (state, ids) = try Self.makeRowState(WorkspaceState.maxVisibleProjects + 3)
         let restored = WorkspaceState.restoring(state)
 
         #expect(ids.prefix(9).compactMap { restored.ordinal(of: $0) } == Array(1...9))
-        // The overflow projects are hidden, so they have no number.
+        // Past the ninth there is no number, visible or hidden.
         #expect(ids.dropFirst(9).allSatisfy { restored.ordinal(of: $0) == nil })
     }
 
@@ -362,13 +362,14 @@ struct WorkspaceStateTests {
         // The saved focused project is beyond the cap, so it comes back hidden and
         // focus falls back to the canonical tree's first leaf (§14.6: the focused
         // project is always visible).
-        let (base, ids) = try Self.makeRowState(12)
+        let (base, ids) = try Self.makeRowState(WorkspaceState.maxVisibleProjects + 3)
         var state = base
-        state.focusedProject = ids[11]
+        let cappedOut = try #require(ids.last)
+        state.focusedProject = cappedOut
 
         let restored = WorkspaceState.restoring(state)
 
-        #expect(restored.hiddenProjectIDs.contains(ids[11]))
+        #expect(restored.hiddenProjectIDs.contains(cappedOut))
         #expect(restored.focusedProject == ids[0])
         let focused = try #require(restored.focusedProject)
         #expect(restored.canonicalProjectTree.find(id: focused) != nil)
@@ -378,7 +379,7 @@ struct WorkspaceStateTests {
     @Test func restoringIsIdempotent() throws {
         // Decode already applies the restore layout, and `restoring(_:)` runs it
         // again on top: the second pass must not move anything.
-        let (state, ids) = try Self.makeRowState(12)
+        let (state, ids) = try Self.makeRowState(WorkspaceState.maxVisibleProjects + 3)
         let once = WorkspaceState.restoring(state)
         let twice = WorkspaceState.restoring(once)
 
@@ -388,16 +389,17 @@ struct WorkspaceStateTests {
         #expect(Set(twice.projects.keys) == Set(ids))
     }
 
-    @Test func decodingCapsVisibleProjectsAtNine() throws {
-        let (state, ids) = try Self.makeRowState(12)
+    @Test func decodingCapsTheVisibleProjects() throws {
+        let cap = WorkspaceState.maxVisibleProjects
+        let (state, ids) = try Self.makeRowState(cap + 3)
 
         let data = try JSONEncoder().encode(state)
         let decoded = try JSONDecoder().decode(WorkspaceState.self, from: data)
 
         #expect(Set(decoded.projects.keys) == Set(ids))
-        #expect(decoded.visibleProjectCount == WorkspaceState.maxVisibleProjects)
-        #expect(decoded.canonicalProjectTree.map(\.id) == Array(ids.prefix(9)))
-        #expect(decoded.hiddenProjectIDs == Set(ids.dropFirst(9)))
+        #expect(decoded.visibleProjectCount == cap)
+        #expect(decoded.canonicalProjectTree.map(\.id) == Array(ids.prefix(cap)))
+        #expect(decoded.hiddenProjectIDs == Set(ids.dropFirst(cap)))
         Self.expectInvariants(decoded)
     }
 }

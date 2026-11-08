@@ -3,10 +3,10 @@ import Foundation
 /// One row of the project list overlay (`SPEC.md` §27.1).
 ///
 /// A pure value derived from the model: the view renders it and never recomputes
-/// what a row should say. `ordinal` is `nil` exactly for hidden projects — they
-/// have no canonical leaf and therefore no Cmd+1–9 number — which is also what
-/// `isHidden` reports, kept as its own field so the view does not have to infer
-/// the meaning of a missing number.
+/// what a row should say. `ordinal` is `nil` for a project without a Cmd+1–9
+/// number: a hidden one, or a visible one past the first nine in placement
+/// order. `isHidden` is its own field because a missing number does not mean
+/// hidden.
 ///
 /// Unset fields are represented as they are in the model (`nil` priority, `nil`
 /// deadline / next trigger, empty `note`); the view renders those as blanks.
@@ -31,6 +31,13 @@ struct ProjectListRow: Equatable, Identifiable {
     /// line, but the whole-list full-note toggle (`SPEC.md` §27.2) renders
     /// every line, so the row carries them all.
     let note: String
+
+    /// What the row's gutter shows: the ordinal, the hidden marker for a hidden
+    /// row, and nothing for a visible row without a number.
+    var ordinalGutterText: String {
+        if let ordinal { return String(ordinal) }
+        return isHidden ? "·" : ""
+    }
 
     /// What the one-line note cell shows: the note's first line, empty for an
     /// empty note.
@@ -205,12 +212,16 @@ extension WorkspaceStateOf {
     /// single row order (`SPEC.md` §27.1): the rows are *not* partitioned by
     /// visibility, and a row's ordinal is the project's own display number
     /// (`projectOrdinals`, the placement order — `nil` for hidden rows, which
-    /// the numbering skips).
+    /// the numbering skips, and for visible rows past the first nine).
     var projectListRows: [ProjectListRow] {
         let ordinals = projectOrdinals
         return projectOrder.compactMap { id in
             guard let project = projects[id] else { return nil }
-            return Self.listRow(id: id, project: project, ordinal: ordinals[id])
+            return Self.listRow(
+                id: id,
+                project: project,
+                ordinal: ordinals[id],
+                isHidden: hiddenProjectIDs.contains(id))
         }
     }
 
@@ -237,13 +248,14 @@ extension WorkspaceStateOf {
     private static func listRow(
         id: ProjectID,
         project: ProjectStateOf<Pane>,
-        ordinal: Int?
+        ordinal: Int?,
+        isHidden: Bool
     ) -> ProjectListRow {
         ProjectListRow(
             id: id,
             title: project.name,
             ordinal: ordinal,
-            isHidden: ordinal == nil,
+            isHidden: isHidden,
             priority: project.priority,
             deadline: project.deadline,
             nextTrigger: project.nextTrigger,

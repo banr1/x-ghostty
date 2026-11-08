@@ -607,10 +607,10 @@ class BaseTerminalController: NSWindowController,
         // need a focused project to anchor the new sibling against.
         guard surfaceTree.root?.node(view: oldView) != nil else { return nil }
         guard workspace.state.focusedProject != nil else { return nil }
-        // At most `WorkspaceState.maxVisibleProjects` projects can be visible, since
-        // each one needs a number. At the cap this is a silent no-op (no toast,
-        // no beep) — checked here, before a `SurfaceView` (and its shell process)
-        // would be spawned only to be thrown away.
+        // At most `WorkspaceState.maxVisibleProjects` projects can be visible.
+        // At the cap this is a silent no-op (no toast, no beep) — checked here,
+        // before a `SurfaceView` (and its shell process) would be spawned only to
+        // be thrown away.
         guard workspace.canAddVisibleProject else { return nil }
         guard let xghostty_app = ghostty.app else { return nil }
 

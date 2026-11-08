@@ -351,14 +351,20 @@ shelf は廃止し、**hidden プロジェクトの唯一の復帰導線を `Cmd
 
 ### 7.3 プロジェクト番号（1～9）と表示上限
 
-visible project は最大 9 個まで。`WorkspaceState.maxVisibleProjects = 9` として実装。
+visible project は種別を問わず最大 24 個まで。`WorkspaceState.maxVisibleProjects = 24`
+として実装。序数は先頭 9 つまで(`WorkspaceState.maxProjectOrdinal = 9`)。
 
 #### 動的序数
 
 visible project は**配置順**(Core → Side、各種別内は台帳の行順。§26.3、
-`visibleProjectIDs` / `ordinal(of:)`)で 1～N(N = visible count)の序数を
-自動付与する。序数は display-only で内部保持しない。配置は同じ順に導出される
-(§26.3)が、canonical tree の葉走査順とは一般に一致しない。
+`visibleProjectIDs` / `ordinal(of:)`)の先頭 9 つに 1～9 の序数を自動付与する。
+序数は display-only で内部保持しない。配置は同じ順に導出される(§26.3)が、
+canonical tree の葉走査順とは一般に一致しない。
+
+10 番目以降の visible project は序数を持たず(`ordinal(of:)` は nil)、ラベル帯は
+名前だけ、一覧の序数欄は空欄になる(hidden の印「·」は付かない。hidden かどうかは
+序数の有無ではなく `hiddenProjectIDs` が決める)。これらには一覧の `Cmd+Enter` で
+届く(§27.3)。
 
 枚数変化時(hide / close / show / 新規作成)や行移動(move_project・一覧の
 `Opt+↑↓`)・再ソート(§24.4)の後、序数は自動的に再計算・再配置される。
@@ -384,12 +390,12 @@ zoom: project-B
 表示: 2. project-B  (canonical 上の序数 2)
 ```
 
-#### 表示上限 9 と no-op 挙動
+#### 表示上限 24 と no-op 挙動
 
-visible project が既に 9 個のとき:
+visible project が既に 24 個のとき:
 
 - `new_project` ... 作成自体は拒否しない — 新規行は **hidden として**挿入される
-  (§27.4。登録総数に上限は無く、同時に画面へ並ぶ数だけが 9 まで)
+  (§27.4。登録総数に上限は無く、同時に画面へ並ぶ数だけが 24 まで)
 - `show_project`（`show_project:<name>` action、およびプロジェクト一覧の表示セルトグル §27.2） ... quietly no-op（行は hidden のまま残る）
 - `goto_project` index form（`goto_project:1`～`goto_project:9`）... 無効な index は no-op、performability gate あり
 - `goto_project` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
@@ -615,8 +621,8 @@ hide 選択画面を廃止し即時に戻した)。`list_projects`(§27)は hidd
 2. 新規 ProjectState を作る(ProjectNameGenerator 名、初期ペイン 1 つ =
    プライマリー、新シェル)
 3. 台帳のカーソル行の直下に行を挿入する(insertProject(_:after:))
-4. 挿入前の visible 数が 9 未満なら visible(relayout が配置を組み直す)、
-   9 なら hidden(§7.3 の上限を作成でも守る)
+4. 挿入前の visible 数が 24 未満なら visible(relayout が配置を組み直す)、
+   24 なら hidden(§7.3 の上限を作成でも守る)
 5. カーソルは新しい行のタイトル列に移り、その場でタイトル編集が始まる
 ```
 
@@ -786,7 +792,7 @@ project zoom と inner split zoom は共存可能。
 表示上限到達時は no-op(§7.3)。
 
 ```text
-1. visible project 数が既に 9 個の場合は no-op(toast/beep なし)
+1. visible project 数が既に 24 個の場合は no-op(toast/beep なし)
 2. 台帳の hidden フラグを外す(setProjectHidden(id, false)。行順は不変)
 3. relayout() が記憶しているレイアウト型で新しい visible 数の配置を再導出
    — 復帰位置は台帳の行順が決める(hide 前と行が同じなら同じ序数位置へ戻る)
@@ -904,7 +910,7 @@ live process / scrollback / PTY状態は復元しない。
    - projectOrder を projects.keys の順列に修復(未知 id は落とし、
      載っていないプロジェクトは (createdAt, id) 順で末尾に追加)
    - hiddenProjectIDs を生存プロジェクトに限定
-   - visible な行が 9 を超える場合、10 個目以降の visible 行を hidden へ
+   - visible な行が 24 を超える場合、25 個目以降の visible 行を hidden へ
      (§7.3 の表示上限)
    - 全行 hidden なら先頭行を visible に戻す(最低 1 つは visible)
 3. relayout(): 台帳とレイアウト型から配置を再導出(§26.3)
@@ -960,7 +966,7 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
     からの投影であり、台帳を経由せずに変更されない(§4.1, §26.3)。
     永続化もされない(§12.2)
 11. new_project は台帳のカーソル行直下に行を挿入し、新project内に初期pane
-    (=プライマリー)を1つ作る。visible 数 9 未満なら visible、9 なら hidden
+    (=プライマリー)を1つ作る。visible 数 24 未満なら visible、24 なら hidden
     (§27.4)
 12. goto_project 後は対象projectの last focused pane にfocusする
 13. project label はヘッダー帯であり、terminal layout を自身の高さぶん押し下げる
@@ -974,11 +980,11 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
 18. project が複数あるとき、最後の pane で close_surface すると close_project
     confirmation に昇格する（唯一の project では通常の close_surface として
     window close → app 終了になる。§11.10, §18.5）
-19. visible project 数は常に ≤ 9（§7.3。登録総数は無制限）
-20. visible project の序数は配置順(Core → Side、各種別内は行順)で
-    1～visibleCount となり、台帳の変更時に自動 re-pack される
+19. visible project 数は常に ≤ 24（§7.3。登録総数は無制限）
+20. visible project の序数は配置順(Core → Side、各種別内は行順)の先頭 9 つに
+    1～9 で付き、台帳の変更時に自動 re-pack される
     (表示のみ、保存しない。§7.3, §27.1)
-21. restore 時は normalizeLedger が台帳を修復し(順列・生存・上限 9・
+21. restore 時は normalizeLedger が台帳を修復し(順列・生存・上限 24・
     最低 1 visible)、relayout が配置を再導出する(§12.4)
 22. ソート状態が手動のとき、優先度・締切・次トリガー・ノートの値変更は
     台帳の行順を変えない(並び替えは行移動のみ)。ソート有効中(手動以外)は
@@ -1100,7 +1106,7 @@ Cmd+Opt+Shift+D
 - project names が復元される
 - pane layout が復元される
 - hidden 状態は復元されず全project visible
-  （後続変更: 表示上限 9 の cap を適用、超過分は hidden。§12.4）
+  （後続変更: 表示上限の cap を適用、超過分は hidden。§12.4）
 - zoom 状態は復元されず非zoom
 ```
 
@@ -1313,12 +1319,12 @@ project UI:
 hidden UI:
   常設表示なし（§7.2）
   プロジェクト一覧（Cmd+L、§27）が hidden を含む全プロジェクトを列挙
-  一覧の表示セル Enter で即show（ただし visible が 9 個では no-op）
+  一覧の表示セル Enter で即show（ただし visible が 24 個では no-op）
 
 表示上限:
-  visible project 最大 9 個
-  9 個で満杯のとき new_project_split / show_project は no-op
-  序数は自動的に 1～9 に re-pack（hide/close/show時）
+  visible project 最大 24 個
+  24 個で満杯のとき show_project は no-op、新規行は hidden
+  序数は配置順の先頭 9 つに 1～9 で re-pack（hide/close/show時）
 
 zoom:
   project単位
@@ -1343,10 +1349,10 @@ close:
 
 restore:
   layout/name/pane layout復元
-  canonical が 9 超える場合は先頭 9 のみ visible、超過分を hidden に移す
+  visible な行が 24 を超える場合は先頭 24 のみ visible、超過分を hidden に移す
   hidden は復元しない（runtime-only）
   zoom は復元しない（runtime-only）
-  orphaned project は可能な限り再接続（9 cap内）
+  orphaned project は可能な限り再接続（24 cap内）
   focusedProject 無効時は firstLeaf へフォールバック
 ```
 
@@ -1354,7 +1360,7 @@ MVP 時点の核は「`canonicalProjectTree` を唯一の配置 source of truth 
 ことだった。2026-08-18 改訂でこの主従は逆転し、**台帳(§27.1)が source of
 truth、tree は投影**になった(§4.1)— それでもプロジェクトが第一級レイアウト
 単位であること、既存のペイン分割・surface lifetime・Ghostty の SplitTree 設計を
-壊さないこと、表示上限 9 と動的序数で UI の安定性と操作性を両立することは
+壊さないこと、表示上限と動的序数で UI の安定性と操作性を両立することは
 変わらない。
 
 ## 21. ノート仕様
@@ -2131,10 +2137,13 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     列が無かった頃の保存では、種別列は既定どおり表示の直後に、端末列は
     タイトルの直後に入り、他の列の保存順は保たれる。
 - **序数(Cmd+1〜9)は配置順**:visible な行を Core → Side(各種別内は行順)に
-  並べた順(`visibleProjectIDs`、`ordinal(of:)`、§26.3)。ツリーの走査順ではなく
-  台帳と種別が序数を定義し、配置が序数に追従する。行の並びは種別で変わらない。
+  並べた順の先頭 9 つ(`visibleProjectIDs`、`ordinal(of:)`、§26.3、§7.3)。ツリーの
+  走査順ではなく台帳と種別が序数を定義し、配置が序数に追従する。行の並びは種別で
+  変わらない。
 - `ProjectListRow` は行の純粋導出(`projectListRows`):種別・タイトル・序数
-  (hidden は nil)・端末・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
+  (hidden と、配置順で 10 番目以降の visible は nil。序数欄は
+  `ordinalGutterText` が hidden なら「·」、後者なら空欄にする)・hidden か否か・
+  端末・優先度・締切・次トリガー・ノート 1 行目。未設定は未設定の
   まま運び、空欄に描くのは view の仕事。端末セルは空欄にならない
   (`terminalDisplayName(in:)` — 保存値が手元(nil)か登録から消えた名前なら
   手元の端末の表示名を描く。§29.2)。ノート列は通常 1 行目のみを表示し、
@@ -2186,7 +2195,7 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     オーバーレイ(§21.2)でも従来どおりできる。
   - **表示列** — その場で hide/show をトグルし即時反映:`setProjectHidden` が
     台帳を書き、`relayout()` が背後の配置を即座に組み直す(§26.3)。可否は
-    `canToggleProjectVisibility`:hidden → visible は表示上限 9(§7.3)、
+    `canToggleProjectListVisibility`:hidden → visible は表示上限 24(§7.3)、
     visible → hidden は**最低 1 つは visible に残す**(§25 と同じ規則)。
   - **優先度・次トリガー・端末・種別列** — **候補メニュー**がセルの下に開く
     (`ProjectListCandidateMenu`):実値のみの全列挙(優先度は
@@ -2288,8 +2297,8 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   移り、**その場でタイトル編集が始まる**(`pendingTitleEdit`)。
 - **一覧の外**:一覧を開いて同じ状態にする(手動状態の挿入位置はカーソル
   初期行の直下)。zoom 中なら zoom は解除されない(§27.3)。
-- **新規行の表示状態はモデル判断**:挿入前の visible 数が 9 未満なら visible、
-  9 なら hidden(表示上限 §7.3 を作成でも守る)。visible での挿入は
+- **新規行の表示状態はモデル判断**:挿入前の visible 数が 24 未満なら visible、
+  24 なら hidden(表示上限 §7.3 を作成でも守る)。種別は Core。visible での挿入は
   `relayout()` が配置を即座に組み直す。
 - controller は作成 1 回につき 1 つの undo を登録する。
 
@@ -2374,7 +2383,7 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   visible 行(同距離は上が勝つ)・未知の行は nil に解決 / zoom 中は zoom を
   解除せず zoom 対象が切り替わる
 - 新規作成: 手動はカーソル行の直下 / ソート有効中は安定ソートの帰結の位置 /
-  visible 数 9 未満なら visible・9 なら hidden
+  visible 数 24 未満なら visible・24 なら hidden
 - セッション: begin は zoom を保持(一覧が zoom に重なり、閉じると戻る)・
   他オーバーレイ中は拒否 / Cmd+L トグルで閉じ Esc では閉じない / 閉じても
   実変更は残る / 全行ノートトグルは transient
@@ -2384,6 +2393,9 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   6 ショートカットの chord 対応と対象外 chord の素通し / 候補列挙中の
   Tab / Shift+Tab が値を変えずに閉じて横移動(ProjectListClipboardTests)
 - 端末列(候補・Delete・コピー・貼り付け)は §29.5 の ProjectTerminalColumnTests
+- 表示上限 24・種別を問わない数え方・24 でのトグルの拒否・新規行の表示状態・序数の
+  先頭 9 つ・10 番目以降の visible が hidden に見えないことは ProjectVisibleCapTests
+  10 件
 - 種別列(候補・Delete・コピー・貼り付け)は §27.8 の ProjectKindTests
 ```
 

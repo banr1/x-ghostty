@@ -997,7 +997,7 @@ struct ProjectListOverlay: View {
     /// stay quiet.
     private func row(_ row: ProjectListRow, index: Int) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Text(row.ordinal.map(String.init) ?? "·")
+            Text(row.ordinalGutterText)
                 .opacity(row.isHidden ? 0.35 : 0.5)
                 .frame(minWidth: 16, alignment: .trailing)
 

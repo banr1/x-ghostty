@@ -21,12 +21,18 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
     /// The maximum number of simultaneously *visible* projects.
     ///
-    /// Visible projects are numbered 1..9 in the header (`ordinal(of:)`) and are
-    /// addressed directly by `goto_project:<1-9>` (Cmd+1..9), so nine is the
-    /// hard ceiling: `show_project` is silently rejected once it is reached, a
-    /// new project row comes in hidden, and a restore caps the visible set at
-    /// this many (the extras stay alive, hidden).
-    static var maxVisibleProjects: Int { 9 }
+    /// Every project takes one, Core or Side (must 141). `show_project` is
+    /// silently rejected once the cap is reached, a new project row comes in
+    /// hidden, and a restore caps the visible set at this many (the extras stay
+    /// alive, hidden). There can be more visible projects than ordinals: see
+    /// `maxProjectOrdinal`.
+    static var maxVisibleProjects: Int { 24 }
+
+    /// The highest display number a visible project can have. The numbers exist
+    /// to address projects through `goto_project:<1-9>` (Cmd+1..9), so only the
+    /// first nine projects in placement order have one; the others are reached
+    /// from the project list (must 141).
+    static var maxProjectOrdinal: Int { 9 }
 
     var version: Int
 
@@ -190,8 +196,8 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// `projectOrder` is a permutation of `projects.keys` (unknown ids drop,
     /// missing projects append in creation order), the hidden set names only
     /// live projects, at most `maxVisibleProjects` rows are visible (the
-    /// extras beyond the ninth visible row become hidden), and at least one
-    /// row is visible while any project exists (the first row is shown).
+    /// visible rows beyond the cap become hidden), and at least one row is
+    /// visible while any project exists (the first row is shown).
     mutating func normalizeLedger() {
         var seen = Set<ProjectID>()
         var order: [ProjectID] = []
@@ -273,26 +279,31 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
         relayout()
     }
 
-    /// The 1-based display number of `id`, or `nil` when it is not visible.
+    /// The 1-based display number of `id`, or `nil` when it has none: it is not
+    /// visible, or it is past the first `maxProjectOrdinal` projects in
+    /// placement order. A missing number therefore does not mean hidden.
     /// This is a pure display/addressing derivation — it is never stored into
     /// `ProjectState.name`.
     func ordinal(of id: ProjectID) -> Int? {
-        visibleProjectIDs.firstIndex(of: id).map { $0 + 1 }
+        guard let index = visibleProjectIDs.firstIndex(of: id),
+              index < Self.maxProjectOrdinal
+        else { return nil }
+        return index + 1
     }
 
-    /// The visible project with 1-based number `ordinal`, or `nil` when there are
-    /// fewer than `ordinal` visible projects. The inverse of `ordinal(of:)`.
+    /// The visible project with 1-based number `ordinal`, or `nil` when no
+    /// project has that number. The inverse of `ordinal(of:)`.
     func visibleProjectID(ordinal: Int) -> ProjectID? {
         let ids = visibleProjectIDs
-        guard ordinal >= 1, ordinal <= ids.count else { return nil }
+        guard ordinal >= 1, ordinal <= min(ids.count, Self.maxProjectOrdinal) else { return nil }
         return ids[ordinal - 1]
     }
 
-    /// Every visible project's display number, keyed by id. Computed once per
+    /// Every numbered project's display number, keyed by id. Computed once per
     /// render pass so the view tree does not do a linear scan per project.
     var projectOrdinals: [ProjectID: Int] {
         var result: [ProjectID: Int] = [:]
-        for (index, id) in visibleProjectIDs.enumerated() {
+        for (index, id) in visibleProjectIDs.prefix(Self.maxProjectOrdinal).enumerated() {
             result[id] = index + 1
         }
         return result

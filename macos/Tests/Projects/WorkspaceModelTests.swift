@@ -922,18 +922,18 @@ struct WorkspaceModelTests {
         #expect(zoomed.state.effectiveVisibleProjectTree?.map(\.id) == [ids[2]])
     }
 
-    // MARK: Visible-project cap (max 9)
+    // MARK: Visible-project cap
 
     @Test func openNewProjectSucceedsBelowTheVisibleCap() throws {
         let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleProjects - 1)
         #expect(model.canAddVisibleProject == true)
 
-        let extra = Self.makeEmptyProject(name: "ninth")
+        let extra = Self.makeEmptyProject(name: "last-slot")
         model.switchFocusedProject(to: ids.last!, savingOutgoingPaneTree: .init())
         try model.openNewProject(extra, direction: .right, savingOutgoingPaneTree: .init())
 
         #expect(model.state.visibleProjectCount == WorkspaceState.maxVisibleProjects)
-        #expect(model.ordinal(of: extra.id) == WorkspaceState.maxVisibleProjects)
+        #expect(model.state.visibleProjectIDs.last == extra.id)
     }
 
     @Test func openNewProjectIsRejectedAtTheVisibleCap() throws {
@@ -943,7 +943,7 @@ struct WorkspaceModelTests {
 
         #expect(throws: WorkspaceModel.WorkspaceError.visibleProjectLimitReached) {
             try model.openNewProject(
-                Self.makeEmptyProject(name: "tenth"),
+                Self.makeEmptyProject(name: "extra"),
                 direction: .right,
                 savingOutgoingPaneTree: .init())
         }
@@ -956,7 +956,7 @@ struct WorkspaceModelTests {
     }
 
     @Test func showProjectSucceedsBelowTheVisibleCap() throws {
-        // 9 projects with one hidden → 8 visible, so the reveal fits.
+        // A full row with one hidden → one slot free, so the reveal fits.
         let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleProjects)
         model.switchFocusedProject(to: ids[0], savingOutgoingPaneTree: .init())
         try #require(model.hideFocusedProject(savingOutgoingPaneTree: .init()))
@@ -971,11 +971,11 @@ struct WorkspaceModelTests {
     }
 
     @Test func showProjectIsRejectedAtTheVisibleCap() throws {
-        // 9 visible projects plus a hidden 10th: the pill must stay on the shelf.
+        // A full row of visible projects plus a hidden one: it must stay hidden.
         let (model, ids) = try Self.makeRow(WorkspaceState.maxVisibleProjects)
         model.switchFocusedProject(to: ids[0], savingOutgoingPaneTree: .init())
         try #require(model.hideFocusedProject(savingOutgoingPaneTree: .init()))
-        let extra = Self.makeEmptyProject(name: "tenth")
+        let extra = Self.makeEmptyProject(name: "extra")
         try model.openNewProject(extra, direction: .right, savingOutgoingPaneTree: .init())
         #expect(model.state.visibleProjectCount == WorkspaceState.maxVisibleProjects)
 

@@ -197,7 +197,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     // MARK: Project numbering & the visible-project cap (SPEC §4.1)
 
-    /// The 1-based display number of `id`, or `nil` when it is not visible.
+    /// The 1-based display number of `id`, or `nil` when it has none.
     /// Convenience over `WorkspaceState.ordinal(of:)` for call sites that only
     /// hold the model.
     func ordinal(of id: ProjectID) -> Int? {
@@ -764,8 +764,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     ///
     /// Hiding is refused when `id` is the last visible project — the
     /// at-least-one-visible rule of the hide-selection screen applies here too
-    /// — and showing is refused at the visible-project cap, where the project
-    /// would have no number to occupy.
+    /// — and showing is refused at the visible-project cap.
     func canToggleProjectListVisibility(_ id: ProjectID) -> Bool {
         guard projectListActive, state.projects[id] != nil else { return false }
         return state.isProjectHidden(id)
@@ -1581,9 +1580,8 @@ enum WorkspaceModelError: Error {
     /// There is no focused project to anchor a new project split against.
     case noFocusedProject
 
-    /// `WorkspaceState.maxVisibleProjects` projects are already visible, so
-    /// there is no number left to give a new one. Rejected silently (no
-    /// toast, no beep): the caller simply does nothing.
+    /// `WorkspaceState.maxVisibleProjects` projects are already visible.
+    /// Rejected silently (no toast, no beep): the caller simply does nothing.
     case visibleProjectLimitReached
 }
 

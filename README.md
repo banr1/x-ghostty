@@ -26,7 +26,9 @@ its window management with a single model:
   window and quits the app.
 - **Projects.** A "project" layer sits above splits. Projects can be created,
   zoomed, hidden, shown, renamed, reordered, and jumped to by ordinal
-  (Cmd+1-9). The project list (see below) is the ledger that holds every
+  (Cmd+1-9). Up to 24 projects can be visible at once; only the first nine in
+  placement order have an ordinal, and the rest are reached from the project
+  list with `Cmd+Enter`. The project list (see below) is the ledger that holds every
   project; the on-screen arrangement is derived from it. See
   [SPEC.md](SPEC.md) for the design.
 - **Notes.** Each project holds a short handwritten note (up to 100 lines),
@@ -97,8 +99,8 @@ its window management with a single model:
   the same color as visible rows), in one unpartitioned row order with eight
   columns — visibility, kind (Core or Side), title, terminal, priority, deadline, next trigger,
   and the note's first line. This row order is the source of truth: the on-screen
-  arrangement is derived from it, and the `Cmd+1-9` ordinals count its visible
-  rows, Cores first and then Sides, each kind in row order. Cell operations follow the Notion idiom. The
+  arrangement is derived from it, and the `Cmd+1-9` ordinals count its first nine
+  visible rows, Cores first and then Sides, each kind in row order. Cell operations follow the Notion idiom. The
   cell cursor moves with the arrows and Tab / Shift+Tab (row-end wrap, edge
   stop); `Cmd+arrows` jump it to the edges. Enter operates on the cell: text
   cells start an edit with the caret in the existing text (typing instead
