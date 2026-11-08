@@ -2294,7 +2294,8 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
   **ソート有効中は安定ソートの帰結として値に応じた位置**に置かれる
   (挿入後の `resortProjects()`、§24.4。新規行は全値未設定なので各キーの
   未設定域の末尾側に落ちる。必須対応事項 68)。カーソルは新しい行のタイトル列に
-  移り、**その場でタイトル編集が始まる**(`pendingTitleEdit`)。
+  移り、**その場でタイトル編集が始まる**(`pendingTitleEdit`。座る先は
+  `ProjectListTitleSeat.resolve` がモデルで導き、一覧はその値の変化を監視する)。
 - **一覧の外**:一覧を開いて同じ状態にする(手動状態の挿入位置はカーソル
   初期行の直下)。zoom 中なら zoom は解除されない(§27.3)。
 - **新規行の表示状態はモデル判断**:挿入前の visible 数が 24 未満なら visible、
@@ -2346,7 +2347,7 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
 候補メニュー(§27.2)は編集していない状態から `Enter` で開くもので、編集
 セッション(`ProjectListCellEdit`)とは相互排他 — この規則とは競合しない。
 
-### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 28 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 11 件 / ProjectListSortedMoveTests 4 件 / ProjectListClipboardTests 12 件)
+### 27.6 テスト(ProjectLedgerTests 10 件 / ProjectListCellTests 30 件 / ProjectListTests 16 件 / ProjectListCandidateTests 8 件 / ProjectListRowSelectionTests 11 件 / ProjectListSortedMoveTests 4 件 / ProjectListClipboardTests 12 件)
 
 ```text
 - 台帳: 行 = hidden を含む全プロジェクトの単一順(区画分けなし)/ 序数は

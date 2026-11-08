@@ -278,6 +278,8 @@ extension WorkspaceStateOf {
 /// remain what an edit commit walks. Cmd+arrows jump to the edges
 /// (`movedToEdge`). The grid's corners are absorbing: there is nowhere to
 /// wrap past the last (or before the first) cell.
+///
+/// `ProjectListTitleSeat` below resolves where a new row's title edit lands.
 struct ProjectListCellCursor: Equatable {
     var row: Int
     var column: Int
@@ -653,5 +655,30 @@ extension WorkspaceStateOf {
         }
         resortProjects()
         return true
+    }
+}
+
+/// Where the title edit of a newly created row lands (`Cmd+N`, `SPEC.md`
+/// §27.4): the new row's title cell, in the rows and columns as they stand
+/// now. `nil` while nothing is pending, or until the pending row has appeared
+/// in `rows`.
+///
+/// The overlay observes this value rather than the pending id alone: a SwiftUI
+/// `onChange` closure may run with the view values of the previous body, so the
+/// row and its position must arrive inside the observed value.
+struct ProjectListTitleSeat: Equatable {
+    let row: ProjectListRow
+    let cursor: ProjectListCellCursor
+
+    static func resolve(
+        pending: ProjectID?, rows: [ProjectListRow], columns: [ProjectListColumn]
+    ) -> ProjectListTitleSeat? {
+        guard let pending,
+              let rowIndex = rows.firstIndex(where: { $0.id == pending }),
+              let columnIndex = columns.firstIndex(of: .title)
+        else { return nil }
+        return ProjectListTitleSeat(
+            row: rows[rowIndex],
+            cursor: ProjectListCellCursor(row: rowIndex, column: columnIndex))
     }
 }

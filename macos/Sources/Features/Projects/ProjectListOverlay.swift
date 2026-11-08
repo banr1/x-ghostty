@@ -207,9 +207,15 @@ struct ProjectListOverlay: View {
         .overlayKeyDownMonitor { handleKey($0) }
         // Both faces of Cmd+N (SPEC §27.4): a creation from inside the list
         // fires onChange; the outside-the-list action opens the list with the
-        // pending edit already set, which onAppear picks up.
-        .onAppear { DispatchQueue.main.async { seatPendingTitleEdit() } }
-        .onChange(of: pendingTitleEdit) { _ in seatPendingTitleEdit() }
+        // pending edit already set, which onAppear picks up. The closure uses
+        // only the value it is handed: it may hold the previous body's `rows`
+        // and `pendingTitleEdit` (see `ProjectListTitleSeat`).
+        .onAppear { DispatchQueue.main.async { seatPendingTitleEdit(pendingTitleSeat) } }
+        .onChange(of: pendingTitleSeat) { seatPendingTitleEdit($0) }
+    }
+
+    private var pendingTitleSeat: ProjectListTitleSeat? {
+        ProjectListTitleSeat.resolve(pending: pendingTitleEdit, rows: rows, columns: columns)
     }
 
     // MARK: Keyboard
@@ -804,13 +810,10 @@ struct ProjectListOverlay: View {
     /// Seat the cursor on the pending new row's title cell in edit mode
     /// (`Cmd+N`, SPEC §27.4). The draft starts empty so the title can be
     /// typed immediately; cancelling keeps the generated name.
-    private func seatPendingTitleEdit() {
-        guard let id = pendingTitleEdit,
-              let rowIndex = rows.firstIndex(where: { $0.id == id }),
-              let columnIndex = columns.firstIndex(of: .title)
-        else { return }
-        cursor = ProjectListCellCursor(row: rowIndex, column: columnIndex)
-        beginEdit(row: rows[rowIndex], column: .title, replaying: nil)
+    private func seatPendingTitleEdit(_ seat: ProjectListTitleSeat?) {
+        guard let seat else { return }
+        cursor = seat.cursor
+        beginEdit(row: seat.row, column: .title, replaying: nil)
         onConsumePendingTitleEdit()
     }
 

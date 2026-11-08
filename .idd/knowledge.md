@@ -66,7 +66,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - ssh ループバックは人間が用意済み: `ssh -o BatchMode=yes xg-loop` が対話なしで通る(HostName 127.0.0.1)。端末登録 `loop,xg-loop,colour33` で手元でない端末の経路を試せる。リモートの非対話 PATH に Homebrew は無いが、attach コマンドが `PATH=/opt/homebrew/bin:…` を前置するので tmux は見つかる。ハーネスは `~/.ssh` の読み取りを拒否するので、`~/.ssh` には触れない。
 - 到達不能な端末で再試行を観測するには、ssh 先のペインを最後のペインにする。次に設定ファイルの当該端末のホストを `nonexistent.invalid` に書き換えて再読み込みし、`C-s d` の後に Enter を押す。再開のコマンドは再開時の登録から組み直される(`restartLaunchCommand`)。最後でないペインのコマンドが終わると、ペインは閉じ、undo 期限後にセッションが kill される。
 - 終了済みペインのキーは `SurfaceView.keyDown` の `processExited` 分岐が振り分ける。`performKeyEquivalent` はキーバインドを keyDown へ回すので、この分岐がバインドを握りつぶすと `Cmd+L`・`Cmd+Shift+,` が効かなくなる(周回 43 より前の版の症状。周回 43 以降の版では効く)。設定の再読み込みはメニュー「Reload Configuration」(menu bar item 2)からも押せる。
-- 観測の補助: 打鍵ツールは `/tmp/c40tools/ks <pid> key <code> [cmd,opt,shift,ctrl]` / `type <str>` / `win`(ソースは同じ場所の ks.swift。/tmp は消えうる)。一覧を開いた直後の打鍵は取りこぼすことがあるので 0.5 秒ほど待つ。兄弟のあるペインのセッションを外から `tmux kill-session` するとそのペインは閉じ、最後のペインなら終了済みになる。login(1) 経由のペインは前回のログイン記録(`from 127.0.0.1` を含む)を表示するので、ssh 経由かどうかの判定には使えない。zoom 中の `Cmd+[` では隣のペインへ focus が移らなかった。打鍵の前に、どのペインにフォーカスがあるかを screencapture で確かめる。
+- 観測の補助: 打鍵ツールは `ks <pid> key <code> [cmd,opt,shift,ctrl]` / `type <str>` / `win` の形の小さな Swift(/tmp は消えるので周回ごとに作り直す。`swiftc -O` で数秒)。`--window-save-state=never` を付けて起動すると保存状態を読まず新規 1 プロジェクトで始まるので、人間のセッションへ attach しない。一覧の `Cmd+N` は作るたびに既定のソケットに `<uuid>-1` を作る。一覧を開いた直後の打鍵は取りこぼすことがあるので 0.5 秒ほど待つ。兄弟のあるペインのセッションを外から `tmux kill-session` するとそのペインは閉じ、最後のペインなら終了済みになる。login(1) 経由のペインは前回のログイン記録(`from 127.0.0.1` を含む)を表示するので、ssh 経由かどうかの判定には使えない。zoom 中の `Cmd+[` では隣のペインへ focus が移らなかった。打鍵の前に、どのペインにフォーカスがあるかを screencapture で確かめる。
 - OSC 7 によるリモート split の検出は撤去済み。コアの `reportPwd` は非ローカルのホストを上流どおり警告して捨て、`xghostty_action_pwd_s` は `pwd` だけを持つ。`xghostty_surface_foreground_pid` は上流由来の `XGhostty.Surface.swift` も使うので残っている。
 
 ## SwiftUI / AppKit の癖
@@ -78,5 +78,6 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - モニタが `Cmd` 系の打鍵を素通しすると、端末 surface の `performKeyEquivalent` が先に食う(`Cmd+V` が背後の端末へ貼り付く)。編集ショートカットはモニタで捕まえて field editor に対して実行し、nil を返す。
 - ローカル keyDown モニタは、ウィンドウに付いたシート(`beginSheetModal` の確認)宛ての打鍵も見る。オーバーレイのモニタはシート・モーダル宛て(`event.window` が sheet / `sheetParent` あり / `NSApp.modalWindow`)を素通しする(`OverlayKeyDownMonitor`)。
 - 一覧などのオーバーレイが開いている間は不可視の catcher が first responder なので、surface の keybind(`Cmd+L` 等)は働かない。閉じる chord はオーバーレイのハンドラで自前に照合する。
+- 1 引数の `onChange(of:)`(deployment target 13 なのでこの形)のクロージャは、前回の body の `let` プロパティを読むことがある(`@State` は最新)。渡された新しい値だけを使い、必要な情報は監視する値に入れる。`ProjectListOverlay` の `Cmd+N` はこれで 1 回おきにしかカーソルが新しい行へ移らなかった(周回 53。`ProjectListTitleSeat`)。
 - IME: 編集開始の打鍵はモニタが消費するので、新しいエディタが first responder になってから `interpretKeyEvents([event])` で再生する。Enter / Esc / Tab / Space の終端処理は `hasMarkedText()` が false のときだけ行う。未確定状態を読むには AppKit のエディタが要る(`NSTextField` を `NSViewRepresentable` で包む)。
 - SwiftUI の `.cornerRadius` は clipShape であり、その内側に付けた overlay は zIndex では逃げられない。ポップアップは、セルが `anchorPreference` で矩形だけを公開し、コンテナの最上位が `.overlayPreferenceValue` で clip の後に描く。

@@ -467,6 +467,39 @@ struct ProjectListCellTests {
         #expect(model.insertProjectFromList(created, after: b.id) == false)
     }
 
+    @Test func theTitleSeatIsTheNewRowsTitleCellInTheCurrentRows() throws {
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
+        let model = TestWorkspaceModel(Self.makeState([a, b]))
+        model.beginProjectList()
+        let created = Self.makeProject(name: "new", at: Date(timeIntervalSince1970: 2))
+        #expect(model.insertProjectFromList(created, after: a.id))
+
+        let columns = model.state.listColumnOrder
+        let seat = try #require(ProjectListTitleSeat.resolve(
+            pending: model.projectListPendingTitleEdit,
+            rows: model.projectListRows,
+            columns: columns))
+        #expect(seat.row.id == created.id)
+        #expect(seat.cursor.row == 1)
+        #expect(seat.cursor.column == columns.firstIndex(of: .title))
+    }
+
+    @Test func theTitleSeatWaitsForAPendingAndItsRow() {
+        let a = Self.makeProject(name: "alpha")
+        let model = TestWorkspaceModel(Self.makeState([a]))
+        let columns = model.state.listColumnOrder
+        let rows = model.state.projectListRows
+
+        // Nothing pending: nothing to seat.
+        #expect(ProjectListTitleSeat.resolve(
+            pending: nil, rows: rows, columns: columns) == nil)
+        // The pending row is not in these rows yet: the seat waits for them.
+        let created = Self.makeProject(name: "new", at: Date(timeIntervalSince1970: 1))
+        #expect(ProjectListTitleSeat.resolve(
+            pending: created.id, rows: rows, columns: columns) == nil)
+    }
+
     @Test func pendingTitleEditDoesNotSurviveAcrossListSessions() {
         let a = Self.makeProject(name: "alpha")
         let model = TestWorkspaceModel(Self.makeState([a]))
