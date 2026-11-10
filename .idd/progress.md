@@ -11,126 +11,126 @@
      階層は 必須 / 望ましい。ID 列は IDEAL.md の番号を装飾なしで書く(`C1`。`**C1**` にしない)。
      列は 5 つ固定: | ID | 階層 | 条件 | 状態 | 証拠 |。idd はこの形で met / unmet を数え、完了を検算する。 -->
 
-ideal_sha: a5ed411d3f2c3bd64e0c38ab32b47bc0c1df0abc6e6113245074c4e4295d0d36
+ideal_sha: 9ff0500c5e0480833fa5f4d11cae62541721dc301f60a768a6a11b99dd3198a4
 
 | ID | 階層 | 条件 | 状態 | 証拠 |
 |----|------|------|------|------|
-| C1 | 必須 | プロジェクトごとに手書きの短いノートを保持できる(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C2 | 必須 | ノート最大 100 行、保存時超過は確認し OK で先頭 100 行へ切詰め・Cancel で編集へ戻る(検証: C91 + C97) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C91 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C3 | 必須 | ノートは永続化され再起動後に同じプロジェクトへ復元(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C4 | 必須 | ノートはプロジェクトに属しペインに属さない(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C5 | 必須 | `Cmd+E` でノート編集オーバーレイ、`Cmd+Enter` で保存して閉じる(検証: C91 + C92) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C91 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C6 | 必須 | オーバーレイで Esc は確認なしに破棄して閉じる(検証: C91 + C92) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C91 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C7 | 必須 | `Cmd+Enter` の fullscreen 既定割り当てを解除(検証: C92) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C8 | 必須 | `Cmd+Opt+E` で一望モードをトグル、Esc でも抜ける(検証: C92) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C9 | 必須 | 一望モードは visible なプロジェクトのみ表示(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C10 | 必須 | zoom 中に一望モードへ入ると zoom 解除(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C11 | 必須 | 一望モードは閲覧専用で編集・focus 移動しない(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C12 | 必須 | 一望モードで収まらないノートは切詰め、編集オーバーレイはスクロールで全文(検証: C92) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C13 | 必須 | ノート UI は端末領域を恒久占有しない(検証: C92) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く。兄弟のあるペインのコマンド終了で閉じず終了済みで残す・プライマリーのコマンド終了で昇格しない・Enter で終了済みペインすべてを再開・下端の文言の変更・優先度・締切・次トリガー・ソート・毎朝リセット・日付候補の削除と一覧の 5 列化・関連テストの削除(C144)を例外に含む)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | met | cycle 71: just swift-test exit 0 (zig build・just test も周回 71 で exit 0、failed 0 件。周回 71 で削除したテストは ProjectPriorityDeadlineTests・ProjectNextTriggerTests・ProjectPriorityResetTests・ProjectSortStateTests・ProjectListSortedMoveTests の 5 ファイルと、ProjectKindTests の theOverviewContentIgnoresTheKind・ProjectListRowSelectionTests の deletingASortKeyValueResortsWhileASortIsActive・ProjectListCellTests の deadlineCommitParsesAndInvalidInputBecomesUnset と deadlineAdvanceRollsOverMonthAndYearBoundaries・ProjectListCandidateTests の優先度・次トリガー・日付候補の 4 件で、どれも C14 の例外「優先度・締切・次トリガー・ソート・毎朝リセット・日付候補の削除と関連するテストの削除(C144)」に当たる。他の書き換えは削除した値の引数・期待値を外すか種別・端末へ置き換えただけで、無効化は無い) |
-| C15 | 必須 | ノートの判断ロジックはモデル層で XGhosttyTests から検証可能(検証: C91) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | met | cycle 71: grep -n "Building" -A12 README.md exit 0 (zig build / just test / just swift-test の 3 行を確認。ノート層の記述からは一望モードの優先度・締切・次トリガーの言及を外し「ノートだけ」に直した) |
-| C17 | 必須 | 各ペインはプライマリーフラグを持ち最初のペインがプライマリー(検証: C93) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C18 | 必須 | プライマリーはプロジェクト内で常に 1 つ(検証: C93) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C19 | 必須 | 全体ビューはプライマリーのみ描画、zoom 中は全ペイン(検証: C93 + C94) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C93 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C20 | 必須 | 全体ビューの入力・focus はプライマリーへ、zoom 解除時に寄せる(検証: C93) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C21 | 必須 | 全体ビューでペイン系操作は no-op(検証: C93) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C22 | 必須 | zoom 中 `Cmd+P` で focused ペインをプライマリーへ(検証: C93 + C94) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C93 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C23 | 必須 | プライマリーが `Cmd+W` で閉じたら最近傍 leaf を昇格、コマンド終了では昇格せず終了済みでプライマリーに留まる(検証: C93・C95 + C94 + C142) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C93・C95 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C24 | 必須 | プライマリーフラグの永続化と復元時正規化(検証: C93) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C25 | 必須 | プライマリー印は zoom 中かつ複数ペイン時のみ右上に表示(検証: C94) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C26 | 必須 | プライマリーの判断ロジックはモデル層(検証: C93) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C27 | 必須 | SPEC.md / README.md をプライマリーペイン層仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 71: grep -c "terminatedPanes" SPEC.md exit 0 (§22 のプライマリーペイン層は周回 71 で変えていない。README の Primary panes も変更なし) |
-| C28 | 必須 | プロジェクトを閉じる操作は常に確認ダイアログ(検証: C95 + C96) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C29 | 必須 | ペインのプロセス(tmux クライアント / ssh)が exit したら兄弟の有無によらず閉じず終了済みで分割木に残す、最後でもプロジェクトは閉じない、状態は保存せず復元で全ペインが再 attach(検証: C95 + C96 + C142) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C30 | 必須 | 終了済みペインで Enter を押すとプロジェクト内の終了済みペインすべてが同じペインで再開、配置とプライマリーは不変、生きているペインに触れない(検証: C95 + C96 + C142) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C31 | 必須 | プロジェクト喪失経路は確認を経た明示的 close のみ(検証: C95 + C96) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C32 | 必須 | ノート編集オーバーレイで標準編集ショートカットと Undo/Redo が効く(検証: C97) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C33 | 必須 | 貼り付けで 100 行超過も C2 の確認を経る(検証: C91 + C97) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C91 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C41 | 必須 | 序数(Cmd+1〜9)は配置順(Core → Side、各種別内は表示順)の visible(検証: C107) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。序数は ProjectVisibleCapTests の onlyTheFirstNineInPlacementOrderHaveANumber と ProjectLayoutTypeTests の coreComesBeforeSideEachKindInRowOrder が passed) |
-| C44 | 必須 | 終了済み状態の判断ロジックはモデル層(検証: C95) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。C95 は passed) |
-| C45 | 必須 | SPEC.md / README.md を削除保護・ショートカット対応の仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 71: grep -c "terminatedPanes" SPEC.md exit 0 (§23 の削除保護から「ノート・優先度・締切」の言及をノートだけに直し、README の Deletion protection からも優先度・締切・次トリガーを外した。ショートカット一覧(§30)は sort bar の項目を ShortcutCatalog から外し、SPEC §30 には元から該当の記述が無い) |
-| C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C100 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C49 | 必須 | レイアウト型 = 形 2 種 × 向き 2 種(台座型廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置(検証: C102 + C103・C139) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C102 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C50 | 必須 | visible 1〜24 で完全一致する型を畳み(配置の一致は実際の種別の組み合わせで比べる)、選択肢 1 つなら選ぶものが無い旨(検証: C102 + C103) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C102 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C51 | 必須 | `Cmd+Opt+L` でレイアウト型の選択オーバーレイ(検証: C103) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C52 | 必須 | レイアウト型は永続化、既定は横長型・行送り、保存された台座型は横長型へ移行(検証: C102 + C103) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C102 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C53 | 必須 | Core → Side の順(各種別内は表示順)に向きに従いスロットへ割当、序数が追従(検証: C102) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C54 | 必須 | visible 数または visible の種別の変化時に記憶の型で自動適用(検証: C102 + C101・C103) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C102 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C55 | 必須 | プロジェクト単位のレイアウト resize/equalize 廃止、zoom 中ペインは存続(検証: C103) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C56 | 必須 | レイアウト型の判断ロジックはモデル層(検証: C102) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C57 | 必須 | 「グループ」→「プロジェクト」全面改名(検証: C104) | met | cycle 71: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1。C104 は cycle 71 で met) |
-| C58 | 必須 | 改名は純粋なリネームで退行なし(検証: C104 + C88〜C90) | met | cycle 71: just swift-test exit 0 (zig build・just test も周回 71 で exit 0。C104 は cycle 71 で met) |
-| C59 | 必須 | SPEC.md / README.md をレイアウト型・自動適用・hide・改名語彙に合わせる(検証: 周回の読み合わせ) | met | cycle 71: grep -n "台座\|pedestal" SPEC.md README.md exit 0 (廃止と移行の記述だけ。§26 から「ソートで上位」「ソート」の自動適用の言及を外した。レイアウト型・hide・改名の記述は他に変えていない) |
-| C63 | 必須 | `Cmd+L` で一覧をトグル(Esc で閉じない・zoom を解除しない・表示・種別・タイトル・端末・ノートの 5 列・8 割)(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C64 | 必須 | 一覧は単一の並びで常に手動順、手動順・列順を永続化、hidden も同色、序数は C41 の配置順(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C65 | 必須 | Notion 流儀のセルカーソル・Enter 編集・候補列挙(端末・種別)・Space 循環の廃止(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C66 | 必須 | ノート列編集は全行対象、Shift+Enter で改行、一覧内 `Cmd+Opt+E` は全行表示トグル(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C67 | 必須 | `Cmd+矢印` は端移動、`Opt+矢印` で行・列並べ替え(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C68 | 必須 | `Cmd+N` は一覧での新規プロジェクト作成、visible 24 未満なら visible・24 なら hidden、種別は Core(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C69 | 必須 | 一覧の `Cmd+Enter` で focus(hidden 行は近傍 visible へ)(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C70 | 必須 | 一覧の判断ロジック(端末・種別の候補・Delete・行選択・クリップボード等)はモデル層(検証: C107) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。ProjectListTests・ProjectListCellTests・ProjectListCandidateTests・ProjectListRowSelectionTests・ProjectListClipboardTests・ProjectKindTests・ProjectTerminalColumnTests が passed) |
-| C76 | 必須 | SPEC.md / README.md を端末登録・tmux セッション〜ペイン単位の終了済み状態と、優先度・締切・次トリガー・ソート・毎朝リセット・日付候補の削除(記述を残さない)までの仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 71: grep -niE "priorit\|deadline\|next trigger\|sort\|06:00" README.md exit 0 (残りは「there is no sorting」の 1 行だけ。SPEC は §24 を「優先度・締切・次トリガー・ソートの廃止」に置き換えて保存の互換(必須 145)だけを書き、§28 を欠番にし、§5.2・§7・§9・§12・§15・§21・§23・§25〜27・§29 から該当の記述を外した。SPEC に残る該当語は §24 の廃止の説明・§9 の廃止の記録・§27.1 の列順の decode・§27.6 の必須 145 のテスト・§28 の欠番の説明だけ。grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は無出力) |
-| C78 | 必須 | 一覧テキスト列のセル編集が日本語 IME を受け付ける(検証: C114) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C79 | 必須 | セルカーソルの Delete で列ごとの値削除(タイトル空・端末は手元へ・種別は Core へ・ノートは確認・表示は何もしない)(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C80 | 必須 | Esc で行選択、行選択の Delete で確認付き削除(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C81 | 必須 | `Cmd+/` でショートカット一覧をトグル(検証: C115) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C82 | 必須 | `Cmd+K` の clear_screen 既定割り当て解除(検証: C113) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C83 | 必須 | 一覧セルのクリップボード操作(端末列は登録名のみ、種別列は Core / Side のみ)と候補列挙中の Tab 横移動(検証: C107 + C108) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C116 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C86 | 必須 | 閉じた surface を経路によらず undo 期限後に SurfaceView〜IOSurface まで解放(検証: C116・C126 + C123〜C125 の読み合わせ + C117) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C116・C126 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C88 | 必須 | `zig build` が exit 0 | met | cycle 71: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (周回 71 の削除の後に実行) |
-| C89 | 必須 | `just test` が exit 0 | met | cycle 71: just test exit 0 |
-| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 71: just swift-test exit 0 (TEST SUCCEEDED、passed 738 行・failed 0 件) |
-| C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。ProjectNoteTests は変更なしで passed) |
-| C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。ProjectPrimaryPaneTests は変更なしで passed) |
-| C94 | 必須 | プライマリーペインの実機目視(Cmd+W で閉じたときの昇格を含む)(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C95 | 必須 | 削除保護のテスト群(兄弟ペインの exit で閉じない・複数の終了済みの再開・終了済みを含む複数ペインの復元を含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。ProjectTerminatedTests 17 件は変更なしで passed) |
-| C96 | 必須 | 削除保護の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C97 | 必須 | ノート編集オーバーレイの編集ショートカット・100 行超過確認の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C101 | 必須 | hide の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C102 | 必須 | レイアウト型のテスト群(1〜24・重み・Core → Side・台座型の移行・種別変化での再導出)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。ProjectLayoutTypeTests は countPreservingOperationsDoNotChangeTheArrangement から優先度の setter の呼び出しを外しただけで 31 件 passed) |
-| C103 | 必須 | レイアウト型の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | met | cycle 71: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1、C88〜C90 は周回 71 で exit 0。周回 71 で足した可視文言は無く、grep -rnE "\"[^\"]*\bGroup\b" macos/Sources/Features/Projects macos/Sources/App は無出力) |
-| C107 | 必須 | プロジェクト一覧のテスト群(既定列順 5 列、端末・種別の候補・Delete・貼り付け、visible 24 の拒否、削除した値を含む保存の読み込みを含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。既定列順 5 列: defaultColumnOrderIsVisibilityKindTitleTerminalNote・theKindColumnIsASelectionColumnRightAfterTheVisibility。種別の候補: theCandidatesAreCoreThenSide。端末の候補: theCandidatesAreTheRegisteredTerminalNamesOnly。Delete: deleteClearsEachColumnsValuePerDefinition。クリップボード: ProjectListClipboardTests 12 件。visible 24 の拒否: theToggleIsRejectedWithTwentyFourVisible。削除した値を含む保存: aSaveCarryingTheRemovedValuesLoadsAndDropsThem。他の項目は従来のテストが passed) |
-| C108 | 必須 | プロジェクト一覧の実機目視(5 列を含む)(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C113 | 必須 | キー変更の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C114 | 必須 | 一覧セル編集の IME の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C115 | 必須 | ショートカット一覧の実機目視(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C116 | 必須 | 描画対象・停止/再開集合・解放・誕生時停止のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C117 | 必須 | 描画停止・解放の実機観測(top / footprint、起動直後に落ちない、行 Delete 後のフォーカス、検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C121 | 必須 | 停止集合に誕生した描画対象外の surface を含める(stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born))(検証: C116) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ(生成直後の一律 set_occlusion(false) が唯一の例外)、SurfaceView.isDrawing を持たない(検証: C116 + 読み合わせ) | met | cycle 71: just swift-test exit 0 (C116 passed。grep -rn xghostty_surface_set_occlusion macos/Sources は 2 箇所、grep -rn isDrawing macos/Sources は 0 件。周回 71 は描画停止の経路に触れていない) |
-| C123 | 必須 | SurfaceView の `.ghosttySelectionDidChange` 購読は `object:` を渡さず `[weak self]` の filter で絞る(検証: 読み合わせ + C90) | met | cycle 71: just swift-test exit 0 (SurfaceView_AppKit.swift:295 の publisher(for: .ghosttySelectionDidChange) に object: が無く、296 行の [weak self] の filter で絞ることを読み合わせた) |
-| C124 | 必須 | `XGhostty.Surface.deinit` はメインスレッドなら同期的に `xghostty_surface_free`(検証: 読み合わせ + C88〜C90 + C117) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C88〜C90 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C125 | 必須 | 一覧の行選択 Delete で閉じたとき新しい focus 先へキーボードフォーカスを移す(検証: C126 + 読み合わせ + C117) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C126 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C126 | 必須 | 一覧セッション中の closeProject の focus 先・保持集合・セッション継続のテスト(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C127 | 必須 | 端末を設定ファイルに登録(表示名・ホスト・色)、hostname 一致を手元、登録なしは暗黙の手元、再読み込みで反映(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C128 | 必須 | プロジェクトの端末(既定は手元)、一覧の端末列で候補選択・Delete で手元・登録名のみ貼り付け、永続化、欠落は手元扱い、変更は以後の新しいペインだけに効き終了済みの再開は元の端末の同じセッションへ(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C129 | 必須 | 全ペインを端末上の tmux セッションへ attach するコマンドで起動、セッション名 `<ID>-<n>`、ペインごとの端末・セッション名を永続化(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C130 | 必須 | 開始ディレクトリ `~/workspace/<タイトル>` → `~/workspace` → ホーム、split は `#{pane_current_path}` を引き継ぐ(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C131 | 必須 | attach 時にそのセッションだけへ status-style・status-left・prefix C-s を設定、リネームで status-left を更新(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C132 | 必須 | tmux / ssh の終了でペインは兄弟の有無によらず終了済み、Enter でプロジェクト内の終了済みペインそれぞれの attach を再実行(検証: C136 + C137・C142) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C133 | 必須 | 閉じたペインのセッションを undo 期限後に kill、undo で戻せば kill しない(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C134 | 必須 | 手元でない端末への ssh に TERM=xterm-256color を渡す(検証: C136 + C137) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C136 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C135 | 必須 | 端末・セッション・コマンド・候補・kill 対象の判断ロジックはモデル層(検証: C136) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C136 | 必須 | 端末登録と tmux セッションのテスト群(9 項目)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行) |
-| C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | unmet | 失効: 周回 71 の対象ファイルの変更で以前の observed が失効。次の周回の冒頭で HEAD の zig-out 版を観測し直す |
-| C138 | 必須 | 2 台の実機での目視(Mac mini の tmux・再起動後の再 attach・切断後の再 attach)(検証: 人間) | unmet | 失効: 周回 71 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
-| C139 | 必須 | 種別と重み付きレイアウトの実機観測(5 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・台座型なし・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | unmet | 失効: 周回 71 の対象ファイルの変更で以前の observed が失効。次の周回の冒頭で HEAD の zig-out 版を観測し直す |
-| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、大きさ以外に差を付けない(検証: C107 + C139) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は配置順の先頭 9 つ(検証: C107 + C139) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C107 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C142 | 必須 | ペイン単位の終了済み状態の実機観測(ssh ループバックの 3 ペインを外から終了・Enter 1 回で全再 attach・終了済みのまま再起動・兄弟のシェル exit と Cmd+W・プライマリーの非昇格と Cmd+W の昇格・一部だけの再開で生きたセッションを作り直さない)(検証: 周回の実機観測) | unmet | 失効: 周回 71 の対象ファイルの変更で以前の observed が失効。次の周回の冒頭で HEAD の zig-out 版を観測し直す |
-| C143 | 必須 | ペインが分割木から失われるのは明示的 close(Cmd+W・close_project・一覧の行 Delete)のみ、コマンド終了では失われない(検証: C95 + C142) | unmet | 失効: 周回 71 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 71 で通過。人間の確認(human)または実機観測(observed)の取り直し待ち |
-| C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | unmet | 失効前の出典なし。C107 は cycle 71 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 71 で無出力(exit 1)。実機観測(5 列・ソートバーなし・ラベル帯・一望・ショートカット一覧)は次の周回 |
-| C145 | 必須 | 削除した値を含む保存を読み込んでも失敗せず黙って無視し再保存で書かない、ノート・種別・端末・手動順・列順は復元、列順からは削除した列だけを除く(検証: C107) | met | cycle 71: just swift-test exit 0 (failed 0 件。周回 71 で優先度・締切・次トリガー・ソート・毎朝リセット・日付候補を削除した後に実行。ProjectLedgerTests.aSaveCarryingTheRemovedValuesLoadsAndDropsThem が passed: 優先度・締切・次トリガー・sortState・lastPriorityResetWorkday と 8 列の列順を書き込んだ保存を読み、ノート・種別・端末・手動順が戻り、列順は visibility・title・kind・terminal・note、再保存に該当キーなし) |
+| C1 | 必須 | プロジェクトごとに手書きの短いノートを保持できる(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C2 | 必須 | ノート最大 100 行、保存時超過は確認し OK で先頭 100 行へ切詰め・Cancel で編集へ戻る(検証: C91 + C97) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C91 は cycle 73 で通過。C97 の人間の確認待ち |
+| C3 | 必須 | ノートは永続化され再起動後に同じプロジェクトへ復元(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C4 | 必須 | ノートはプロジェクトに属しペインに属さない(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C5 | 必須 | `Cmd+E` でノート編集オーバーレイ、`Cmd+Enter` で保存して閉じる(検証: C91 + C92) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C91 は cycle 73 で通過。C92 の人間の確認待ち |
+| C6 | 必須 | オーバーレイで Esc は確認なしに破棄して閉じる(検証: C91 + C92) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C91 は cycle 73 で通過。C92 の人間の確認待ち |
+| C7 | 必須 | `Cmd+Enter` の fullscreen 既定割り当てを解除(検証: C92) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C92 の人間の確認待ち |
+| C8 | 必須 | `Cmd+Opt+E` で一望モードをトグル、Esc でも抜ける(検証: C92) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C92 の人間の確認待ち |
+| C9 | 必須 | 一望モードは visible なプロジェクトのみ表示(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C10 | 必須 | zoom 中に一望モードへ入ると zoom 解除(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C11 | 必須 | 一望モードは閲覧専用で編集・focus 移動しない(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C12 | 必須 | 一望モードで収まらないノートは切詰め、編集オーバーレイはスクロールで全文(検証: C92) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C92 の人間の確認待ち |
+| C13 | 必須 | ノート UI は端末領域を恒久占有しない(検証: C92) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C92 の人間の確認待ち |
+| C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く。優先度・締切・次トリガー・ソート等の削除と 5 列化(C144)、レイアウト型の向きの廃止と 2 種化・関連テストの削除と書き換え(C49〜C53)を例外に含む)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | met | cycle 73: just swift-test exit 0 (zig build・just test も周回 73 で exit 0、failed 0 件。周回 73 で削除・書き換えたテストは ProjectLayoutTypeTests の wideOrientationChangesOnlyTheOrdinalProgression(→ theOrdinalProgressionFollowsTheShape)・rowMajor/columnMajor の割り当て 2 件(→ wide/tall の割り当て)・noPedestalAmongTheChoices(→ theTypesAreWideAndTallOnly)・台座型の移行 2 件(向きを捨てる形へ)・choiceSetsCollapseExactMatchesPerCount と tallIsTheExactTransposeOfWide(向きの組を外した)と、ProjectLayoutSelectionTests の currentChoiceIsTheRememberedTypesRepresentative(畳まれる例を n=1 へ)で、どれも C14 の例外「レイアウト型の向きの廃止…関連するテストの削除・書き換え(C49〜C53)」に当たる。無効化は無い) |
+| C15 | 必須 | ノートの判断ロジックはモデル層で XGhosttyTests から検証可能(検証: C91) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | met | cycle 73: grep -n "Building" -A12 README.md exit 0 (zig build / just test / just swift-test の 3 行を確認。ノート層の記述は周回 73 で変えていない) |
+| C17 | 必須 | 各ペインはプライマリーフラグを持ち最初のペインがプライマリー(検証: C93) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C18 | 必須 | プライマリーはプロジェクト内で常に 1 つ(検証: C93) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C19 | 必須 | 全体ビューはプライマリーのみ描画、zoom 中は全ペイン(検証: C93 + C94) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C93 は cycle 73 で通過。C94 の人間の確認待ち |
+| C20 | 必須 | 全体ビューの入力・focus はプライマリーへ、zoom 解除時に寄せる(検証: C93) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C21 | 必須 | 全体ビューでペイン系操作は no-op(検証: C93) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C22 | 必須 | zoom 中 `Cmd+P` で focused ペインをプライマリーへ(検証: C93 + C94) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C93 は cycle 73 で通過。C94 の人間の確認待ち |
+| C23 | 必須 | プライマリーが `Cmd+W` で閉じたら最近傍 leaf を昇格、コマンド終了では昇格せず終了済みでプライマリーに留まる(検証: C93・C95 + C94 + C142) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C93・C95 は cycle 73 で通過。C94 の人間の確認と C142 の観測待ち |
+| C24 | 必須 | プライマリーフラグの永続化と復元時正規化(検証: C93) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C25 | 必須 | プライマリー印は zoom 中かつ複数ペイン時のみ右上に表示(検証: C94) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C94 の人間の確認待ち |
+| C26 | 必須 | プライマリーの判断ロジックはモデル層(検証: C93) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C27 | 必須 | SPEC.md / README.md をプライマリーペイン層仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 73: grep -c "terminatedPanes" SPEC.md exit 0 (§22 のプライマリーペイン層と README の Primary panes は周回 73 で変えていない) |
+| C28 | 必須 | プロジェクトを閉じる操作は常に確認ダイアログ(検証: C95 + C96) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C95 は cycle 73 で通過。C96 の人間の確認待ち |
+| C29 | 必須 | ペインのプロセス(tmux クライアント / ssh)が exit したら兄弟の有無によらず閉じず終了済みで分割木に残す、最後でもプロジェクトは閉じない、状態は保存せず復元で全ペインが再 attach(検証: C95 + C96 + C142) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 73 で通過。C96 の人間の確認と C142 の観測待ち |
+| C30 | 必須 | 終了済みペインで Enter を押すとプロジェクト内の終了済みペインすべてが同じペインで再開、配置とプライマリーは不変、生きているペインに触れない(検証: C95 + C96 + C142) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認・実機観測の出典が失効。C95 は cycle 73 で通過。C96 の人間の確認と C142 の観測待ち |
+| C31 | 必須 | プロジェクト喪失経路は確認を経た明示的 close のみ(検証: C95 + C96) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C95 は cycle 73 で通過。C96 の人間の確認待ち |
+| C32 | 必須 | ノート編集オーバーレイで標準編集ショートカットと Undo/Redo が効く(検証: C97) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C97 の人間の確認待ち |
+| C33 | 必須 | 貼り付けで 100 行超過も C2 の確認を経る(検証: C91 + C97) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C91 は cycle 73 で通過。C97 の人間の確認待ち |
+| C41 | 必須 | 序数(Cmd+1〜9)は配置順(Core → Side、各種別内は表示順)の visible(検証: C107) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行。ProjectVisibleCapTests の onlyTheFirstNineInPlacementOrderHaveANumber と ProjectLayoutTypeTests の coreComesBeforeSideEachKindInRowOrder が passed) |
+| C44 | 必須 | 終了済み状態の判断ロジックはモデル層(検証: C95) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行。C95 は passed) |
+| C45 | 必須 | SPEC.md / README.md を削除保護・ショートカット対応の仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 73: grep -c "terminatedPanes" SPEC.md exit 0 (§23 の削除保護・§30 のショートカット一覧と README の該当節は周回 73 で変えていない。周回 71 の読み合わせから差は無い) |
+| C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C100 は cycle 73 で通過。C101 の人間の確認待ち |
+| C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C49 | 必須 | レイアウト型は横長型・縦長型の 2 種(台座型と向きは廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置、序数は横長型が行ごと・縦長型が列ごと(検証: C102 + C103・C139) | unmet | 周回 73 で向きを削除して ProjectLayoutType を wide / tall の 2 値にした。C102 は cycle 73 で通過。C103 の人間の確認と C139 の観測待ち |
+| C50 | 必須 | visible 1〜24 で配置と序数の進み方が完全一致する型を畳み(実際の種別の組み合わせで比べる)、選択肢 1 つなら選ぶものが無い旨(検証: C102 + C103) | unmet | 周回 73 で畳み込みの対象を wide / tall の 2 つにした(n=1 だけが 1 択)。C102 は cycle 73 で通過。C103 の人間の確認待ち |
+| C51 | 必須 | `Cmd+Opt+L` でレイアウト型の選択オーバーレイ、表示は「Wide」「Tall」(検証: C103) | unmet | 周回 73 で選択肢の表示を「Wide」「Tall」にした(ProjectLayoutType.label)。C103 の人間の確認待ち |
+| C52 | 必須 | レイアウト型は永続化、既定は横長型、保存された向きは捨てて形を保ち、台座型は横長型へ、再保存に向きを書かない(検証: C102 + C103) | unmet | 周回 73 で decode が orientation を無視し encode が shape だけを書くようにした。C102 は cycle 73 で通過。C103 の人間の確認待ち |
+| C53 | 必須 | Core → Side の順(各種別内は表示順)に型に従いスロットへ割当(横長型は行ごと、縦長型は列ごと)、序数が追従(検証: C102) | met | cycle 73: just swift-test exit 0 (failed 0 件。ProjectLayoutTypeTests の wideAssignsTopRowLeftToRight・tallAssignsLeftColumnTopToBottom・theSlotsAssignCoreThenSideFollowingTheShape・theOrdinalProgressionFollowsTheShape・coreComesBeforeSideEachKindInRowOrder が passed) |
+| C54 | 必須 | visible 数または visible の種別の変化時に記憶の型で自動適用(検証: C102 + C101・C103) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C102 は cycle 73 で通過。C101・C103 の人間の確認待ち |
+| C55 | 必須 | プロジェクト単位のレイアウト resize/equalize 廃止、zoom 中ペインは存続(検証: C103) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C103 の人間の確認待ち |
+| C56 | 必須 | レイアウト型の判断ロジックはモデル層(検証: C102) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C57 | 必須 | 「グループ」→「プロジェクト」全面改名(検証: C104) | met | cycle 73: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1。C104 は cycle 73 で met) |
+| C58 | 必須 | 改名は純粋なリネームで退行なし(検証: C104 + C88〜C90) | met | cycle 73: just swift-test exit 0 (zig build・just test も周回 73 で exit 0。C104 は cycle 73 で met) |
+| C59 | 必須 | SPEC.md / README.md をレイアウト型・自動適用・hide・改名語彙に合わせる(検証: 周回の読み合わせ) | met | cycle 73: grep -n "向き\|行送り\|列送り" SPEC.md exit 0 (残りは §26.1 の廃止の記述と §26.4・§26.5 の旧保存の移行だけ。§26 を 2 種・形で決まる序数・Wide/Tall の表示・向きを捨てる移行に書き換え、README の Layout types も Wide / Tall と方向の移行に直した。hide・改名の記述は変えていない) |
+| C63 | 必須 | `Cmd+L` で一覧をトグル(Esc で閉じない・zoom を解除しない・表示・種別・タイトル・端末・ノートの 5 列・8 割)(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C64 | 必須 | 一覧は単一の並びで常に手動順、手動順・列順を永続化、hidden も同色、序数は C41 の配置順(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C65 | 必須 | Notion 流儀のセルカーソル・Enter 編集・候補列挙(端末・種別)・Space 循環の廃止(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C66 | 必須 | ノート列編集は全行対象、Shift+Enter で改行、一覧内 `Cmd+Opt+E` は全行表示トグル(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C67 | 必須 | `Cmd+矢印` は端移動、`Opt+矢印` で行・列並べ替え(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C68 | 必須 | `Cmd+N` は一覧での新規プロジェクト作成、visible 24 未満なら visible・24 なら hidden、種別は Core(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C69 | 必須 | 一覧の `Cmd+Enter` で focus(hidden 行は近傍 visible へ)(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C70 | 必須 | 一覧の判断ロジック(端末・種別の候補・Delete・行選択・クリップボード等)はモデル層(検証: C107) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行。ProjectListTests・ProjectListCellTests・ProjectListCandidateTests・ProjectListRowSelectionTests・ProjectListClipboardTests・ProjectKindTests・ProjectTerminalColumnTests が passed) |
+| C76 | 必須 | SPEC.md / README.md を端末登録・tmux セッション〜優先度等の削除(記述を残さない)・レイアウト型の向きの廃止と 2 種化(向きの記述を残さない)までの仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 73: grep -n "Wide or its" README.md exit 0 (README の Layout types は Wide / Tall の 2 種で、grep -niE "row-major\|column-major\|ordinal direction" README.md は無出力。SPEC で「向き・行送り・列送り」が残るのは §26.1 の廃止の記述と §26.4・§26.5 の旧保存の移行だけで、どれも IDEAL C52 の互換の説明。Orientation・rowMajor・columnMajor は SPEC に 0 件。周回 71 の優先度等の削除の記述は変えていない) |
+| C78 | 必須 | 一覧テキスト列のセル編集が日本語 IME を受け付ける(検証: C114) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C114 の人間の確認待ち |
+| C79 | 必須 | セルカーソルの Delete で列ごとの値削除(タイトル空・端末は手元へ・種別は Core へ・ノートは確認・表示は何もしない)(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C80 | 必須 | Esc で行選択、行選択の Delete で確認付き削除(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C81 | 必須 | `Cmd+/` でショートカット一覧をトグル(検証: C115) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C115 の人間の確認待ち |
+| C82 | 必須 | `Cmd+K` の clear_screen 既定割り当て解除(検証: C113) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C113 の人間の確認待ち |
+| C83 | 必須 | 一覧セルのクリップボード操作(端末列は登録名のみ、種別列は Core / Side のみ)と候補列挙中の Tab 横移動(検証: C107 + C108) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C107 は cycle 73 で通過。C108 の人間の確認待ち |
+| C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C116 は cycle 73 で通過。C117 の人間の確認待ち |
+| C86 | 必須 | 閉じた surface を経路によらず undo 期限後に SurfaceView〜IOSurface まで解放(検証: C116・C126 + C123〜C125 の読み合わせ + C117) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C116・C126 は cycle 73 で通過。C117 の人間の確認待ち |
+| C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C88 | 必須 | `zig build` が exit 0 | met | cycle 73: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (周回 73 の変更をすべて終えた後に実行) |
+| C89 | 必須 | `just test` が exit 0 | met | cycle 73: just test exit 0 |
+| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 73: just swift-test exit 0 (TEST SUCCEEDED、passed 740 行・failed 0 件) |
+| C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。ProjectNoteTests は変更なしで passed) |
+| C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。ProjectPrimaryPaneTests は変更なしで passed) |
+| C94 | 必須 | プライマリーペインの実機目視(Cmd+W で閉じたときの昇格を含む)(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C95 | 必須 | 削除保護のテスト群(兄弟ペインの exit で閉じない・複数の終了済みの再開・終了済みを含む複数ペインの復元を含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。ProjectTerminatedTests は変更なしで passed) |
+| C96 | 必須 | 削除保護の実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C97 | 必須 | ノート編集オーバーレイの編集ショートカット・100 行超過確認の実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C101 | 必須 | hide の実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C102 | 必須 | レイアウト型のテスト群(1〜24 の横長型・縦長型、畳み込み(n=9 は畳まれない・n=1 は 1 つ)、横長型は行ごと・縦長型は列ごとの割当、永続化と既定・向きを捨てる移行・台座型の移行・再保存に向きなし、自動適用)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。ProjectLayoutTypeTests 33 件が passed: スロット wideSlotsMatchTheDefinitionForEveryCount・tallIsTheExactTransposeOfWide・weightsHoldInEveryTierForEveryCountAndMix、畳み込み choiceSetsCollapseExactMatchesPerCount(n=1 は [wide]、2〜24 は [wide, tall])・choiceSetsMatchTheSlotFrameCollapseForEveryCount、割当 wideAssignsTopRowLeftToRight・tallAssignsLeftColumnTopToBottom・theOrdinalProgressionFollowsTheShape・coreComesBeforeSideEachKindInRowOrder、移行 aSavedOrientationIsDroppedKeepingTheShape・aSavedPedestalReadsAsWideWhateverItsOrientation・aSavedTypeIsWrittenWithoutAnOrientation・aWorkspaceSavedWithAnOrientationComesBackAndResavesWithout、自動適用 visibleCountChangesReapplyTheRememberedType・aVisibleKindChangeReappliesTheRememberedType・countPreservingOperationsDoNotChangeTheArrangement。既定と round trip は ProjectLedgerTests の layoutTypeDefaultsToWideWhenNothingIsSaved・chosenLayoutTypeRoundTrips) |
+| C103 | 必須 | レイアウト型の実機目視(「Wide」「Tall」の 2 つだけ、6 → 5 の縦長型の組み直し、n=8 の 2+3+3 ほか)(検証: 人間) | unmet | 周回 73 で向きを削除した。実機観測の取り直しの後に ask で人間の確認を求める |
+| C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | met | cycle 73: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1、C88〜C90 は周回 73 で exit 0。周回 73 で足した可視文言は「Wide」「Tall」だけで、grep -rnE "\"[^\"]*\bGroup\b" macos/Sources/Features/Projects macos/Sources/App は無出力) |
+| C107 | 必須 | プロジェクト一覧のテスト群(既定列順 5 列、端末・種別の候補・Delete・貼り付け、visible 24 の拒否、削除した値を含む保存の読み込みを含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。一覧のテスト群は周回 73 で変えていない。既定列順 5 列: defaultColumnOrderIsVisibilityKindTitleTerminalNote。種別の候補: theCandidatesAreCoreThenSide。端末の候補: theCandidatesAreTheRegisteredTerminalNamesOnly。Delete: deleteClearsEachColumnsValuePerDefinition。クリップボード: ProjectListClipboardTests。visible 24 の拒否: theToggleIsRejectedWithTwentyFourVisible。削除した値を含む保存: aSaveCarryingTheRemovedValuesLoadsAndDropsThem) |
+| C108 | 必須 | プロジェクト一覧の実機目視(5 列を含む)(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C113 | 必須 | キー変更の実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C114 | 必須 | 一覧セル編集の IME の実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C115 | 必須 | ショートカット一覧の実機目視(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C116 | 必須 | 描画対象・停止/再開集合・解放・誕生時停止のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C117 | 必須 | 描画停止・解放の実機観測(top / footprint、起動直後に落ちない、行 Delete 後のフォーカス、検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C121 | 必須 | 停止集合に誕生した描画対象外の surface を含める(stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born))(検証: C116) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ(生成直後の一律 set_occlusion(false) が唯一の例外)、SurfaceView.isDrawing を持たない(検証: C116 + 読み合わせ) | met | cycle 73: just swift-test exit 0 (C116 passed。grep -rn xghostty_surface_set_occlusion macos/Sources は 2 箇所、grep -rn isDrawing macos/Sources は 0 件。周回 73 は描画停止の経路に触れていない) |
+| C123 | 必須 | SurfaceView の `.ghosttySelectionDidChange` 購読は `object:` を渡さず `[weak self]` の filter で絞る(検証: 読み合わせ + C90) | met | cycle 73: just swift-test exit 0 (SurfaceView_AppKit.swift:295 の publisher(for: .ghosttySelectionDidChange) に object: が無く、296 行の [weak self] の filter で絞ることを読み合わせた) |
+| C124 | 必須 | `XGhostty.Surface.deinit` はメインスレッドなら同期的に `xghostty_surface_free`(検証: 読み合わせ + C88〜C90 + C117) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C88〜C90 は cycle 73 で通過。C117 の人間の確認待ち |
+| C125 | 必須 | 一覧の行選択 Delete で閉じたとき新しい focus 先へキーボードフォーカスを移す(検証: C126 + 読み合わせ + C117) | unmet | 失効: 周回 73 の対象ファイルの変更で人間の確認の出典が失効。C126 は cycle 73 で通過し、performCloseProjectListRow の .switched が moveKeyboardFocus(toProjectSurface:) を呼ぶ(BaseTerminalController.swift:1900)。C117 の人間の確認待ち |
+| C126 | 必須 | 一覧セッション中の closeProject の focus 先・保持集合・セッション継続のテスト(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C127 | 必須 | 端末を設定ファイルに登録(表示名・ホスト・色)、hostname 一致を手元、登録なしは暗黙の手元、再読み込みで反映(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C128 | 必須 | プロジェクトの端末(既定は手元)、一覧の端末列で候補選択・Delete で手元・登録名のみ貼り付け、永続化、欠落は手元扱い、変更は以後の新しいペインだけに効き終了済みの再開は元の端末の同じセッションへ(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C129 | 必須 | 全ペインを端末上の tmux セッションへ attach するコマンドで起動、セッション名 `<ID>-<n>`、ペインごとの端末・セッション名を永続化(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C130 | 必須 | 開始ディレクトリ `~/workspace/<タイトル>` → `~/workspace` → ホーム、split は `#{pane_current_path}` を引き継ぐ(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C131 | 必須 | attach 時にそのセッションだけへ status-style・status-left・prefix C-s を設定、リネームで status-left を更新(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C132 | 必須 | tmux / ssh の終了でペインは兄弟の有無によらず終了済み、Enter でプロジェクト内の終了済みペインそれぞれの attach を再実行(検証: C136 + C137・C142) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137・C142 の観測待ち |
+| C133 | 必須 | 閉じたペインのセッションを undo 期限後に kill、undo で戻せば kill しない(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C134 | 必須 | 手元でない端末への ssh に TERM=xterm-256color を渡す(検証: C136 + C137) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C136 は cycle 73 で通過。C137 の観測待ち |
+| C135 | 必須 | 端末・セッション・コマンド・候補・kill 対象の判断ロジックはモデル層(検証: C136) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C136 | 必須 | 端末登録と tmux セッションのテスト群(9 項目)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 73: just swift-test exit 0 (failed 0 件。周回 73 でレイアウト型の向きを削除した後に実行) |
+| C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | unmet | 失効: 周回 73 の対象ファイルの変更で以前の observed が失効。次の周回の冒頭で HEAD の zig-out 版を観測し直す |
+| C138 | 必須 | 2 台の実機での目視(Mac mini の tmux・再起動後の再 attach・切断後の再 attach)(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。実機観測の取り直しの後に ask で再確認を求める |
+| C139 | 必須 | 種別と重み付きレイアウトの実機観測(5 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・選択肢は Wide / Tall の 2 つで縦長型の序数は列ごと・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | unmet | 失効: 周回 73 の対象ファイルの変更で以前の observed が失効。次の周回の冒頭で HEAD の zig-out 版を観測し直す |
+| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、大きさ以外に差を付けない(検証: C107 + C139) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C107 は cycle 73 で通過。C139 の観測待ち |
+| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は配置順の先頭 9 つ(検証: C107 + C139) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C107 は cycle 73 で通過。C139 の観測待ち |
+| C142 | 必須 | ペイン単位の終了済み状態の実機観測(ssh ループバックの 3 ペインを外から終了・Enter 1 回で全再 attach・終了済みのまま再起動・兄弟のシェル exit と Cmd+W・プライマリーの非昇格と Cmd+W の昇格・一部だけの再開で生きたセッションを作り直さない)(検証: 周回の実機観測) | unmet | 失効: 周回 73 の対象ファイルの変更で以前の observed が失効。次の周回の冒頭で HEAD の zig-out 版を観測し直す |
+| C143 | 必須 | ペインが分割木から失われるのは明示的 close(Cmd+W・close_project・一覧の行 Delete)のみ、コマンド終了では失われない(検証: C95 + C142) | unmet | 失効: 周回 73 の対象ファイルの変更で実機観測の出典が失効。C95 は cycle 73 で通過。C142 の観測待ち |
+| C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | unmet | 出典なし。C107 は cycle 73 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 73 で無出力(exit 1)。実機観測(5 列・ソートバーなし・ラベル帯・一望・ショートカット一覧)は次の周回 |
+| C145 | 必須 | 削除した値を含む保存を読み込んでも失敗せず黙って無視し再保存で書かない、ノート・種別・端末・手動順・列順は復元、列順からは削除した列だけを除く(検証: C107) | met | cycle 73: just swift-test exit 0 (failed 0 件。ProjectLedgerTests.aSaveCarryingTheRemovedValuesLoadsAndDropsThem が passed) |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |
 | C120 | 望ましい | 全体ビューの非プライマリーペインのインジケータ(検証: 人間) | unmet | - |

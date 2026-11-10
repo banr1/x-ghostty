@@ -215,12 +215,12 @@ struct ProjectLedgerTests {
         }
     }
 
-    // MARK: Layout type persists with the wide/row-major default (SPEC §26.4)
+    // MARK: Layout type persists with the wide default (SPEC §26.4)
 
-    @Test func layoutTypeDefaultsToWideRowMajorWhenNothingIsSaved() throws {
+    @Test func layoutTypeDefaultsToWideWhenNothingIsSaved() throws {
         let (state, _) = Self.makeState(2)
         #expect(state.layoutType == .default)
-        #expect(ProjectLayoutType.default == ProjectLayoutType(shape: .wide, orientation: .rowMajor))
+        #expect(ProjectLayoutType.default == .wide)
 
         let decoded = try Self.decodeDropping(["layoutType"], from: state)
         #expect(decoded.layoutType == .default)
@@ -228,11 +228,11 @@ struct ProjectLedgerTests {
 
     @Test func chosenLayoutTypeRoundTrips() throws {
         var (state, ids) = Self.makeState(3)
-        state.layoutType = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        state.layoutType = ProjectLayoutType.tall
         state.relayout()
 
         let decoded = try Self.roundTrip(state)
-        #expect(decoded.layoutType == ProjectLayoutType(shape: .tall, orientation: .columnMajor))
+        #expect(decoded.layoutType == ProjectLayoutType.tall)
         // The restored arrangement is the remembered type's projection over
         // the visible rows.
         #expect(decoded.canonicalProjectTree.root

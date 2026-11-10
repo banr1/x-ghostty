@@ -16,13 +16,13 @@ private typealias TestWorkspaceState = WorkspaceStateOf<TestPane>
 private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 
 /// Tests for the layout types (SPEC §26, must 102): slot computation for every
-/// visible count 1–24 across wide/tall × row-/column-major with the kind
-/// weights, per-count exact-match collapsing of the choice set,
-/// orientation-driven assignment of the visible projects (Core → Side) with
-/// ordinals following, the saved pedestal migration, and auto-apply of the
-/// remembered type on visible-count and visible-kind changes (with no change
-/// for operations preserving both). Persistence and the wide/row-major default
-/// are covered in `ProjectLedgerTests`.
+/// visible count 1–24 for wide and tall with the kind weights, per-count
+/// exact-match collapsing of the choice set, shape-driven assignment of the
+/// visible projects (Core → Side) with ordinals following, the migration of
+/// saved orientations and pedestals, and auto-apply of the remembered type on
+/// visible-count and visible-kind changes (with no change for operations
+/// preserving both). Persistence and the wide default are covered in
+/// `ProjectLedgerTests`.
 struct ProjectLayoutTypeTests {
     private static func approx(_ a: CGRect, _ b: CGRect) -> Bool {
         abs(a.minX - b.minX) < 1e-9 && abs(a.minY - b.minY) < 1e-9
@@ -57,7 +57,7 @@ struct ProjectLayoutTypeTests {
 
     // MARK: Slot computation for every visible count (SPEC §26.1)
 
-    /// The wide-shape frames in row-major order, computed here from the
+    /// The wide-shape frames in ordinal order, computed here from the
     /// Essence definition (equal row heights, equal in-row widths, dealt from
     /// the top), independently of the production slot builder.
     private static func expectedWideFrames(_ n: Int) -> [CGRect] {
@@ -79,53 +79,40 @@ struct ProjectLayoutTypeTests {
 
     @Test func wideSlotsMatchTheDefinitionForEveryCount() {
         for n in 1...24 {
-            let type = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
+            let type = ProjectLayoutType.wide
             #expect(Self.approxAll(
                 type.slotFrames(forVisibleCount: n), Self.expectedWideFrames(n)), "n=\(n)")
         }
     }
 
     @Test func tallIsTheExactTransposeOfWide() {
-        // Transposing swaps rows↔columns AND row-major↔column-major, so the
-        // tall/column-major ordinal sequence is the transposed wide/row-major
-        // one, and vice versa.
+        // Transposing swaps rows↔columns, and with them the progression: the
+        // tall ordinal sequence (down the columns) is the transposed wide one
+        // (along the rows).
         for n in 1...24 {
-            let wideRow = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
-            let wideColumn = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-            let tallRow = ProjectLayoutType(shape: .tall, orientation: .rowMajor)
-            let tallColumn = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
-
             #expect(Self.approxAll(
-                tallColumn.slotFrames(forVisibleCount: n),
-                Self.transposed(wideRow.slotFrames(forVisibleCount: n))), "n=\(n)")
-            #expect(Self.approxAll(
-                tallRow.slotFrames(forVisibleCount: n),
-                Self.transposed(wideColumn.slotFrames(forVisibleCount: n))), "n=\(n)")
+                ProjectLayoutType.tall.slotFrames(forVisibleCount: n),
+                Self.transposed(ProjectLayoutType.wide.slotFrames(forVisibleCount: n))), "n=\(n)")
         }
     }
 
-    @Test func wideOrientationChangesOnlyTheOrdinalProgression() {
-        // The two wide orientations place the same slot set; only the ordinal
-        // sequence differs (row-major: top row left→right; column-major: left
-        // column top→bottom). Concrete pin at n=5 (rows 2+3): row-major runs
-        // the top pair then the bottom trio; column-major starts down the
-        // left column (top-left, bottom-left) before moving right.
-        for n in 1...24 {
-            let row = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
-                .slotFrames(forVisibleCount: n)
-            let column = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-                .slotFrames(forVisibleCount: n)
-            #expect(Set(row.map { "\($0)" }) == Set(column.map { "\($0)" }), "n=\(n)")
-        }
-
-        let column5 = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-            .slotFrames(forVisibleCount: 5)
-        #expect(Self.approxAll(column5, [
+    @Test func theOrdinalProgressionFollowsTheShape() {
+        // No independent orientation (must 49): wide runs the top row left→
+        // right, tall runs the left column top→bottom. Concrete pin at n=5
+        // (tiers 2+3).
+        #expect(Self.approxAll(ProjectLayoutType.wide.slotFrames(forVisibleCount: 5), [
             CGRect(x: 0, y: 0, width: 0.5, height: 0.5),
-            CGRect(x: 0, y: 0.5, width: 1.0 / 3, height: 0.5),
             CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
+            CGRect(x: 0, y: 0.5, width: 1.0 / 3, height: 0.5),
             CGRect(x: 1.0 / 3, y: 0.5, width: 1.0 / 3, height: 0.5),
             CGRect(x: 2.0 / 3, y: 0.5, width: 1.0 / 3, height: 0.5),
+        ]))
+        #expect(Self.approxAll(ProjectLayoutType.tall.slotFrames(forVisibleCount: 5), [
+            CGRect(x: 0, y: 0, width: 0.5, height: 0.5),
+            CGRect(x: 0, y: 0.5, width: 0.5, height: 0.5),
+            CGRect(x: 0.5, y: 0, width: 0.5, height: 1.0 / 3),
+            CGRect(x: 0.5, y: 1.0 / 3, width: 0.5, height: 1.0 / 3),
+            CGRect(x: 0.5, y: 2.0 / 3, width: 0.5, height: 1.0 / 3),
         ]))
     }
 
@@ -151,7 +138,7 @@ struct ProjectLayoutTypeTests {
 
     @Test func aSideIsHalfTheWidthOfACoreInTheSameRow() {
         // Two projects share one row: Core 2/3, Side 1/3.
-        let wide = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
+        let wide = ProjectLayoutType.wide
         #expect(Self.approxAll(wide.slotFrames(forKinds: [.core, .side]), [
             CGRect(x: 0, y: 0, width: 2.0 / 3, height: 1),
             CGRect(x: 2.0 / 3, y: 0, width: 1.0 / 3, height: 1),
@@ -169,7 +156,7 @@ struct ProjectLayoutTypeTests {
     }
 
     @Test func aRowOfOnlySidesSharesItsWidthEqually() {
-        let wide = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
+        let wide = ProjectLayoutType.wide
         #expect(Self.approxAll(wide.slotFrames(forKinds: [.side, .side]), [
             CGRect(x: 0, y: 0, width: 0.5, height: 1),
             CGRect(x: 0.5, y: 0, width: 0.5, height: 1),
@@ -177,7 +164,7 @@ struct ProjectLayoutTypeTests {
     }
 
     @Test func aSideIsHalfTheHeightOfACoreInTheSameColumn() {
-        let tall = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        let tall = ProjectLayoutType.tall
         #expect(Self.approxAll(tall.slotFrames(forKinds: [.core, .side]), [
             CGRect(x: 0, y: 0, width: 1, height: 2.0 / 3),
             CGRect(x: 0, y: 2.0 / 3, width: 1, height: 1.0 / 3),
@@ -195,7 +182,7 @@ struct ProjectLayoutTypeTests {
                     let frames = type.slotFrames(forKinds: kinds)
                     #expect(frames.count == n)
                     let tiers = Dictionary(grouping: frames.indices) { index -> Int in
-                        let origin = type.shape == .wide ? frames[index].minY : frames[index].minX
+                        let origin = type == .wide ? frames[index].minY : frames[index].minX
                         return Int((origin * 1_000_000).rounded())
                     }
                     #expect(tiers.count == ProjectLayoutType.tierCounts(n).count)
@@ -203,10 +190,10 @@ struct ProjectLayoutTypeTests {
                         == ProjectLayoutType.tierCounts(n).sorted())
                     for indices in tiers.values {
                         let lengths = indices.map {
-                            type.shape == .wide ? frames[$0].width : frames[$0].height
+                            type == .wide ? frames[$0].width : frames[$0].height
                         }
                         let across = indices.map {
-                            type.shape == .wide ? frames[$0].height : frames[$0].width
+                            type == .wide ? frames[$0].height : frames[$0].width
                         }
                         let perWeight = zip(indices, lengths).map { index, length in
                             length / (kinds[index] == .core ? 1.0 : 0.5)
@@ -225,8 +212,8 @@ struct ProjectLayoutTypeTests {
     @Test func tallIsTheTransposeOfWideWithKindsToo() {
         for n in 1...24 {
             for kinds in Self.kindMixes(n) {
-                let tallColumn = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
-                let wideRow = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
+                let tallColumn = ProjectLayoutType.tall
+                let wideRow = ProjectLayoutType.wide
                 #expect(Self.approxAll(
                     tallColumn.slotFrames(forKinds: kinds),
                     Self.transposed(wideRow.slotFrames(forKinds: kinds))), "n=\(n)")
@@ -280,36 +267,22 @@ struct ProjectLayoutTypeTests {
     // MARK: Exact-match collapsing of the choice set (SPEC §26.2)
 
     @Test func choiceSetsCollapseExactMatchesPerCount() {
-        let wideRow = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
-        let wideColumn = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-        let tallRow = ProjectLayoutType(shape: .tall, orientation: .rowMajor)
-        let tallColumn = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
-        // n=1: every type is the same single slot — nothing to choose.
-        #expect(ProjectLayoutType.choices(forVisibleCount: 1) == [wideRow])
+        // n=1: both types are the same single slot — nothing to choose.
+        #expect(ProjectLayoutType.choices(forVisibleCount: 1) == [.wide])
+        #expect(ProjectLayoutType.tall.representative(forVisibleCount: 1) == .wide)
 
-        // n=2: orientation never changes a 1-tier arrangement.
-        #expect(ProjectLayoutType.choices(forVisibleCount: 2) == [wideRow, tallRow])
-
-        // n=3: the full-width tier pins the progression, so wide row-/
-        // column-major are identical (as are the tall pair); wide and tall
-        // differ in shape.
-        #expect(ProjectLayoutType.choices(forVisibleCount: 3) == [wideRow, tallRow])
-        #expect(wideColumn.representative(forVisibleCount: 3) == wideRow)
-        #expect(tallColumn.representative(forVisibleCount: 3) == tallRow)
-
-        // n=9: the 3×3 grid is one shape, but the two ordinal progressions
-        // stay apart (wide/row-major absorbs tall/row-major, wide/column-major
-        // absorbs tall/column-major).
-        let nine = ProjectLayoutType.choices(forVisibleCount: 9)
-        #expect(nine == [wideRow, wideColumn])
-        #expect(tallRow.representative(forVisibleCount: 9) == wideRow)
-        #expect(tallColumn.representative(forVisibleCount: 9) == wideColumn)
+        // n≥2: wide and tall differ in shape or, on a square grid (n=9), in
+        // the ordinal progression (along the rows vs down the columns), so
+        // they never collapse.
+        for n in 2...24 {
+            #expect(ProjectLayoutType.choices(forVisibleCount: n) == [.wide, .tall], "n=\(n)")
+            #expect(ProjectLayoutType.tall.representative(forVisibleCount: n) == .tall, "n=\(n)")
+        }
     }
 
-    @Test func aSideKeepsTheShapesApartWhereTheyWouldCollapse() {
+    @Test func aSideKeepsTheShapesApart() {
         // Nine projects with a Side: half the width and half the height are
-        // different arrangements, so every shape × orientation is a choice
-        // the human can actually reach.
+        // different arrangements, so both types are choices.
         let kinds: [ProjectKind] = Array(repeating: .core, count: 8) + [.side]
         #expect(ProjectLayoutType.choices(forKinds: kinds) == ProjectLayoutType.all)
         for type in ProjectLayoutType.all {
@@ -317,42 +290,76 @@ struct ProjectLayoutTypeTests {
         }
     }
 
-    @Test func noPedestalAmongTheChoices() {
-        #expect(Set(ProjectLayoutType.all.map(\.shape)) == [.wide, .tall])
-        #expect(ProjectLayoutType.Shape.allCases.map(\.rawValue) == ["wide", "tall"])
-        #expect(ProjectLayoutType.all.count == 4)
+    @Test func theTypesAreWideAndTallOnly() {
+        // No pedestal and no independent orientation (must 49): two types,
+        // shown as "Wide" and "Tall" (must 51).
+        #expect(ProjectLayoutType.all == [.wide, .tall])
+        #expect(ProjectLayoutType.all.map(\.rawValue) == ["wide", "tall"])
+        #expect(ProjectLayoutType.all.map(\.label) == ["Wide", "Tall"])
     }
 
-    // MARK: The saved pedestal migration (SPEC §26.4)
+    // MARK: Migration of saved types (SPEC §26.4)
 
-    @Test func aSavedPedestalReadsAsWideKeepingItsOrientation() throws {
-        for orientation in ["rowMajor", "columnMajor"] {
-            let json = Data(#"{"shape":"pedestal","orientation":"\#(orientation)"}"#.utf8)
-            let decoded = try JSONDecoder().decode(ProjectLayoutType.self, from: json)
-            #expect(decoded.shape == .wide)
-            #expect(decoded.orientation.rawValue == orientation)
+    @Test func aSavedOrientationIsDroppedKeepingTheShape() throws {
+        // wide · by columns → wide, tall · by rows → tall, and the matching
+        // spellings keep their shape too.
+        let cases: [(String, String, ProjectLayoutType)] = [
+            ("wide", "rowMajor", .wide), ("wide", "columnMajor", .wide),
+            ("tall", "rowMajor", .tall), ("tall", "columnMajor", .tall),
+        ]
+        for (shape, orientation, expected) in cases {
+            let json = Data(#"{"shape":"\#(shape)","orientation":"\#(orientation)"}"#.utf8)
+            #expect(try JSONDecoder().decode(ProjectLayoutType.self, from: json) == expected)
         }
     }
 
-    @Test func aWorkspaceSavedOnPedestalComesBackWideWithItsOrientation() throws {
-        let (model, ids, _) = Self.makeModel(3, type: .default)
-        var object = try #require(
-            JSONSerialization.jsonObject(with: JSONEncoder().encode(model.state)) as? [String: Any])
-        object["layoutType"] = ["shape": "pedestal", "orientation": "columnMajor"]
-        let decoded = try JSONDecoder().decode(
-            TestWorkspaceState.self, from: JSONSerialization.data(withJSONObject: object))
+    @Test func aSavedTypeIsWrittenWithoutAnOrientation() throws {
+        for type in ProjectLayoutType.all {
+            let object = try #require(
+                JSONSerialization.jsonObject(with: JSONEncoder().encode(type)) as? [String: Any])
+            #expect(object.keys.sorted() == ["shape"])
+            #expect(object["shape"] as? String == type.rawValue)
+            #expect(try JSONDecoder().decode(
+                ProjectLayoutType.self, from: JSONEncoder().encode(type)) == type)
+        }
+    }
 
-        let expected = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-        #expect(decoded.layoutType == expected)
-        #expect(decoded.canonicalProjectTree.root == expected.tree(over: ids).root)
+    @Test func aSavedPedestalReadsAsWideWhateverItsOrientation() throws {
+        for orientation in ["rowMajor", "columnMajor"] {
+            let json = Data(#"{"shape":"pedestal","orientation":"\#(orientation)"}"#.utf8)
+            #expect(try JSONDecoder().decode(ProjectLayoutType.self, from: json) == .wide)
+        }
+    }
 
-        // What it writes back is the plain current spelling.
-        let rewritten = try JSONEncoder().encode(expected)
-        #expect(try JSONDecoder().decode(ProjectLayoutType.self, from: rewritten) == expected)
+    @Test func aWorkspaceSavedWithAnOrientationComesBackAndResavesWithout() throws {
+        let saved: [[String: String]] = [
+            ["shape": "pedestal", "orientation": "columnMajor"],
+            ["shape": "wide", "orientation": "columnMajor"],
+            ["shape": "tall", "orientation": "rowMajor"],
+        ]
+        let expected: [ProjectLayoutType] = [.wide, .wide, .tall]
+        for (layout, type) in zip(saved, expected) {
+            let (model, ids, _) = Self.makeModel(3, type: .default)
+            var object = try #require(
+                JSONSerialization.jsonObject(with: JSONEncoder().encode(model.state)) as? [String: Any])
+            object["layoutType"] = layout
+            let decoded = try JSONDecoder().decode(
+                TestWorkspaceState.self, from: JSONSerialization.data(withJSONObject: object))
+
+            #expect(decoded.layoutType == type)
+            #expect(decoded.canonicalProjectTree.root == type.tree(over: ids).root)
+
+            // What it writes back carries the shape only.
+            let resaved = try #require(
+                JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? [String: Any])
+            let layoutType = try #require(resaved["layoutType"] as? [String: Any])
+            #expect(layoutType.keys.sorted() == ["shape"])
+            #expect(layoutType["shape"] as? String == type.rawValue)
+        }
     }
 
     @Test func anUnknownShapeIsCorruptAndFallsBackToTheDefaultType() throws {
-        let json = Data(#"{"shape":"hexagon","orientation":"rowMajor"}"#.utf8)
+        let json = Data(#"{"shape":"hexagon"}"#.utf8)
         #expect(throws: (any Error).self) {
             try JSONDecoder().decode(ProjectLayoutType.self, from: json)
         }
@@ -393,43 +400,37 @@ struct ProjectLayoutTypeTests {
         }
     }
 
-    // MARK: Orientation assignment of the list's visible rows (SPEC §26.1, §26.3)
+    // MARK: Assignment of the list's visible rows (SPEC §26.1, §26.3)
 
     private static func refs(_ n: Int) -> [ProjectRef] {
         (0..<n).map { _ in ProjectRef(id: ProjectID()) }
     }
 
-    @Test func rowMajorAssignsTopRowLeftToRight() {
+    @Test func wideAssignsTopRowLeftToRight() {
         let r = Self.refs(4)
-        let tree = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
+        let tree = ProjectLayoutType.wide
             .tree(over: r.map(\.id))
         #expect(tree.root == SplitTree(gridRows: [[r[0], r[1]], [r[2], r[3]]]).root)
+
+        // n=5 (rows 2+3, the leftover on the trailing row): the top pair,
+        // then the bottom trio.
+        let five = Self.refs(5)
+        #expect(ProjectLayoutType.wide.tree(over: five.map(\.id)).root == SplitTree(
+            gridRows: [[five[0], five[1]], [five[2], five[3], five[4]]]).root)
     }
 
-    @Test func columnMajorAssignsLeftColumnTopToBottom() {
+    @Test func tallAssignsLeftColumnTopToBottom() {
         let r = Self.refs(4)
-        // Tall/column-major: rows 1 and 2 fill the left column top→bottom,
-        // rows 3 and 4 the right column.
-        let tall = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        // Rows 1 and 2 fill the left column top→bottom, rows 3 and 4 the
+        // right column.
+        let tall = ProjectLayoutType.tall
             .tree(over: r.map(\.id))
         #expect(tall.root == SplitTree(gridColumns: [[r[0], r[1]], [r[2], r[3]]]).root)
 
-        // Tall/row-major over the same grid: rows 1 and 2 spread across the
-        // top (left column's top, right column's top), 3 and 4 across the
-        // bottom — the progression, not the shape, changed.
-        let tallRow = ProjectLayoutType(shape: .tall, orientation: .rowMajor)
-            .tree(over: r.map(\.id))
-        #expect(tallRow.root == SplitTree(gridColumns: [[r[0], r[2]], [r[1], r[3]]]).root)
-
-        // Wide/column-major at n=5 (rows 2+3, the leftover on the trailing
-        // row): the progression runs down the left column first — row 1
-        // top-left, row 2 bottom-left, row 3 top-right, rows 4–5 the rest of
-        // the bottom row.
+        // n=5 (columns 2+3): the left pair, then the right trio.
         let five = Self.refs(5)
-        let wideColumn = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
-            .tree(over: five.map(\.id))
-        #expect(wideColumn.root == SplitTree(
-            gridRows: [[five[0], five[2]], [five[1], five[3], five[4]]]).root)
+        #expect(ProjectLayoutType.tall.tree(over: five.map(\.id)).root == SplitTree(
+            gridColumns: [[five[0], five[1]], [five[2], five[3], five[4]]]).root)
     }
 
     /// A state over rows of `kinds`, in that row order.
@@ -481,28 +482,28 @@ struct ProjectLayoutTypeTests {
         #expect(state.ordinal(of: ids[1]) == nil)
     }
 
-    @Test func theSlotsAssignCoreThenSideFollowingTheOrientation() {
-        // Wide/column-major at n=5 (rows 2+3), three Cores then two Sides: the
-        // progression runs down the left column (top-left, bottom-left), then
-        // top-right — the Cores — and the bottom row's other two take the
-        // Sides.
+    @Test func theSlotsAssignCoreThenSideFollowingTheShape() {
+        // Tall at n=5 (columns 2+3), three Cores then two Sides: the
+        // progression runs down the left column (top, bottom), then the top of
+        // the right column — the Cores — and the right column's other two take
+        // the Sides at half a Core's height.
         let r = Self.refs(5)
-        let type = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
+        let type = ProjectLayoutType.tall
         let kinds: [ProjectKind] = [.core, .core, .core, .side, .side]
         let tree = type.tree(over: r.map(\.id), kinds: kinds)
         let leaves = Array(tree.map(\.id))
-        #expect(leaves == [r[0].id, r[2].id, r[1].id, r[3].id, r[4].id])
+        #expect(leaves == [r[0].id, r[1].id, r[2].id, r[3].id, r[4].id])
         #expect(Self.approxAll(type.slotFrames(forKinds: kinds), [
             CGRect(x: 0, y: 0, width: 0.5, height: 0.5),
             CGRect(x: 0, y: 0.5, width: 0.5, height: 0.5),
             CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
-            CGRect(x: 0.5, y: 0.5, width: 0.25, height: 0.5),
-            CGRect(x: 0.75, y: 0.5, width: 0.25, height: 0.5),
+            CGRect(x: 0.5, y: 0.5, width: 0.5, height: 0.25),
+            CGRect(x: 0.5, y: 0.75, width: 0.5, height: 0.25),
         ]))
     }
 
     @Test func ordinalsFollowTheListOrderNotTheVisualPosition() {
-        // Under tall/column-major, row 2 renders BELOW row 1 in the left
+        // Under tall, row 2 renders BELOW row 1 in the left
         // column — but the ordinals stay the visible rows counted from the
         // top of the list.
         let base = Date(timeIntervalSince1970: 0)
@@ -517,7 +518,7 @@ struct ProjectLayoutTypeTests {
             projects: Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0) }),
             projectOrder: ids,
             focusedProject: ids[0],
-            layoutType: ProjectLayoutType(shape: .tall, orientation: .columnMajor))
+            layoutType: ProjectLayoutType.tall)
 
         #expect(state.canonicalProjectTree.root
             == state.layoutType.tree(over: ids).root)
@@ -548,7 +549,7 @@ struct ProjectLayoutTypeTests {
     }
 
     @Test func visibleCountChangesReapplyTheRememberedType() throws {
-        let type = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        let type = ProjectLayoutType.tall
         let (model, ids, _) = Self.makeModel(4, type: type)
 
         // Hide (Cmd+Opt+H path): the remaining three re-form in the
@@ -581,7 +582,7 @@ struct ProjectLayoutTypeTests {
     }
 
     @Test func aVisibleKindChangeReappliesTheRememberedType() {
-        let type = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        let type = ProjectLayoutType.tall
         let (model, ids, _) = Self.makeModel(4, type: type)
         let allCore = model.state.canonicalProjectTree.root
         model.beginProjectList()
@@ -620,7 +621,7 @@ struct ProjectLayoutTypeTests {
 
     @Test func theKindSurvivesARestoreIntoTheSameArrangement() throws {
         let (state, ids) = Self.makeState(
-            [.side, .core, .core], type: ProjectLayoutType(shape: .wide, orientation: .columnMajor))
+            [.side, .core, .core], type: ProjectLayoutType.tall)
         let data = try JSONEncoder().encode(state)
         let decoded = try JSONDecoder().decode(TestWorkspaceState.self, from: data)
         #expect(decoded.visibleProjectIDs == [ids[1], ids[2], ids[0]])
@@ -643,7 +644,7 @@ struct ProjectLayoutTypeTests {
     }
 
     @Test func countPreservingOperationsDoNotChangeTheArrangement() {
-        let type = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        let type = ProjectLayoutType.tall
         let (model, ids, panes) = Self.makeModel(3, type: type)
         let before = model.state.canonicalProjectTree.root
 

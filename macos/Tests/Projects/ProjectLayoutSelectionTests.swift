@@ -71,11 +71,12 @@ struct ProjectLayoutSelectionTests {
         // The default type stands for itself…
         #expect(model.currentLayoutTypeChoice == .default)
 
-        // …and a saved spelling that collapses at this count highlights its
-        // kept representative (wide/column-major == wide/row-major at n=3:
-        // the full-width top tier pins the progression).
+        // …and a type that collapses at this count highlights its kept
+        // representative (tall == wide for a single visible project).
         var state = model.state
-        state.layoutType = ProjectLayoutType(shape: .wide, orientation: .columnMajor)
+        state.layoutType = .tall
+        state.setProjectHidden(state.projectOrder[1], true)
+        state.setProjectHidden(state.projectOrder[2], true)
         state.relayout()
         let collapsed = TestWorkspaceModel(state)
         #expect(collapsed.currentLayoutTypeChoice == .default)
@@ -85,7 +86,7 @@ struct ProjectLayoutSelectionTests {
 
     @Test func enterRemembersTheTypeAndRederivesWithoutChangingProjects() {
         let (model, ids) = Self.makeModel(4)
-        let type = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        let type = ProjectLayoutType.tall
         model.beginLayoutSelection()
 
         #expect(model.chooseLayoutType(type))
@@ -107,7 +108,7 @@ struct ProjectLayoutSelectionTests {
         let (model, _) = Self.makeModel(3)
         let before = model.state
 
-        #expect(!model.chooseLayoutType(ProjectLayoutType(shape: .tall, orientation: .rowMajor)))
+        #expect(!model.chooseLayoutType(ProjectLayoutType.tall))
 
         #expect(model.state.layoutType == before.layoutType)
         #expect(model.state.canonicalProjectTree.root == before.canonicalProjectTree.root)
@@ -128,7 +129,7 @@ struct ProjectLayoutSelectionTests {
 
     @Test func chosenTypeSurvivesACodableRoundTrip() throws {
         let (model, ids) = Self.makeModel(3)
-        let type = ProjectLayoutType(shape: .tall, orientation: .columnMajor)
+        let type = ProjectLayoutType.tall
         model.beginLayoutSelection()
         #expect(model.chooseLayoutType(type))
 

@@ -48,8 +48,8 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
     /// `projects.keys` (see `normalizeLedger`).
     var projectOrder: [ProjectID]
 
-    /// The remembered layout type (`SPEC.md` §26.4). Persisted; wide/row-major
-    /// when nothing is saved.
+    /// The remembered layout type (`SPEC.md` §26.4). Persisted; wide when
+    /// nothing is saved.
     var layoutType: ProjectLayoutType
 
     /// The list's column order (`SPEC.md` §27.1). Persisted; the default order

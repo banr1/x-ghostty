@@ -159,17 +159,18 @@ its window management with a single model:
   passed (not if undone); quitting never kills them. The former OSC 7
   remote-split detection is gone, and the upstream core is back to its
   original OSC 7 handling. See SPEC.md §29.
-- **Layout types.** The screen arrangement is a layout type — a shape (wide or
-  its transpose, tall) times an ordinal direction (row-major or column-major;
-  the wide shape uses about √n rows and gives any remainder to the later rows,
-  so the top rows hold fewer, wider slots — eight projects go 2+3+3) —
+- **Layout types.** The screen arrangement is a layout type — Wide or its
+  transpose, Tall (the wide shape uses about √n rows and gives any remainder to
+  the later rows, so the top rows hold fewer, wider slots — eight projects go
+  2+3+3; `Cmd+1`–`9` run along the rows on Wide and down the columns on Tall) —
   remembered persistently and re-applied automatically whenever the number of
   visible projects or a visible project's kind changes (hiding, showing,
   creating, closing, changing the kind). Each project is a Core or a Side: every
   project takes one slot, but a Side is half as wide as a Core in the same row
   (half as tall in the same column, on the tall shape), and the Cores are placed
   first. `Cmd+1`–`9` follow that placement. A saved pedestal layout from an older
-  version loads as wide. `Cmd+Opt+L` lists only the distinct choices for the
+  version loads as Wide, and a saved row/column direction is dropped, keeping
+  the shape. `Cmd+Opt+L` lists only the distinct choices for the
   current visible projects (identical arrangements are collapsed; with a single
   choice it just says there is nothing to choose):
   arrow keys + Enter apply one, Esc closes without changing anything, and

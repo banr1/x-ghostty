@@ -3,8 +3,8 @@ import SwiftUI
 /// The layout-type selection overlay, opened by the `choose_project_layout`
 /// action (Cmd+Opt+L) over the whole workspace (`SPEC.md` §26.2).
 ///
-/// Lists only the choices for the *current* visible projects — the shape ×
-/// orientation combinations left after exact-match collapsing
+/// Lists only the choices for the *current* visible projects — "Wide" and
+/// "Tall", left after exact-match collapsing
 /// (`ProjectLayoutType.choices(forKinds:)`): ↑/↓ move the cursor,
 /// Enter (or a row click) applies the highlighted type, Escape (or a
 /// backdrop click) closes changing nothing. The project count never changes.

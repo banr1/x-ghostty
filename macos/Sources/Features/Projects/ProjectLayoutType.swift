@@ -2,65 +2,48 @@ import Foundation
 
 /// A layout type (`SPEC.md` §26): the rule that derives the overall-view
 /// arrangement from the visible projects in placement order (Core before
-/// Side, `WorkspaceStateOf.visibleProjectIDs`). Shape × orientation:
+/// Side, `WorkspaceStateOf.visibleProjectIDs`). Two shapes:
 ///
 /// - **wide** — rows = the integer nearest √n; the projects are dealt to the
 ///   rows as evenly as possible, the leftover attaching to the trailing rows
 ///   (n=8 is 2+3+3 from the top — the top rows hold fewer, wider slots). Row
 ///   heights are equal; a row's width is shared by kind weight (a Side is half
-///   as wide as a Core in the same row).
+///   as wide as a Core in the same row). The ordinals (Cmd+1–9) run along the
+///   rows: top row first, left to right.
 /// - **tall** — the transpose: columns = nearest √n, the leftover attaching
 ///   to the trailing columns (the left columns hold fewer slots). Column
-///   widths are equal; a column's height is shared by kind weight.
+///   widths are equal; a column's height is shared by kind weight. The
+///   ordinals run along the columns: left column first, top to bottom.
 ///
 /// Every project counts as one slot whatever its kind, so the kinds never
 /// change how many slots a tier holds — only how a tier divides its length.
-///
-/// The orientation decides the ordinal progression (Cmd+1–9) and so which
-/// project takes which slot: row-major runs top row first, left to right;
-/// column-major runs left column first, top to bottom. It never changes the
-/// shape.
+/// The ordinal progression follows the shape; there is no independent
+/// orientation (must 49).
 ///
 /// The set is closed by design (user-defined layouts are a declared
 /// non-goal), so the definitions live here as data and the geometry as pure
 /// functions, verifiable from `XGhosttyTests`. Nothing here knows about the
 /// list or the model — the model applies the type to its visible projects and
 /// re-derives the canonical tree (`WorkspaceStateOf.relayout()`).
-struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
-    enum Shape: String, Codable, CaseIterable {
-        case wide, tall
-    }
-
-    enum Orientation: String, Codable, CaseIterable {
-        case rowMajor, columnMajor
-    }
-
-    var shape: Shape
-    var orientation: Orientation
+enum ProjectLayoutType: String, CaseIterable, Identifiable {
+    case wide, tall
 
     /// The type used when nothing is saved (`SPEC.md` §26.4).
-    static let `default` = ProjectLayoutType(shape: .wide, orientation: .rowMajor)
+    static let `default`: ProjectLayoutType = .wide
 
-    /// Every shape × orientation, in canonical enumeration order (shape
-    /// first). `choices(forKinds:)` keeps the first of each collapsed group,
-    /// so this order also decides the representative.
-    static let all: [ProjectLayoutType] = Shape.allCases.flatMap { shape in
-        Orientation.allCases.map { ProjectLayoutType(shape: shape, orientation: $0) }
-    }
+    /// Every type, in canonical enumeration order. `choices(forKinds:)` keeps
+    /// the first of each collapsed group, so this order also decides the
+    /// representative.
+    static let all: [ProjectLayoutType] = allCases
 
-    var id: String { "\(shape.rawValue)-\(orientation.rawValue)" }
+    var id: String { rawValue }
 
-    /// A short label for the selector and the docs.
+    /// The label the selector shows (must 51).
     var label: String {
-        let shapeName: String = switch shape {
-        case .wide: "wide"
-        case .tall: "tall"
+        switch self {
+        case .wide: "Wide"
+        case .tall: "Tall"
         }
-        let orientationName: String = switch orientation {
-        case .rowMajor: "by rows"
-        case .columnMajor: "by columns"
-        }
-        return "\(shapeName) · \(orientationName)"
     }
 
     // MARK: Distribution rules
@@ -69,10 +52,9 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
     /// integer nearest √n, and the projects are dealt to the rows as evenly as
     /// possible — the indivisible leftover goes one each to the *trailing*
     /// rows, so the leading rows hold fewer, wider slots (4 = 2+2, 5 = 2+3,
-    /// 6 = 3+3, 7 = 2+2+3, 8 = 2+3+3, 9 = 3+3+3). Sorted rows put the
-    /// important projects on top, and the top rows are the wide ones. The
-    /// tall shape uses the same numbers as its column distribution (the
-    /// leading — leftmost — columns hold fewer slots).
+    /// 6 = 3+3, 7 = 2+2+3, 8 = 2+3+3, 9 = 3+3+3). The tall shape uses the same
+    /// numbers as its column distribution (the leading — leftmost — columns
+    /// hold fewer slots).
     static func tierCounts(_ n: Int) -> [Int] {
         guard n > 0 else { return [] }
         let tiers = max(1, Int(Double(n).squareRoot().rounded()))
@@ -84,25 +66,13 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
     /// The ordinals laid out tier by tier: `tiers(n)[t][p]` is the 0-based
     /// ordinal of the project at position `p` of tier `t`, where a tier is a
     /// row (wide, top first, left to right) or a column (tall, left first, top
-    /// to bottom). The orientation ranks the cells, independently of the kinds.
+    /// to bottom). The progression always runs along the tiers.
     private func tiers(_ n: Int) -> [[Int]] {
-        let counts = Self.tierCounts(n)
-        let cells = counts.enumerated().flatMap { tier, count in
-            (0..<count).map { (tier: tier, position: $0) }
+        var next = 0
+        return Self.tierCounts(n).map { count in
+            defer { next += count }
+            return Array(next..<(next + count))
         }
-        // A wide tier is a row and a tall tier a column, so the progression
-        // runs along the tiers exactly when the two agree.
-        let alongTiers = (shape == .wide) == (orientation == .rowMajor)
-        let ranked = cells.sorted { a, b in
-            alongTiers
-                ? (a.tier, a.position) < (b.tier, b.position)
-                : (a.position, a.tier) < (b.position, b.tier)
-        }
-        var result = counts.map { [Int](repeating: 0, count: $0) }
-        for (ordinal, cell) in ranked.enumerated() {
-            result[cell.tier][cell.position] = ordinal
-        }
-        return result
     }
 
     // MARK: Slots
@@ -121,7 +91,7 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
             for ordinal in ordinals {
                 let share = kinds[ordinal].layoutWeight / total
                 let across = Double(tier) * tierLength
-                frames[ordinal] = switch shape {
+                frames[ordinal] = switch self {
                 case .wide: CGRect(x: offset, y: across, width: share, height: tierLength)
                 case .tall: CGRect(x: across, y: offset, width: tierLength, height: share)
                 }
@@ -151,14 +121,11 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
         }
     }
 
-    /// The selectable types for projects of `kinds` in placement order: of the
-    /// 2 shapes × 2 orientations, those whose arrangement **and** ordinal
-    /// progression coincide exactly are collapsed into one (the first in `all`
-    /// order is kept), and the rest are the choices. E.g. nine Cores keep the
-    /// two progressions of the 3×3 grid apart while collapsing each wide/tall
-    /// pair that runs the same way; a Side among them tells wide from tall (half
-    /// the width vs half the height), so those stay apart too. A single choice
-    /// means there is nothing to choose.
+    /// The selectable types for projects of `kinds` in placement order: wide
+    /// and tall collapse into one (wide is kept) when their arrangement **and**
+    /// ordinal progression coincide exactly — only a single project does. Nine
+    /// Cores share the 3×3 grid but run their ordinals along rows vs columns,
+    /// so they stay apart. A single choice means there is nothing to choose.
     static func choices(forKinds kinds: [ProjectKind]) -> [ProjectLayoutType] {
         var seen: [[[Int]]] = []
         var result: [ProjectLayoutType] = []
@@ -198,10 +165,8 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
     /// placement order — into this type's slots: the k-th id takes the k-th
     /// slot, sized by the k-th of `kinds` (a missing kind reads as Core). Rows
     /// stack vertically and columns sit horizontally at equal shares, and each
-    /// tier divides its length by kind weight. Traversal order of the result
-    /// is *not* the ordinal order in general (column-major over a wide grid
-    /// runs down the columns); ordinals derive from the placement order, never
-    /// from the tree.
+    /// tier divides its length by kind weight. Ordinals derive from the
+    /// placement order, never from the tree.
     func tree(over ids: [ProjectID], kinds: [ProjectKind] = []) -> SplitTree<ProjectRef> {
         let weighted = tiers(ids.count).map { tier in
             tier.map { ordinal in
@@ -211,7 +176,7 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
                 )
             }
         }
-        return switch shape {
+        return switch self {
         case .wide: SplitTree(weightedRows: weighted)
         case .tall: SplitTree(weightedColumns: weighted)
         }
@@ -220,29 +185,30 @@ struct ProjectLayoutType: Equatable, Hashable, Codable, Identifiable {
 
 // MARK: Codable (SPEC §26.4)
 
-extension ProjectLayoutType {
+extension ProjectLayoutType: Codable {
     private enum CodingKeys: String, CodingKey {
-        case shape, orientation
+        case shape
     }
 
-    /// The pedestal shape no longer exists: a saved one reads as wide, keeping
-    /// its orientation. Any other unknown shape is corrupt and throws (the
-    /// workspace decode falls back to the default type).
+    /// Saved as `{"shape": …}`. Saves written while the orientation existed
+    /// also carry an `orientation` key: it is ignored, keeping the shape
+    /// (wide · by columns → wide, tall · by rows → tall). The pedestal shape no
+    /// longer exists: a saved one reads as wide whatever its orientation. Any
+    /// other unknown shape is corrupt and throws (the workspace decode falls
+    /// back to the default type).
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let rawShape = try c.decode(String.self, forKey: .shape)
-        guard let shape = rawShape == "pedestal" ? .wide : Shape(rawValue: rawShape) else {
+        guard let type = rawShape == "pedestal" ? .wide : ProjectLayoutType(rawValue: rawShape) else {
             throw DecodingError.dataCorruptedError(
                 forKey: .shape, in: c, debugDescription: "Unknown layout shape \(rawShape)")
         }
-        self.init(
-            shape: shape,
-            orientation: try c.decode(Orientation.self, forKey: .orientation))
+        self = type
     }
 
+    /// Writes the shape only — never an orientation.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(shape, forKey: .shape)
-        try c.encode(orientation, forKey: .orientation)
+        try c.encode(rawValue, forKey: .shape)
     }
 }
