@@ -1555,9 +1555,15 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 
 - `paneTree` の `didSet` が置換のたびに
   `SplitTree.reconciledPrimary(previousTree:previousPrimary:)` でフラグを
-  再解決する。シェルの exit・`Cmd+W`・process 死は、いずれも controller の
+  再解決する。ペインがツリーから消えるのは明示的な close(`Cmd+W`・
+  `close_project`・一覧の行選択 `Delete`)だけで、これは controller の
   surface tree 置換としてモデルに届くため、この 1 点で全ケースを扱える。
-- 規則:
+- **コマンドの終了では昇格しない**(必須 23):シェル・tmux クライアント・ssh の
+  終了(正常終了・異常終了・process 死のいずれでも)はペインをツリーから
+  消さず、終了済み状態にするだけ(§23.2)なので、ツリー置換が起きず
+  フラグも動かない。終了済みのプライマリーはプライマリーのまま残り、`Enter` の
+  再開(§23.3)で同じスロットの新ペインへフラグが引き継がれる。
+- 規則(明示的な close による置換):
   - 旧プライマリーが新ツリーに現存する限りフラグは動かない。**後続分割で作られた
     ペインがフラグを奪うことはない。**
   - 旧プライマリーが消えたら、**旧ツリー上の位置**を基準に `SplitTree.nearestLeaf`
@@ -1565,10 +1571,10 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
     新ツリーへ生き残っているペインの最近傍 leaf を昇格する。
   - 昇格候補がない(旧プライマリー不明・生存者なし)場合は first leaf。空ツリーは
     プライマリーなし。
-  - プライマリーが最後のペインの場合は昇格が起きない:シェルの exit では
-    ペインがツリーに残ったまま終了済み状態になり(§23.2)、フラグもそのまま
-    残る。最後のペインの `Cmd+W`・`close_project` は確認を経てプロジェクトごと
-    閉じる(§23.1)。
+  - 終了済みのプライマリーを `Cmd+W` で閉じた場合も、明示的な close なので
+    同じ規則で最近傍 leaf が昇格する(終了済みの状態はペインと一緒に消える)。
+  - プライマリーが最後のペインの場合は昇格が起きない:最後のペインの
+    `Cmd+W`・`close_project` は確認を経てプロジェクトごと閉じる(§23.1)。
 
 ### 22.3 全体ビューの描画対象
 
@@ -1587,11 +1593,14 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 - 全体ビューでのキーボード入力・focus は常にプライマリーへ向く。
   `WorkspaceState.snapFocusToPrimaryInOverallView()`(非 zoom 時のみ作用)を、
   非 zoom 状態に着地しうる全ミューテーションの後段で呼ぶ:
-  `replaceFocusedPaneTree`(プライマリー exit 昇格を含む)/ `setFocusedSurface` /
+  `replaceFocusedPaneTree`(`Cmd+W` による昇格を含む)/ `setFocusedSurface` /
   `switchFocusedProject` / `gotoProject` / `toggleProjectZoom`(zoom 解除時の寄せ)/
   `hideFocusedProject` / `showProject` / `closeFocusedProject` /
   一覧の表示トグル(`showFromProjectList` / `hideFromProjectList`)/
-  `focusProjectListRow` / `chooseLayoutType` / `removeExitedPane`。
+  `focusProjectListRow` / `chooseLayoutType`。コマンドの終了(§23.2)と
+  終了済みペインの再開(§23.3)はプライマリーを動かさないため、寄せの対象に
+  ならない(再開は focused な終了済みペインの focus を同じスロットの新ペインへ
+  引き継ぐ)。
 - controller 側の focus 配線:`ghosttyDidToggleProjectZoom` は zoom 解除時に
   プライマリーへ focus を渡し、`ghosttyDidPresentTerminal` と
   `replaceSurfaceTree` は非 zoom 時の focus 先をプライマリーへ付け替える。
@@ -1715,39 +1724,49 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   なったため、controller に届く close_surface 通知はすべて明示的なユーザー操作
   であり、シェル死をきっかけに確認ダイアログが出ることはない。
 
-### 23.2 終了済み状態(最終ペインの shell exit)
+### 23.2 終了済み状態(ペインのコマンドの終了)
 
 - Zig core 側:`Surface.childExited` は surface を**閉じない**(メッセージは
   "Process exited." に簡素化し、`wait_after_command` の早期 return を削除 —
   exit が何を意味するかは app 層が決める)。`keyCallback` は exited ペインへの
   エンコード済みキー入力を(close せず)握りつぶす。これにより core 発の close
   はすべて明示操作になる。
-- App 層:`show_child_exited` は新しい `ghosttyChildExited` 通知を**無条件に**
+- App 層:`show_child_exited` は `ghosttyChildExited` 通知を**無条件に**
   post する(window なし・hidden・即時 exit のペインも含む)。
-  `abnormalCommandExitRuntime` 由来の異常終了 Bool を添える。メッセージバー
-  表示自体は上流の可視性ガードを維持する。
-- モデル判断 `WorkspaceModel.childExitOutcome(for:abnormalExit:)`(純粋・
-  値型検証可能):
-  - プロジェクトの**最終ペイン** → `.terminated`。正常終了・異常終了・process 死は
-    いずれも同じ経路で届き、同じ判定になる。
-  - 兄弟のいるペイン → `.closePane`(正常)/ `.keepPaneAwaitingKey`(異常。
-    上流の「キーで閉じる」契約を維持)。
-- `ProjectState.terminatedPane`(`private(set)`):不変条件は「そのペインが
-  ツリーの唯一 leaf のときのみ非 nil」。`paneTree` observer が分割・除去の
-  たびにクリアする。`markPaneTerminated` は唯一 leaf のみ受理。
-  `removeExitedPane` はモデル側の兄弟ペイン close(hidden プロジェクトも対象)で、
-  最終ペインは拒否する — その場合は `.terminated` であって除去ではない。
-- terminated なプライマリーはフラグを保持する:プライマリー close の最終ペイン
-  経路は本節の終了済み意味論に従う(§22.2 の昇格は兄弟がいる場合の話)。
+  `abnormalCommandExitRuntime` 由来の異常終了 Bool(`ChildExitedAbnormalKey`)を
+  添えるが、終了済みの判定には使わない。メッセージバー表示自体は上流の
+  可視性ガードと上流の文言("Process exited. Press any key to close the
+  terminal.")のままで、実際にはどのキーでもペインは閉じない(§23.3)。
+- **兄弟の有無によらず終了済みで残す**(必須 29・143):controller の
+  `ghosttyDidExitChild` は `WorkspaceModel.markPaneTerminated(_:)` を呼ぶだけで、
+  ペインはツリーの同じ位置に残る。正常終了・異常終了・process 死はいずれも
+  同じ経路で届き、同じ扱いになる。最後のペインでもプロジェクトは閉じない。
+  分割の配置・プライマリーフラグ・ノートを含むプロジェクトの情報は変わらず、
+  ほかのペインにも触れない。hidden なプロジェクトのペインも同じ。
+- `ProjectState.terminatedPanes`(`Set<SurfaceID>`、`private(set)`):不変条件は
+  「ツリーの leaf の部分集合」。`markPaneTerminated` はツリーの leaf だけを
+  受理し(ツリー外の id は拒否)、`paneTree` observer はツリーから消えた
+  ペインの状態だけを落とす。したがって分割で生きた兄弟が増えても終了済みの
+  ペインは終了済みのまま、明示的な close(`Cmd+W`)で消えたペインは状態ごと
+  消える。プロジェクトの `isTerminated` は「終了済みのペインが 1 つ以上ある」。
+- **コマンドの終了では昇格しない**(必須 23、§22.2):終了はツリー置換を
+  起こさないので、終了済みのプライマリーはフラグを保持する。昇格が起きるのは
+  `Cmd+W` などの明示的な close だけである。
+- ペインが分割木から失われる経路は明示的な close(`Cmd+W`・`close_project`・
+  一覧の行選択 `Delete`)**のみ**で、コマンドの終了・終了済みペインへの打鍵では
+  失われない(必須 143)。
 
 ### 23.3 終了済み表示と Enter 再開
 
-- `ProjectTerminatedPaneView`:死んだ端末の最終フレームを薄暗く残したまま
-  (最後の出力にシェルの終わり方が出ていることが多い)、端末様式のパネル
-  (poweroff グリフ・"Shell exited"・"Press Return to start a new shell"・
-  等幅タイポ・端末自身の背景色と split divider ストローク)を重ねる。
-  hit-test 無効なので、終了済みプロジェクトのクリックは従来どおりプロジェクト focus に
-  落ち、続く Enter が再開経路へ届く。
+- `ProjectTerminatedPaneView`:**終了済みのペインごとに**(`ProjectView` が
+  `project.terminatedPanes` を `TerminalSplitTreeView.coveredPanes` として渡し、
+  `TerminalSplitLeaf` がその leaf に重ねる)、死んだ端末の最終フレームを
+  薄暗く残したまま(最後の出力にシェルの終わり方が出ていることが多い)、端末様式の
+  パネル(poweroff グリフ・"Shell exited"・"Press ⏎ to start a new shell"・
+  等幅タイポ・端末自身の背景色と split divider ストローク)を重ねる。split 層は
+  中立な「cover this leaf」概念しか知らず、どのペインを覆うかの判断は
+  project 層が持つ。hit-test 無効なので、終了済みペインのクリックは従来どおり
+  focus に落ち、続く Enter が再開経路へ届く。生きたペインには何も重ねない。
 - キー配線:`SurfaceView.keyDown` は exited ペインのキーを
   `ExitedPaneKeyRoute.route` で振り分ける。キーバインド(`keyIsBinding`。
   `performKeyEquivalent` から keyDown へ回ってくる `Cmd+L`・`Cmd+Shift+,`・
@@ -1756,52 +1775,64 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   キーバインドでないキーは `.project` で、死んだ pty へ書き込む代わりに
   `ghosttyExitedSurfaceKeyDown` を post する。`isReturn` フラグは修飾キー
   (Shift / Control / Option / Command)なしの Return・Enter のときだけ真で、
-  再開を起こすのはこのキーだけ。
-- ペインのコマンドは tmux セッションへの attach(§29.3)なので、最終ペインの
+  再開を起こすのはこのキーだけ。**それ以外のキーは何もしない**(ペインを
+  閉じない。上流の any-key-closes 契約は兄弟の有無によらず廃止)。モデルが
+  まだ終了を記録していないペインへの打鍵は、先に終了済みとして記録する。
+- ペインのコマンドは tmux セッションへの attach(§29.3)なので、ペインの
   「exit」は tmux クライアントまたは ssh の終了 — detach・セッションの終了・
   ssh の失敗や切断 — を含み、いずれも同じ終了済み経路に乗る。出力(ssh の
   エラーを含む)は最終フレームとして見えたまま残る。パネルの文言は上流どおり
   "Shell exited" のまま。
-- controller:terminated なプロジェクトでの Enter は `restartTerminatedPane` —
-  死んだペインと**同じ attach コマンド**(`restartLaunchCommand`、§29.3)で
-  新しい `SurfaceView` を生成する。セッションが生きていれば再 attach、無ければ
-  開始ディレクトリの規則で作り直す。ペインの端末とセッション名は新ペインへ
-  引き継がれる。新しい surface はモデルの
-  `WorkspaceModel.restartTerminatedPane` で**同じペインスロット**へ差し替える
-  (新ペインはプライマリーかつ focused surface になり、ノートは保持)。
-  surfaceTree を再同期し、focused プロジェクトならキーボード focus も移す。
-- terminated でない exited ペイン(兄弟あり)は上流の any-key-closes 契約を
-  維持する。判定はキー入力時に**再実行**するため、その間に兄弟が閉じ終わって
-  最終ペインになっていた場合は close ではなく terminated 化する。
+- **プロジェクト単位の再開**(必須 30):終了済みペインでの Enter は
+  controller の `restartTerminatedPanes(in:)` を呼び、**そのプロジェクトの
+  終了済みペインすべて**を 1 回で再開する(全体ビューでプライマリーだけが
+  見えているときも、zoom 中にどの終了済みペインで押しても同じ)。
+  `WorkspaceModel.terminatedPanes(in:)`(ツリー順)の各ペインについて、死んだ
+  ペインと**同じ attach コマンド**(`restartLaunchCommand`、§29.3)で新しい
+  `SurfaceView` を生成する。セッションが生きていれば再 attach、無ければ開始
+  ディレクトリの規則で作り直す。ペインの端末とセッション名は新ペインへ
+  引き継がれる。新しい surface 群はモデルの
+  `WorkspaceModel.restartTerminatedPanes(in:with:)` でそれぞれ**同じペイン
+  スロット**へ差し替える:分割の配置は変わらず、プライマリーだったスロットの
+  新ペインがプライマリーを、focused だったスロットの新ペインが focus を
+  引き継ぐ(隣への昇格は起きない)。**終了済みでないペインには触れない**
+  (生きたセッションを作り直さない)。置換の対応が終了済みペインの集合と
+  ちょうど一致しない要求は拒否する(無変化)。ノートは保持。focused
+  プロジェクトなら surfaceTree を再同期し、キーボード focus も移す。
 
 ### 23.4 永続化と喪失経路
 
 - 終了済み状態は **runtime-only**(保存しない)。復元は全ペインを保存済みの
-  tmux セッションへの attach コマンドで再生成するため(§29.3)、terminated
-  だったプロジェクトも生きて戻る(セッションが生きていれば同じ中身へ戻り、
-  無ければ作り直される)。ノート・
-  優先度・締切は ProjectState レコードに乗って保持される(§21.1、§24.1)。
+  tmux セッションへの attach コマンドで再生成するため(§29.3)、終了済みの
+  ペインを含むプロジェクトも全ペインが生きて戻る(セッションが生きていれば同じ
+  中身へ戻り、無ければ作り直される)。分割の配置とプライマリーも保存どおりに
+  戻る。ノート・優先度・締切は ProjectState レコードに乗って保持される
+  (§21.1、§24.1)。
 - プロジェクトとその情報が失われる経路は、確認ダイアログを経た明示的な close
-  操作(`Cmd+W`・`close_project`・一覧の行選択での `Delete`)**のみ**。アプリ
-  終了・再起動では従来どおり全プロジェクトが復元される。最後の 1 つでない
-  プロジェクトの close は "Close Project" の undo を登録するため、undo 期限内は
-  取り消せる(§31.4)。
+  操作(`Cmd+W`・`close_project`・一覧の行選択での `Delete`)**のみ**。ペインが
+  失われる経路も明示的な close のみ(§23.2)。アプリ終了・再起動では従来どおり
+  全プロジェクトが復元される。最後の 1 つでないプロジェクトの close は
+  "Close Project" の undo を登録するため、undo 期限内は取り消せる(§31.4)。
 
-### 23.5 テスト(ProjectTerminatedTests、18 件)
+### 23.5 テスト(ProjectTerminatedTests、17 件)
 
 ```text
 - 常時確認: 実行中プロセスの有無によらず確認要求
-- exit 判定: 最終ペインはあらゆる exit 種別で .terminated / 兄弟の正常 exit は
-  .closePane / 兄弟の異常 exit は .keepPaneAwaitingKey / 未知ペインは判定なし /
-  兄弟 close 後の再判定は .terminated へ昇格
-- terminated 状態: プロジェクトとノート・ペインを保持 / 複数ペイン中の mark は
-  拒否 / terminated プライマリーはフラグ保持 / 分割で状態クリア
-- removeExitedPane: そのペインだけ閉じる(ノート保持・hidden プロジェクト対応)/
-  最終ペインは拒否
-- 永続化: terminated プロジェクトの round trip でノート保持(状態自体は
+- 終了済み: 最後のペインの終了でプロジェクトとノート・ペインを保持 /
+  兄弟のあるペインの終了でそのペインは終了済みで残り、ツリー・他のペイン・
+  プライマリーは不変 / プライマリーの終了で他のペインは昇格しない /
+  分割されたプロジェクトの全ペインを同時に終了済みにできる / ツリー外の
+  ペインは記録できない / hidden なプロジェクトのペインも終了済みで残る /
+  終了済みの最後のペインはプライマリーを保持 / 分割で生きた兄弟が増えても
+  終了済みのまま / 終了済みペインを明示的に閉じると状態ごと消えプライマリーは
+  昇格
+- 永続化: 終了済みプロジェクトの round trip でノート保持 / 終了済みペインを
+  含む分割プロジェクトの round trip で全ペインが戻る(状態自体は
   runtime-only、復元は生きて戻る)
-- 再開: 同一スロットへ新ペイン(プライマリー化・focused 化・ノート保持・
-  状態クリア)/ 非 terminated では拒否
+- 再開: 単一ペインは同一スロットへ新ペイン(プライマリー化・focused 化・
+  ノート保持・状態クリア)/ 複数の終了済みペインをそれぞれのスロットで
+  一度に再開し、配置とプライマリーのスロットは不変・生きたペインはそのまま /
+  終了済みペインの集合とちょうど一致しない再開は拒否
 - exited ペインのキー: キーバインドは Return を含めて .binding(コアへ)/
   再開は修飾キーなしの Return・Enter だけ
 ```
@@ -2656,8 +2687,10 @@ project-terminal = <name>,<host>[,<color>]    # 繰り返し可。空値でリ�
   `set-option`)を実行する。経路(一覧のセル・ダブルクリック・rename action)に
   よらない。端末に届かなければ諦め、次の attach で揃う。
 - **終了と再 attach**(必須 132、§23):tmux クライアントや ssh の終了 —
-  detach・セッションの終了・ssh の失敗や切断 — でペインは終了済みになり、出力は
-  見えたまま残る。`Enter` は同じ attach コマンドを再実行する。
+  detach・セッションの終了・ssh の失敗や切断 — でペインは兄弟の有無によらず
+  終了済みになり、分割木の同じ位置に出力が見えたまま残る。終了済みペインでの
+  `Enter` は、そのプロジェクトの終了済みペインそれぞれで同じ attach コマンドを
+  再実行する(生きているペインのセッションには触れない)。
 - **復元**:ペインごとの端末と連番はキー `paneSessions`(と `lastPaneIndex`)で
   ペインレイアウトと同じ経路に保存され、ツリーに無いペインの記録は落とす。復元の
   デコードでは surface の生成時にコマンドが要るので、プロジェクトのデコードが

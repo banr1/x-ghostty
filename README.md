@@ -57,8 +57,9 @@ its window management with a single model:
   project shows its full split layout, with a subtle mark on the primary when
   the project has multiple panes. While zoomed, `Cmd+P` makes the focused pane
   the primary. Pane operations (splitting, pane focus movement, pane zoom,
-  resize/equalize) work only while zoomed. If the primary pane's shell exits,
-  the nearest remaining pane is promoted. The primary flag is persisted with
+  resize/equalize) work only while zoomed. If the primary pane is closed with
+  `Cmd+W`, the nearest remaining pane is promoted; if its command merely exits,
+  it stays primary as a terminated pane (see Deletion protection). The primary flag is persisted with
   the pane layout and restored across restarts. See SPEC.md §22.
 - **Priorities, deadlines & next triggers.** Each project can carry a priority
   (high/medium/low, unset by default), a date-only deadline (invalid dates are
@@ -82,10 +83,16 @@ its window management with a single model:
   once per day, silently. Deadlines, notes, and
   next triggers are left alone. See SPEC.md §24 and §28.
 - **Deletion protection.** Closing a project always asks for confirmation,
-  whether or not anything is running in it. When a project's last pane's command
-  (its tmux client or ssh) exits, the project stays as a terminated pane — its note, priority,
-  deadline, and next trigger kept — and pressing Return re-runs the pane's
-  command (its tmux attach) in the same pane.
+  whether or not anything is running in it. When a pane's command (its tmux
+  client or ssh) exits — normally, abnormally, or by being killed — the pane
+  is never closed: with or without sibling panes it stays in place as a
+  terminated pane, with its last output visible, the split layout and the
+  primary flag unchanged, and the project's note, priority, deadline, and next
+  trigger kept. Keys other than Return do nothing on it. Pressing Return on
+  any terminated pane re-runs the command (its tmux attach) of every
+  terminated pane of that project, each in its own pane, leaving live panes
+  untouched. A pane leaves the split tree only through an explicit close
+  (`Cmd+W`, `close_project`, or `Delete` on a selected row).
   The only way a project and its information are lost is an explicitly
   confirmed close (`Cmd+W` on the last pane, `close_project`, or `Delete` on
   a selected row in the project list); quitting and relaunching restores
@@ -172,8 +179,9 @@ its window management with a single model:
   `status-left` (updated on rename), and `C-s` as its prefix — your
   `~/.tmux.conf` and other sessions are left alone. When tmux or ssh exits
   (detach, session end, a failed or dropped connection) the pane becomes
-  terminated with its output still visible, and Return re-runs the same
-  attach. Restarting xghostty re-attaches every pane to its saved session.
+  terminated with its output still visible — siblings or not — and Return
+  re-runs the same attach for every terminated pane of the project.
+  Restarting xghostty re-attaches every pane to its saved session.
   Closing a pane or project kills its sessions once the undo period has
   passed (not if undone); quitting never kills them. The former OSC 7
   remote-split detection is gone, and the upstream core is back to its
