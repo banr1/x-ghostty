@@ -647,9 +647,8 @@ struct ProjectLayoutTypeTests {
         let (model, ids, panes) = Self.makeModel(3, type: type)
         let before = model.state.canonicalProjectTree.root
 
-        // Rename, priority, note: ledger rows and visibility untouched.
+        // Rename, note: ledger rows and visibility untouched.
         model.renameProject(ids[1], to: "renamed")
-        model.setProjectPriority(ids[2], to: .high)
         model.setProjectNote(ids[0], to: "note")
         #expect(model.state.canonicalProjectTree.root == before)
 

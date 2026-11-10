@@ -93,7 +93,6 @@ enum ShortcutCatalog {
             ShortcutItem(chord: "⌘A ⌘C ⌘X ⌘V ⌘Z ⌘⇧Z", label: "Standard editing (cell edit)"),
             ShortcutItem(chord: "⇥ ⇧⇥ (candidates)", label: "Close candidates, next / previous cell"),
             ShortcutItem(chord: "⌥↑↓ · ⌥←→", label: "Move row · column"),
-            ShortcutItem(chord: "↑ (top row)", label: "Enter the sort bar"),
             ShortcutItem(chord: "⌘N", label: "New project below the cursor"),
             ShortcutItem(chord: "⌘↩", label: "Focus the cursor row's project"),
             ShortcutItem(chord: "⌘⌥E", label: "Toggle full-note display"),

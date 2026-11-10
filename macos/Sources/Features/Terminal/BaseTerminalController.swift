@@ -253,8 +253,8 @@ class BaseTerminalController: NSWindowController,
         }
 
         // Persist state-only project-layer mutations. `rename_project` (both
-        // the inline editor and the `set_project_title` action), the sort
-        // actions, and the layout-type choice change `workspace.state` without
+        // the inline editor and the `set_project_title` action), the list's
+        // cell edits, and the layout-type choice change `workspace.state` without
         // touching `surfaceTree`, so they never reach `surfaceTreeDidChange`'s
         // `invalidateRestorableState`. Mirror that hook on the project layer's
         // source of truth so the ledger and names survive relaunch.
@@ -440,88 +440,15 @@ class BaseTerminalController: NSWindowController,
         self.eventMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.flagsChanged]
         ) { [weak self] event in self?.localEventHandler(event) }
-
-        // Daily priority reset (`SPEC.md` §28.3). Runs here for the launch
-        // case — with the restored workspace already installed above, so a
-        // reset that is due lands on the restored priorities.
-        startDailyPriorityResetTriggers()
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
-        priorityResetTimer?.invalidate()
         undoManager?.removeAllActions(withTarget: self)
         if let eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
         }
-    }
-
-    // MARK: Daily priority reset (SPEC §28.3)
-
-    /// Fires at the next local 06:00 so a workspace nobody touches across the
-    /// boundary still resets. Rescheduled after every firing.
-    private var priorityResetTimer: Timer?
-
-    /// Install every trigger the reset needs (`SPEC.md` §28.3): now (app
-    /// launch), at the next boundary while the app keeps running, on
-    /// reactivation, and on wake from sleep.
-    ///
-    /// The last two exist because a timer is not enough on its own: a sleeping
-    /// or backgrounded Mac can pass 06:00 with the timer suspended or coalesced
-    /// far past its fire date. The reset itself is idempotent within a workday
-    /// (the model stamps the workday it ran for), so overlapping triggers are
-    /// harmless — running once too often is impossible by construction.
-    private func startDailyPriorityResetTriggers() {
-        applyDailyPriorityResetIfNeeded()
-        scheduleNextDailyPriorityReset()
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(applicationDidBecomeActiveForPriorityReset(_:)),
-            name: NSApplication.didBecomeActiveNotification,
-            object: nil)
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(machineDidWakeForPriorityReset(_:)),
-            name: NSWorkspace.didWakeNotification,
-            object: nil)
-    }
-
-    /// Run the reset if the boundary has been crossed since it last ran. The
-    /// model owns the whole judgment; a reset that is not due is a no-op, and
-    /// one that runs changes only priorities — never the deadlines, the notes,
-    /// or the next triggers; the order moves only as the active sort state's
-    /// consequence (`SPEC.md` §28.2) — so it needs no undo entry and shows no
-    /// notification.
-    private func applyDailyPriorityResetIfNeeded() {
-        workspace.applyDailyPriorityReset()
-    }
-
-    /// Arm the timer for the next local 06:00.
-    private func scheduleNextDailyPriorityReset() {
-        priorityResetTimer?.invalidate()
-        guard let next = Workday.nextBoundary(after: Date()) else { return }
-
-        let timer = Timer(fire: next, interval: 0, repeats: false) { [weak self] _ in
-            guard let self else { return }
-            self.applyDailyPriorityResetIfNeeded()
-            self.scheduleNextDailyPriorityReset()
-        }
-        // Common modes so a menu tracking or resize loop cannot delay it.
-        RunLoop.main.add(timer, forMode: .common)
-        priorityResetTimer = timer
-    }
-
-    @objc private func applicationDidBecomeActiveForPriorityReset(_ notification: Notification) {
-        applyDailyPriorityResetIfNeeded()
-        // The clock may have moved a long way while we were inactive.
-        scheduleNextDailyPriorityReset()
-    }
-
-    @objc private func machineDidWakeForPriorityReset(_ notification: Notification) {
-        applyDailyPriorityResetIfNeeded()
-        scheduleNextDailyPriorityReset()
     }
 
     // MARK: Methods

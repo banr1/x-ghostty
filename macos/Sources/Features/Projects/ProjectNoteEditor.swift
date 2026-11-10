@@ -37,8 +37,7 @@ struct ProjectNoteEditor: View {
     let note: String
 
     /// Save the note draft and close the editor (Cmd+Enter / backdrop
-    /// click). Priority and deadline are set in the project list's cells,
-    /// never here (SPEC §24.1, §27.2).
+    /// click).
     let onEnd: (String) -> Void
 
     /// Discard the draft and close the editor (Escape).

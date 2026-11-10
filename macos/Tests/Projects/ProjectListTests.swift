@@ -22,8 +22,6 @@ struct ProjectListTests {
     private static func makeProject(
         name: String,
         note: String = "",
-        priority: ProjectPriority? = nil,
-        deadline: ProjectDeadline? = nil,
         createdAt: Date = Date()
     ) -> TestProjectState {
         TestProjectState(
@@ -31,8 +29,6 @@ struct ProjectListTests {
             name: name,
             paneTree: .init(view: TestPane()),
             note: note,
-            priority: priority,
-            deadline: deadline,
             createdAt: createdAt)
     }
 
@@ -131,13 +127,10 @@ struct ProjectListTests {
         #expect(rows.map(\.isHidden) == [false, false, false, true, true])
     }
 
-    @Test func rowContentIsTitlePriorityDeadlineAndTheNotesFirstLine() throws {
-        let deadline = try #require(ProjectDeadline(year: 2026, month: 8, day: 20))
+    @Test func rowContentIsTitleAndTheNotesFirstLine() throws {
         let a = Self.makeProject(
             name: "alpha",
-            note: "first line\nsecond line\nthird",
-            priority: .high,
-            deadline: deadline)
+            note: "first line\nsecond line\nthird")
         let b = Self.makeProject(name: "beta")
         let model = try Self.makeModel(visible: [a, b])
         model.beginProjectList()
@@ -145,13 +138,9 @@ struct ProjectListTests {
         let rows = model.projectListRows
 
         #expect(rows[0].title == "alpha")
-        #expect(rows[0].priority == .high)
-        #expect(rows[0].deadline == deadline)
         #expect(rows[0].noteFirstLine == "first line")
-        // Unset fields stay unset so the view renders blanks.
+        // An empty note stays empty so the view renders a blank.
         #expect(rows[1].title == "beta")
-        #expect(rows[1].priority == nil)
-        #expect(rows[1].deadline == nil)
         #expect(rows[1].noteFirstLine == "")
     }
 

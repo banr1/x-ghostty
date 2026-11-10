@@ -656,8 +656,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
 
     /// Commit a candidate-menu selection (`SPEC.md` §27.6), only while the
     /// list session is up: the selected value lands through the same setters
-    /// as any other entry point, so a change re-sorts immediately while a
-    /// key sort state is active (SPEC §24.4). Escape's close never reaches
+    /// as any other entry point. Escape's close never reaches
     /// the model — the view just discards the menu session.
     ///
     /// - Returns: whether the commit was accepted (an unknown project is
@@ -672,12 +671,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             state.setProjectKind(id, to: kind)
         case .terminal(let terminal):
             state.setProjectTerminal(id, to: terminalRegistry.storedName(for: terminal))
-        case .priority(let priority):
-            setProjectPriority(id, to: priority)
-        case .nextTrigger(let trigger):
-            setProjectNextTrigger(id, to: trigger)
-        case .deadline(let deadline):
-            setProjectDeadline(id, to: deadline)
         }
         return true
     }
@@ -714,25 +707,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         guard target != from else { return nil }
         state.moveProjectRow(id, to: target)
         return target
-    }
-
-    /// The approved row move under an active sort (`SPEC.md` §24.4, §27.1):
-    /// the confirmation's OK inherits the current display order as the
-    /// manual order — `setSortState(.manual)` stops the re-sorts, which is
-    /// the whole inheritance — and then performs the move, in one call so
-    /// the approval cannot half-apply. Refused in the manual state (manual
-    /// moves are confirmation-free and go through `moveProjectListRow`
-    /// directly).
-    ///
-    /// - Returns: the moved row's new ledger index, or `nil` when nothing
-    ///   moved. A clamped edge move still keeps the approved switch to
-    ///   manual — the user approved leaving the sort, and the order they
-    ///   see is the order they keep.
-    @discardableResult
-    func approveSortedRowMove(_ id: ProjectID, by delta: Int) -> Int? {
-        guard projectListActive, state.sortState != .manual else { return nil }
-        setProjectSortState(.manual)
-        return moveProjectListRow(id, by: delta)
     }
 
     /// Move `column` one-or-more places left (negative `delta`) or right in
@@ -880,26 +854,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state = next
 
         return state.projects[target]?.focusedSurface
-    }
-
-    // MARK: Daily priority reset (SPEC §28)
-
-    /// Run the daily priority reset if the local 06:00 boundary has been
-    /// crossed since it last ran (`SPEC.md` §28.2). Called at app launch and
-    /// whenever the app can have slept through a boundary (wake, reactivation);
-    /// calling it more often is harmless because the stored workday makes it
-    /// idempotent within a day.
-    ///
-    /// Silent by design: no notification, no marker, and no reordering — the
-    /// arrangement is untouched (§28.3).
-    ///
-    /// - Returns: whether the reset actually ran.
-    @discardableResult
-    func applyDailyPriorityReset(now: Date = Date(), calendar: Calendar = .current) -> Bool {
-        var next = state
-        guard next.resetPrioritiesIfNeeded(at: now, calendar: calendar) else { return false }
-        state = next
-        return true
     }
 
     // MARK: Layout-type selection (SPEC §26)
@@ -1260,101 +1214,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         noteEditingProject = nil
     }
 
-    // MARK: Priority & deadline (SPEC §24)
-
-    /// Set (or unset, with `nil`) the priority of project `id` (SPEC §24.1).
-    /// No-op when the project is unknown or the value is unchanged. A change
-    /// re-sorts immediately while a key sort state is active (SPEC §24.4).
-    func setProjectPriority(_ id: ProjectID, to priority: ProjectPriority?) {
-        guard var project = state.projects[id], project.priority != priority else { return }
-        project.priority = priority
-        state.projects[id] = project
-        state.resortProjects()
-    }
-
-    /// Set (or unset, with `nil`) the deadline of project `id` (SPEC §24.1).
-    /// No-op when the project is unknown or the value is unchanged. A change
-    /// re-sorts immediately while a key sort state is active (SPEC §24.4).
-    func setProjectDeadline(_ id: ProjectID, to deadline: ProjectDeadline?) {
-        guard var project = state.projects[id], project.deadline != deadline else { return }
-        project.deadline = deadline
-        state.projects[id] = project
-        state.resortProjects()
-    }
-
-    /// Save-time boundary for deadline text input (SPEC §24.1): parse
-    /// `input` as a date-only deadline and store it; empty input clears the
-    /// deadline deliberately, and *invalid* input (wrong shape or an
-    /// impossible date) is rejected to unset.
-    ///
-    /// - Returns: `false` only for the rejected-invalid case, so an editor
-    ///   can distinguish "cleared" from "rejected"; the stored outcome is
-    ///   unset either way.
-    @discardableResult
-    func setProjectDeadline(_ id: ProjectID, parsing input: String) -> Bool {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            setProjectDeadline(id, to: nil)
-            return true
-        }
-        let parsed = ProjectDeadline(parsing: trimmed)
-        setProjectDeadline(id, to: parsed)
-        return parsed != nil
-    }
-
-    /// Set (or unset, with `nil`) the next trigger of project `id`
-    /// (SPEC §24.6). No-op when the project is unknown or the value is
-    /// unchanged. A change re-sorts immediately while a key sort state is
-    /// active (SPEC §24.4).
-    func setProjectNextTrigger(_ id: ProjectID, to trigger: ProjectNextTrigger?) {
-        guard var project = state.projects[id], project.nextTrigger != trigger else { return }
-        project.nextTrigger = trigger
-        state.projects[id] = project
-        state.resortProjects()
-    }
-
-    /// The priority of project `id`, or `nil` for unset / an unknown project.
-    func projectPriority(of id: ProjectID) -> ProjectPriority? {
-        state.projects[id]?.priority
-    }
-
-    /// The deadline of project `id`, or `nil` for unset / an unknown project.
-    func projectDeadline(of id: ProjectID) -> ProjectDeadline? {
-        state.projects[id]?.deadline
-    }
-
-    /// The next trigger of project `id`, or `nil` for unset / an unknown
-    /// project.
-    func projectNextTrigger(of id: ProjectID) -> ProjectNextTrigger? {
-        state.projects[id]?.nextTrigger
-    }
-
-    /// Every row — hidden ones included — in priority order (SPEC §24.3).
-    /// Forwarded from the state so the sort actions, render paths, and tests
-    /// share one judgment.
-    func priorityOrderedProjectIDs() -> [ProjectID] {
-        state.priorityOrderedProjectIDs()
-    }
-
-    /// Every row — hidden ones included — in deadline order (SPEC §24.3).
-    /// Forwarded from the state so the sort actions, render paths, and tests
-    /// share one judgment.
-    func deadlineOrderedProjectIDs() -> [ProjectID] {
-        state.deadlineOrderedProjectIDs()
-    }
-
-    /// Every project whose deadline is past `today` (SPEC §24.2). Forwarded
-    /// from the state so the display layers and tests share one judgment.
-    func overdueProjectIDs(today: ProjectDeadline) -> Set<ProjectID> {
-        state.overdueProjectIDs(today: today)
-    }
-
-    /// Whether project `id` is overdue as of `today` (SPEC §24.2): unset
-    /// deadlines never are, and the deadline's own day is not yet overdue.
-    func isProjectOverdue(_ id: ProjectID, today: ProjectDeadline) -> Bool {
-        state.projects[id]?.deadline?.isOverdue(today: today) ?? false
-    }
-
     // MARK: Primary pane (SPEC §22)
 
     /// The overall (non-zoomed) view's display target per project: exactly each
@@ -1415,32 +1274,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     /// state so the render path and tests share one judgment.
     var primaryMarkPaneIDs: [ProjectID: SurfaceID] {
         state.primaryMarkPaneIDs
-    }
-
-    // MARK: Sort state (SPEC §24.4–24.5)
-
-    /// The sort state governing the row order (SPEC §24.4): manual / next /
-    /// show / deadline / priority, manual by default, persisted. Forwarded
-    /// from the state so the sort bar, render paths, and tests share one
-    /// judgment.
-    var projectSortState: ProjectSortState {
-        state.sortState
-    }
-
-    /// Select a sort state (the sort bar's Enter, SPEC §24.4). A key state
-    /// applies its stable ordering immediately — over every row, hidden ones
-    /// included — and keeps governing the order until the state changes:
-    /// every later key-value change, creation, load, and priority reset
-    /// re-sorts on its own. Selecting manual inherits the current display
-    /// order as the manual order (the rows simply stop being re-sorted);
-    /// this is also the model half of the sorted row-move approval
-    /// (SPEC §27.3): approve by selecting manual, then move the row.
-    ///
-    /// - Returns: whether the row order changed (a state change that leaves
-    ///   the order intact returns false).
-    @discardableResult
-    func setProjectSortState(_ newState: ProjectSortState) -> Bool {
-        state.setSortState(newState)
     }
 
     /// The pane-count badge per project — the total pane count, only in the

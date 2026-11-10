@@ -28,20 +28,16 @@ struct ProjectNoteOverviewOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// The model's single judgment of what this panel shows (`SPEC.md`
-    /// §21.3, §24): note, priority, deadline, and next trigger.
-    private var content: ProjectOverviewContent { project.overviewContent }
-
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
             Group {
-                if content.note.isEmpty {
+                if project.note.isEmpty {
                     Text("no note")
                         .opacity(0.4)
                 } else {
-                    Text(content.note)
+                    Text(project.note)
                 }
             }
             .font(.system(size: 12, design: .monospaced))
@@ -63,28 +59,14 @@ struct ProjectNoteOverviewOverlay: View {
         .shadow(radius: 8)
     }
 
-    /// Header band: the project name plus the priority/deadline meta and the
-    /// next trigger (SPEC §24 — the overview shows them with the note; unset
-    /// values show nothing, an overdue deadline is subtly emphasized; the
-    /// next trigger appears here and never in the label band, §24.6). Styled
-    /// like `ProjectNoteEditor`'s header so the two note surfaces read as one
-    /// family.
+    /// Header band: the project name alone — the overview shows nothing but
+    /// the note (`SPEC.md` §21.3). Styled like `ProjectNoteEditor`'s header
+    /// so the two note surfaces read as one family.
     private var header: some View {
         HStack {
             Text(project.name)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            ProjectPriorityDeadlineMeta(
-                priority: content.priority,
-                deadline: content.deadline,
-                isOverdue: content.deadline?.isOverdue(today: ProjectDeadline(from: Date())) ?? false)
-            if let trigger = content.nextTrigger {
-                Text(trigger.displayText)
-                    .font(.system(size: 10, design: .monospaced))
-                    .opacity(0.5)
-                    .lineLimit(1)
-                    .accessibilityLabel(Text("Next trigger \(trigger.rawValue)"))
-            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

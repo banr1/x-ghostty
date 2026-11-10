@@ -23,19 +23,15 @@ struct ProjectTerminalColumnTests {
         registrations: ["mini,mac-mini,colour33", "loop,mini-loopback,colour166"],
         hostname: "mac-mini")
 
-    private static let today = ProjectDeadline(parsing: "2026-10-30")!
-
     private static func makeProject(
         name: String,
         terminalName: String? = nil,
-        priority: ProjectPriority? = nil,
         at date: Date = Date(timeIntervalSince1970: 0)
     ) -> TestProjectState {
         TestProjectState(
             id: ProjectID(),
             name: name,
             paneTree: .init(view: TestPane()),
-            priority: priority,
             terminalName: terminalName,
             createdAt: date)
     }
@@ -124,11 +120,10 @@ struct ProjectTerminalColumnTests {
         #expect(column.enterAction == .enumerateCandidates)
         #expect(column.deleteAction == .clearValue)
         #expect(ProjectListColumn.defaultOrder == [
-            .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
+            .visibility, .kind, .title, .terminal, .note,
         ])
         let row = ProjectListRow(
-            id: ProjectID(), title: "alpha", ordinal: 1, isHidden: false,
-            priority: nil, deadline: nil, nextTrigger: nil, note: "")
+            id: ProjectID(), title: "alpha", ordinal: 1, isHidden: false, note: "")
         #expect(row.editableText(for: .terminal) == nil)
         #expect(ProjectListCellEdit(row: row, column: .terminal) == nil)
     }
@@ -137,7 +132,7 @@ struct ProjectTerminalColumnTests {
         let project = Self.makeProject(name: "alpha")
         let row = try Self.row(of: project.id, in: Self.makeState([project]))
         let menu = try #require(ProjectListCandidateMenu.opened(
-            on: row, column: .terminal, today: Self.today, terminals: Self.terminals))
+            on: row, column: .terminal, terminals: Self.terminals))
 
         #expect(menu.items.map(\.displayText) == ["mini", "loop"])
         #expect(menu.items == Self.terminals.terminals.map { .terminal($0) })
@@ -149,7 +144,7 @@ struct ProjectTerminalColumnTests {
         let project = Self.makeProject(name: "alpha")
         let row = try Self.row(of: project.id, in: Self.makeState([project]))
         let menu = try #require(ProjectListCandidateMenu.opened(
-            on: row, column: .terminal, today: Self.today, terminals: terminals))
+            on: row, column: .terminal, terminals: terminals))
         #expect(menu.items.map(\.displayText) == ["loop", "banri-air"])
     }
 
@@ -165,11 +160,10 @@ struct ProjectTerminalColumnTests {
         #expect(model.state.projects[a.id]?.terminalName == nil)
     }
 
-    @Test func theTerminalIsNotASortKey() throws {
-        let a = Self.makeProject(name: "alpha", priority: .low)
-        let b = Self.makeProject(name: "beta", priority: .high, at: Date(timeIntervalSince1970: 1))
+    @Test func aTerminalChangeLeavesTheRowOrderAlone() throws {
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
         let model = Self.makeListModel([a, b])
-        model.setProjectSortState(.priority)
         let order = model.state.projectOrder
         let loop = try #require(Self.terminals.registeredTerminal(named: "loop"))
 

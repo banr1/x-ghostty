@@ -25,9 +25,8 @@ struct ProjectListRowSelectionTests {
     private static func makeProject(
         name: String,
         note: String = "",
-        priority: ProjectPriority? = nil,
-        deadline: ProjectDeadline? = nil,
-        nextTrigger: ProjectNextTrigger? = nil,
+        kind: ProjectKind = .core,
+        terminalName: String? = nil,
         at date: Date = Date(timeIntervalSince1970: 0)
     ) -> TestProjectState {
         TestProjectState(
@@ -35,9 +34,8 @@ struct ProjectListRowSelectionTests {
             name: name,
             paneTree: .init(view: TestPane()),
             note: note,
-            priority: priority,
-            deadline: deadline,
-            nextTrigger: nextTrigger,
+            terminalName: terminalName,
+            kind: kind,
             createdAt: date)
     }
 
@@ -62,9 +60,8 @@ struct ProjectListRowSelectionTests {
         // Title and the value columns clear immediately; the note — many
         // lines of handwriting — asks first; visibility has no value.
         #expect(ProjectListColumn.title.deleteAction == .clearValue)
-        #expect(ProjectListColumn.priority.deleteAction == .clearValue)
-        #expect(ProjectListColumn.deadline.deleteAction == .clearValue)
-        #expect(ProjectListColumn.nextTrigger.deleteAction == .clearValue)
+        #expect(ProjectListColumn.kind.deleteAction == .clearValue)
+        #expect(ProjectListColumn.terminal.deleteAction == .clearValue)
         #expect(ProjectListColumn.note.deleteAction == .confirmClearNote)
         #expect(ProjectListColumn.visibility.deleteAction == .none)
     }
@@ -73,9 +70,8 @@ struct ProjectListRowSelectionTests {
         let project = Self.makeProject(
             name: "alpha",
             note: "line 1\nline 2\nline 3",
-            priority: .high,
-            deadline: ProjectDeadline(parsing: "2026-08-19"),
-            nextTrigger: .event)
+            kind: .side,
+            terminalName: "loop")
         let other = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
         let model = Self.makeListModel(Self.makeState([project, other]))
 
@@ -83,13 +79,11 @@ struct ProjectListRowSelectionTests {
         #expect(model.deleteProjectListCellValue(.title, for: project.id))
         #expect(model.state.projects[project.id]?.name == "")
 
-        // The value columns unset.
-        #expect(model.deleteProjectListCellValue(.priority, for: project.id))
-        #expect(model.projectPriority(of: project.id) == nil)
-        #expect(model.deleteProjectListCellValue(.deadline, for: project.id))
-        #expect(model.projectDeadline(of: project.id) == nil)
-        #expect(model.deleteProjectListCellValue(.nextTrigger, for: project.id))
-        #expect(model.projectNextTrigger(of: project.id) == nil)
+        // The kind returns to Core and the terminal to the local one.
+        #expect(model.deleteProjectListCellValue(.kind, for: project.id))
+        #expect(model.state.projects[project.id]?.kind == .core)
+        #expect(model.deleteProjectListCellValue(.terminal, for: project.id))
+        #expect(model.state.projects[project.id]?.terminalName == nil)
 
         // An approved note deletion loses every line.
         #expect(model.deleteProjectListCellValue(.note, for: project.id))
@@ -101,26 +95,12 @@ struct ProjectListRowSelectionTests {
         #expect(!model.state.isProjectHidden(project.id))
     }
 
-    @Test func deletingASortKeyValueResortsWhileASortIsActive() {
-        let high = Self.makeProject(name: "high", priority: .high)
-        let medium = Self.makeProject(
-            name: "medium", priority: .medium, at: Date(timeIntervalSince1970: 1))
-        let model = Self.makeListModel(Self.makeState([high, medium]))
-        model.setProjectSortState(.priority)
-        #expect(model.state.projectOrder == [high.id, medium.id])
-
-        // Deleting the top row's priority makes it unset, which sorts last
-        // (SPEC §24.3) — the change re-sorts immediately (§24.4).
-        #expect(model.deleteProjectListCellValue(.priority, for: high.id))
-        #expect(model.state.projectOrder == [medium.id, high.id])
-    }
-
     @Test func deleteRequiresTheListSession() {
-        let project = Self.makeProject(name: "alpha", priority: .high)
+        let project = Self.makeProject(name: "alpha", kind: .side)
         let model = TestWorkspaceModel(Self.makeState([project]))
 
-        #expect(!model.deleteProjectListCellValue(.priority, for: project.id))
-        #expect(model.projectPriority(of: project.id) == .high)
+        #expect(!model.deleteProjectListCellValue(.kind, for: project.id))
+        #expect(model.state.projects[project.id]?.kind == .side)
     }
 
     // MARK: Row-selection transitions (SPEC §27.2)

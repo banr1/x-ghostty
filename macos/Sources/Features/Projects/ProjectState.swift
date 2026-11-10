@@ -77,35 +77,17 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     /// restored project is live again (`SPEC.md` §23.4).
     private(set) var terminatedPanes: Set<SurfaceID> = []
 
-    /// The human-set priority of this project, or `nil` for unset — the default
-    /// (`SPEC.md` §24.1). Like the note, it belongs to the project as a whole
-    /// and persists through the same record.
-    var priority: ProjectPriority?
-
-    /// The human-set deadline of this project (date only, no time), or `nil`
-    /// for unset — the default (`SPEC.md` §24.1). Validation lives in
-    /// `ProjectDeadline`: an invalid date cannot be represented, so an invalid
-    /// input is rejected to unset at the model boundary. Persists through the
-    /// same record as the note.
-    var deadline: ProjectDeadline?
-
-    /// Who or what moves this project next (`SPEC.md` §24.6), or `nil` for
-    /// unset — the default. Human-written workspace information like the
-    /// priority, persisted through the same record; the daily priority reset
-    /// never touches it, and the label band never shows it.
-    var nextTrigger: ProjectNextTrigger?
-
     /// The display name of the registered terminal this project's panes run
     /// on, or `nil` for the local terminal — the default (must 128).
-    /// Persisted like the priority. A name no longer registered is kept as is
+    /// Persisted like the note. A name no longer registered is kept as is
     /// and resolves to the local terminal (`ProjectTerminalRegistry
     /// .terminal(named:)`), so re-registering it brings the project back.
     var terminalName: String?
 
     /// How much of the overall view this project takes (must 140): Core — the
-    /// default — or Side. Persisted like the priority. It changes nothing but
+    /// default — or Side. Persisted like the note. It changes nothing but
     /// the size in the overall view: the label band, the note overview and the
-    /// zoom show no mark for it, and it is not a sort key.
+    /// zoom show no mark for it.
     var kind: ProjectKind
 
     /// The tmux session each started pane lives in (must 129): its terminal
@@ -132,9 +114,6 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         focusedSurface: SurfaceID? = nil,
         note: String = "",
         primaryPane: SurfaceID? = nil,
-        priority: ProjectPriority? = nil,
-        deadline: ProjectDeadline? = nil,
-        nextTrigger: ProjectNextTrigger? = nil,
         terminalName: String? = nil,
         kind: ProjectKind = .core,
         createdAt: Date,
@@ -150,27 +129,10 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
         self.primaryPane = paneTree.normalizedPrimary(
             from: [primaryPane?.rawValue].compactMap { $0 }
         ).map(SurfaceID.init(rawValue:))
-        self.priority = priority
-        self.deadline = deadline
-        self.nextTrigger = nextTrigger
         self.terminalName = terminalName
         self.kind = kind
         self.createdAt = createdAt
         self.lastFocusedAt = lastFocusedAt
-    }
-
-    /// What the note overview shows for this project (`SPEC.md` §21.3, §24):
-    /// the note together with the priority, deadline, and next trigger. One
-    /// model judgment shared by the overlay and the tests, so "what the
-    /// overview displays" cannot drift from what is asserted. The label band
-    /// deliberately reads priority/deadline directly and never the next
-    /// trigger (§24.6).
-    var overviewContent: ProjectOverviewContent {
-        ProjectOverviewContent(
-            note: note,
-            priority: priority,
-            deadline: deadline,
-            nextTrigger: nextTrigger)
     }
 
     /// Replace the note with `raw`, normalized through `normalizedNote`. The
@@ -459,9 +421,6 @@ extension ProjectStateOf: Codable {
         case focusedSurface
         case note
         case primaryPanes
-        case priority
-        case deadline
-        case nextTrigger
         case terminal
         case kind
         case paneSessions
@@ -514,16 +473,10 @@ extension ProjectStateOf: Codable {
         self.primaryPane = paneTree.normalizedPrimary(
             from: flagged.map(\.rawValue)
         ).map(SurfaceID.init(rawValue:))
-        // Priority/deadline follow the invalid-to-unset rule (SPEC §24.1) on
-        // the restore path too: a save carrying an unknown priority value or
-        // an impossible date decodes as unset rather than rejecting the whole
-        // project record.
-        self.priority = (try? c.decodeIfPresent(ProjectPriority.self, forKey: .priority)) ?? nil
-        self.deadline = (try? c.decodeIfPresent(ProjectDeadline.self, forKey: .deadline)) ?? nil
-        // The next trigger follows the same invalid-to-unset rule (SPEC
-        // §24.6): an unknown value in a save decodes as unset.
-        self.nextTrigger =
-            (try? c.decodeIfPresent(ProjectNextTrigger.self, forKey: .nextTrigger)) ?? nil
+        // Saves written while priorities, deadlines, and next triggers existed
+        // still carry `priority` / `deadline` / `nextTrigger`: the keyed
+        // container ignores keys it does not declare, so they are dropped
+        // silently and never written again (must 145).
         self.paneBindings = restored.filter { tree.find(id: $0.key.rawValue) != nil }
         self.lastPaneIndex = restoredLast
         self.createdAt = try c.decode(Date.self, forKey: .createdAt)
@@ -542,9 +495,6 @@ extension ProjectStateOf: Codable {
         // save always holds exactly one entry; the list form exists so decode
         // can *repair* a corrupt save rather than reject it.
         try c.encode([primaryPane].compactMap { $0 }, forKey: .primaryPanes)
-        try c.encodeIfPresent(priority, forKey: .priority)
-        try c.encodeIfPresent(deadline, forKey: .deadline)
-        try c.encodeIfPresent(nextTrigger, forKey: .nextTrigger)
         try c.encodeIfPresent(terminalName, forKey: .terminal)
         // Core is the default and writes no key, like the local terminal.
         if kind != .core { try c.encode(kind, forKey: .kind) }
@@ -573,12 +523,6 @@ extension ProjectStateOf: Codable {
 /// The runtime specialization: pane elements are live surface views.
 typealias ProjectState = ProjectStateOf<XGhostty.SurfaceView>
 
-// MARK: Priority (SPEC §24.1)
-
-/// The human-set priority of a project: `high` / `medium` / `low`. "Unset" —
-/// the default — is the absence of a value (`ProjectState.priority == nil`),
-/// mirroring how the deadline models it, so a fourth case cannot drift from
-/// the optional's semantics.
 /// A project's kind (must 140): the size class it takes in the overall view.
 /// `allCases` is the candidate order, Core then Side.
 enum ProjectKind: String, Codable, CaseIterable, Equatable {
@@ -600,200 +544,6 @@ enum ProjectKind: String, Codable, CaseIterable, Equatable {
         case .core: return 1
         case .side: return 0.5
         }
-    }
-}
-
-/// A project's priority (`SPEC.md` §24.1).
-enum ProjectPriority: String, Codable, CaseIterable, Equatable {
-    case high
-    case medium
-    case low
-
-    /// Position of this priority in the priority sort order (SPEC §24.3):
-    /// high → medium → low, with unset after all of them (`unsetSortRank`).
-    var sortRank: Int {
-        switch self {
-        case .high: return 0
-        case .medium: return 1
-        case .low: return 2
-        }
-    }
-
-    /// The sort rank of an unset priority: last (SPEC §24.3).
-    static var unsetSortRank: Int { 3 }
-}
-
-// MARK: Next trigger (SPEC §24.6)
-
-/// Who or what moves a project next: the human's own action, anyone else
-/// (team members and people outside the organization alike), or an external
-/// event. "Unset" — the default — is the absence of a value
-/// (`ProjectState.nextTrigger == nil`), mirroring the priority. Human-written
-/// workspace information, distinct from any terminal-observed live state.
-///
-/// Four values by design (`SPEC.md` §24.6): the former "team member" value is
-/// abolished and merged into "external", and a save still carrying it is
-/// migrated to `.externalPerson` on load.
-enum ProjectNextTrigger: String, Codable, CaseIterable, Equatable {
-    case myself
-    case externalPerson
-    case event
-
-    /// The compact terminal-style readout the note overview and the list
-    /// cell show for this value. The bare value carries no prefix: it is
-    /// self-evident next to the note (and under the list's "next" header).
-    var displayText: String {
-        switch self {
-        case .myself: return "me"
-        case .externalPerson: return "external"
-        case .event: return "event"
-        }
-    }
-
-    /// Decode with the load migration (`SPEC.md` §24.6): a persisted
-    /// `teamMember` — written before the value was abolished — reads back as
-    /// `.externalPerson`; unknown values still fail decode, which the project
-    /// record's lenient decode turns into unset.
-    init(from decoder: Decoder) throws {
-        let raw = try decoder.singleValueContainer().decode(String.self)
-        if raw == "teamMember" {
-            self = .externalPerson
-            return
-        }
-        guard let value = ProjectNextTrigger(rawValue: raw) else {
-            throw DecodingError.dataCorrupted(.init(
-                codingPath: decoder.codingPath,
-                debugDescription: "unknown next trigger: \(raw)"))
-        }
-        self = value
-    }
-}
-
-// MARK: Overview content (SPEC §21.3, §24)
-
-/// The display content of one project's note-overview panel: the note plus
-/// the priority, deadline, and next trigger. A pure model value so the
-/// overview's "what is shown" is a single testable judgment.
-struct ProjectOverviewContent: Equatable {
-    let note: String
-    let priority: ProjectPriority?
-    let deadline: ProjectDeadline?
-    let nextTrigger: ProjectNextTrigger?
-}
-
-// MARK: Deadline (SPEC §24.1)
-
-/// A project's deadline: a calendar date with no time component (SPEC §24.1).
-///
-/// Validation is constructive — the failable initializers are the only way to
-/// obtain a value, and they reject anything that is not a real Gregorian
-/// calendar date, so an invalid deadline (2026-02-30, month 13, garbage text)
-/// is unrepresentable and collapses to unset (`nil`) at the model boundary.
-struct ProjectDeadline: Codable, Equatable, Hashable, Comparable {
-    let year: Int
-    let month: Int
-    let day: Int
-
-    /// A single date-only value for ordering and equality: later dates are
-    /// strictly greater. Also the deadline sort key (SPEC §24.3).
-    var ordinalValue: Int { year * 10_000 + month * 100 + day }
-
-    static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.ordinalValue < rhs.ordinalValue
-    }
-
-    /// Build from components, rejecting anything that is not a real date on
-    /// the Gregorian calendar (leap days included; year bounded to four
-    /// digits so the text form stays unambiguous).
-    init?(year: Int, month: Int, day: Int) {
-        guard (1000...9999).contains(year) else { return nil }
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        guard components.isValidDate(in: Self.gregorian) else { return nil }
-        self.year = year
-        self.month = month
-        self.day = day
-    }
-
-    /// Parse user input of the form `YYYY-MM-DD` (or `YYYY/MM/DD`; month and
-    /// day may be one or two digits). Anything else — wrong shape, non-digits,
-    /// or an impossible date — is `nil`: the save-time rejection of invalid
-    /// deadline input (SPEC §24.1).
-    init?(parsing input: String) {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parts = trimmed
-            .replacingOccurrences(of: "/", with: "-")
-            .components(separatedBy: "-")
-        guard parts.count == 3,
-              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }),
-              parts[0].count == 4, parts[1].count <= 2, parts[2].count <= 2,
-              let year = Int(parts[0]),
-              let month = Int(parts[1]),
-              let day = Int(parts[2])
-        else { return nil }
-        self.init(year: year, month: month, day: day)
-    }
-
-    /// The date-only value of `date` in the current (or given) calendar — the
-    /// runtime "today" the overdue judgment compares against (SPEC §24.2).
-    init(from date: Date, calendar: Calendar = Calendar.current) {
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        // Direct member init bypassing validation: real calendar components
-        // are a real date by construction.
-        self.year = components.year ?? 0
-        self.month = components.month ?? 0
-        self.day = components.day ?? 0
-    }
-
-    /// Whether this deadline is past `today` (SPEC §24.2): strictly earlier —
-    /// the deadline's own day is not yet overdue. Date-only comparison; the
-    /// single-stage judgment behind the subtle overdue emphasis.
-    func isOverdue(today: ProjectDeadline) -> Bool {
-        self < today
-    }
-
-    /// This date moved `days` forward (negative: back) on the Gregorian
-    /// calendar, rolling over month and year boundaries. `nil` only when the
-    /// arithmetic leaves the representable four-digit-year range.
-    func advanced(by days: Int) -> ProjectDeadline? {
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        guard let date = Self.gregorian.date(from: components),
-              let moved = Self.gregorian.date(byAdding: .day, value: days, to: date)
-        else { return nil }
-        let result = Self.gregorian.dateComponents([.year, .month, .day], from: moved)
-        return ProjectDeadline(
-            year: result.year ?? 0, month: result.month ?? 0, day: result.day ?? 0)
-    }
-
-    /// The canonical `YYYY-MM-DD` text form (also what the editor shows).
-    var displayText: String {
-        String(format: "%04d-%02d-%02d", year, month, day)
-    }
-
-    private static let gregorian = Calendar(identifier: .gregorian)
-
-    // Codable: persist as the canonical text form so the saved record stays
-    // readable, and re-validate on decode — a hand-edited or corrupt save
-    // holding an impossible date fails decode, which the project record's
-    // lenient decode turns into unset (SPEC §24.1).
-    init(from decoder: Decoder) throws {
-        let text = try decoder.singleValueContainer().decode(String.self)
-        guard let parsed = ProjectDeadline(parsing: text) else {
-            throw DecodingError.dataCorrupted(.init(
-                codingPath: decoder.codingPath,
-                debugDescription: "invalid deadline: \(text)"))
-        }
-        self = parsed
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(displayText)
     }
 }
 

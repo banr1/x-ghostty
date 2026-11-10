@@ -3,8 +3,8 @@ import Foundation
 /// Undo/redo history for one note-editing session (`SPEC.md` §21.2).
 ///
 /// Scope is the Essence's, exactly: the history opens with the editor and dies
-/// with it, and it covers the note body alone — priority and deadline are not
-/// in it. That is why this is our own stack rather than the text view's
+/// with it, and it covers the note body alone — the project's other values are
+/// not in it. That is why this is our own stack rather than the text view's
 /// `NSUndoManager`: the responder chain's undo manager is the *window's*, which
 /// holds the project-layer's own undo entries (hide, show, apply layout), so
 /// routing Cmd+Z there would let a note edit undo a workspace change.

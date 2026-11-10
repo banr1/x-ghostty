@@ -144,12 +144,8 @@ struct TerminalWorkspaceView: View {
                     terminals: workspace.terminalRegistry,
                     fullNotes: workspace.projectListFullNotes,
                     pendingTitleEdit: workspace.projectListPendingTitleEdit,
-                    sortState: workspace.projectSortState,
                     canToggle: { workspace.canToggleProjectListVisibility($0) },
                     canFocus: { workspace.canFocusProjectListRow($0) },
-                    isOverdue: {
-                        workspace.isProjectOverdue($0, today: ProjectDeadline(from: Date()))
-                    },
                     onToggle: onToggleProjectListVisibility,
                     onFocus: onFocusProjectListRow,
                     onClose: onCloseProjectList,
@@ -164,15 +160,8 @@ struct TerminalWorkspaceView: View {
                     // confirmation happens in the overlay before this fires.
                     onDeleteCellValue: { workspace.deleteProjectListCellValue($0, for: $1) },
                     onMoveRow: { workspace.moveProjectListRow($0, by: $1) },
-                    // The sorted-move approval is model-only: inherit the
-                    // display order as manual, then move (SPEC §24.4).
-                    onApproveSortedMove: { workspace.approveSortedRowMove($0, by: $1) },
                     onMoveColumn: { workspace.moveProjectListColumn($0, by: $1) },
                     onToggleFullNotes: { workspace.toggleProjectListFullNotes() },
-                    // Applying a sort state is model-only: the ledger
-                    // reorders and the arrangement re-forms behind the list
-                    // (SPEC §24.4); no `surfaceTree` swap is involved.
-                    onSetSortState: { workspace.setProjectSortState($0) },
                     onCreate: onCreateProjectListRow,
                     onConsumePendingTitleEdit: { workspace.clearProjectListPendingTitleEdit() },
                     shortcutListActive: workspace.shortcutListActive,

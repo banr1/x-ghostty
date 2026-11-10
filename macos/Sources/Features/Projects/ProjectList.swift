@@ -8,16 +8,13 @@ import Foundation
 /// order. `isHidden` is its own field because a missing number does not mean
 /// hidden.
 ///
-/// Unset fields are represented as they are in the model (`nil` priority, `nil`
-/// deadline / next trigger, empty `note`); the view renders those as blanks.
+/// Unset fields are represented as they are in the model (`nil` terminal for
+/// the local one, empty `note`); the view renders an empty note as a blank.
 struct ProjectListRow: Equatable, Identifiable {
     let id: ProjectID
     let title: String
     let ordinal: Int?
     let isHidden: Bool
-    let priority: ProjectPriority?
-    let deadline: ProjectDeadline?
-    let nextTrigger: ProjectNextTrigger?
 
     /// The project's stored terminal name, `nil` for the local terminal
     /// (must 128). The cell shows the name it resolves to in the registry
@@ -60,9 +57,8 @@ struct ProjectListRow: Equatable, Identifiable {
     func editableText(for column: ProjectListColumn) -> String? {
         switch column {
         case .title: return title
-        case .deadline: return deadline?.displayText ?? ""
         case .note: return note
-        case .visibility, .kind, .terminal, .priority, .nextTrigger: return nil
+        case .visibility, .kind, .terminal: return nil
         }
     }
 }
@@ -70,21 +66,21 @@ struct ProjectListRow: Equatable, Identifiable {
 /// A column of the project list (`SPEC.md` §27.1). The raw value is the
 /// persistence spelling of the column order.
 enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
-    case visibility, kind, title, terminal, priority, deadline, nextTrigger, note
+    case visibility, kind, title, terminal, note
 
     var id: String { rawValue }
 
     /// Whether typing starts a replace edit on this column in place
-    /// (`SPEC.md` §27.2): the text columns are title, deadline, and note.
+    /// (`SPEC.md` §27.2): the text columns are title and note.
     var isTextColumn: Bool {
         switch self {
-        case .title, .deadline, .note: return true
-        case .visibility, .kind, .terminal, .priority, .nextTrigger: return false
+        case .title, .note: return true
+        case .visibility, .kind, .terminal: return false
         }
     }
 
-    /// The selection columns — visibility (a two-value toggle), kind, terminal,
-    /// priority, and next trigger — where typing never starts an edit.
+    /// The selection columns — visibility (a two-value toggle), kind, and
+    /// terminal — where typing never starts an edit.
     var isSelectionColumn: Bool { !isTextColumn }
 
     /// Whether this column's cell edit is multi-line (`SPEC.md` §27.2): only
@@ -96,21 +92,20 @@ enum ProjectListColumn: String, Codable, CaseIterable, Identifiable {
     /// — Enter operates on the cell, it never moves the cursor): the text
     /// columns start a seeded edit with the caret in the existing text; the
     /// visibility column toggles hide/show immediately (under the
-    /// at-least-one-visible protection); the value columns — kind, terminal,
-    /// deadline, priority, next trigger — enumerate their candidates below
-    /// the cell (§27.6).
+    /// at-least-one-visible protection); the value columns — kind and
+    /// terminal — enumerate their candidates below the cell (§27.6).
     var enterAction: ProjectListEnterAction {
         switch self {
         case .title, .note: return .beginEdit
         case .visibility: return .toggleVisibility
-        case .kind, .terminal, .deadline, .priority, .nextTrigger: return .enumerateCandidates
+        case .kind, .terminal: return .enumerateCandidates
         }
     }
 
     /// The default column order (`SPEC.md` §27.1): visibility, kind, title,
-    /// terminal, priority, deadline, next trigger, note.
+    /// terminal, note.
     static let defaultOrder: [ProjectListColumn] = [
-        .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
+        .visibility, .kind, .title, .terminal, .note,
     ]
 
     /// Repair a decoded column order so it is always a permutation of all
@@ -152,7 +147,7 @@ enum ProjectListEnterAction: Equatable {
 }
 
 /// The per-column judgment of what Delete does on a cell (`SPEC.md` §27.2):
-/// the title empties and the value columns unset immediately; the note —
+/// the title empties and the value columns reset immediately; the note —
 /// the one cell whose loss is many lines of handwriting — asks for
 /// confirmation first; the visibility column has no value to delete.
 enum ProjectListDeleteAction: Equatable {
@@ -168,7 +163,7 @@ extension ProjectListColumn {
     /// What Delete does on this column's cell (`SPEC.md` §27.2).
     var deleteAction: ProjectListDeleteAction {
         switch self {
-        case .title, .kind, .terminal, .priority, .deadline, .nextTrigger: return .clearValue
+        case .title, .kind, .terminal: return .clearValue
         case .note: return .confirmClearNote
         case .visibility: return .none
         }
@@ -256,9 +251,6 @@ extension WorkspaceStateOf {
             title: project.name,
             ordinal: ordinal,
             isHidden: isHidden,
-            priority: project.priority,
-            deadline: project.deadline,
-            nextTrigger: project.nextTrigger,
             terminalName: project.terminalName,
             kind: project.kind,
             note: project.note)
@@ -492,8 +484,7 @@ extension WorkspaceStateOf {
     }
 
     /// Apply a committed text-cell edit (`SPEC.md` §27.2): the title through
-    /// the shared rename rule, the deadline through the parse-or-unset rule
-    /// (invalid input is treated as unset, §24.1), and the note by replacing
+    /// the shared rename rule, and the note by replacing
     /// the whole note — the edit covers every line, and `setNote` applies
     /// the line cap (the over-limit confirmation happens before the commit
     /// reaches here, §21.1).
@@ -508,24 +499,17 @@ extension WorkspaceStateOf {
         switch column {
         case .title:
             return renameProject(id, to: text)
-        case .deadline:
-            project.deadline = ProjectDeadline(parsing: text)
-            projects[id] = project
-            // The deadline is a sort key: a committed change re-sorts
-            // immediately while a key state is active (`SPEC.md` §24.4).
-            resortProjects()
-            return true
         case .note:
             project.setNote(text)
             projects[id] = project
             return true
-        case .visibility, .kind, .terminal, .priority, .nextTrigger:
+        case .visibility, .kind, .terminal:
             return false
         }
     }
 
-    /// Set project `id`'s kind (must 140). The kind is not a sort key, so the
-    /// row order never changes; a visible project's arrangement re-derives
+    /// Set project `id`'s kind (must 140). The row order never changes; a
+    /// visible project's arrangement re-derives
     /// with it (`SPEC.md` §26.3).
     ///
     /// - Returns: whether the kind changed.
@@ -539,8 +523,7 @@ extension WorkspaceStateOf {
     }
 
     /// Set project `id`'s terminal to the stored name `name` (`nil` = the
-    /// local terminal, must 128). The terminal is not a sort key, so the row
-    /// order never changes. Panes already open keep running where they are;
+    /// local terminal, must 128). The row order never changes. Panes already open keep running where they are;
     /// the change applies to panes started afterwards.
     ///
     /// - Returns: whether the stored name changed.
@@ -556,8 +539,7 @@ extension WorkspaceStateOf {
     /// empties — deliberately bypassing the rename rule's empty-reject,
     /// which protects against *accidental* emptiness, not this explicit
     /// deletion — the kind returns to Core, the terminal returns to the local
-    /// one, the value columns unset (each is a sort key, so the change re-sorts immediately while a key state is active, §24.4),
-    /// and the note loses every line. The note's confirmation is the
+    /// one, and the note loses every line. The note's confirmation is the
     /// caller's (`ProjectListColumn.deleteAction`); this is the mutation
     /// an approved deletion applies. The visibility column has no value
     /// to delete.
@@ -581,21 +563,6 @@ extension WorkspaceStateOf {
             project.terminalName = nil
             projects[id] = project
             return true
-        case .priority:
-            project.priority = nil
-            projects[id] = project
-            resortProjects()
-            return true
-        case .deadline:
-            project.deadline = nil
-            projects[id] = project
-            resortProjects()
-            return true
-        case .nextTrigger:
-            project.nextTrigger = nil
-            projects[id] = project
-            resortProjects()
-            return true
         case .note:
             project.setNote("")
             projects[id] = project
@@ -616,44 +583,6 @@ extension WorkspaceStateOf {
         guard target != from else { return false }
         listColumnOrder.remove(at: from)
         listColumnOrder.insert(column, at: target)
-        return true
-    }
-}
-
-// MARK: Daily priority reset (SPEC §28.2)
-
-extension WorkspaceStateOf {
-    /// Whether the priority reset is due at `now`: the workday `now` belongs to
-    /// differs from the one the reset last ran for (`SPEC.md` §28.2). A state
-    /// that never reset (no stored workday — a fresh workspace, or a save
-    /// written before the reset existed) is always due, which is the rule read
-    /// literally and is harmless: the reset only clears priorities, which is
-    /// exactly what the next boundary would do.
-    func needsPriorityReset(at now: Date, calendar: Calendar = .current) -> Bool {
-        lastPriorityResetWorkday != Workday(containing: now, calendar: calendar)
-    }
-
-    /// Run the daily priority reset if it is due (`SPEC.md` §28.2): every
-    /// project — hidden ones included — loses its priority, and the current
-    /// workday is stamped so the reset cannot run twice within it.
-    ///
-    /// Deliberately narrow: deadlines, notes, and next triggers are
-    /// untouched. The reset's effect on the row order follows the sort state
-    /// (§28.2): in manual it never reorders — the re-sort below is a no-op —
-    /// and while a key state is active the cleared priorities re-sort as any
-    /// value change would (§24.4).
-    ///
-    /// - Returns: whether the reset actually ran.
-    @discardableResult
-    mutating func resetPrioritiesIfNeeded(at now: Date, calendar: Calendar = .current) -> Bool {
-        let today = Workday(containing: now, calendar: calendar)
-        guard lastPriorityResetWorkday != today else { return false }
-
-        lastPriorityResetWorkday = today
-        for id in projects.keys where projects[id]?.priority != nil {
-            projects[id]?.priority = nil
-        }
-        resortProjects()
         return true
     }
 }

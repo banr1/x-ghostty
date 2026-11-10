@@ -19,16 +19,12 @@ private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 /// the cell cursor's movement with its row-end wrap, edge stops, and
 /// Cmd+arrow edge jumps, the per-column Enter judgment (edit / toggle /
 /// candidates), text-cell edits (commit applies, cancel reverts, the note
-/// cell covers and replaces the whole note, invalid deadline input is
-/// unset), the column moves with persistence, and the transient full-note
+/// cell covers and replaces the whole note), the column moves with persistence, and the transient full-note
 /// toggle.
 struct ProjectListCellTests {
     private static func makeProject(
         name: String,
         note: String = "",
-        priority: ProjectPriority? = nil,
-        deadline: ProjectDeadline? = nil,
-        nextTrigger: ProjectNextTrigger? = nil,
         at date: Date = Date(timeIntervalSince1970: 0)
     ) -> TestProjectState {
         TestProjectState(
@@ -36,9 +32,6 @@ struct ProjectListCellTests {
             name: name,
             paneTree: .init(view: TestPane()),
             note: note,
-            priority: priority,
-            deadline: deadline,
-            nextTrigger: nextTrigger,
             createdAt: date)
     }
 
@@ -144,9 +137,8 @@ struct ProjectListCellTests {
         #expect(ProjectListColumn.title.enterAction == .beginEdit)
         #expect(ProjectListColumn.note.enterAction == .beginEdit)
         #expect(ProjectListColumn.visibility.enterAction == .toggleVisibility)
-        #expect(ProjectListColumn.deadline.enterAction == .enumerateCandidates)
-        #expect(ProjectListColumn.priority.enterAction == .enumerateCandidates)
-        #expect(ProjectListColumn.nextTrigger.enterAction == .enumerateCandidates)
+        #expect(ProjectListColumn.kind.enterAction == .enumerateCandidates)
+        #expect(ProjectListColumn.terminal.enterAction == .enumerateCandidates)
     }
 
     @Test func anEnterOpenedEditIsSeededWithTheExistingText() throws {
@@ -166,37 +158,30 @@ struct ProjectListCellTests {
 
     // MARK: Row content for the cells (SPEC §27.1–27.2)
 
-    @Test func rowsCarryTheNextTriggerAndTheFullNote() throws {
-        let deadline = try #require(ProjectDeadline(year: 2026, month: 9, day: 1))
+    @Test func rowsCarryTheFullNote() throws {
         let a = Self.makeProject(
             name: "alpha",
-            note: "first\nsecond\nthird",
-            priority: .high,
-            deadline: deadline,
-            nextTrigger: .externalPerson)
+            note: "first\nsecond\nthird")
         let state = Self.makeState([a])
 
         let row = try #require(state.projectListRows.first)
-        #expect(row.nextTrigger == .externalPerson)
         #expect(row.note == "first\nsecond\nthird")
         #expect(row.noteFirstLine == "first")
     }
 
     @Test func editableTextIsTheTextColumnsCurrentValueOnly() throws {
-        let deadline = try #require(ProjectDeadline(year: 2026, month: 9, day: 1))
-        let a = Self.makeProject(name: "alpha", note: "memo\nrest", deadline: deadline)
+        let a = Self.makeProject(name: "alpha", note: "memo\nrest")
         let row = try #require(Self.makeState([a]).projectListRows.first)
 
         #expect(row.editableText(for: .title) == "alpha")
-        #expect(row.editableText(for: .deadline) == "2026-09-01")
         // The note edit covers the whole note (SPEC §27.2), while the cell
         // displays only the first line.
         #expect(row.editableText(for: .note) == "memo\nrest")
         // Selection columns are not text-editable: no edit session exists.
         #expect(row.editableText(for: .visibility) == nil)
-        #expect(row.editableText(for: .priority) == nil)
-        #expect(row.editableText(for: .nextTrigger) == nil)
-        #expect(ProjectListCellEdit(row: row, column: .priority) == nil)
+        #expect(row.editableText(for: .kind) == nil)
+        #expect(row.editableText(for: .terminal) == nil)
+        #expect(ProjectListCellEdit(row: row, column: .kind) == nil)
     }
 
     // MARK: Text-cell commit and cancel (SPEC §27.2)
@@ -235,35 +220,6 @@ struct ProjectListCellTests {
         #expect(state.projects[a.id]?.name == "beta")
     }
 
-    @Test func deadlineCommitParsesAndInvalidInputBecomesUnset() throws {
-        let a = Self.makeProject(name: "alpha")
-        var state = Self.makeState([a])
-
-        let committedValidDeadline = state.commitListCellEdit("2026-09-01", column: .deadline, for: a.id)
-        #expect(committedValidDeadline)
-        #expect(state.projects[a.id]?.deadline
-            == ProjectDeadline(year: 2026, month: 9, day: 1))
-
-        // Invalid input is treated as unset (SPEC §24.1) — not kept, not
-        // rejected into the previous value.
-        let committedImpossibleDate = state.commitListCellEdit("2026-13-40", column: .deadline, for: a.id)
-        #expect(committedImpossibleDate)
-        #expect(state.projects[a.id]?.deadline == nil)
-
-        let committedDeadlineAgain = state.commitListCellEdit("2026-09-01", column: .deadline, for: a.id)
-        #expect(committedDeadlineAgain)
-        let committedGarbageDate = state.commitListCellEdit("not a date", column: .deadline, for: a.id)
-        #expect(committedGarbageDate)
-        #expect(state.projects[a.id]?.deadline == nil)
-
-        // Clearing the cell unsets too.
-        let committedDeadlineOnceMore = state.commitListCellEdit("2026-09-01", column: .deadline, for: a.id)
-        #expect(committedDeadlineOnceMore)
-        let committedClearedCell = state.commitListCellEdit("", column: .deadline, for: a.id)
-        #expect(committedClearedCell)
-        #expect(state.projects[a.id]?.deadline == nil)
-    }
-
     @Test func noteCommitReplacesTheWholeNote() {
         // The note edit covers every line (SPEC §27.2): the committed draft
         // IS the note — a one-line draft replaces a multi-line note whole.
@@ -297,12 +253,12 @@ struct ProjectListCellTests {
         let movedTitleLeft = state.moveListColumn(.title, by: -1)
         #expect(movedTitleLeft)
         #expect(state.listColumnOrder == [
-            .visibility, .title, .kind, .terminal, .priority, .deadline, .nextTrigger, .note,
+            .visibility, .title, .kind, .terminal, .note,
         ])
         let movedTitleToTheFront = state.moveListColumn(.title, by: -1)
         #expect(movedTitleToTheFront)
         #expect(state.listColumnOrder == [
-            .title, .visibility, .kind, .terminal, .priority, .deadline, .nextTrigger, .note,
+            .title, .visibility, .kind, .terminal, .note,
         ])
 
         // The ends absorb.
@@ -312,9 +268,9 @@ struct ProjectListCellTests {
         #expect(movedNotePastTheEnd == false)
 
         // A multi-place move clamps to the end instead of overshooting.
-        let movedPriorityFarRight = state.moveListColumn(.priority, by: 99)
-        #expect(movedPriorityFarRight)
-        #expect(state.listColumnOrder.last == .priority)
+        let movedKindFarRight = state.moveListColumn(.kind, by: 99)
+        #expect(movedKindFarRight)
+        #expect(state.listColumnOrder.last == .kind)
 
         let data = try JSONEncoder().encode(state)
         let decoded = try JSONDecoder().decode(TestWorkspaceState.self, from: data)
@@ -343,21 +299,10 @@ struct ProjectListCellTests {
         #expect(model.state.projectOrder == [b.id, a.id])
         // Clamped at the top now.
         #expect(model.moveProjectListRow(b.id, by: -1) == nil)
-        #expect(model.moveProjectListColumn(.note, by: -1) == 6)
+        #expect(model.moveProjectListColumn(.note, by: -1) == 3)
         #expect(model.state.listColumnOrder == [
-            .visibility, .kind, .title, .terminal, .priority, .deadline, .note, .nextTrigger,
+            .visibility, .kind, .title, .note, .terminal,
         ])
-    }
-
-    // MARK: Deadline day arithmetic (feeds the date candidates, §27.6)
-
-    @Test func deadlineAdvanceRollsOverMonthAndYearBoundaries() {
-        #expect(ProjectDeadline(parsing: "2026-08-31")?.advanced(by: 1)
-            == ProjectDeadline(parsing: "2026-09-01"))
-        #expect(ProjectDeadline(parsing: "2026-12-31")?.advanced(by: 1)
-            == ProjectDeadline(parsing: "2027-01-01"))
-        #expect(ProjectDeadline(parsing: "2028-02-29")?.advanced(by: -1)
-            == ProjectDeadline(parsing: "2028-02-28"))
     }
 
     // MARK: Consecutive reorders follow the moved row/column (SPEC §27.1)
@@ -400,15 +345,15 @@ struct ProjectListCellTests {
         let a = Self.makeProject(name: "alpha")
         let model = Self.makeListModel([a])
 
-        // Priority right twice: each report is the moved column's new index.
-        var cursor = model.state.listColumnOrder.firstIndex(of: .priority)!
+        // Kind right twice: each report is the moved column's new index.
+        var cursor = model.state.listColumnOrder.firstIndex(of: .kind)!
         for expectedOrder: [ProjectListColumn] in [
-            [.visibility, .kind, .title, .terminal, .deadline, .priority, .nextTrigger, .note],
-            [.visibility, .kind, .title, .terminal, .deadline, .nextTrigger, .priority, .note],
+            [.visibility, .title, .kind, .terminal, .note],
+            [.visibility, .title, .terminal, .kind, .note],
         ] {
             let moved = model.moveProjectListColumn(
                 model.state.listColumnOrder[cursor], by: 1)
-            #expect(moved == model.state.listColumnOrder.firstIndex(of: .priority))
+            #expect(moved == model.state.listColumnOrder.firstIndex(of: .kind))
             #expect(model.state.listColumnOrder == expectedOrder)
             cursor = moved ?? cursor
         }
@@ -416,8 +361,8 @@ struct ProjectListCellTests {
         // One more lands on the end; the end then clamps and reports nothing.
         cursor = model.moveProjectListColumn(
             model.state.listColumnOrder[cursor], by: 1) ?? cursor
-        #expect(cursor == 7)
-        #expect(model.state.listColumnOrder.last == .priority)
+        #expect(cursor == 4)
+        #expect(model.state.listColumnOrder.last == .kind)
         #expect(model.moveProjectListColumn(
             model.state.listColumnOrder[cursor], by: 1) == nil)
     }
@@ -551,7 +496,7 @@ struct ProjectListCellTests {
         // stroke goes to the editor's input context, not into the draft, so
         // an IME composition can begin with it instead of its raw character
         // landing in the cell.
-        for column in [ProjectListColumn.title, .deadline, .note] {
+        for column in [ProjectListColumn.title, .note] {
             let started = ProjectListCellEdit.started(on: row, column: column)
             #expect(started?.draft == "")
         }
@@ -562,7 +507,7 @@ struct ProjectListCellTests {
         #expect(ProjectListCellEdit.started(on: row, column: .note)?.original == "first\nsecond")
 
         // The selection columns are still not text-editable.
-        for column in [ProjectListColumn.visibility, .priority, .nextTrigger] {
+        for column in [ProjectListColumn.visibility, .kind, .terminal] {
             #expect(ProjectListCellEdit.started(on: row, column: column) == nil)
         }
     }
@@ -609,7 +554,7 @@ struct ProjectListCellTests {
     @Test func onlyTheNoteColumnEditsMultiline() {
         #expect(ProjectListColumn.note.isMultilineEdit)
         for column: ProjectListColumn in [
-            .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger,
+            .visibility, .kind, .title, .terminal,
         ] {
             #expect(!column.isMultilineEdit)
         }

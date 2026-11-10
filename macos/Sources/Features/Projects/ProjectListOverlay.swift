@@ -3,10 +3,9 @@ import SwiftUI
 /// The project-list overlay (`list_projects`, Cmd+L, `SPEC.md` §27).
 ///
 /// The ledger's table form: every project — hidden ones included — as one row
-/// in the single ledger order, with the eight columns (visibility, kind,
-/// title, terminal, priority, deadline, next trigger, note) in the persisted column
-/// order.
-/// Unset cells render blank. The panel takes ~80% of the window in both
+/// in the single ledger order, with the five columns (visibility, kind,
+/// title, terminal, note) in the persisted column order.
+/// An empty note renders blank. The panel takes ~80% of the window in both
 /// dimensions, exists only while the session is up, and scrolls with the cell
 /// cursor when the rows do not fit.
 ///
@@ -64,18 +63,12 @@ struct ProjectListOverlay: View {
     /// `onConsumePendingTitleEdit`.
     let pendingTitleEdit: ProjectID?
 
-    /// The active sort state the bar highlights (`SPEC.md` §24.4).
-    let sortState: ProjectSortState
-
     /// Whether Space would change anything for a row — the model refuses to
     /// hide the last visible project and to show one past the visible cap.
     let canToggle: (ProjectID) -> Bool
 
     /// Whether Cmd+Enter would focus a row (visible rows only).
     let canFocus: (ProjectID) -> Bool
-
-    /// Deadline-overdue judgment for a row, for the single-stage emphasis.
-    let isOverdue: (ProjectID) -> Bool
 
     /// Toggle the row between hidden and visible, immediately (Enter on the
     /// visibility column).
@@ -105,16 +98,10 @@ struct ProjectListOverlay: View {
     /// the overlay; the per-column value rule is the model's.
     let onDeleteCellValue: (ProjectListColumn, ProjectID) -> Void
 
-    /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓, manual state
-    /// only — confirmation-free). Returns the row's new index, or `nil`
+    /// Move a row by ±1 in the ledger order (Opt+↑ / Opt+↓,
+    /// confirmation-free). Returns the row's new index, or `nil`
     /// when nothing moved (a clamped end).
     let onMoveRow: (ProjectID, Int) -> Int?
-
-    /// The approved row move while a key sort is active (`SPEC.md` §24.4):
-    /// the confirmation's OK path — inherit the current display order as
-    /// the manual order, then move. Returns the row's new index, or `nil`
-    /// when nothing moved.
-    let onApproveSortedMove: (ProjectID, Int) -> Int?
 
     /// Move a column by ±1 in the column order (Opt+← / Opt+→). Returns the
     /// column's new index, or `nil` when nothing moved.
@@ -122,11 +109,6 @@ struct ProjectListOverlay: View {
 
     /// Toggle whole-list full-note display (Cmd+Opt+E inside the list).
     let onToggleFullNotes: () -> Void
-
-    /// Apply a sort state (the bar's Enter, or a mouse click on a bar chip,
-    /// `SPEC.md` §24.4). Selecting manual inherits the current display order
-    /// — the model's judgment.
-    let onSetSortState: (ProjectSortState) -> Void
 
     /// Create a new project below the given cursor row (Cmd+N inside the
     /// list, `SPEC.md` §27.4). The new row comes back via `pendingTitleEdit`.
@@ -168,13 +150,6 @@ struct ProjectListOverlay: View {
     /// discards this value, like an edit's cancel. Mutually exclusive with
     /// `edit` — both open only from the cell cursor.
     @State private var candidateMenu: ProjectListCandidateMenu?
-
-    /// The sort bar's keyboard selection, or `nil` while the cursor is in
-    /// the table (`SPEC.md` §24.4). Entered with Up from the top row seeded
-    /// with the active state; Left/Right move it (`movedInBar`), Enter
-    /// applies it and returns to the table, Escape returns without applying.
-    /// Pure presentation state, like `cursor`.
-    @State private var sortBarSelection: ProjectSortState?
 
     private enum FocusTarget: Hashable { case catcher }
     @FocusState private var focus: FocusTarget?
@@ -358,33 +333,6 @@ struct ProjectListOverlay: View {
             return nil
         }
 
-        // While the keyboard is on the sort bar it owns every plain key
-        // (`SPEC.md` §24.4): Left/Right choose, Enter applies and returns to
-        // the table, Escape (or Down) returns without applying. Cmd-chords
-        // fall through so the session shortcuts keep working.
-        if let selection = sortBarSelection {
-            guard modifiers.subtracting([.shift]).isEmpty else { return event }
-            if isEscape {
-                sortBarSelection = nil
-                return nil
-            }
-            switch event.specialKey {
-            case .some(.leftArrow):
-                sortBarSelection = selection.movedInBar(by: -1)
-            case .some(.rightArrow):
-                sortBarSelection = selection.movedInBar(by: 1)
-            case .some(.carriageReturn), .some(.enter):
-                onSetSortState(selection)
-                sortBarSelection = nil
-            case .some(.downArrow):
-                // Down is Escape's twin: back into the table, not applying.
-                sortBarSelection = nil
-            default:
-                break
-            }
-            return nil
-        }
-
         // Whole-row selection (SPEC §27.2): the mode Escape toggles from the
         // cell cursor. It owns every plain key — Up/Down move the selected
         // row, Enter returns to the cells, Escape releases, Delete closes
@@ -466,7 +414,7 @@ struct ProjectListOverlay: View {
         // cell's value, or set it from the pasteboard — single cell only.
         // What a cell copies as and whether a pasted string is acceptable is
         // the model's judgment (`ProjectListClipboard`); a string the column
-        // does not accept is ignored, like invalid deadline input.
+        // does not accept is ignored.
         if modifiers == [.command],
            let character = event.charactersIgnoringModifiers?.lowercased(),
            character == "c" || character == "v",
@@ -492,20 +440,11 @@ struct ProjectListOverlay: View {
             switch special {
             case .upArrow, .downArrow:
                 let delta = special == .upArrow ? -1 : 1
+                // Rows are always in the manual order: a move is
+                // confirmation-free (SPEC §27.1).
                 guard let row = cursorRow else { return nil }
-                if sortState == .manual {
-                    // Manual state: confirmation-free (SPEC §24.4).
-                    if let moved = onMoveRow(row.id, delta) {
-                        cursor.row = moved
-                    }
-                } else if confirmSortedMove() {
-                    // A key sort governs the order: moving a row by hand
-                    // needs the approval — OK inherits the current display
-                    // order as the manual order and then moves, Cancel
-                    // changes nothing (SPEC §24.4).
-                    if let moved = onApproveSortedMove(row.id, delta) {
-                        cursor.row = moved
-                    }
+                if let moved = onMoveRow(row.id, delta) {
+                    cursor.row = moved
                 }
                 return nil
             case .leftArrow, .rightArrow:
@@ -522,15 +461,9 @@ struct ProjectListOverlay: View {
         guard modifiers.subtracting([.shift]).isEmpty else { return event }
 
         // Plain movement: Tab / Shift+Tab and the arrows, with the row-end
-        // wrap and the edge stops (`ProjectListCellCursor`). Up from the top
-        // row leaves the table and enters the sort bar, seeded with the
-        // active state (`SPEC.md` §24.4).
+        // wrap and the edge stops (`ProjectListCellCursor`).
         if let move = Self.cursorMove(for: event, shifted: modifiers == [.shift]) {
-            if move == .up, cursor.row == 0 {
-                sortBarSelection = sortState
-            } else {
-                moveCursor(move)
-            }
+            moveCursor(move)
             return nil
         }
 
@@ -653,29 +586,10 @@ struct ProjectListOverlay: View {
             onToggle(row.id)
         case .enumerateCandidates:
             // The menu's content is the model's judgment
-            // (`ProjectListCandidateMenu.opened`); the view only supplies
-            // "today" for the date candidates (SPEC §27.6).
+            // (`ProjectListCandidateMenu.opened`, SPEC §27.6).
             candidateMenu = ProjectListCandidateMenu.opened(
-                on: row, column: column, today: ProjectDeadline(from: Date()),
-                terminals: terminals)
+                on: row, column: column, terminals: terminals)
         }
-    }
-
-    /// The sorted row-move approval dialog (SPEC §24.4): OK approves
-    /// switching to the manual order (inheriting the current display order)
-    /// so the move can happen; Cancel keeps the sort and moves nothing.
-    /// Same OK/Cancel form as the other list confirmations.
-    private func confirmSortedMove() -> Bool {
-        let alert = NSAlert()
-        alert.messageText = "Switch to manual order?"
-        alert.informativeText =
-            "Rows follow the \(sortState.displayText) sort. Moving a row by "
-            + "hand keeps the current order as the manual order and turns "
-            + "the sort off."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Delete on the cursor cell (SPEC §27.2): the title and the value
@@ -767,7 +681,7 @@ struct ProjectListOverlay: View {
     /// Cmd+V on the cell cursor (SPEC §27.7, must 83): apply the pasteboard
     /// string to the cell per the model's per-column judgment — through the
     /// same commit paths a cell edit and a candidate selection take, so
-    /// re-sorting and persistence behave identically. An unacceptable string
+    /// persistence behaves identically. An unacceptable string
     /// is ignored; an over-limit note paste runs the same confirmation as
     /// any other note save (§21.1).
     private func pasteOnCursorCell(row: ProjectListRow, column: ProjectListColumn) {
@@ -787,12 +701,6 @@ struct ProjectListOverlay: View {
                 return
             }
             onCommitEdit(note, .note, row.id)
-        case .setPriority(let priority):
-            onCommitCandidate(.priority(priority), row.id)
-        case .setDeadline(let deadline):
-            onCommitCandidate(.deadline(deadline), row.id)
-        case .setNextTrigger(let trigger):
-            onCommitCandidate(.nextTrigger(trigger), row.id)
         }
     }
 
@@ -822,8 +730,6 @@ struct ProjectListOverlay: View {
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-
-            sortBar
 
             columnHeader
 
@@ -881,7 +787,7 @@ struct ProjectListOverlay: View {
     /// The fixed width of a column's cells, or `nil` for the flexible title
     /// and note columns, which share the panel width left by the fixed ones.
     /// Fixed widths hold each column's widest value at the 12pt monospaced
-    /// cell font: "●" / "·", "Core", "high", "YYYY-MM-DD", "external"; the terminal
+    /// cell font: "●" / "·", "Core"; the terminal
     /// column holds a short machine name and truncates a longer one.
     private static func width(of column: ProjectListColumn) -> CGFloat? {
         switch column {
@@ -889,9 +795,6 @@ struct ProjectListOverlay: View {
         case .kind: return 48
         case .title: return nil
         case .terminal: return 84
-        case .priority: return 48
-        case .deadline: return 92
-        case .nextTrigger: return 72
         case .note: return nil
         }
     }
@@ -916,56 +819,8 @@ struct ProjectListOverlay: View {
         case .kind: return "kind"
         case .title: return "title"
         case .terminal: return "terminal"
-        case .priority: return "prio"
-        case .deadline: return "deadline"
-        case .nextTrigger: return "next"
         case .note: return "note"
         }
-    }
-
-    /// The sort bar (`SPEC.md` §24.4): the five states at the very top of
-    /// the table. The active state is always marked; while the keyboard is
-    /// on the bar (Up from the top row) the selection candidate carries the
-    /// stronger highlight. A mouse click applies a state directly.
-    private var sortBar: some View {
-        HStack(spacing: 6) {
-            Text("sort")
-                .opacity(0.4)
-
-            ForEach(ProjectSortState.barOrder, id: \.self) { state in
-                sortBarChip(state)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .font(.system(size: 10, design: .monospaced))
-        .padding(.horizontal, 14)
-        .padding(.vertical, 3)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(ghostty.config.splitDividerColor.opacity(0.3))
-                .frame(height: 1)
-        }
-    }
-
-    private func sortBarChip(_ state: ProjectSortState) -> some View {
-        let isActive = state == sortState
-        let isSelected = state == sortBarSelection
-        return Text(state.displayText)
-            .opacity(isActive ? 0.95 : 0.5)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(
-                isSelected
-                    ? Color.secondary.opacity(0.3)
-                    : isActive ? Color.secondary.opacity(0.12) : Color.clear)
-            .cornerRadius(3)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard edit == nil, candidateMenu == nil else { return }
-                onSetSortState(state)
-                sortBarSelection = nil
-            }
     }
 
     /// The column-label band, in the persisted column order, with the cursor
@@ -1082,7 +937,7 @@ struct ProjectListOverlay: View {
 
     /// The dropdown of a candidate menu (`SPEC.md` §27.6): the enumerated
     /// values below the cell, the keyboard selection highlighted. A click
-    /// commits a value directly, like the sort bar's chips. Positioned by the
+    /// commits a value directly. Positioned by the
     /// panel's anchor overlay (`CandidateMenuCellAnchorKey`), over the table.
     private func candidateMenuView(_ menu: ProjectListCandidateMenu) -> some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -1136,23 +991,6 @@ struct ProjectListOverlay: View {
                 .truncationMode(.tail)
                 .opacity(0.6)
 
-        case .priority:
-            Text(row.priority?.displayText ?? "")
-                .opacity(0.75)
-
-        case .deadline:
-            // The single-stage overdue emphasis (SPEC §24.2), same styling
-            // family as the label band's.
-            Text(row.deadline?.displayText ?? "")
-                .foregroundStyle(
-                    isOverdue(row.id)
-                        ? AnyShapeStyle(Color.red) : AnyShapeStyle(.primary))
-                .opacity(isOverdue(row.id) ? 0.9 : 0.6)
-
-        case .nextTrigger:
-            Text(row.nextTrigger?.displayText ?? "")
-                .opacity(0.6)
-
         case .note:
             // Full-note display shows every line (viewing-only, Cmd+Opt+E);
             // the normal table shows the first line.
@@ -1169,7 +1007,7 @@ struct ProjectListOverlay: View {
             Text("projects")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
             Spacer()
-            Text("↩ edit/toggle · ⌫ delete · ↑ sort · esc rows · ⌘n new · ⌘↩ focus · ⌘⌥e notes")
+            Text("↩ edit/toggle · ⌫ delete · esc rows · ⌘n new · ⌘↩ focus · ⌘⌥e notes")
                 .font(.system(size: 10, design: .monospaced))
                 .opacity(0.5)
         }
@@ -1227,9 +1065,6 @@ struct ProjectListOverlay: View {
             let name = cursorRow.map { " \($0.title)" } ?? ""
             return "↑↓ move · ⌫ closes\(name) · ↩/esc back to cells"
         }
-        if sortBarSelection != nil {
-            return "←→ choose · ↩ apply sort · esc back to table"
-        }
         guard let row = cursorRow, let column = cursorColumn else { return "" }
         switch column {
         case .visibility:
@@ -1245,13 +1080,6 @@ struct ProjectListOverlay: View {
             return "↩ lists kinds"
         case .terminal:
             return "↩ lists terminals"
-        case .priority:
-            return "↩ lists priorities"
-        case .nextTrigger:
-            return "↩ lists next triggers"
-        case .deadline:
-            let base = "↩ lists dates · type to edit deadline"
-            return base + focusHint(for: row)
         case .title, .note:
             let base = "↩ or type to edit \(Self.headerLabel(of: column))"
             return base + focusHint(for: row)

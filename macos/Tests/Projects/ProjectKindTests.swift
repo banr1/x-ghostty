@@ -21,19 +21,15 @@ struct ProjectKindTests {
     private static let terminals = ProjectTerminalRegistry(
         registrations: ["mini,mac-mini,colour33"], hostname: "mac-mini")
 
-    private static let today = ProjectDeadline(parsing: "2026-11-08")!
-
     private static func makeProject(
         name: String,
         kind: ProjectKind = .core,
-        priority: ProjectPriority? = nil,
         at date: Date = Date(timeIntervalSince1970: 0)
     ) -> TestProjectState {
         TestProjectState(
             id: ProjectID(),
             name: name,
             paneTree: .init(view: TestPane()),
-            priority: priority,
             kind: kind,
             createdAt: date)
     }
@@ -110,11 +106,10 @@ struct ProjectKindTests {
         #expect(column.enterAction == .enumerateCandidates)
         #expect(column.deleteAction == .clearValue)
         #expect(ProjectListColumn.defaultOrder == [
-            .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
+            .visibility, .kind, .title, .terminal, .note,
         ])
         let row = ProjectListRow(
-            id: ProjectID(), title: "alpha", ordinal: 1, isHidden: false,
-            priority: nil, deadline: nil, nextTrigger: nil, note: "")
+            id: ProjectID(), title: "alpha", ordinal: 1, isHidden: false, note: "")
         #expect(row.editableText(for: .kind) == nil)
         #expect(ProjectListCellEdit(row: row, column: .kind) == nil)
     }
@@ -123,7 +118,7 @@ struct ProjectKindTests {
         let project = Self.makeProject(name: "alpha", kind: .side)
         let row = try Self.row(of: project.id, in: Self.makeState([project]))
         let menu = try #require(ProjectListCandidateMenu.opened(
-            on: row, column: .kind, today: Self.today, terminals: Self.terminals))
+            on: row, column: .kind, terminals: Self.terminals))
 
         #expect(menu.items == [.kind(.core), .kind(.side)])
         #expect(menu.items.map(\.displayText) == ["Core", "Side"])
@@ -160,15 +155,12 @@ struct ProjectKindTests {
         #expect(!unknown)
     }
 
-    @Test func theKindIsNotASortKey() {
-        // The sort state stays five-valued, and a kind change leaves the row
-        // order alone even while a key sort state is active.
-        #expect(ProjectSortState.barOrder.count == 5)
-
-        let a = Self.makeProject(name: "alpha", priority: .low)
-        let b = Self.makeProject(name: "beta", priority: .high, at: Date(timeIntervalSince1970: 1))
+    @Test func aKindChangeLeavesTheRowOrderAlone() {
+        // The rows are always in the manual order: a kind change re-derives
+        // the arrangement but never moves a row.
+        let a = Self.makeProject(name: "alpha")
+        let b = Self.makeProject(name: "beta", at: Date(timeIntervalSince1970: 1))
         let model = Self.makeListModel([a, b])
-        model.setProjectSortState(.priority)
         let order = model.state.projectOrder
 
         #expect(model.commitProjectListCandidate(.kind(.side), for: b.id))
@@ -198,14 +190,5 @@ struct ProjectKindTests {
             #expect(ProjectListClipboard.pasteApplication(
                 of: text, column: .kind, terminals: Self.terminals) == .ignore)
         }
-    }
-
-    // MARK: Nothing but the size (must 140)
-
-    @Test func theOverviewContentIgnoresTheKind() {
-        let core = Self.makeProject(name: "alpha", priority: .high)
-        var side = core
-        side.kind = .side
-        #expect(core.overviewContent == side.overviewContent)
     }
 }

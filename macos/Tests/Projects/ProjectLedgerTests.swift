@@ -121,11 +121,9 @@ struct ProjectLedgerTests {
 
     // MARK: Column order persists and restores (SPEC §27.1)
 
-    @Test func defaultColumnOrderIsVisibilityTitlePriorityDeadlineNextTriggerNote() throws {
+    @Test func defaultColumnOrderIsVisibilityKindTitleTerminalNote() throws {
         let (state, _) = Self.makeState(1)
-        #expect(state.listColumnOrder == [
-            .visibility, .kind, .title, .terminal, .priority, .deadline, .nextTrigger, .note,
-        ])
+        #expect(state.listColumnOrder == [.visibility, .kind, .title, .terminal, .note])
         // A save without the key — written before the column order existed —
         // decodes to the default.
         let decoded = try Self.decodeDropping(["listColumnOrder"], from: state)
@@ -134,9 +132,7 @@ struct ProjectLedgerTests {
 
     @Test func columnOrderRoundTripsAndNormalizesCorruptSaves() throws {
         var (state, _) = Self.makeState(1)
-        let custom: [ProjectListColumn] = [
-            .title, .note, .visibility, .kind, .terminal, .priority, .deadline, .nextTrigger,
-        ]
+        let custom: [ProjectListColumn] = [.title, .note, .visibility, .kind, .terminal]
         state.listColumnOrder = custom
 
         let decoded = try Self.roundTrip(state)
@@ -146,21 +142,77 @@ struct ProjectLedgerTests {
         // missing column is inserted right after its default predecessor
         // (at the front when it has none).
         #expect(ProjectListColumn.normalizedOrder([.note, .note, .title])
-            == [.visibility, .kind, .note, .title, .terminal, .priority, .deadline, .nextTrigger])
+            == [.visibility, .kind, .note, .title, .terminal])
         #expect(ProjectListColumn.normalizedOrder([]) == ProjectListColumn.defaultOrder)
 
-        // A six-column save written before the kind and terminal columns
-        // existed gains them after the visibility and the title, keeping the
-        // saved order of the rest. A seven-column save gains only the kind.
-        #expect(ProjectListColumn.normalizedOrder(
-            [.visibility, .title, .priority, .deadline, .nextTrigger, .note])
+        // A save written before the kind and terminal columns existed gains
+        // them after the visibility and the title, keeping the saved order of
+        // the rest.
+        #expect(ProjectListColumn.normalizedOrder([.visibility, .title, .note])
             == ProjectListColumn.defaultOrder)
-        #expect(ProjectListColumn.normalizedOrder(
-            [.note, .title, .visibility, .priority, .deadline, .nextTrigger])
-            == [.note, .title, .terminal, .visibility, .kind, .priority, .deadline, .nextTrigger])
-        #expect(ProjectListColumn.normalizedOrder(
-            [.visibility, .title, .terminal, .priority, .deadline, .nextTrigger, .note])
-            == ProjectListColumn.defaultOrder)
+        #expect(ProjectListColumn.normalizedOrder([.note, .title, .visibility])
+            == [.note, .title, .terminal, .visibility, .kind])
+    }
+
+    // MARK: Saves carrying the removed values (must 145)
+
+    @Test func aSaveCarryingTheRemovedValuesLoadsAndDropsThem() throws {
+        let base = Date(timeIntervalSince1970: 0)
+        var a = Self.makeProject(name: "alpha", at: base)
+        a.setNote("alpha note")
+        a.kind = .side
+        a.terminalName = "mini"
+        let b = Self.makeProject(name: "beta", at: base.addingTimeInterval(1))
+        // The manual order puts beta first; a priority sort would put the
+        // high-priority alpha first.
+        let state = TestWorkspaceState(
+            projects: [a.id: a, b.id: b],
+            projectOrder: [b.id, a.id],
+            focusedProject: b.id)
+
+        // Write the removed values back into the save, the way a workspace
+        // saved before their removal carries them.
+        let data = try JSONEncoder().encode(state)
+        var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object["sortState"] = "priority"
+        object["lastPriorityResetWorkday"] = "2026-11-01"
+        object["listColumnOrder"] = [
+            "visibility", "title", "priority", "kind", "deadline", "terminal", "nextTrigger", "note",
+        ]
+        var projects = try #require(object["projects"] as? [String: Any])
+        var alpha = try #require(projects[a.id.rawValue.uuidString] as? [String: Any])
+        alpha["priority"] = "high"
+        alpha["deadline"] = "2026-12-01"
+        alpha["nextTrigger"] = "event"
+        projects[a.id.rawValue.uuidString] = alpha
+        object["projects"] = projects
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(TestWorkspaceState.self, from: legacy)
+
+        // The note, kind, terminal, and manual order come back.
+        #expect(decoded.projectOrder == [b.id, a.id])
+        #expect(decoded.projects[a.id]?.note == "alpha note")
+        #expect(decoded.projects[a.id]?.kind == .side)
+        #expect(decoded.projects[a.id]?.terminalName == "mini")
+        #expect(decoded.projects[b.id]?.kind == .core)
+        // Only the removed columns leave the column order; the rest keep
+        // their saved order.
+        #expect(decoded.listColumnOrder == [.visibility, .title, .kind, .terminal, .note])
+
+        // A re-save writes none of the removed values.
+        let resaved = try JSONEncoder().encode(decoded)
+        let top = try #require(try JSONSerialization.jsonObject(with: resaved) as? [String: Any])
+        #expect(top["sortState"] == nil)
+        #expect(top["lastPriorityResetWorkday"] == nil)
+        let columns = try #require(top["listColumnOrder"] as? [String])
+        #expect(columns == ["visibility", "title", "kind", "terminal", "note"])
+        let savedProjects = try #require(top["projects"] as? [String: Any])
+        for case let project as [String: Any] in savedProjects.values {
+            #expect(project["priority"] == nil)
+            #expect(project["deadline"] == nil)
+            #expect(project["nextTrigger"] == nil)
+        }
     }
 
     // MARK: Layout type persists with the wide/row-major default (SPEC §26.4)

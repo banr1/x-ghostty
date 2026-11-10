@@ -71,9 +71,6 @@ struct ProjectView: View {
                 ordinal: ordinal,
                 isFocused: isFocused,
                 isRenaming: isRenaming,
-                priority: project.priority,
-                deadline: project.deadline,
-                isOverdue: isOverdue,
                 onFocus: { labelActions.focus(project.id) },
                 onBeginRename: { labelActions.beginRename(project.id) },
                 onCommitRename: { labelActions.commitRename(project.id, $0) },
@@ -99,13 +96,6 @@ struct ProjectView: View {
                 ProjectNoteOverviewOverlay(project: project)
             }
         }
-    }
-
-    /// Whether this project's deadline is past today (SPEC §24.2). "Today" is
-    /// derived at render time; the comparison rule itself lives on
-    /// `ProjectDeadline`, so the view only asks the model's judgment.
-    private var isOverdue: Bool {
-        project.deadline?.isOverdue(today: ProjectDeadline(from: Date())) ?? false
     }
 }
 
