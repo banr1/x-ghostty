@@ -1735,8 +1735,9 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
   post する(window なし・hidden・即時 exit のペインも含む)。
   `abnormalCommandExitRuntime` 由来の異常終了 Bool(`ChildExitedAbnormalKey`)を
   添えるが、終了済みの判定には使わない。メッセージバー表示自体は上流の
-  可視性ガードと上流の文言("Process exited. Press any key to close the
-  terminal.")のままで、実際にはどのキーでもペインは閉じない(§23.3)。
+  可視性ガードのままで、文言だけを Enter の再開に合わせて変えている
+  ("Process exited. Press Enter to restart."。上流は "Press any key to close
+  the terminal.")。どのキーでもペインは閉じない(§23.3)。
 - **兄弟の有無によらず終了済みで残す**(必須 29・143):controller の
   `ghosttyDidExitChild` は `WorkspaceModel.markPaneTerminated(_:)` を呼ぶだけで、
   ペインはツリーの同じ位置に残る。正常終了・異常終了・process 死はいずれも

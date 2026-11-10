@@ -465,8 +465,8 @@ extension XGhostty.Notification {
 
     /// Posted when a key is pressed on a surface whose child process has
     /// exited. The sending object is the surface. The pane no longer talks to
-    /// a live pty, so the project layer owns the key: Enter restarts a
-    /// terminated pane's shell; any key closes an exited sibling pane.
+    /// a live pty, so the project layer owns the key: Enter restarts the
+    /// project's terminated panes; any other key does nothing.
     static let ghosttyExitedSurfaceKeyDown = Notification.Name("com.mitchellh.xghostty.exitedSurfaceKeyDown")
     /// Bool: whether the pressed key was Return / keypad Enter.
     static let ExitedSurfaceKeyIsReturnKey = ghosttyExitedSurfaceKeyDown.rawValue + ".isReturn"

@@ -31,9 +31,9 @@ extension XGhostty {
                     formatter.unitOptions = .providedUnit
                 }
                 formatter.locale = .init(identifier: "en_US")
-                text = "Process exited after **`\(formatter.string(from: measure))`**. Press any key to close the terminal."
+                text = "Process exited after **`\(formatter.string(from: measure))`**. Press Enter to restart."
             } else {
-                text = "Process exited. Press any key to close the terminal."
+                text = "Process exited. Press Enter to restart."
             }
             self.level = level
         }
