@@ -33,6 +33,11 @@ struct TerminalSplitTreeView: View {
     /// §22.6); this layer only knows "mark this leaf".
     var markedPane: UUID? = nil
 
+    /// The panes to draw the terminated-state cover on. The project layer
+    /// covers each pane whose command has exited (`SPEC.md` §23.3); this
+    /// layer only knows "cover this leaf".
+    var coveredPanes: Set<UUID> = []
+
     let action: (TerminalSplitOperation) -> Void
 
     var body: some View {
@@ -41,6 +46,7 @@ struct TerminalSplitTreeView: View {
                 node: node,
                 isRoot: node == tree.root,
                 markedPane: markedPane,
+                coveredPanes: coveredPanes,
                 action: action)
             // This is necessary because we can't rely on SwiftUI's implicit
             // structural identity to detect changes to this view. Due to
@@ -57,6 +63,7 @@ private struct TerminalSplitSubtreeView: View {
     let node: SplitTree<XGhostty.SurfaceView>.Node
     var isRoot: Bool = false
     var markedPane: UUID? = nil
+    var coveredPanes: Set<UUID> = []
     let action: (TerminalSplitOperation) -> Void
 
     var body: some View {
@@ -66,6 +73,7 @@ private struct TerminalSplitSubtreeView: View {
                 surfaceView: leafView,
                 isSplit: !isRoot,
                 isMarked: leafView.id == markedPane,
+                isCovered: coveredPanes.contains(leafView.id),
                 action: action)
 
         case .split(let split):
@@ -84,10 +92,14 @@ private struct TerminalSplitSubtreeView: View {
                 dividerColor: ghostty.config.splitDividerColor,
                 resizeIncrements: .init(width: 1, height: 1),
                 left: {
-                    TerminalSplitSubtreeView(node: split.left, markedPane: markedPane, action: action)
+                    TerminalSplitSubtreeView(
+                        node: split.left, markedPane: markedPane,
+                        coveredPanes: coveredPanes, action: action)
                 },
                 right: {
-                    TerminalSplitSubtreeView(node: split.right, markedPane: markedPane, action: action)
+                    TerminalSplitSubtreeView(
+                        node: split.right, markedPane: markedPane,
+                        coveredPanes: coveredPanes, action: action)
                 },
                 onEqualize: {
                     guard let surface = node.leftmostLeaf().surface else { return }
@@ -102,6 +114,7 @@ private struct TerminalSplitLeaf: View {
     let surfaceView: XGhostty.SurfaceView
     let isSplit: Bool
     var isMarked: Bool = false
+    var isCovered: Bool = false
     let action: (TerminalSplitOperation) -> Void
 
     @State private var dropState: DropState = .idle
@@ -124,6 +137,11 @@ private struct TerminalSplitLeaf: View {
                             destinationSurface: surfaceView,
                             action: action
                         ))
+                }
+            }
+            .overlay {
+                if isCovered {
+                    ProjectTerminatedPaneView()
                 }
             }
             .overlay {

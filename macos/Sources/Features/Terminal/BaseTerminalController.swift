@@ -1180,41 +1180,21 @@ class BaseTerminalController: NSWindowController,
             withConfirmation: (notification.userInfo?["process_alive"] as? Bool) ?? false)
     }
 
-    /// A surface's child process exited (`SPEC.md` §23.2). The core keeps the
-    /// surface open unconditionally; the model judges what the exit means:
-    /// a project's last pane enters the terminated state (the project and its
-    /// note stay), an exited sibling pane closes as before, and an
-    /// abnormally-exited sibling stays with its error message until a key
-    /// press closes it (`ghosttyDidPressKeyOnExitedSurface`).
+    /// A surface's child process exited (`SPEC.md` §23.2, must 29). The core
+    /// keeps the surface open unconditionally; the pane enters the terminated
+    /// state and stays in its project's tree whether or not it has siblings,
+    /// for a normal exit, an abnormal exit and a process death alike. A
+    /// command exit never closes a pane (must 143).
     @objc private func ghosttyDidExitChild(_ notification: Notification) {
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(target) else { return }
-        let abnormal = notification.userInfo?[
-            XGhostty.Notification.ChildExitedAbnormalKey
-        ] as? Bool ?? false
-
-        switch workspace.childExitOutcome(
-            for: SurfaceID(rawValue: target.id),
-            abnormalExit: abnormal
-        ) {
-        case .terminated:
-            workspace.markPaneTerminated(SurfaceID(rawValue: target.id))
-
-        case .closePane:
-            closeExitedPane(target)
-
-        case .keepPaneAwaitingKey, nil:
-            break
-        }
+        workspace.markPaneTerminated(SurfaceID(rawValue: target.id))
     }
 
     /// A key was pressed on a surface whose child process has exited
-    /// (`SPEC.md` §23.2–23.3). A terminated pane (its project's protected last
-    /// pane) reacts only to Enter, which starts a new shell in the same pane;
-    /// any other exited pane keeps the upstream contract — the first key
-    /// press closes it. The outcome is re-judged at key time: sibling panes
-    /// may have closed since the exit, making this the last pane, which then
-    /// enters the terminated state instead of closing.
+    /// (`SPEC.md` §23.3, must 30). Enter restarts every terminated pane of the
+    /// project; any other key does nothing. A pane whose exit the model has
+    /// not recorded yet is marked terminated first.
     @objc private func ghosttyDidPressKeyOnExitedSurface(_ notification: Notification) {
         guard let target = notification.object as? XGhostty.SurfaceView else { return }
         guard isInWorkspace(target) else { return }
@@ -1223,54 +1203,39 @@ class BaseTerminalController: NSWindowController,
         ] as? Bool ?? false
         let paneID = SurfaceID(rawValue: target.id)
 
-        if let projectID = workspace.projectID(containing: paneID),
-           workspace.isProjectTerminated(projectID) {
-            if isReturn { restartTerminatedPane(in: projectID) }
-            return
-        }
-
-        switch workspace.childExitOutcome(for: paneID, abnormalExit: true) {
-        case .terminated:
+        if !workspace.isPaneTerminated(paneID) {
             workspace.markPaneTerminated(paneID)
-
-        case .closePane, .keepPaneAwaitingKey:
-            closeExitedPane(target)
-
-        case nil:
-            break
         }
+        guard isReturn, let projectID = workspace.projectID(containing: paneID) else { return }
+        restartTerminatedPanes(in: projectID)
     }
 
-    /// Close the exited pane `view` — a pane among several, so never a
-    /// project-close. The focused project's panes are `surfaceTree`, so they go
-    /// through the existing close path (focus move, undo); a pane in any
-    /// other (e.g. hidden) project is removed model-side.
-    private func closeExitedPane(_ view: XGhostty.SurfaceView) {
-        if let node = surfaceTree.root?.node(view: view) {
-            closeSurface(node, withConfirmation: false)
-        } else {
-            workspace.removeExitedPane(SurfaceID(rawValue: view.id))
-        }
-    }
-
-    /// Start a new shell in a terminated project's pane slot (`SPEC.md` §23.3):
-    /// the Enter-restart path. Builds a fresh surface (a fresh shell), swaps
-    /// it into the project via the model, and — when the project is focused —
-    /// re-syncs `surfaceTree` and moves keyboard focus into the new pane.
-    func restartTerminatedPane(in projectID: ProjectID) {
-        guard workspace.isProjectTerminated(projectID) else { return }
+    /// Restart every terminated pane of a project (`SPEC.md` §23.3, must 30):
+    /// the Enter-restart path. Builds a fresh surface per dead pane carrying
+    /// the dead pane's attach command (must 132), swaps them into their slots
+    /// via the model, and — when the project is focused — re-syncs
+    /// `surfaceTree` and keeps keyboard focus on the focused slot.
+    func restartTerminatedPanes(in projectID: ProjectID) {
+        let deadPanes = workspace.terminatedPanes(in: projectID)
+        guard !deadPanes.isEmpty else { return }
         guard let xghostty_app = ghostty.app else { return }
 
-        // Enter re-runs the same attach command (must 132).
-        let newID = UUID()
-        guard let command = workspace.restartLaunchCommand(
-            in: projectID, newPane: SurfaceID(rawValue: newID)) else { return }
-        let newView = Self.makePane(xghostty_app, id: newID, command: command, baseConfig: nil)
-        guard workspace.restartTerminatedPane(in: projectID, with: newView) else { return }
+        var replacements: [SurfaceID: XGhostty.SurfaceView] = [:]
+        for deadPane in deadPanes {
+            let newID = UUID()
+            guard let command = workspace.restartLaunchCommand(
+                in: projectID, replacing: deadPane, newPane: SurfaceID(rawValue: newID))
+            else { return }
+            replacements[deadPane] = Self.makePane(
+                xghostty_app, id: newID, command: command, baseConfig: nil)
+        }
+        guard workspace.restartTerminatedPanes(in: projectID, with: replacements) else { return }
 
         if projectID == workspace.state.focusedProject {
             surfaceTree = workspace.focusedPaneTree
-            moveKeyboardFocus(toProjectSurface: SurfaceID(rawValue: newView.id))
+            if let focus = workspace.state.projects[projectID]?.focusedSurface {
+                moveKeyboardFocus(toProjectSurface: focus)
+            }
         }
     }
 

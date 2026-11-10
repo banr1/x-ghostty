@@ -31,23 +31,18 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     ///
     /// Every replacement re-reconciles the primary flag (SPEC §22.2): panes
     /// added by later splits never take the flag, and when the primary pane
-    /// leaves the tree — shell exit, Cmd+W, process death all funnel through a
-    /// tree replacement — the nearest remaining leaf is promoted.
+    /// leaves the tree — only an explicit close (Cmd+W) removes a pane; a
+    /// command exit keeps it terminated (must 143) — the nearest remaining
+    /// leaf is promoted.
     var paneTree: SplitTree<Pane> {
         didSet {
             primaryPane = paneTree.reconciledPrimary(
                 previousTree: oldValue,
                 previousPrimary: primaryPane?.rawValue
             ).map(SurfaceID.init(rawValue:))
-            // The terminated state is valid only while the terminated pane is
-            // the tree's sole leaf (SPEC §23.2): if the pane leaves the tree,
-            // or the tree grows past one pane (e.g. a split while terminated),
-            // the project is no longer "terminated" — the dead pane, if still
-            // present, is just an exited sibling pane.
-            if let terminated = terminatedPane,
-               paneTree.isSplit || paneTree.find(id: terminated.rawValue) == nil {
-                terminatedPane = nil
-            }
+            // A terminated pane stays terminated only while it is in the tree
+            // (SPEC §23.2): a pane closed explicitly takes its state with it.
+            terminatedPanes = terminatedPanes.filter { paneTree.find(id: $0.rawValue) != nil }
         }
     }
 
@@ -71,15 +66,16 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     /// (zero or several primaries) is unrepresentable in memory.
     private(set) var primaryPane: SurfaceID?
 
-    /// The pane held in the terminated state, or `nil` (`SPEC.md` §23.2): the
-    /// project's last pane whose shell has exited. The project stays — with its
-    /// note — instead of closing, and Enter starts a new shell in the pane.
+    /// The panes held in the terminated state (`SPEC.md` §23.2, must 29): panes
+    /// whose command (shell, tmux client, or ssh) has exited. Each stays in the
+    /// tree where it was — with or without siblings — and Enter on any of them
+    /// restarts all of them (must 30).
     ///
-    /// Invariant: non-`nil` only while that pane is the tree's sole leaf,
-    /// maintained by `markPaneTerminated` and the `paneTree` observer.
-    /// Runtime-only: never persisted — a restore recreates every pane with a
-    /// fresh shell, so a restored project is live again (`SPEC.md` §23.4).
-    private(set) var terminatedPane: SurfaceID?
+    /// Invariant: a subset of the tree's leaves, maintained by
+    /// `markPaneTerminated` and the `paneTree` observer. Runtime-only: never
+    /// persisted — a restore re-attaches every pane to its saved session, so a
+    /// restored project is live again (`SPEC.md` §23.4).
+    private(set) var terminatedPanes: Set<SurfaceID> = []
 
     /// The human-set priority of this project, or `nil` for unset — the default
     /// (`SPEC.md` §24.1). Like the note, it belongs to the project as a whole
@@ -242,45 +238,83 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
 
     // MARK: Terminated state (SPEC §23.2–23.3)
 
-    /// Whether this project is in the terminated state: its last pane's shell
-    /// has exited and the pane is kept instead of closing the project.
+    /// Whether any pane of this project is in the terminated state.
     var isTerminated: Bool {
-        terminatedPane != nil
+        !terminatedPanes.isEmpty
     }
 
-    /// Enter the terminated state for `paneID` (`SPEC.md` §23.2): the project's
-    /// last pane whose shell exited is kept — with the project and its note —
-    /// instead of closing.
+    /// Whether `paneID` is in the terminated state.
+    func isPaneTerminated(_ paneID: SurfaceID) -> Bool {
+        terminatedPanes.contains(paneID)
+    }
+
+    /// The terminated panes in tree order — the order a restart replaces them.
+    var terminatedPanesInTreeOrder: [SurfaceID] {
+        paneTree.compactMap { pane in
+            let id = SurfaceID(rawValue: pane.id)
+            return terminatedPanes.contains(id) ? id : nil
+        }
+    }
+
+    /// Enter the terminated state for `paneID` (`SPEC.md` §23.2, must 29):
+    /// a pane whose command exited stays in the tree — siblings or not — with
+    /// the project, its note, the layout and the primary flag unchanged. A
+    /// command exit never closes a pane (must 143) and never promotes another
+    /// pane to primary (must 23).
     ///
-    /// - Returns: `false` (and changes nothing) unless `paneID` is the tree's
-    ///   sole leaf: the terminated state is defined only for a last pane; an
-    ///   exited pane among several simply closes.
+    /// - Returns: `false` (and changes nothing) unless `paneID` is a leaf of
+    ///   the tree.
     @discardableResult
     mutating func markPaneTerminated(_ paneID: SurfaceID) -> Bool {
-        guard !paneTree.isSplit,
-              paneTree.find(id: paneID.rawValue) != nil else { return false }
-        terminatedPane = paneID
+        guard paneTree.find(id: paneID.rawValue) != nil else { return false }
+        terminatedPanes.insert(paneID)
         return true
     }
 
-    /// Leave the terminated state by replacing the dead pane with `newPane`,
-    /// which carries a fresh shell (`SPEC.md` §23.3): the project resumes work
-    /// in the same pane slot, keeping its note, name, and layout position.
+    /// Restart every terminated pane (`SPEC.md` §23.3, must 30): each dead pane
+    /// is replaced in its own slot by the new pane `replacements` maps it to,
+    /// which carries the same attach command (must 132). The split layout and
+    /// the primary flag stay where they were — a replaced primary hands the
+    /// flag to its replacement — and panes that are not terminated are not
+    /// touched.
     ///
-    /// - Returns: `false` (and changes nothing) when the project is not
-    ///   terminated.
+    /// - Returns: `false` (and changes nothing) when no pane is terminated or
+    ///   `replacements` does not map exactly the terminated panes.
     @discardableResult
-    mutating func restartTerminatedPane(with newPane: Pane) -> Bool {
-        guard let deadPane = terminatedPane else { return false }
-        // Enter re-runs the same attach command (must 132): the new pane takes
-        // over the dead pane's session rather than starting another one.
-        let newID = SurfaceID(rawValue: newPane.id)
-        if let binding = paneBindings.removeValue(forKey: deadPane), newID != deadPane {
-            paneBindings[newID] = binding
+    mutating func restartTerminatedPanes(with replacements: [SurfaceID: Pane]) -> Bool {
+        guard !terminatedPanes.isEmpty,
+              Set(replacements.keys) == terminatedPanes else { return false }
+
+        var tree = paneTree
+        for (deadPane, newPane) in replacements {
+            guard let node = tree.find(id: deadPane.rawValue),
+                  let replaced = try? tree.replacing(node: node, with: .leaf(view: newPane))
+            else { return false }
+            tree = replaced
         }
-        // The tree observer clears `terminatedPane` (the dead pane leaves the
-        // tree) and re-resolves the primary onto the sole new leaf.
-        paneTree = SplitTree<Pane>(view: newPane)
+
+        let mapped = { (id: SurfaceID?) -> SurfaceID? in
+            guard let id, let pane = replacements[id] else { return id }
+            return SurfaceID(rawValue: pane.id)
+        }
+        let primary = mapped(primaryPane)
+        let focus = mapped(focusedSurface)
+
+        // The new pane takes over the dead pane's session rather than
+        // starting another one.
+        for (deadPane, newPane) in replacements {
+            let newID = SurfaceID(rawValue: newPane.id)
+            if let binding = paneBindings.removeValue(forKey: deadPane), newID != deadPane {
+                paneBindings[newID] = binding
+            }
+        }
+
+        // The tree observer drops the dead panes from `terminatedPanes`; the
+        // primary is set after it so the flag stays in the replaced slot
+        // instead of being promoted to a neighbor.
+        paneTree = tree
+        if let primary { primaryPane = primary }
+        focusedSurface = focus
         return true
     }
 
@@ -338,18 +372,19 @@ struct ProjectStateOf<Pane: Codable & Identifiable & Equatable>: Identifiable wh
     }
 
     /// The pane command of `newPane`, about to replace the terminated pane
-    /// (must 132): the same attach command, re-attaching to the dead pane's
-    /// session or creating it again. `restartTerminatedPane` then moves the
-    /// binding over. A dead pane that was never bound (a save from before
-    /// tmux sessions) gives the new pane a fresh session.
+    /// `deadPane` (must 132): the same attach command, re-attaching to the
+    /// dead pane's session or creating it again. `restartTerminatedPanes` then
+    /// moves the binding over. A dead pane that was never bound (a save from
+    /// before tmux sessions) gives the new pane a fresh session.
     ///
-    /// - Returns: `nil` (and changes nothing) when the project is not
+    /// - Returns: `nil` (and changes nothing) when `deadPane` is not
     ///   terminated.
     mutating func restartLaunchCommand(
         newPane: SurfaceID,
+        replacing deadPane: SurfaceID,
         registry: ProjectTerminalRegistry
     ) -> String? {
-        guard let deadPane = terminatedPane else { return nil }
+        guard terminatedPanes.contains(deadPane) else { return nil }
         if let binding = paneBindings[deadPane] {
             return attachCommand(binding: binding, start: .project, registry: registry)
         }
@@ -785,8 +820,8 @@ extension SplitTree {
     ///   never take it.
     /// - A primary that left the tree promotes its nearest leaf, measured on
     ///   `previousTree` (where the departed primary still has a position)
-    ///   among the panes that survive into `self`. Shell exit, Cmd+W, and
-    ///   process death all reach the model as such a replacement.
+    ///   among the panes that survive into `self`. Only an explicit close
+    ///   (Cmd+W) removes a pane; a command exit keeps it (must 143).
     /// - With nothing to promote (no previous primary, or no survivor), the
     ///   first leaf is the default; an empty tree has no primary.
     func reconciledPrimary(previousTree: Self, previousPrimary: Element.ID?) -> Element.ID? {

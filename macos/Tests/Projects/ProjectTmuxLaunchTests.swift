@@ -127,10 +127,10 @@ struct ProjectTmuxLaunchTests {
         let replacement = LaunchPane()
 
         let command = project.restartLaunchCommand(
-            newPane: Self.sid(replacement), registry: Self.terminals)
+            newPane: Self.sid(replacement), replacing: Self.sid(dead), registry: Self.terminals)
         #expect(command == dead.command)
 
-        let restarted = project.restartTerminatedPane(with: replacement)
+        let restarted = project.restartTerminatedPanes(with: [Self.sid(dead): replacement])
         #expect(restarted)
         #expect(project.sessionName(for: Self.sid(replacement))
             == TmuxSession.name(project: project.id, index: 1))
@@ -146,16 +146,17 @@ struct ProjectTmuxLaunchTests {
         let replacement = LaunchPane()
 
         let command = project.restartLaunchCommand(
-            newPane: Self.sid(replacement), registry: Self.terminals)
+            newPane: Self.sid(replacement), replacing: Self.sid(dead), registry: Self.terminals)
         #expect(command == Self.attach(project, index: 1))
-        _ = project.restartTerminatedPane(with: replacement)
+        _ = project.restartTerminatedPanes(with: [Self.sid(dead): replacement])
         #expect(project.paneBindings[Self.sid(replacement)] == TmuxPaneBinding(terminalName: nil, index: 1))
     }
 
-    @Test func aLiveProjectHasNoRestartCommand() {
+    @Test func aLiveProjectHasNoRestartCommand() throws {
         var project = Self.newProject()
+        let live = try #require(project.paneTree.firstLeaf)
         let command = project.restartLaunchCommand(
-            newPane: SurfaceID(rawValue: UUID()), registry: Self.terminals)
+            newPane: SurfaceID(rawValue: UUID()), replacing: Self.sid(live), registry: Self.terminals)
         #expect(command == nil)
         #expect(project.paneBindings.count == 1)
     }

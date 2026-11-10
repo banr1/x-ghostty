@@ -83,15 +83,11 @@ struct ProjectView: View {
             TerminalSplitTreeView(
                 tree: primaryOnly ? project.overallViewPaneTree : project.paneTree,
                 markedPane: primaryMarkPane?.rawValue,
+                // Terminated-state cover (SPEC §23.3): each pane whose command
+                // has exited reads as "finished, resumable" until Enter
+                // restarts the project's terminated panes.
+                coveredPanes: Set(project.terminatedPanes.map(\.rawValue)),
                 action: paneAction)
-                .overlay {
-                    // Terminated-state cover (SPEC §23.3): the project's last
-                    // pane's shell has exited; the pane area reads as
-                    // "finished, resumable" until Enter starts a new shell.
-                    if project.isTerminated {
-                        ProjectTerminatedPaneView()
-                    }
-                }
                 .overlay(alignment: .topTrailing) {
                     if let paneCountBadge {
                         ProjectPaneCountBadge(count: paneCountBadge)

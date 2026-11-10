@@ -111,7 +111,7 @@ struct ProjectTmuxPaneTests {
         project.bindPane(Self.sid(dead))
         let session = project.sessionName(for: Self.sid(dead))
         let marked = project.markPaneTerminated(Self.sid(dead))
-        let restarted = project.restartTerminatedPane(with: fresh)
+        let restarted = project.restartTerminatedPanes(with: [Self.sid(dead): fresh])
 
         #expect(marked)
         #expect(restarted)
@@ -323,7 +323,7 @@ struct ProjectTmuxPaneTests {
         #expect(marked)
         var open = TmuxOpenPanes(projects: [project])
 
-        let restarted = project.restartTerminatedPane(with: fresh)
+        let restarted = project.restartTerminatedPanes(with: [Self.sid(dead): fresh])
         #expect(restarted)
         let closed = open.advance(to: TmuxOpenPanes(projects: [project]))
 

@@ -20,7 +20,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     // `WorkspaceModel.WorkspaceError` / `.CloseProjectOutcome` spelling working.
     typealias WorkspaceError = WorkspaceModelError
     typealias CloseProjectOutcome = WorkspaceCloseProjectOutcome
-    typealias ChildExitOutcome = WorkspaceChildExitOutcome
 
     @Published private(set) var state: WorkspaceStateOf<Pane>
 
@@ -177,7 +176,7 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         // In the overall view the only rendered — and therefore focusable —
         // pane is the primary, so the mirrored focus follows it (SPEC §22.4).
         // This is what moves focus onto the promoted primary when the old one
-        // left the tree (shell exit / Cmd+W / process death) outside zoom.
+        // left the tree (an explicit close such as Cmd+W) outside zoom.
         state.snapFocusToPrimaryInOverallView()
     }
 
@@ -1077,39 +1076,30 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         state.projects.first { $0.value.paneTree.find(id: paneID.rawValue) != nil }?.key
     }
 
-    /// Whether project `id` is in the terminated state (`SPEC.md` §23.2): its
-    /// last pane's shell has exited and the pane is kept instead of closing.
+    /// Whether project `id` holds any pane in the terminated state (`SPEC.md`
+    /// §23.2).
     func isProjectTerminated(_ id: ProjectID) -> Bool {
         state.projects[id]?.isTerminated ?? false
     }
 
-    /// The model-layer judgment of what a child-process exit (normal exit,
-    /// abnormal exit, or process death alike) means for pane `paneID`
-    /// (`SPEC.md` §23.2):
-    ///
-    /// - The project's last pane → `.terminated`: the project must not close; the
-    ///   pane is kept in the terminated state with the note preserved.
-    /// - One pane among several, normal exit → `.closePane`: the pane closes
-    ///   as it always did.
-    /// - One pane among several, abnormal exit → `.keepPaneAwaitingKey`: the
-    ///   upstream contract is kept — the pane stays with its error message
-    ///   until a key press closes it.
-    ///
-    /// Pure judgment: the caller applies the outcome via
-    /// `markPaneTerminated` / `removeExitedPane` (or the controller's
-    /// focused-tree close path).
-    ///
-    /// - Returns: `nil` when no project holds `paneID`.
-    func childExitOutcome(for paneID: SurfaceID, abnormalExit: Bool) -> WorkspaceChildExitOutcome? {
-        guard let projectID = projectID(containing: paneID),
-              let project = state.projects[projectID] else { return nil }
-        if !project.paneTree.isSplit { return .terminated(projectID) }
-        return abnormalExit ? .keepPaneAwaitingKey(projectID) : .closePane(projectID)
+    /// Whether pane `paneID` is in the terminated state.
+    func isPaneTerminated(_ paneID: SurfaceID) -> Bool {
+        guard let projectID = projectID(containing: paneID) else { return false }
+        return state.projects[projectID]?.isPaneTerminated(paneID) ?? false
     }
 
-    /// Enter the terminated state for `paneID`'s project (`SPEC.md` §23.2).
-    /// Rejected unless `paneID` is its project's sole pane (the state is
-    /// defined only for a last pane).
+    /// The terminated panes of project `id`, in tree order.
+    func terminatedPanes(in id: ProjectID) -> [SurfaceID] {
+        state.projects[id]?.terminatedPanesInTreeOrder ?? []
+    }
+
+    /// A child-process exit of pane `paneID` (normal exit, abnormal exit, or
+    /// process death alike — must 29): the pane enters the terminated state
+    /// and stays in its project's tree whether or not it has siblings. The
+    /// project, its note, the layout and the primary flag are unchanged; a
+    /// command exit never closes a pane (must 143).
+    ///
+    /// - Returns: `false` when no project holds `paneID`.
     @discardableResult
     func markPaneTerminated(_ paneID: SurfaceID) -> Bool {
         guard let projectID = projectID(containing: paneID),
@@ -1119,36 +1109,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return true
     }
 
-    /// Remove the exited pane `paneID` from its project's tree — the model-side
-    /// close for panes outside the focused project's mirrored `surfaceTree`
-    /// (hidden or non-focused projects). Rejected when the pane is its project's
-    /// last one: that case is `.terminated`, never a removal (`SPEC.md`
-    /// §23.2). A dangling stored focus falls back to the first remaining
-    /// leaf; the primary flag reconciles via the tree observer.
-    @discardableResult
-    func removeExitedPane(_ paneID: SurfaceID) -> Bool {
-        guard let projectID = projectID(containing: paneID),
-              var project = state.projects[projectID],
-              project.paneTree.isSplit,
-              let node = project.paneTree.find(id: paneID.rawValue) else { return false }
-
-        project.paneTree = project.paneTree.removing(node)
-        if let stored = project.focusedSurface,
-           project.paneTree.find(id: stored.rawValue) == nil {
-            project.focusedSurface = project.paneTree.firstLeaf.map { SurfaceID(rawValue: $0.id) }
-        }
-        state.projects[projectID] = project
-        state.snapFocusToPrimaryInOverallView()
-        return true
-    }
-
-    /// Leave the terminated state of project `projectID` by starting `newPane`
-    /// (which carries a fresh shell) in the same pane slot (`SPEC.md` §23.3):
-    /// the Enter-restart path. The new pane becomes the project's primary and
-    /// its focused surface.
-    ///
-    /// - Returns: `false` when the project is unknown or not terminated (the
-    ///   caller should then discard `newPane`).
     /// The pane command for `newPane`, about to split `origin` (must 129,
     /// 130): bound to the current terminal of `origin`'s project, starting
     /// in `origin`'s current path.
@@ -1164,14 +1124,19 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
     }
 
     /// The pane command for `newPane`, about to replace the terminated pane
-    /// of `projectID` (must 132): the dead pane's attach command.
+    /// `deadPane` of `projectID` (must 132): the dead pane's attach command.
     ///
     /// - Returns: `nil` (and changes nothing) when the project is unknown or
-    ///   not terminated.
-    func restartLaunchCommand(in projectID: ProjectID, newPane: SurfaceID) -> String? {
+    ///   `deadPane` is not terminated.
+    func restartLaunchCommand(
+        in projectID: ProjectID,
+        replacing deadPane: SurfaceID,
+        newPane: SurfaceID
+    ) -> String? {
         guard var project = state.projects[projectID],
               let command = project.restartLaunchCommand(
-                newPane: newPane, registry: terminalRegistry) else { return nil }
+                newPane: newPane, replacing: deadPane, registry: terminalRegistry)
+        else { return nil }
         state.projects[projectID] = project
         return command
     }
@@ -1193,16 +1158,24 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
             makePane: makePane)
     }
 
+    /// Restart every terminated pane of project `projectID` (`SPEC.md` §23.3,
+    /// must 30): each is replaced in its own slot by the new pane
+    /// `replacements` maps it to. The layout and the primary flag stay; live
+    /// panes are untouched. A focused dead pane hands the focus to its
+    /// replacement.
+    ///
+    /// - Returns: `false` (and changes nothing) when the project is unknown,
+    ///   has no terminated pane, or `replacements` does not map exactly its
+    ///   terminated panes (the caller should then discard the new panes).
     @discardableResult
-    func restartTerminatedPane(
+    func restartTerminatedPanes(
         in projectID: ProjectID,
-        with newPane: Pane,
+        with replacements: [SurfaceID: Pane],
         now: Date = Date()
     ) -> Bool {
         guard var project = state.projects[projectID],
-              project.restartTerminatedPane(with: newPane) else { return false }
+              project.restartTerminatedPanes(with: replacements) else { return false }
 
-        project.focusedSurface = SurfaceID(rawValue: newPane.id)
         project.lastFocusedAt = now
         state.projects[projectID] = project
         return true
@@ -1585,37 +1558,19 @@ enum WorkspaceModelError: Error {
     case visibleProjectLimitReached
 }
 
-/// The model-layer judgment of what a child-process exit means for its pane
-/// (`SPEC.md` §23.2): deletion protection keeps the project when the exited
-/// pane is its last one; otherwise the pane closes as it always did.
-enum WorkspaceChildExitOutcome: Equatable {
-    /// The exited pane is its project's only pane: the project stays — with its
-    /// note — holding the pane in the terminated state (Enter restarts,
-    /// `SPEC.md` §23.3).
-    case terminated(ProjectID)
-
-    /// One pane among several exited normally: it closes as before.
-    case closePane(ProjectID)
-
-    /// One pane among several exited abnormally: the upstream contract is
-    /// kept — the pane stays with its error message until a key press
-    /// closes it.
-    case keepPaneAwaitingKey(ProjectID)
-}
-
 /// Where a key press on a pane whose child process has exited goes
 /// (`SPEC.md` §23.3). Keybinds keep working on an exited pane as on a live
 /// one (upstream runs bindings before it looks at the exit); only the rest
-/// belongs to the project layer, where a plain Return / Enter is the restart
-/// key of a terminated pane.
+/// belongs to the project layer, where a plain Return / Enter restarts the
+/// project's terminated panes and any other key does nothing.
 enum ExitedPaneKeyRoute: Equatable {
     /// A keybind (`Cmd+L`, `Cmd+Shift+,`, `Cmd+Opt+Enter`, …): the core runs
     /// its action.
     case binding
 
     /// Any other key: handed to the project layer. `isRestart` is true only
-    /// for a Return / Enter without modifiers — the key that restarts a
-    /// terminated pane; an exited sibling pane closes on any key.
+    /// for a Return / Enter without modifiers — the key that restarts the
+    /// project's terminated panes.
     case project(isRestart: Bool)
 
     /// - Parameters:

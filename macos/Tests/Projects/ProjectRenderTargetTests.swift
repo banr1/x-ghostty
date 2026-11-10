@@ -277,7 +277,7 @@ struct ProjectRenderTargetTests {
         #expect(before.retained.contains(sid(b1)))
 
         let replacement = TestPane()
-        #expect(model.restartTerminatedPane(in: projectB.id, with: replacement))
+        #expect(model.restartTerminatedPanes(in: projectB.id, with: [sid(b1): replacement]))
 
         let restart = RenderTargetTransition(from: before, to: model.state.renderTargetSnapshot)
         #expect(restart.released == [sid(b1)])

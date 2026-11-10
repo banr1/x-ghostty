@@ -17,9 +17,9 @@ private typealias TestWorkspaceState = WorkspaceStateOf<TestPane>
 private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 
 /// Tests for the deletion-protection model layer (SPEC §23): the
-/// always-confirm project close, the child-exit judgment (terminated last pane
-/// vs. closing sibling pane), the terminated state's persistence semantics,
-/// and the Enter-restart transition.
+/// always-confirm project close, the per-pane terminated state (a command exit
+/// never closes a pane, siblings or not), its persistence semantics, and the
+/// project-wide Enter-restart transition.
 struct ProjectTerminatedTests {
     /// A single-project model around `tree`, with a deterministic name.
     private static func makeModel(_ tree: SplitTree<TestPane>) -> TestWorkspaceModel {
@@ -41,153 +41,97 @@ struct ProjectTerminatedTests {
         #expect(model.closeProjectRequiresConfirmation(anyLiveProcess: false))
     }
 
-    // MARK: Child-exit judgment (SPEC §23.2)
+    // MARK: Command exit (SPEC §23.2, must 29 / 143)
 
-    @Test func lastPaneExitIsJudgedTerminatedForEveryExitKind() throws {
-        let pane = TestPane()
-        let model = Self.makeModel(.init(view: pane))
-        let projectID = try #require(model.state.focusedProject)
-
-        // Normal exit, abnormal exit, and process death all reach the model
-        // the same way; a last pane is always `.terminated`.
-        #expect(model.childExitOutcome(for: Self.paneID(pane), abnormalExit: false)
-                == .terminated(projectID))
-        #expect(model.childExitOutcome(for: Self.paneID(pane), abnormalExit: true)
-                == .terminated(projectID))
-    }
-
-    @Test func siblingPaneNormalExitIsJudgedClosePane() throws {
-        let a = TestPane()
-        let b = TestPane()
-        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let projectID = try #require(model.state.focusedProject)
-
-        #expect(model.childExitOutcome(for: Self.paneID(b), abnormalExit: false)
-                == .closePane(projectID))
-    }
-
-    @Test func siblingPaneAbnormalExitAwaitsKeyClose() throws {
-        let a = TestPane()
-        let b = TestPane()
-        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let projectID = try #require(model.state.focusedProject)
-
-        #expect(model.childExitOutcome(for: Self.paneID(b), abnormalExit: true)
-                == .keepPaneAwaitingKey(projectID))
-    }
-
-    @Test func unknownPaneExitHasNoOutcome() {
-        let model = Self.makeModel(.init(view: TestPane()))
-        #expect(model.childExitOutcome(for: SurfaceID(rawValue: UUID()), abnormalExit: false) == nil)
-    }
-
-    @Test func exitOutcomeIsRejudgedAfterSiblingsClosed() throws {
-        // [A | B] where A exited abnormally and awaits a key. If B closes
-        // first, A becomes the project's last pane — a later judgment must be
-        // `.terminated`, not a close (deletion protection).
-        let a = TestPane()
-        let b = TestPane()
-        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let projectID = try #require(model.state.focusedProject)
-        #expect(model.childExitOutcome(for: Self.paneID(a), abnormalExit: true)
-                == .keepPaneAwaitingKey(projectID))
-
-        model.replaceFocusedPaneTree(model.focusedPaneTree.removing(.leaf(view: b)))
-
-        #expect(model.childExitOutcome(for: Self.paneID(a), abnormalExit: true)
-                == .terminated(projectID))
-    }
-
-    // MARK: Terminated state (SPEC §23.2)
-
-    @Test func markPaneTerminatedKeepsProjectWithNoteAndPane() throws {
+    @Test func lastPaneExitKeepsTheProjectWithNoteAndPane() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
         let projectID = try #require(model.state.focusedProject)
         model.setProjectNote(projectID, to: "deploy at five\ncheck the logs")
 
+        // Normal exit, abnormal exit, and process death all reach the model
+        // the same way: the pane is marked terminated.
         let marked = model.markPaneTerminated(Self.paneID(pane))
 
         #expect(marked)
         let project = try #require(model.state.projects[projectID])
         #expect(project.isTerminated)
         #expect(model.isProjectTerminated(projectID))
-        #expect(project.terminatedPane == Self.paneID(pane))
+        #expect(model.isPaneTerminated(Self.paneID(pane)))
+        #expect(project.terminatedPanes == [Self.paneID(pane)])
         #expect(project.paneTree.find(id: pane.id) != nil)
         #expect(project.note == "deploy at five\ncheck the logs")
     }
 
-    @Test func markPaneTerminatedRejectsPaneAmongSeveral() throws {
+    @Test func siblingPaneExitKeepsThePaneWithTreeOtherPanesAndPrimaryUnchanged() throws {
+        // [A | B | C] with A primary: B's command exits (normal or abnormal —
+        // the same path). B stays in the tree terminated; the tree, A and C,
+        // and the primary flag do not change.
         let a = TestPane()
         let b = TestPane()
-        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
+        let c = TestPane()
+        let tree = try SplitTree<TestPane>(view: a)
+            .inserting(view: b, at: a, direction: .right)
+            .inserting(view: c, at: b, direction: .down)
+        let model = Self.makeModel(tree)
         let projectID = try #require(model.state.focusedProject)
+        let before = try #require(model.state.projects[projectID])
 
-        #expect(!model.markPaneTerminated(Self.paneID(b)))
-        #expect(!model.isProjectTerminated(projectID))
-    }
+        #expect(model.markPaneTerminated(Self.paneID(b)))
 
-    @Test func terminatedPrimaryLastPaneKeepsItsPrimaryFlag() throws {
-        // The primary-close last-pane path follows the terminated-state
-        // semantics: the sole pane is the primary, and terminating it keeps
-        // both the pane and its flag in place.
-        let pane = TestPane()
-        let model = Self.makeModel(.init(view: pane))
-        let projectID = try #require(model.state.focusedProject)
-
-        #expect(model.markPaneTerminated(Self.paneID(pane)))
-        #expect(model.state.projects[projectID]?.primaryPane == Self.paneID(pane))
-    }
-
-    @Test func splittingWhileTerminatedClearsTheTerminatedState() throws {
-        let pane = TestPane()
-        let model = Self.makeModel(.init(view: pane))
-        let projectID = try #require(model.state.focusedProject)
-        #expect(model.markPaneTerminated(Self.paneID(pane)))
-
-        // The terminated state is defined only for a sole last pane: a tree
-        // that grows past one pane leaves it.
-        let other = TestPane()
-        model.replaceFocusedPaneTree(
-            try model.focusedPaneTree.inserting(view: other, at: pane, direction: .right))
-
-        #expect(!model.isProjectTerminated(projectID))
-    }
-
-    // MARK: Sibling-pane close (SPEC §23.2)
-
-    @Test func removeExitedPaneClosesOnlyThatPane() throws {
-        let a = TestPane()
-        let b = TestPane()
-        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
-        let projectID = try #require(model.state.focusedProject)
-        model.setProjectNote(projectID, to: "still here")
-
-        let removed = model.removeExitedPane(Self.paneID(b))
-
-        #expect(removed)
         let project = try #require(model.state.projects[projectID])
-        #expect(project.paneTree.find(id: b.id) == nil)
-        #expect(project.paneTree.find(id: a.id) != nil)
-        #expect(!project.isTerminated)
-        #expect(project.note == "still here")
+        #expect(project.paneTree.root == before.paneTree.root)
+        #expect(project.terminatedPanes == [Self.paneID(b)])
+        #expect(!project.isPaneTerminated(Self.paneID(a)))
+        #expect(!project.isPaneTerminated(Self.paneID(c)))
+        #expect(project.primaryPane == Self.paneID(a))
     }
 
-    @Test func removeExitedPaneRejectsAProjectsLastPane() throws {
-        let pane = TestPane()
-        let model = Self.makeModel(.init(view: pane))
+    @Test func primaryPaneExitDoesNotPromoteAnotherPane() throws {
+        // must 23: a primary whose command ends stays primary, terminated.
+        let a = TestPane()
+        let b = TestPane()
+        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
+        let projectID = try #require(model.state.focusedProject)
+        #expect(model.state.projects[projectID]?.primaryPane == Self.paneID(a))
+
+        #expect(model.markPaneTerminated(Self.paneID(a)))
+
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.primaryPane == Self.paneID(a))
+        #expect(project.paneTree.find(id: a.id) != nil)
+        #expect(project.paneTree.find(id: b.id) != nil)
+    }
+
+    @Test func everyPaneOfASplitProjectCanBeTerminatedAtOnce() throws {
+        // The ssh to a remote terminal drops: every pane's command ends. All
+        // of them stay, none closes, and the project keeps its layout.
+        let a = TestPane()
+        let b = TestPane()
+        let c = TestPane()
+        let tree = try SplitTree<TestPane>(view: a)
+            .inserting(view: b, at: a, direction: .right)
+            .inserting(view: c, at: b, direction: .down)
+        let model = Self.makeModel(tree)
         let projectID = try #require(model.state.focusedProject)
 
-        // A last pane is never removed by the exit path: that case is
-        // `.terminated` (the project must not close).
-        #expect(!model.removeExitedPane(Self.paneID(pane)))
-        #expect(model.state.projects[projectID]?.paneTree.find(id: pane.id) != nil)
+        for pane in [b, a, c] {
+            #expect(model.markPaneTerminated(Self.paneID(pane)))
+        }
+
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.paneTree.root == tree.root)
+        #expect(project.terminatedPanesInTreeOrder == [a, b, c].map(Self.paneID))
+        #expect(project.primaryPane == Self.paneID(a))
     }
 
-    @Test func removeExitedPaneWorksForHiddenProjects() throws {
-        // Two projects; hide the second (multi-pane) one, then close one of its
-        // exited panes model-side — the path the controller uses for panes
-        // outside the focused project's mirrored tree.
+    @Test func anUnknownPaneCannotBeMarked() {
+        let model = Self.makeModel(.init(view: TestPane()))
+        #expect(!model.markPaneTerminated(SurfaceID(rawValue: UUID())))
+        #expect(!model.isPaneTerminated(SurfaceID(rawValue: UUID())))
+    }
+
+    @Test func aPaneOfAHiddenProjectIsKeptTerminated() throws {
         let visible = TestPane()
         let hiddenA = TestPane()
         let hiddenB = TestPane()
@@ -205,11 +149,53 @@ struct ProjectTerminatedTests {
             hiddenProjectIDs: [hiddenProject.id],
             focusedProject: visibleProject.id))
 
-        #expect(model.projectID(containing: Self.paneID(hiddenB)) == hiddenProject.id)
-        #expect(model.removeExitedPane(Self.paneID(hiddenB)))
+        #expect(model.markPaneTerminated(Self.paneID(hiddenB)))
         let project = try #require(model.state.projects[hiddenProject.id])
-        #expect(project.paneTree.find(id: hiddenB.id) == nil)
+        #expect(project.paneTree.find(id: hiddenB.id) != nil)
         #expect(project.paneTree.find(id: hiddenA.id) != nil)
+        #expect(project.terminatedPanes == [Self.paneID(hiddenB)])
+    }
+
+    @Test func terminatedPrimaryLastPaneKeepsItsPrimaryFlag() throws {
+        let pane = TestPane()
+        let model = Self.makeModel(.init(view: pane))
+        let projectID = try #require(model.state.focusedProject)
+
+        #expect(model.markPaneTerminated(Self.paneID(pane)))
+        #expect(model.state.projects[projectID]?.primaryPane == Self.paneID(pane))
+    }
+
+    @Test func splittingKeepsTheTerminatedPaneTerminated() throws {
+        let pane = TestPane()
+        let model = Self.makeModel(.init(view: pane))
+        let projectID = try #require(model.state.focusedProject)
+        #expect(model.markPaneTerminated(Self.paneID(pane)))
+
+        // The state belongs to the pane: a new live sibling does not end it.
+        let other = TestPane()
+        model.replaceFocusedPaneTree(
+            try model.focusedPaneTree.inserting(view: other, at: pane, direction: .right))
+
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.terminatedPanes == [Self.paneID(pane)])
+    }
+
+    @Test func closingATerminatedPaneExplicitlyRemovesItAndItsState() throws {
+        // Cmd+W is a loss path (must 143): the pane leaves the tree and takes
+        // its terminated state with it; the primary is promoted as for any
+        // explicit close.
+        let a = TestPane()
+        let b = TestPane()
+        let model = Self.makeModel(try .init(view: a).inserting(view: b, at: a, direction: .right))
+        let projectID = try #require(model.state.focusedProject)
+        #expect(model.markPaneTerminated(Self.paneID(a)))
+
+        model.replaceFocusedPaneTree(model.focusedPaneTree.removing(.leaf(view: a)))
+
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.paneTree.find(id: a.id) == nil)
+        #expect(!project.isTerminated)
+        #expect(project.primaryPane == Self.paneID(b))
     }
 
     // MARK: Persistence (SPEC §23.4)
@@ -226,22 +212,45 @@ struct ProjectTerminatedTests {
 
         let project = try #require(decoded.projects[projectID])
         #expect(project.note == "the note survives\nthe shell does not")
-        // The terminated state itself is runtime-only: a restore recreates
-        // every pane with a fresh shell, so the project comes back live.
+        // The terminated state itself is runtime-only: a restore re-attaches
+        // every pane, so the project comes back live.
         #expect(!project.isTerminated)
     }
 
-    // MARK: Enter restart (SPEC §23.3)
+    @Test func aSplitProjectWithTerminatedPanesRoundTripsWithEveryPane() throws {
+        let a = TestPane()
+        let b = TestPane()
+        let c = TestPane()
+        let tree = try SplitTree<TestPane>(view: a)
+            .inserting(view: b, at: a, direction: .right)
+            .inserting(view: c, at: b, direction: .down)
+        let model = Self.makeModel(tree)
+        let projectID = try #require(model.state.focusedProject)
+        #expect(model.markPaneTerminated(Self.paneID(a)))
+        #expect(model.markPaneTerminated(Self.paneID(c)))
 
-    @Test func restartTerminatedPaneStartsFreshPaneInSameSlot() throws {
+        let data = try JSONEncoder().encode(model.state)
+        let decoded = try JSONDecoder().decode(TestWorkspaceState.self, from: data)
+
+        let project = try #require(decoded.projects[projectID])
+        #expect(project.paneTree.root == tree.root)
+        #expect(project.primaryPane == Self.paneID(a))
+        #expect(!project.isTerminated)
+    }
+
+    // MARK: Enter restart (SPEC §23.3, must 30)
+
+    @Test func restartTerminatedPanesStartsFreshPaneInSameSlot() throws {
         let pane = TestPane()
         let model = Self.makeModel(.init(view: pane))
         let projectID = try #require(model.state.focusedProject)
         model.setProjectNote(projectID, to: "keep me")
         #expect(model.markPaneTerminated(Self.paneID(pane)))
+        model.setFocusedSurface(Self.paneID(pane))
 
         let fresh = TestPane()
-        let restarted = model.restartTerminatedPane(in: projectID, with: fresh)
+        let restarted = model.restartTerminatedPanes(
+            in: projectID, with: [Self.paneID(pane): fresh])
 
         #expect(restarted)
         let project = try #require(model.state.projects[projectID])
@@ -254,13 +263,57 @@ struct ProjectTerminatedTests {
         #expect(project.note == "keep me")
     }
 
-    @Test func restartIsRejectedWhenNotTerminated() throws {
-        let pane = TestPane()
-        let model = Self.makeModel(.init(view: pane))
+    @Test func restartReplacesEveryTerminatedPaneInItsSlotAndLeavesLivePanes() throws {
+        // [A | (B / C)] with A primary; A and C terminated, B live. One
+        // restart replaces A and C in place: the layout, the primary slot and
+        // B are unchanged.
+        let a = TestPane()
+        let b = TestPane()
+        let c = TestPane()
+        let tree = try SplitTree<TestPane>(view: a)
+            .inserting(view: b, at: a, direction: .right)
+            .inserting(view: c, at: b, direction: .down)
+        let model = Self.makeModel(tree)
+        let projectID = try #require(model.state.focusedProject)
+        #expect(model.markPaneTerminated(Self.paneID(a)))
+        #expect(model.markPaneTerminated(Self.paneID(c)))
+        #expect(model.terminatedPanes(in: projectID) == [a, c].map(Self.paneID))
+
+        let freshA = TestPane()
+        let freshC = TestPane()
+        let restarted = model.restartTerminatedPanes(
+            in: projectID, with: [Self.paneID(a): freshA, Self.paneID(c): freshC])
+
+        #expect(restarted)
+        let project = try #require(model.state.projects[projectID])
+        let expected = try SplitTree<TestPane>(view: freshA)
+            .inserting(view: b, at: freshA, direction: .right)
+            .inserting(view: freshC, at: b, direction: .down)
+        #expect(project.paneTree.root == expected.root)
+        #expect(project.primaryPane == Self.paneID(freshA))
+        #expect(!project.isTerminated)
+    }
+
+    @Test func restartIsRejectedUnlessItReplacesExactlyTheTerminatedPanes() throws {
+        let a = TestPane()
+        let b = TestPane()
+        let tree = try SplitTree<TestPane>(view: a).inserting(view: b, at: a, direction: .right)
+        let model = Self.makeModel(tree)
         let projectID = try #require(model.state.focusedProject)
 
-        #expect(!model.restartTerminatedPane(in: projectID, with: TestPane()))
-        #expect(model.state.projects[projectID]?.paneTree.find(id: pane.id) != nil)
+        // Nothing terminated.
+        #expect(!model.restartTerminatedPanes(in: projectID, with: [Self.paneID(a): TestPane()]))
+
+        // A terminated, but the replacements name a live pane or miss A.
+        #expect(model.markPaneTerminated(Self.paneID(a)))
+        #expect(!model.restartTerminatedPanes(in: projectID, with: [Self.paneID(b): TestPane()]))
+        #expect(!model.restartTerminatedPanes(in: projectID, with: [:]))
+        #expect(!model.restartTerminatedPanes(
+            in: projectID, with: [Self.paneID(a): TestPane(), Self.paneID(b): TestPane()]))
+
+        let project = try #require(model.state.projects[projectID])
+        #expect(project.paneTree.root == tree.root)
+        #expect(project.terminatedPanes == [Self.paneID(a)])
     }
 
     // MARK: Keys on an exited pane (SPEC §23.3)
