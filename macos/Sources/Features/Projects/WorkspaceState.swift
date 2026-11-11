@@ -417,6 +417,15 @@ struct WorkspaceStateOf<Pane: Codable & Identifiable & Equatable> where Pane.ID 
 
         return restored
     }
+
+    /// Whether a restore from this save rebuilds the whole workspace
+    /// (`SPEC.md` §12.3): after `restoring`, there is a project to focus.
+    /// Otherwise the restore falls back to the pre-v8 single tree. When this
+    /// holds the save's legacy single tree is not decoded at all, so no
+    /// duplicate surfaces are created and discarded during the restore.
+    var restoresAsWorkspace: Bool {
+        Self.restoring(self).focusedProject != nil
+    }
 }
 
 // MARK: Codable

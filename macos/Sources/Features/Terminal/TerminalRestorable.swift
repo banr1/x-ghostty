@@ -169,6 +169,8 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
         // When the save carries a project layer (v8+), restore the whole workspace
         // (Phase 6 / `SPEC.md` §12): all projects visible, nothing zoomed, focus
         // validated. Older saves fall back to the single-tree restore path.
+        // This is the same judgment as `WorkspaceStateOf.restoresAsWorkspace`,
+        // which decided whether the legacy `surfaceTree` was decoded at all.
         let restoredWorkspace = state.workspace.map(WorkspaceState.restoring)
         let c: TerminalController
         if let restoredWorkspace, restoredWorkspace.focusedProject != nil {

@@ -893,6 +893,18 @@ After launch:
 
 live process / scrollback / PTY状態は復元しない。
 
+v8 の保存は、focused プロジェクトのペインを workspace の中と、旧形式互換の
+トップレベル `surfaceTree` の 2 箇所に持つ。復元が workspace の経路を取る
+とき(`WorkspaceStateOf.restoresAsWorkspace` — `restoring` の後に focus 先の
+プロジェクトがある)、decode はトップレベルの `surfaceTree` を読まず空の木と
+する(`TerminalRestorableState.InternalState.init(from:)`)。decode した葉は
+それぞれシェルを持つ live な surface になるため、読めば同じペインの surface が
+二重に生まれ、復元の終わりにメインスレッドで解放される。解放はコアの IO
+スレッドの終了を待ち、その reader はメインスレッドだけが捌く app の mailbox
+への送信で待ちうるので、復元が固まることがあった(周回 78 の観測)。
+workspace の無い旧保存と、focus 先の無い workspace は従来どおり
+`surfaceTree` を読む。
+
 ### 12.4 台帳の正規化(normalizeLedger)
 
 復元(`WorkspaceState.restoring`)は台帳を正規化してから再投影する:

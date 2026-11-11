@@ -81,6 +81,63 @@ struct TerminalRestorableTests {
         #expect(v7Generic.surfaceTree.contains(where: { $0.id.uuidString == "953CE952-D91D-4D36-AC72-9D0F1F6BCE73" }))
         #expect(v7Generic.surfaceTree.contains(where: { $0.id.uuidString == "D3223569-2E01-4BC5-9DB2-DBFC3AFF46D1" }))
     }
+
+    // MARK: v8 restore decodes each pane once
+
+    /// A v8 save carries the focused project's panes twice: inside the
+    /// workspace, and as the legacy top-level `surfaceTree`. When the restore
+    /// takes the workspace path the legacy copy must not be decoded — each
+    /// decoded leaf is a live surface with its own shell, and discarding the
+    /// copies at the end of the restore freed them on the main thread, which
+    /// could deadlock against the app mailbox.
+    @MainActor
+    @Test func aWorkspaceSaveDoesNotDecodeTheLegacySurfaceTree() throws {
+        let pane = MockView()
+        let project = ProjectID()
+        let workspace = WorkspaceStateOf<MockView>(
+            projects: [project: ProjectStateOf<MockView>(
+                id: project, name: "p", paneTree: .init(view: pane), createdAt: Date())],
+            projectOrder: [project],
+            focusedProject: project)
+        #expect(workspace.restoresAsWorkspace)
+
+        let saved = TerminalRestorableState.InternalState<MockView>(
+            focusedSurface: pane.id.uuidString,
+            surfaceTree: .init(view: pane),
+            effectiveFullscreenMode: nil,
+            titleOverride: "kept",
+            workspace: workspace)
+        let decoded = try JSONDecoder().decode(
+            TerminalRestorableState.InternalState<MockView>.self,
+            from: try JSONEncoder().encode(saved))
+
+        #expect(decoded.surfaceTree.isEmpty)
+        #expect(decoded.focusedSurface == pane.id.uuidString)
+        #expect(decoded.titleOverride == "kept")
+        let restored = try #require(decoded.workspace)
+        #expect(restored.projects[project]?.paneTree.map(\.id) == [pane.id])
+    }
+
+    /// A v8 save whose workspace has nothing to focus falls back to the
+    /// single-tree restore, so its legacy `surfaceTree` is still decoded.
+    @MainActor
+    @Test func aWorkspaceSaveWithNothingToRestoreStillDecodesTheLegacySurfaceTree() throws {
+        let pane = MockView()
+        let workspace = WorkspaceStateOf<MockView>(projects: [:])
+        #expect(!workspace.restoresAsWorkspace)
+
+        let saved = TerminalRestorableState.InternalState<MockView>(
+            focusedSurface: pane.id.uuidString,
+            surfaceTree: .init(view: pane),
+            effectiveFullscreenMode: nil,
+            titleOverride: nil,
+            workspace: workspace)
+        let decoded = try JSONDecoder().decode(
+            TerminalRestorableState.InternalState<MockView>.self,
+            from: try JSONEncoder().encode(saved))
+
+        #expect(decoded.surfaceTree.map(\.id) == [pane.id])
+    }
 }
 
 private extension TerminalRestorableTests {
