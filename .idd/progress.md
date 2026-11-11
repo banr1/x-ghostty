@@ -54,7 +54,7 @@ ideal_sha: 9ff0500c5e0480833fa5f4d11cae62541721dc301f60a768a6a11b99dd3198a4
 | C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | unmet | 失効: 周回 79 の変更で C101 の人間の確認が失効。C100 は cycle 79 で通過 |
 | C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 79: just swift-test exit 0 (failed 0 件) |
 | C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | unmet | 失効: 周回 79 の変更で C108 の人間の確認が失効。C107 は cycle 79 で通過 |
-| C49 | 必須 | レイアウト型は横長型・縦長型の 2 種(台座型と向きは廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置、序数は横長型が行ごと・縦長型が列ごと(検証: C102 + C103・C139) | unmet | 失効: 周回 79 の変更で C103 の人間の確認と C139 の observed 74 が失効。C102 は cycle 79 で通過 |
+| C49 | 必須 | レイアウト型は横長型・縦長型の 2 種(台座型と向きは廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置、序数は横長型が行ごと・縦長型が列ごと(検証: C102 + C103・C139) | unmet | 失効: 周回 79 の変更で C103 の人間の確認が失効(C139 は observed 81 で met)。C102 は cycle 79 で通過 |
 | C50 | 必須 | visible 1〜24 で配置と序数の進み方が完全一致する型を畳み(実際の種別の組み合わせで比べる)、選択肢 1 つなら選ぶものが無い旨(検証: C102 + C103) | unmet | 失効: 周回 79 の変更で C103 の人間の確認が失効。C102 は cycle 79 で通過 |
 | C51 | 必須 | `Cmd+Opt+L` でレイアウト型の選択オーバーレイ、表示は「Wide」「Tall」(検証: C103) | unmet | 失効: 周回 79 の変更で C103 の人間の確認が失効 |
 | C52 | 必須 | レイアウト型は永続化、既定は横長型、保存された向きは捨てて形を保ち、台座型は横長型へ、再保存に向きを書かない(検証: C102 + C103) | unmet | 失効: 周回 79 の変更で C103 の人間の確認が失効。C102 は cycle 79 で通過 |
@@ -124,12 +124,12 @@ ideal_sha: 9ff0500c5e0480833fa5f4d11cae62541721dc301f60a768a6a11b99dd3198a4
 | C136 | 必須 | 端末登録と tmux セッションのテスト群(9 項目)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 79: just swift-test exit 0 (failed 0 件。端末・tmux のテスト群は周回 79 で変えていない) |
 | C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | unmet | 失効: 周回 79 の対象ファイルの変更で observed 75 が失効。次の周回が HEAD の zig-out 版で 9 項目を観測し直す |
 | C138 | 必須 | 2 台の実機での目視(Mac mini の tmux・再起動後の再 attach・切断後の再 attach)(検証: 人間) | unmet | 失効: 周回 73 の対象ファイルの変更で human 2026-11-10T03:43:37Z の確認が失効。MacBook Air が要る。固まる件を周回 79 で直したので、修正版で人間が確認する |
-| C139 | 必須 | 種別と重み付きレイアウトの実機観測(5 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・選択肢は Wide / Tall の 2 つで縦長型の序数は列ごと・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | unmet | 失効: 周回 79 の対象ファイルの変更で observed 74 が失効。次の周回が観測し直す |
-| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、大きさ以外に差を付けない(検証: C107 + C139) | unmet | 失効: 周回 79 の変更で C139 の observed 74 が失効。C107 は cycle 79 で通過 |
-| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は配置順の先頭 9 つ(検証: C107 + C139) | unmet | 失効: 周回 79 の変更で C139 の observed 74 が失効。C107 は cycle 79 で通過 |
+| C139 | 必須 | 種別と重み付きレイアウトの実機観測(5 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・選択肢は Wide / Tall の 2 つで縦長型の序数は列ごと・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | met | observed 81: HEAD 2f4378c の zig-out 版で 7 項目を観測(5 列・種別候補 Core → Side・Delete で Core、横長型で Side が同じ行の Core の半分の幅で行の高さは等しく、縦長型で Side が同じ列の Core の約半分の高さ、序数は Core → Side で Cmd+2・Cmd+5 が追従、種別変更で即座に組み直し、Cmd+Opt+L は Wide / Tall の 2 つで縦長型は列ごとに上→下、24 visible · 1 hidden で 25 個目の表示トグルは拒否、Side の zoom・一望・ラベル帯に印なし) |
+| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、大きさ以外に差を付けない(検証: C107 + C139) | met | cycle 79: just swift-test exit 0 (C107 は周回 79 で通過。C139 は observed 81 で met) |
+| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は配置順の先頭 9 つ(検証: C107 + C139) | met | cycle 79: just swift-test exit 0 (C107 は周回 79 で通過。C139 は observed 81 で met。25 個目は hidden で表示トグルは「no room to show」で拒否、序数は 1〜9 だけ) |
 | C142 | 必須 | ペイン単位の終了済み状態の実機観測(ssh ループバックの 3 ペインを外から終了・Enter 1 回で全再 attach・終了済みのまま再起動・兄弟のシェル exit と Cmd+W・プライマリーの非昇格と Cmd+W の昇格・一部だけの再開で生きたセッションを作り直さない)(検証: 周回の実機観測) | unmet | 失効: 周回 79 の対象ファイルの変更で observed 76 が失効。次の周回が観測し直す(項目 3 の再起動は周回 79 で直した復元の経路を通る) |
 | C143 | 必須 | ペインが分割木から失われるのは明示的 close(Cmd+W・close_project・一覧の行 Delete)のみ、コマンド終了では失われない(検証: C95 + C142) | unmet | 失効: 周回 79 の変更で C142 の observed 76 が失効。C95 は cycle 79 で通過 |
-| C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | unmet | 失効: 周回 79 の変更で observed 74 の画面の観測が失効。C107 は cycle 79 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 79 で無出力・exit 1 |
+| C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | met | observed 81: 一覧は 5 列でソートバーなし、ラベル帯は「序数. タイトル」だけ、一望はタイトルとノートだけ、ショートカット一覧(Cmd+/ を末尾までスクロール)に優先度・締切・次トリガー・ソートの項目なし。C107 は cycle 79 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 81 で無出力・exit 1 |
 | C145 | 必須 | 削除した値を含む保存を読み込んでも失敗せず黙って無視し再保存で書かない、ノート・種別・端末・手動順・列順は復元、列順からは削除した列だけを除く(検証: C107) | met | cycle 79: just swift-test exit 0 (failed 0 件。ProjectLedgerTests.aSaveCarryingTheRemovedValuesLoadsAndDropsThem が passed) |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |
