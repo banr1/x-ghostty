@@ -13,129 +13,134 @@
 
 ideal_sha: 33b4a3729ce2b76ff62b3d4a2d96ed88cdcc24a83944a9f81ffef0c278a28e6b
 
+<!-- 周回 91 で対象ファイル(SPEC.md・README.md)を変えたので、C = 91。cycle 90 以前と observed 91 以前と
+     2026-11-11 の human の確認はすべて失効した。3 ゲートは周回 91 に取り直した。
+     「人間の確認は失効」と注記した met の行は、テストを出典にしつつ人間の確認も条件に含む。realized の前に、
+     主体が人間の条件(C92 ほか)を ask で問い直す必要がある。 -->
+
 | ID | 階層 | 条件 | 状態 | 証拠 |
 |----|------|------|------|------|
-| C1 | 必須 | プロジェクトごとに手書きの短いノートを保持できる(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件。HEAD 624cf3e、周回 90 は対象ファイルを変えていない) |
-| C2 | 必須 | ノート最大 100 行、保存時超過は確認し OK で先頭 100 行へ切詰め・Cancel で編集へ戻る(検証: C91 + C97) | met | cycle 90: just swift-test exit 0 (C91 passed、failed 0 件。C97 は human 2026-11-11T12:35:08Z で確認) |
-| C3 | 必須 | ノートは永続化され再起動後に同じプロジェクトへ復元(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C4 | 必須 | ノートはプロジェクトに属しペインに属さない(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C5 | 必須 | `Cmd+E` でノート編集オーバーレイ、`Cmd+Enter` で保存して閉じる(検証: C91 + C92) | met | cycle 90: just swift-test exit 0 (C91 passed、failed 0 件。C92 は human 2026-11-11T12:35:08Z で確認) |
-| C6 | 必須 | オーバーレイで Esc は確認なしに破棄して閉じる(検証: C91 + C92) | met | cycle 90: just swift-test exit 0 (C91 passed、failed 0 件。C92 は human 2026-11-11T12:35:08Z で確認) |
-| C7 | 必須 | `Cmd+Enter` の fullscreen 既定割り当てを解除(検証: C92) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C92 として human 2026-11-11T12:35:08Z が確認) |
-| C8 | 必須 | `Cmd+Opt+E` で一望モードをトグル、Esc でも抜ける(検証: C92) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C92 として human 2026-11-11T12:35:08Z が確認) |
-| C9 | 必須 | 一望モードは visible なプロジェクトのみ表示(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C10 | 必須 | zoom 中に一望モードへ入ると zoom 解除(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C11 | 必須 | 一望モードは閲覧専用で編集・focus 移動しない(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C12 | 必須 | 一望モードで収まらないノートは切詰め、編集オーバーレイはスクロールで全文(検証: C92) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C92 として human 2026-11-11T12:35:08Z が確認) |
-| C13 | 必須 | ノート UI は端末領域を恒久占有しない(検証: C92) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C92 として human 2026-11-11T12:35:08Z が確認) |
-| C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く。優先度・締切・次トリガー・ソート等の削除と 5 列化(C144)、レイアウト型の向きの廃止と 2 種化・関連テストの削除と書き換え(C49〜C53)、focus 移動のキーの統一(`Opt+Tab` / `Cmd+Opt+矢印`、`Cmd+1〜9`・`Cmd+[` / `Cmd+]`・`Cmd+Ctrl+Opt+Shift+矢印` と `goto_project` の序数形式の廃止)・序数を visible すべてに付けること・関連テストの削除と書き換え(C146〜C149)を例外に含む)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | unmet | - (周回 86 の改訂で例外が増えた。周回 89 で 3 ゲート exit 0。周回 89 の削除・書き換えは goto_project の序数形式に関わるもの(WorkspaceModelTests の gotoProjectIndex* 8 件・Binding.zig の ProjectFocusTarget の parse テストの削除、ProjectLayoutSelectionTests・ProjectNoteTests の序数ジャンプの検査を次・前の focus 移動へ書き換え)と、上流由来 ConfigTests.emptyConfigShouldBeHaveDefaultShortcut の既定 Cmd+] の期待を書き換えたもので、C146〜C149 の例外に当たる。9cb808d からの全体の照合は未了) |
-| C15 | 必須 | ノートの判断ロジックはモデル層で XGhosttyTests から検証可能(検証: C91) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | met | cycle 90: grep -n "Building" -A12 README.md exit 0 (222〜224 行に zig build / just test / just swift-test の 3 行を確認。ノート層の記述の読み合わせは周回 79 のまま) |
-| C17 | 必須 | 各ペインはプライマリーフラグを持ち最初のペインがプライマリー(検証: C93) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C18 | 必須 | プライマリーはプロジェクト内で常に 1 つ(検証: C93) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C19 | 必須 | 全体ビューはプライマリーのみ描画、zoom 中は全ペイン(検証: C93 + C94) | met | cycle 90: just swift-test exit 0 (C93 passed、failed 0 件。C94 は human 2026-11-11T12:35:08Z で確認) |
-| C20 | 必須 | 全体ビューの入力・focus はプライマリーへ、zoom 解除時に寄せる(検証: C93) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C21 | 必須 | 全体ビューでペイン系操作は no-op(検証: C93) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C22 | 必須 | zoom 中 `Cmd+P` で focused ペインをプライマリーへ(検証: C93 + C94) | met | cycle 90: just swift-test exit 0 (C93 passed、failed 0 件。C94 は human 2026-11-11T12:35:08Z で確認) |
-| C23 | 必須 | プライマリーが `Cmd+W` で閉じたら最近傍 leaf を昇格、コマンド終了では昇格せず終了済みでプライマリーに留まる(検証: C93・C95 + C94 + C142) | met | cycle 90: just swift-test exit 0 (C93・C95 passed、failed 0 件。C142 は observed 83、C94 は human 2026-11-11T12:35:08Z で確認) |
-| C24 | 必須 | プライマリーフラグの永続化と復元時正規化(検証: C93) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C25 | 必須 | プライマリー印は zoom 中かつ複数ペイン時のみ右上に表示(検証: C94) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C94 として human 2026-11-11T12:35:08Z が確認) |
-| C26 | 必須 | プライマリーの判断ロジックはモデル層(検証: C93) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C27 | 必須 | SPEC.md / README.md をプライマリーペイン層仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 79: grep -c "terminatedPanes" SPEC.md exit 0 (§22 のプライマリーペイン層と README の Primary panes は周回 79 で変えていない) |
-| C28 | 必須 | プロジェクトを閉じる操作は常に確認ダイアログ(検証: C95 + C96) | met | cycle 90: just swift-test exit 0 (C95 passed、failed 0 件。C96 は human 2026-11-11T12:35:08Z で確認) |
-| C29 | 必須 | ペインのプロセス(tmux クライアント / ssh)が exit したら兄弟の有無によらず閉じず終了済みで分割木に残す、最後でもプロジェクトは閉じない、状態は保存せず復元で全ペインが再 attach(検証: C95 + C96 + C142) | met | cycle 90: just swift-test exit 0 (C95 passed、failed 0 件。C142 は observed 83、C96 は human 2026-11-11T12:35:08Z で確認) |
-| C30 | 必須 | 終了済みペインで Enter を押すとプロジェクト内の終了済みペインすべてが同じペインで再開、配置とプライマリーは不変、生きているペインに触れない(検証: C95 + C96 + C142) | met | cycle 90: just swift-test exit 0 (C95 passed、failed 0 件。C142 は observed 83、C96 は human 2026-11-11T12:35:08Z で確認) |
-| C31 | 必須 | プロジェクト喪失経路は確認を経た明示的 close のみ(検証: C95 + C96) | met | cycle 90: just swift-test exit 0 (C95 passed、failed 0 件。C96 は human 2026-11-11T12:35:08Z で確認) |
-| C32 | 必須 | ノート編集オーバーレイで標準編集ショートカットと Undo/Redo が効く(検証: C97) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C97 として human 2026-11-11T12:35:08Z が確認) |
-| C33 | 必須 | 貼り付けで 100 行超過も C2 の確認を経る(検証: C91 + C97) | met | cycle 90: just swift-test exit 0 (C91 passed、failed 0 件。C97 は human 2026-11-11T12:35:08Z で確認) |
-| C41 | 必須 | 序数は配置順(Core → Side、各種別内は表示順)の visible すべてに 1 から(9 で止めず最大 24)、ラベル帯と一覧の序数欄に表示、hidden には付けない、序数で飛ぶキーは持たない(検証: C107・C149 + C150) | met | observed 90: 12 visible で 10〜12 番目のラベル帯(10. qi・11. qj・12. qk)と一覧の序数欄に 10〜12 が見え、qk を hidden にすると一覧の qk 行は序数欄が空で残り 11 行が 1〜11、Cmd+3 を押しても focus は移らない(C150)。C107・C149 は cycle 90: just swift-test exit 0 |
-| C44 | 必須 | 終了済み状態の判断ロジックはモデル層(検証: C95) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C45 | 必須 | SPEC.md / README.md を削除保護・ショートカット対応の仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 79: grep -c "terminatedPanes" SPEC.md exit 0 (§23 の削除保護・§30 のショートカット一覧と README の該当節は周回 79 で変えていない。§30.4 の件数 ShortcutCatalogTests 7 件 / ShortcutListSessionTests 2 件は @Test を struct ごとに数えて一致) |
-| C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | met | cycle 90: just swift-test exit 0 (C100 passed、failed 0 件。C101 は human 2026-11-11T12:35:08Z で確認) |
-| C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C49 | 必須 | レイアウト型は横長型・縦長型の 2 種(台座型と向きは廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置、序数は横長型が行ごと・縦長型が列ごと(検証: C102 + C103・C139) | met | cycle 90: just swift-test exit 0 (C102 passed、failed 0 件。C139 は observed 81、C103 は human 2026-11-11T12:35:08Z で確認) |
-| C50 | 必須 | visible 1〜24 で配置と序数の進み方が完全一致する型を畳み(実際の種別の組み合わせで比べる)、選択肢 1 つなら選ぶものが無い旨(検証: C102 + C103) | met | cycle 90: just swift-test exit 0 (C102 passed、failed 0 件。C103 は human 2026-11-11T12:35:08Z で確認) |
-| C51 | 必須 | `Cmd+Opt+L` でレイアウト型の選択オーバーレイ、表示は「Wide」「Tall」(検証: C103) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C103 として human 2026-11-11T12:35:08Z が確認) |
-| C52 | 必須 | レイアウト型は永続化、既定は横長型、保存された向きは捨てて形を保ち、台座型は横長型へ、再保存に向きを書かない(検証: C102 + C103) | met | cycle 90: just swift-test exit 0 (C102 passed、failed 0 件。C103 は human 2026-11-11T12:35:08Z で確認) |
-| C53 | 必須 | Core → Side の順(各種別内は表示順)に型に従いスロットへ割当(横長型は行ごと、縦長型は列ごと)、序数が追従(検証: C102) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectLayoutTypeTests は passed) |
-| C54 | 必須 | visible 数または visible の種別の変化時に記憶の型で自動適用(検証: C102 + C101・C103) | met | cycle 90: just swift-test exit 0 (C102 passed、failed 0 件。C101・C103 は human 2026-11-11T12:35:08Z で確認) |
-| C55 | 必須 | プロジェクト単位のレイアウト resize/equalize 廃止、zoom 中ペインは存続(検証: C103) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C103 として human 2026-11-11T12:35:08Z が確認) |
-| C56 | 必須 | レイアウト型の判断ロジックはモデル層(検証: C102) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C57 | 必須 | 「グループ」→「プロジェクト」全面改名(検証: C104) | met | cycle 90: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1。C104 は cycle 90 で met) |
-| C58 | 必須 | 改名は純粋なリネームで退行なし(検証: C104 + C88〜C90) | met | cycle 90: just swift-test exit 0 (zig build・just test も周回 90 で exit 0。C104 は cycle 90 で met) |
-| C59 | 必須 | SPEC.md / README.md をレイアウト型・自動適用・hide・改名語彙に合わせる(検証: 周回の読み合わせ) | met | cycle 79: grep -n "向き\|行送り\|列送り" SPEC.md exit 0 (6 行で、§26.1 の廃止の記述と §26.4・§26.5 の旧保存の移行だけ。周回 79 はレイアウト型・hide・改名の記述を変えていない) |
-| C63 | 必須 | `Cmd+L` で一覧をトグル(Esc で閉じない・zoom を解除しない・表示・種別・タイトル・端末・ノートの 5 列・8 割)(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C64 | 必須 | 一覧は単一の並びで常に手動順、手動順・列順を永続化、hidden も同色、序数は C41 の配置順(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C65 | 必須 | Notion 流儀のセルカーソル・Enter 編集・候補列挙(端末・種別)・Space 循環の廃止(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C66 | 必須 | ノート列編集は全行対象、Shift+Enter で改行、一覧内 `Cmd+Opt+E` は全行表示トグル(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C67 | 必須 | `Cmd+矢印` は端移動、`Opt+矢印` で行・列並べ替え(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C68 | 必須 | `Cmd+N` は一覧での新規プロジェクト作成、visible 24 未満なら visible・24 なら hidden、種別は Core(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C69 | 必須 | 一覧の `Cmd+Enter` で focus(hidden 行は近傍 visible へ)(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C70 | 必須 | 一覧の判断ロジック(端末・種別の候補・Delete・行選択・クリップボード等)はモデル層(検証: C107) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C76 | 必須 | SPEC.md / README.md を端末登録・tmux セッション〜優先度等の削除(記述を残さない)・レイアウト型の向きの廃止と 2 種化(向きの記述を残さない)・focus 移動のキーの統一(廃止したキーと序数ジャンプの記述を残さない)・序数を visible すべてに付けることまでの仕様に合わせる(検証: 周回の読み合わせ) | unmet | - (周回 86 の改訂で範囲が増えた。SPEC §7.3・§26.3 ほか・README の Cmd+1-9 と「先頭 9 つ」の記述が残っている。以下は改訂前の証拠) cycle 79: grep -n "Wide or its" README.md exit 0 (README の Layout types は Wide / Tall の 2 種で、grep -niE "row-major\|column-major\|ordinal direction" README.md は無出力。SPEC の「向き・行送り・列送り」は §26.1 の廃止と §26.4・§26.5 の移行だけ。周回 79 は SPEC §12.3 に復元で旧互換の surfaceTree を読まない旨を足しただけで、C76 の各仕様の記述は変えていない) |
-| C78 | 必須 | 一覧テキスト列のセル編集が日本語 IME を受け付ける(検証: C114) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C114 として human 2026-11-11T12:35:08Z が確認) |
-| C79 | 必須 | セルカーソルの Delete で列ごとの値削除(タイトル空・端末は手元へ・種別は Core へ・ノートは確認・表示は何もしない)(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C80 | 必須 | Esc で行選択、行選択の Delete で確認付き削除(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C81 | 必須 | `Cmd+/` でショートカット一覧をトグル(検証: C115) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C115 として human 2026-11-11T12:35:08Z が確認) |
-| C82 | 必須 | `Cmd+K` の clear_screen 既定割り当て解除(検証: C113) | met | cycle 85: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (この zig-out 版での代行結果を C113 として human 2026-11-11T12:35:08Z が確認) |
-| C83 | 必須 | 一覧セルのクリップボード操作(端末列は登録名のみ、種別列は Core / Side のみ)と候補列挙中の Tab 横移動(検証: C107 + C108) | met | cycle 90: just swift-test exit 0 (C107 passed、failed 0 件。C108 は human 2026-11-11T12:35:08Z で確認) |
-| C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | met | cycle 90: just swift-test exit 0 (C116 passed、failed 0 件。C117 は human 2026-11-11T12:35:08Z で確認) |
-| C86 | 必須 | 閉じた surface を経路によらず undo 期限後に SurfaceView〜IOSurface まで解放(検証: C116・C126 + C123〜C125 の読み合わせ + C117) | met | cycle 90: just swift-test exit 0 (C116・C126 passed、failed 0 件。C123〜C125 は読み合わせ済み。周回 79 で復元時に旧互換の surfaceTree を decode しないようにし、「起動時の復元で置き換えられた初期 surface」はそもそも生まれなくなった。C117 は human 2026-11-11T12:35:08Z で確認) |
-| C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C88 | 必須 | `zig build` が exit 0 | met | cycle 90: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (HEAD 624cf3e。周回 90 は対象ファイルを変えていない) |
-| C89 | 必須 | `just test` が exit 0 | met | cycle 90: just test exit 0 (Config.zig の「default focus-move chords are Opt+Tab and Cmd+Opt+arrow only」を含む) |
-| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 90: just swift-test exit 0 (passed 759 行・failed 0 件) |
-| C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectNoteTests は変更なしで passed) |
-| C92 | 必須 | ノートの実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果を人間が確認した(Cmd+E・Cmd+Enter の保存・Esc の破棄・fullscreen にならない・Cmd+Opt+E の一望・切り詰めとスクロール。記録 0085) |
-| C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectPrimaryPaneTests は変更なしで passed) |
-| C94 | 必須 | プライマリーペインの実機目視(Cmd+W で閉じたときの昇格を含む)(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C95 | 必須 | 削除保護のテスト群(兄弟ペインの exit で閉じない・複数の終了済みの再開・終了済みを含む複数ペインの復元を含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectTerminatedTests は変更なしで passed) |
-| C96 | 必須 | 削除保護の実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C97 | 必須 | ノート編集オーバーレイの編集ショートカット・100 行超過確認の実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C101 | 必須 | hide の実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C102 | 必須 | レイアウト型のテスト群(1〜24 の横長型・縦長型、畳み込み(n=9 は畳まれない・n=1 は 1 つ)、横長型は行ごと・縦長型は列ごとの割当、永続化と既定・向きを捨てる移行・台座型の移行・再保存に向きなし、自動適用)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectLayoutTypeTests は周回 73 から変えておらず passed。項目の対応は周回 73 の記録のとおり) |
-| C103 | 必須 | レイアウト型の実機目視(「Wide」「Tall」の 2 つだけ、6 → 5 の縦長型の組み直し、n=8 の 2+3+3 ほか)(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | met | cycle 90: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1、C88〜C90 は周回 90 で exit 0。周回 90 の実機観測の画面・ショートカット一覧に Group の文言なし。以前の確認:grep -rnE "\"[^\"]*\bGroup\b" macos/Sources/Features/Projects macos/Sources/App は無出力) |
-| C107 | 必須 | プロジェクト一覧のテスト群(既定列順 5 列、端末・種別の候補・Delete・貼り付け、visible 24 の拒否、削除した値を含む保存の読み込みを含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。一覧のテスト群は周回 79 で変えていない。項目の対応は周回 73 の記録のとおり) |
-| C108 | 必須 | プロジェクト一覧の実機目視(5 列を含む)(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C113 | 必須 | キー変更の実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C114 | 必須 | 一覧セル編集の IME の実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C115 | 必須 | ショートカット一覧の実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果(この条件の項目はすべて期待どおり。項目と計測は記録 0085)を人間が確認した |
-| C116 | 必須 | 描画対象・停止/再開集合・解放・誕生時停止のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C117 | 必須 | 描画停止・解放の実機観測(top / footprint、起動直後に落ちない、行 Delete 後のフォーカス、検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果 6 項目を人間が確認した。visible 1・hidden 8 の 1 分放置後の CPU は 0.3〜1.4%(30 秒平均 0.5%)で hidden 0(0.3〜1.1%、30 秒平均 1.0%)と同水準として合格。解放は th 80 → 124 → 79・IOSurface 領域 58 → 88 → 58・SurfaceView 18 → 28 → 18。7 回の起動(18 ペインの復元 5 回)で固まり・クラッシュ 0 回。行 Delete 後の打鍵は新しい focus に届き、hidden 中の出力は再表示で見え、hidden 8 の再起動後は CPU 0.6%・IOSurface 24 MB(hidden 0 と同じ) |
-| C121 | 必須 | 停止集合に誕生した描画対象外の surface を含める(stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born))(検証: C116) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ(生成直後の一律 set_occlusion(false) が唯一の例外)、SurfaceView.isDrawing を持たない(検証: C116 + 読み合わせ) | met | cycle 90: just swift-test exit 0 (C116 passed。周回 90 に grep -rn xghostty_surface_set_occlusion macos/Sources は 2 箇所、grep -rn isDrawing macos/Sources は 0 件) |
-| C123 | 必須 | SurfaceView の `.ghosttySelectionDidChange` 購読は `object:` を渡さず `[weak self]` の filter で絞る(検証: 読み合わせ + C90) | met | cycle 90: just swift-test exit 0 (SurfaceView_AppKit.swift:295 の publisher(for: .ghosttySelectionDidChange) に object: が無く、296 行の [weak self] の filter で絞ることを読み合わせた) |
-| C124 | 必須 | `XGhostty.Surface.deinit` はメインスレッドなら同期的に `xghostty_surface_free`(検証: 読み合わせ + C88〜C90 + C117) | met | cycle 90: just swift-test exit 0 (zig build・just test も周回 90 で exit 0。周回 90 に XGhostty.Surface.swift:34 の Thread.isMainThread で同期解放を読み合わせた。C117 は human 2026-11-11T12:35:08Z で確認) |
-| C125 | 必須 | 一覧の行選択 Delete で閉じたとき新しい focus 先へキーボードフォーカスを移す(検証: C126 + 読み合わせ + C117) | met | cycle 90: just swift-test exit 0 (C126 passed。performCloseProjectListRow の .switched が moveKeyboardFocus(toProjectSurface:) を呼ぶ(周回 90 に BaseTerminalController.swift:1887 の関数内 1892 行で読み合わせ)。C117 は human 2026-11-11T12:35:08Z で確認) |
-| C126 | 必須 | 一覧セッション中の closeProject の focus 先・保持集合・セッション継続のテスト(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C127 | 必須 | 端末を設定ファイルに登録(表示名・ホスト・色)、hostname 一致を手元、登録なしは暗黙の手元、再読み込みで反映(検証: C136 + C137) | met | observed 82: --config-file の mini(手元、colour28)・loop(xg-loop、colour33)・nowhere の 3 登録が端末候補にこの順で出て、mini のペインは ssh を介さず緑、loop は ssh 経由で青のバー(C137 の項目 1・2)。C136 は cycle 79 で通過 |
-| C128 | 必須 | プロジェクトの端末(既定は手元)、一覧の端末列で候補選択・Delete で手元・登録名のみ貼り付け、永続化、欠落は手元扱い、変更は以後の新しいペインだけに効き終了済みの再開は元の端末の同じセッションへ(検証: C136 + C137) | met | observed 82: 一覧の端末セルの Enter で mini・loop・nowhere が列挙され、loop に替えた後の split だけが ssh 経由になり元のペインは緑のまま。端末を nowhere に替えた後も、detach した loop のペインは Enter で同じセッション(session_created 不変)へ戻り、再起動後も端末と端末の色が復元された。C136 は cycle 79 で通過 |
-| C129 | 必須 | 全ペインを端末上の tmux セッションへ attach するコマンドで起動、セッション名 `<ID>-<n>`、ペインごとの端末・セッション名を永続化(検証: C136 + C137) | met | observed 82: 新規プロジェクトで `tmux ls` に d0bef40b-…-1 が現れ、split で -2・-5・-6 と連番が進んだ。Quit(Terminate)→ 再起動の前後で 4 セッションの名前と session_created が一致し(diff exit 0)、attached 0 → 1 に戻って -2 に keep-c82・restart-c82 が残った。C136 は cycle 79 で通過 |
-| C130 | 必須 | 開始ディレクトリ `~/workspace/<タイトル>` → `~/workspace` → ホーム、split は `#{pane_current_path}` を引き継ぐ(検証: C136 + C137) | met | observed 82: x-ghostty の -1 を外から kill して Enter で作り直すと session_path・pane_current_path とも ~/workspace/x-ghostty、~/workspace/hidden-cloud の無い hidden-cloud は ~/workspace。-1 で cd /tmp の後の loop への split の -2 も /private/tmp。C136 は cycle 79 で通過 |
-| C131 | 必須 | attach 時にそのセッションだけへ status-style・status-left・prefix C-s を設定、リネームで status-left を更新(検証: C136 + C137) | met | observed 82: -1 の show-options は prefix C-s・status-left "[x-ghostty] "・status-style bg=colour28、loop の -2 は bg=colour33。一覧で renamed へ改名すると -1・-2・-6 の status-left が "[renamed] " になりバーの左端も変わった。後始末後の show-options -g・~/.tmux.conf の shasum・既存 19 セッションの show-options は開始前と diff exit 0。C136 は cycle 79 で通過 |
-| C132 | 必須 | tmux / ssh の終了でペインは兄弟の有無によらず終了済み、Enter でプロジェクト内の終了済みペインそれぞれの attach を再実行(検証: C136 + C137・C142) | met | observed 83: 兄弟のある loop の 3 ペインの ssh を外から kill すると 3 つとも終了済みで出力(Connection to 127.0.0.1 closed.)が見えたまま残り、Return 1 回で 3 つとも同じセッションへ再 attach した(C142)。C137 は observed 82(detach・到達不能ホストの終了済みと Enter の再開)、C136 は cycle 79 で通過 |
-| C133 | 必須 | 閉じたペインのセッションを undo 期限後に kill、undo で戻せば kill しない(検証: C136 + C137) | met | observed 82: split した -5 を Cmd+W(Close Terminal? に Return)で閉じると 2 秒後は残り 11 秒後に消えた。-6 を閉じて Cmd+Z で戻すと 14 秒後も attached で残った。renamed を close_project で閉じると 12 秒後に -1・-2・-6 が消えた。C136 は cycle 79 で通過 |
-| C134 | 必須 | 手元でない端末への ssh に TERM=xterm-256color を渡す(検証: C136 + C137) | met | observed 82: ps に `env TERM=xterm-256color ssh -t xg-loop`、ssh 先の -2 で `tmux display -p 'client.#{client_termname}.end'` が client.xterm-256color.end、`tmux list-clients` も xterm-256color。C136 は cycle 79 で通過 |
-| C135 | 必須 | 端末・セッション・コマンド・候補・kill 対象の判断ロジックはモデル層(検証: C136) | met | cycle 90: just swift-test exit 0 (failed 0 件) |
-| C136 | 必須 | 端末登録と tmux セッションのテスト群(9 項目)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。端末・tmux のテスト群は周回 79 で変えていない) |
-| C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | met | observed 82: HEAD f3b68e6(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版で 9 項目を観測(新規プロジェクトの tmux と緑のバー・C-s c、loop への split が ssh 経由の青いバーでカレントパス /private/tmp を継承、~/workspace/x-ghostty と ~/workspace の開始ディレクトリ、再起動で同じセッションへ再 attach し出力が残る、C-s d の終了済みと Enter で同じセッション、nowhere のエラーが見えたまま終了済みで Enter で再試行、Cmd+W の kill と undo、リネームでバーのタイトル更新、client_termname が xterm-256color、~/.tmux.conf と既存セッションのオプション不変) |
-| C138 | 必須 | 2 台の実機での目視(Mac mini の tmux・再起動後の再 attach・切断後の再 attach)(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、「HEAD caddb02 の zig-out 版(対象ファイルは周回 79 の a051690 と同じ)を MacBook Air を含む 2 台で既に確認済みか」の問いに人間が「はい。」と答えた。エージェントの代行は Mac mini 1 台だけで、2 台の目視は人間が行った |
-| C139 | 必須 | 種別と重み付きレイアウトの実機観測(5 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・選択肢は Wide / Tall の 2 つで縦長型の序数は列ごと・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | met | observed 81: HEAD 2f4378c の zig-out 版で 7 項目を観測(5 列・種別候補 Core → Side・Delete で Core、横長型で Side が同じ行の Core の半分の幅で行の高さは等しく、縦長型で Side が同じ列の Core の約半分の高さ、序数は Core → Side で Cmd+2・Cmd+5 が追従、種別変更で即座に組み直し、Cmd+Opt+L は Wide / Tall の 2 つで縦長型は列ごとに上→下、24 visible · 1 hidden で 25 個目の表示トグルは拒否、Side の zoom・一望・ラベル帯に印なし) |
-| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、大きさ以外に差を付けない(検証: C107 + C139) | met | cycle 90: just swift-test exit 0 (C107 は周回 79 で通過。C139 は observed 81 で met) |
-| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は visible すべてに付く(C41)(検証: C107 + C139) | unmet | - (周回 90 で C107 を含む just swift-test exit 0、序数が 10〜12 番目にも付くことは C150 で観測済み。C139 の観測(24 visible と 25 個目の hidden を含む)を周回 89 以降の版で取り直せば met) |
-| C142 | 必須 | ペイン単位の終了済み状態の実機観測(ssh ループバックの 3 ペインを外から終了・Enter 1 回で全再 attach・終了済みのまま再起動・兄弟のシェル exit と Cmd+W・プライマリーの非昇格と Cmd+W の昇格・一部だけの再開で生きたセッションを作り直さない)(検証: 周回の実機観測) | met | observed 83: HEAD 09f61b3(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版で 6 項目を観測(loop の 3 ペインの ssh を外から kill すると 3 つとも終了済みで残り配置と ★ は不変、15 秒後も 3 セッションが tmux ls に残る。全体ビューで Return 1 回で 3 つとも attached に戻り session_created 不変で keep-c83-N が見える。3 つとも終了済みで Quit → 再起動すると 3 ペインと ★ が復元され attached・session_created 不変。兄弟 -4 で exit すると終了済みで残り Cmd+W で閉じた。プライマリー -2 の ssh の kill では ★ は動かず、手元のプライマリー -1 を Cmd+W で閉じると ★ が隣の -2 へ昇格。-2 だけの再開で -3・-4 の session_created と pane_pid は diff exit 0) |
-| C143 | 必須 | ペインが分割木から失われるのは明示的 close(Cmd+W・close_project・一覧の行 Delete)のみ、コマンド終了では失われない(検証: C95 + C142) | met | observed 83: ssh の kill(1 ペイン・3 ペインとも)と兄弟のシェルの exit でペインは閉じずに終了済みで残り、失われたのは Cmd+W で閉じたペインだけ(C142 の観測)。C95 は cycle 79 で通過 |
-| C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | met | observed 90: HEAD 624cf3e の zig-out 版で、一覧は 5 列(show・kind・title・terminal・note)でソートバーなし、ラベル帯は「序数. タイトル」だけ、一望(Cmd+Opt+E)はタイトルとノートだけ、ショートカット一覧(Cmd+/ を末尾までスクロール)に優先度・締切・次トリガー・ソートの項目なし(.idd/tmp/c90 の 002・066・080・070・071)。C107 は cycle 90 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 90 で無出力・exit 1 |
-| C145 | 必須 | 削除した値を含む保存を読み込んでも失敗せず黙って無視し再保存で書かない、ノート・種別・端末・手動順・列順は復元、列順からは削除した列だけを除く(検証: C107) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectLedgerTests.aSaveCarryingTheRemovedValuesLoadsAndDropsThem が passed) |
-| C146 | 必須 | `Opt+Tab` / `Opt+Shift+Tab` で次・前へ、全体ビューは序数の順に visible を巡り折り返す、zoom 中は zoom 対象のペインを分割木の走査順に巡り折り返す、巡る先が無い・オーバーレイ表示中は何もしない(検証: C149 + C150) | met | observed 90: 全体ビュー 12 visible で Opt+Tab が 1→2→3、Opt+Shift+Tab が 3→2→1→12(折り返し)、Opt+Tab で 12→1(折り返し)。zoom 中の 3 ペインで Opt+Tab が右端→左端(折り返し)→中→右、Opt+Shift+Tab が右→中→左→右(折り返し)で zoom 対象は 1. amber-river のまま。一覧表示中の Opt+Tab / Opt+Shift+Tab は focus を移さない(C150)。C149 は cycle 90: just swift-test exit 0 |
-| C147 | 必須 | `Cmd+Opt+矢印` で方向の隣へ、全体ビューは隣の visible プロジェクト、zoom 中は隣のペイン、隣が無い・オーバーレイ中は何もしない、C21 は不変(検証: C149 + C150) | met | observed 90: 全体ビュー(横長型 4×3)で 1 から Cmd+Opt+→ で 2、↓ で 6、← で 5、↑ で 1、最上行で ↑ は動かない。zoom 中の 3 ペインで Cmd+Opt+← が右→中、→ が中→右、右端で → は動かない。一覧表示中の Cmd+Opt+→ / ↓ は focus を移さない(C150)。C149 は cycle 90: just swift-test exit 0 |
-| C148 | 必須 | focus 移動は `Opt+Tab` 系と `Cmd+Opt+矢印` だけ、`Cmd+1〜9`・`Cmd+[` / `Cmd+]`・`Cmd+Ctrl+Opt+Shift+矢印` の既定割り当て廃止、`goto_project` の序数形式を削除、`goto_split` は action を残す、ショートカット一覧に廃止キーを載せない(検証: C150 + 読み合わせ + C88〜C90) | met | observed 90: Cmd+3・Cmd+]・Cmd+[・Cmd+Ctrl+Opt+Shift+→ / ↓ を押しても focus は 1 のまま、ショートカット一覧に ⌘1–9・⌘[ · ⌘]・⌘⌃⌥⇧矢印 が無い(C150)。C88〜C90 は cycle 90 で exit 0。周回 90 に Config.zig の macOS 既定(6099〜6128 行)が ⌥⇥・⌥⇧⇥・⌘⌥矢印 の goto_project だけで、goto_split の既定は非 macOS ブロック(5790〜5820 行)だけであることを読み合わせた。以前の読み合わせ: Config.zig の macOS 既定に Cmd+1〜9・Cmd+[ / Cmd+]・Cmd+Ctrl+Opt+Shift+矢印 が無く(新テスト default focus-move chords で固定)、Binding.zig の goto_project は SplitFocusDirection で goto_project:1/5/9 は InvalidFormat、apprt の goto_project_index と xghostty.h の GOTO_PROJECT_INDEX は削除、goto_split の action と非 macOS 既定は残す、ShortcutCatalog に廃止キーなし。C88〜C90 は cycle 89 で exit 0。C150 の観測が残る) |
-| C149 | 必須 | focus 移動(次・前・方向)と序数(10 番目以降を含む)のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 90: just swift-test exit 0 (failed 0 件。ProjectFocusMoveTests は passed。以下は周回 88 の項目の対応。項目 1・2・3 は ProjectFocusMoveTests の 23 件(序数順の巡回と折り返し・Core → Side の順・hidden を飛ばす・10 番目以降・visible 1 で nil・5 種のオーバーレイで nil / zoom 中のペインの走査順の巡回と折り返し・zoom 対象不変・上流の goto_split:next と同順 / 横長型・縦長型の隣のプロジェクト・zoom 中の隣のペイン・隣が無ければ nil)、項目 4 は ProjectVisibleCapTests.everyVisibleProjectInPlacementOrderHasANumber・onlyAHiddenRowGoesWithoutANumber と WorkspaceStateTests.restoringNumbersEveryCappedVisibleProject。解決は WorkspaceModel.focusMoveTarget(_:)) |
-| C150 | 必須 | focus 移動のキーの統一と序数の実機観測(Opt+Tab の巡回と折り返し・zoom 中のペイン巡回・Cmd+Opt+矢印・廃止キーで移らない・10 番目以降の番号・一覧中は移らない・ショートカット一覧)(検証: 周回の実機観測) | met | observed 90: HEAD 624cf3e の zig-out 版(--window-save-state=never、12 プロジェクト)で 7 項目を観測(Opt+Tab の序数順と折り返し・Opt+Shift+Tab の逆順、zoom 中の Opt+Tab 系のペイン巡回と折り返しで zoom 対象不変、Cmd+Opt+矢印 の全体ビューの隣のプロジェクトと zoom 中の隣のペイン、Cmd+3・Cmd+[ / Cmd+]・Cmd+Ctrl+Opt+Shift+矢印 で移らない、10〜12 番目のラベル帯と一覧の序数と hidden 行の空欄、一覧中の Opt+Tab と Cmd+Opt+矢印 で移らない、ショートカット一覧の ⌥⇥ · ⌥⇧⇥ と ⌘⌥←→↑↓ が全体ビューと zoom にあり廃止キーなし)。画像は .idd/tmp/c90/shots |
+| C1 | 必須 | プロジェクトごとに手書きの短いノートを保持できる(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件。HEAD 1890405 + 周回 91 の SPEC/README の変更のみ) |
+| C2 | 必須 | ノート最大 100 行、保存時超過は確認し OK で先頭 100 行へ切詰め・Cancel で編集へ戻る(検証: C91 + C97) | met | cycle 91: just swift-test exit 0 (C91 passed、failed 0 件。C97 の人間の確認は失効しており問い直しが要る) |
+| C3 | 必須 | ノートは永続化され再起動後に同じプロジェクトへ復元(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C4 | 必須 | ノートはプロジェクトに属しペインに属さない(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C5 | 必須 | `Cmd+E` でノート編集オーバーレイ、`Cmd+Enter` で保存して閉じる(検証: C91 + C92) | met | cycle 91: just swift-test exit 0 (C91 passed、failed 0 件。C92 の人間の確認は失効しており問い直しが要る) |
+| C6 | 必須 | オーバーレイで Esc は確認なしに破棄して閉じる(検証: C91 + C92) | met | cycle 91: just swift-test exit 0 (C91 passed、failed 0 件。C92 の人間の確認は失効しており問い直しが要る) |
+| C7 | 必須 | `Cmd+Enter` の fullscreen 既定割り当てを解除(検証: C92) | unmet | - (検証は C92 の人間の確認だけで、2026-11-11 の確認は周回 89・91 の対象変更より前のため失効。C92 を問い直した後に met にする) |
+| C8 | 必須 | `Cmd+Opt+E` で一望モードをトグル、Esc でも抜ける(検証: C92) | unmet | - (C92 の人間の確認が失効。C92 を問い直した後に met にする) |
+| C9 | 必須 | 一望モードは visible なプロジェクトのみ表示(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C10 | 必須 | zoom 中に一望モードへ入ると zoom 解除(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C11 | 必須 | 一望モードは閲覧専用で編集・focus 移動しない(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C12 | 必須 | 一望モードで収まらないノートは切詰め、編集オーバーレイはスクロールで全文(検証: C92) | unmet | - (C92 の人間の確認が失効。C92 を問い直した後に met にする) |
+| C13 | 必須 | ノート UI は端末領域を恒久占有しない(検証: C92) | unmet | - (C92 の人間の確認が失効。C92 を問い直した後に met にする) |
+| C14 | 必須 | 既存機能と上流動作を退行させない(列挙した意図的変更を除く。優先度・締切・次トリガー・ソート等の削除と 5 列化(C144)、レイアウト型の向きの廃止と 2 種化・関連テストの削除と書き換え(C49〜C53)、focus 移動のキーの統一(`Opt+Tab` / `Cmd+Opt+矢印`、`Cmd+1〜9`・`Cmd+[` / `Cmd+]`・`Cmd+Ctrl+Opt+Shift+矢印` と `goto_project` の序数形式の廃止)・序数を visible すべてに付けること・関連テストの削除と書き換え(C146〜C149)を例外に含む)(検証: C88〜C90 exit 0 かつ既存テストが削除・無効化されず成功) | met | cycle 91: just swift-test exit 0 (zig build・just test も周回 91 で exit 0。9cb808d と HEAD の @Test 名を突き合わせ(.idd/tmp/c91/base_tests.txt・head_tests.txt)、消えた Swift のテスト 110 件はすべて例外に当たる: 優先度・締切・次トリガー・ソート・日付候補(C144)、向き・台座型(C49〜C53)、兄弟のあるペインの close と終了の判定(C29・C30・C143。残りは新しい名前で同じ項目を検査)、gotoProjectIndex* と overviewBlocksIndexFocusMoves(C146〜C149)、上限 9 と序数 1〜9(上限 9→24 と C149)。Zig の test 名は消えたものが無い。追加された無効化は無く、SkipZigTest は新設の Config.zig の macOS 専用テストの非 Darwin ガードだけ) |
+| C15 | 必須 | ノートの判断ロジックはモデル層で XGhosttyTests から検証可能(検証: C91) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C16 | 必須 | SPEC.md / README.md をノート層仕様に合わせ、README の Building 節に 3 検証コマンド(検証: 周回の読み合わせ) | met | cycle 91: grep -n "Building" -A12 README.md exit 0 (236〜238 行に zig build / just test / just swift-test の 3 行。周回 91 の変更はノート層の記述を変えていない) |
+| C17 | 必須 | 各ペインはプライマリーフラグを持ち最初のペインがプライマリー(検証: C93) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C18 | 必須 | プライマリーはプロジェクト内で常に 1 つ(検証: C93) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C19 | 必須 | 全体ビューはプライマリーのみ描画、zoom 中は全ペイン(検証: C93 + C94) | met | cycle 91: just swift-test exit 0 (C93 passed、failed 0 件。C94 の人間の確認は失効しており問い直しが要る) |
+| C20 | 必須 | 全体ビューの入力・focus はプライマリーへ、zoom 解除時に寄せる(検証: C93) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C21 | 必須 | 全体ビューでペイン系操作は no-op(検証: C93) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C22 | 必須 | zoom 中 `Cmd+P` で focused ペインをプライマリーへ(検証: C93 + C94) | met | cycle 91: just swift-test exit 0 (C93 passed、failed 0 件。C94 の人間の確認は失効しており問い直しが要る) |
+| C23 | 必須 | プライマリーが `Cmd+W` で閉じたら最近傍 leaf を昇格、コマンド終了では昇格せず終了済みでプライマリーに留まる(検証: C93・C95 + C94 + C142) | unmet | - (C93・C95 は cycle 91: just swift-test exit 0 で通過。C142 の観測(observed 83)が周回 91 の対象変更で失効したので、次の周回で取り直す。C94 は人間の確認の問い直しが要る) |
+| C24 | 必須 | プライマリーフラグの永続化と復元時正規化(検証: C93) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C25 | 必須 | プライマリー印は zoom 中かつ複数ペイン時のみ右上に表示(検証: C94) | unmet | - (C94 の人間の確認が失効。C94 を問い直した後に met にする) |
+| C26 | 必須 | プライマリーの判断ロジックはモデル層(検証: C93) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C27 | 必須 | SPEC.md / README.md をプライマリーペイン層仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 91: grep -c "terminatedPanes" SPEC.md exit 0 (§22 のプライマリーペイン層と README の Primary panes は周回 91 で変えていない。§11.3 の新しい記述は「全体ビューでペイン間の focus 移動は no-op(§22)」と §22.5 に一致) |
+| C28 | 必須 | プロジェクトを閉じる操作は常に確認ダイアログ(検証: C95 + C96) | met | cycle 91: just swift-test exit 0 (C95 passed、failed 0 件。C96 の人間の確認は失効しており問い直しが要る) |
+| C29 | 必須 | ペインのプロセス(tmux クライアント / ssh)が exit したら兄弟の有無によらず閉じず終了済みで分割木に残す、最後でもプロジェクトは閉じない、状態は保存せず復元で全ペインが再 attach(検証: C95 + C96 + C142) | unmet | - (C95 は cycle 91: just swift-test exit 0 で通過。C142 の観測が失効したので次の周回で取り直す。C96 は人間の確認の問い直しが要る) |
+| C30 | 必須 | 終了済みペインで Enter を押すとプロジェクト内の終了済みペインすべてが同じペインで再開、配置とプライマリーは不変、生きているペインに触れない(検証: C95 + C96 + C142) | unmet | - (C95 は cycle 91 で通過。C142 の観測が失効したので次の周回で取り直す。C96 は人間の確認の問い直しが要る) |
+| C31 | 必須 | プロジェクト喪失経路は確認を経た明示的 close のみ(検証: C95 + C96) | met | cycle 91: just swift-test exit 0 (C95 passed、failed 0 件。C96 の人間の確認は失効しており問い直しが要る) |
+| C32 | 必須 | ノート編集オーバーレイで標準編集ショートカットと Undo/Redo が効く(検証: C97) | unmet | - (C97 の人間の確認が失効。C97 を問い直した後に met にする) |
+| C33 | 必須 | 貼り付けで 100 行超過も C2 の確認を経る(検証: C91 + C97) | met | cycle 91: just swift-test exit 0 (C91 passed、failed 0 件。C97 の人間の確認は失効しており問い直しが要る) |
+| C41 | 必須 | 序数は配置順(Core → Side、各種別内は表示順)の visible すべてに 1 から(9 で止めず最大 24)、ラベル帯と一覧の序数欄に表示、hidden には付けない、序数で飛ぶキーは持たない(検証: C107・C149 + C150) | unmet | - (C107・C149 は cycle 91: just swift-test exit 0 で通過。C150 の observed 90 が周回 91 の対象変更で失効したので、次の周回で C150 を観測し直す) |
+| C44 | 必須 | 終了済み状態の判断ロジックはモデル層(検証: C95) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C45 | 必須 | SPEC.md / README.md を削除保護・ショートカット対応の仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 91: grep -n "30.4 テスト" SPEC.md exit 0 (§30.4 の件数を ShortcutCatalogTests 9 件 / ShortcutListSessionTests 2 件に直し、@Test を struct ごとに数えて一致。§30.3・§30.4 に Opt+Tab 系と Cmd+Opt+矢印 が全体ビューと zoom に載ること、廃止したキーを載せないことを足した。§23 の削除保護と README の該当節は変えていない) |
+| C46 | 必須 | `Cmd+Opt+H` で focused プロジェクトを即時 hidden(検証: C100 + C101) | met | cycle 91: just swift-test exit 0 (C100 passed、failed 0 件。C101 の人間の確認は失効しており問い直しが要る) |
+| C47 | 必須 | visible は最低 1 つ残る(検証: C100) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C48 | 必須 | hidden の復帰導線は一覧のみ、hidden シェルフ廃止(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C49 | 必須 | レイアウト型は横長型・縦長型の 2 種(台座型と向きは廃止)、余りは後半行へ、行内幅は Core 1・Side 1/2 の重み、縦長型は転置、序数は横長型が行ごと・縦長型が列ごと(検証: C102 + C103・C139) | unmet | - (C102 は cycle 91: just swift-test exit 0 で通過。C139 の観測(observed 81)が失効したので次の周回で取り直す。C103 は人間の確認の問い直しが要る) |
+| C50 | 必須 | visible 1〜24 で配置と序数の進み方が完全一致する型を畳み(実際の種別の組み合わせで比べる)、選択肢 1 つなら選ぶものが無い旨(検証: C102 + C103) | met | cycle 91: just swift-test exit 0 (C102 passed、failed 0 件。C103 の人間の確認は失効しており問い直しが要る) |
+| C51 | 必須 | `Cmd+Opt+L` でレイアウト型の選択オーバーレイ、表示は「Wide」「Tall」(検証: C103) | unmet | - (C103 の人間の確認が失効。C103 を問い直した後に met にする) |
+| C52 | 必須 | レイアウト型は永続化、既定は横長型、保存された向きは捨てて形を保ち、台座型は横長型へ、再保存に向きを書かない(検証: C102 + C103) | met | cycle 91: just swift-test exit 0 (C102 passed、failed 0 件。C103 の人間の確認は失効しており問い直しが要る) |
+| C53 | 必須 | Core → Side の順(各種別内は表示順)に型に従いスロットへ割当(横長型は行ごと、縦長型は列ごと)、序数が追従(検証: C102) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectLayoutTypeTests は passed) |
+| C54 | 必須 | visible 数または visible の種別の変化時に記憶の型で自動適用(検証: C102 + C101・C103) | met | cycle 91: just swift-test exit 0 (C102 passed、failed 0 件。C101・C103 の人間の確認は失効しており問い直しが要る) |
+| C55 | 必須 | プロジェクト単位のレイアウト resize/equalize 廃止、zoom 中ペインは存続(検証: C103) | unmet | - (C103 の人間の確認が失効。C103 を問い直した後に met にする) |
+| C56 | 必須 | レイアウト型の判断ロジックはモデル層(検証: C102) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C57 | 必須 | 「グループ」→「プロジェクト」全面改名(検証: C104) | met | cycle 91: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1。C104 は cycle 91 で met) |
+| C58 | 必須 | 改名は純粋なリネームで退行なし(検証: C104 + C88〜C90) | met | cycle 91: just swift-test exit 0 (zig build・just test も周回 91 で exit 0。C104 は cycle 91 で met) |
+| C59 | 必須 | SPEC.md / README.md をレイアウト型・自動適用・hide・改名語彙に合わせる(検証: 周回の読み合わせ) | met | cycle 91: grep -n "向き\|行送り\|列送り" SPEC.md exit 0 (6 行で、§26.1 の廃止の記述と §26.4・§26.5 の旧保存の移行だけ。周回 91 は §26.3 の「序数(Cmd+1〜9)」を「序数(§7.3)」に直しただけで、レイアウト型・hide・改名の記述は変えていない) |
+| C63 | 必須 | `Cmd+L` で一覧をトグル(Esc で閉じない・zoom を解除しない・表示・種別・タイトル・端末・ノートの 5 列・8 割)(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C64 | 必須 | 一覧は単一の並びで常に手動順、手動順・列順を永続化、hidden も同色、序数は C41 の配置順(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C65 | 必須 | Notion 流儀のセルカーソル・Enter 編集・候補列挙(端末・種別)・Space 循環の廃止(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C66 | 必須 | ノート列編集は全行対象、Shift+Enter で改行、一覧内 `Cmd+Opt+E` は全行表示トグル(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C67 | 必須 | `Cmd+矢印` は端移動、`Opt+矢印` で行・列並べ替え(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C68 | 必須 | `Cmd+N` は一覧での新規プロジェクト作成、visible 24 未満なら visible・24 なら hidden、種別は Core(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C69 | 必須 | 一覧の `Cmd+Enter` で focus(hidden 行は近傍 visible へ)(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C70 | 必須 | 一覧の判断ロジック(端末・種別の候補・Delete・行選択・クリップボード等)はモデル層(検証: C107) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C76 | 必須 | SPEC.md / README.md を端末登録・tmux セッション〜優先度等の削除(記述を残さない)・レイアウト型の向きの廃止と 2 種化(向きの記述を残さない)・focus 移動のキーの統一(廃止したキーと序数ジャンプの記述を残さない)・序数を visible すべてに付けることまでの仕様に合わせる(検証: 周回の読み合わせ) | met | cycle 91: grep -c "focusMoveTarget" SPEC.md exit 0 (周回 91 に SPEC §7.3(序数は visible すべて・hidden は「·」・序数で飛ぶキーなし)・§7.3 の上限時の挙動・§9.1(序数形式を一覧から消し、削除と SplitFocusDirection だけを取ることを記録)・§9.2・§10.3(Opt+Tab / Opt+Shift+Tab・Cmd+Opt+矢印・performable なし・廃止した既定の記録は 1 箇所)・§11.3 を focusMoveTarget の仕様へ書き直し・§14 の不変条件 20・§17 の設定例・§20・§21.3・§26.3・§27.1・§27 のテスト節・§30.3・§30.4 を直し、README の Projects・Project list・Layout types を Opt+Tab 系・Cmd+Opt+矢印・番号は visible すべてへ直した。grep で Cmd+1〜9・先頭 9 つ・1～9・maxProjectOrdinal・gotoProjectIndex・first nine は §9.1 と §10.3 の廃止の記録の外に無い。reviewer の読み取り審査でコードとの食い違いなし(指摘の §7.2 の hidden 行の「·」・§20 の序数の導出・§17 の廃止済み action の設定例も直した)。端末登録〜向きの記述は周回 79 の読み合わせから変えていない) |
+| C78 | 必須 | 一覧テキスト列のセル編集が日本語 IME を受け付ける(検証: C114) | unmet | - (C114 の人間の確認が失効。C114 を問い直した後に met にする) |
+| C79 | 必須 | セルカーソルの Delete で列ごとの値削除(タイトル空・端末は手元へ・種別は Core へ・ノートは確認・表示は何もしない)(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C80 | 必須 | Esc で行選択、行選択の Delete で確認付き削除(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C81 | 必須 | `Cmd+/` でショートカット一覧をトグル(検証: C115) | unmet | - (C115 の人間の確認が失効。C115 を問い直した後に met にする) |
+| C82 | 必須 | `Cmd+K` の clear_screen 既定割り当て解除(検証: C113) | unmet | - (C113 の人間の確認が失効。C113 を問い直した後に met にする) |
+| C83 | 必須 | 一覧セルのクリップボード操作(端末列は登録名のみ、種別列は Core / Side のみ)と候補列挙中の Tab 横移動(検証: C107 + C108) | met | cycle 91: just swift-test exit 0 (C107 passed、failed 0 件。C108 の人間の確認は失効しており問い直しが要る) |
+| C84 | 必須 | 描画対象の定義(全体ビュー: visible のプライマリー / zoom: 対象の全ペイン)(検証: C116) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | met | cycle 91: just swift-test exit 0 (C116 passed、failed 0 件。C117 の人間の確認は失効しており問い直しが要る) |
+| C86 | 必須 | 閉じた surface を経路によらず undo 期限後に SurfaceView〜IOSurface まで解放(検証: C116・C126 + C123〜C125 の読み合わせ + C117) | met | cycle 91: just swift-test exit 0 (C116・C126 passed、failed 0 件。C123〜C125 は周回 91 に読み合わせ済み。C117 の人間の確認は失効しており問い直しが要る) |
+| C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C88 | 必須 | `zig build` が exit 0 | met | cycle 91: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (HEAD 1890405 + 周回 91 の SPEC/README の変更。ビルド入力のコードは HEAD と同じ) |
+| C89 | 必須 | `just test` が exit 0 | met | cycle 91: just test exit 0 |
+| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 91: just swift-test exit 0 (passed 759 行・failed 0 件・TEST SUCCEEDED) |
+| C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectNoteTests は変更なしで passed) |
+| C92 | 必須 | ノートの実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は周回 89・91 の対象変更より前で失効。代行の機械検査の証拠を添えて ask で問い直す) |
+| C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectPrimaryPaneTests は変更なしで passed) |
+| C94 | 必須 | プライマリーペインの実機目視(Cmd+W で閉じたときの昇格を含む)(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C95 | 必須 | 削除保護のテスト群(兄弟ペインの exit で閉じない・複数の終了済みの再開・終了済みを含む複数ペインの復元を含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectTerminatedTests は変更なしで passed) |
+| C96 | 必須 | 削除保護の実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C97 | 必須 | ノート編集オーバーレイの編集ショートカット・100 行超過確認の実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C100 | 必須 | hide のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C101 | 必須 | hide の実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C102 | 必須 | レイアウト型のテスト群(1〜24 の横長型・縦長型、畳み込み(n=9 は畳まれない・n=1 は 1 つ)、横長型は行ごと・縦長型は列ごとの割当、永続化と既定・向きを捨てる移行・台座型の移行・再保存に向きなし、自動適用)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectLayoutTypeTests は周回 73 から変えておらず passed。項目の対応は周回 73 の記録のとおり) |
+| C103 | 必須 | レイアウト型の実機目視(「Wide」「Tall」の 2 つだけ、6 → 5 の縦長型の組み直し、n=8 の 2+3+3 ほか)(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C104 | 必須 | 改名完了: Projects/ が在り Groups/ が無い、C88〜C90 exit 0、可視文言に Group が無いことの目視(検証: test -d / test -e + C88〜C90 + 人間) | met | cycle 91: test -d macos/Sources/Features/Projects exit 0 (test -e macos/Sources/Features/Groups は exit 1、C88〜C90 は周回 91 で exit 0。可視文言の目視は周回 90 の観測で Group の文言なし、以前の確認: grep -rnE "\"[^\"]*\bGroup\b" macos/Sources/Features/Projects macos/Sources/App は無出力) |
+| C107 | 必須 | プロジェクト一覧のテスト群(既定列順 5 列、端末・種別の候補・Delete・貼り付け、visible 24 の拒否、削除した値を含む保存の読み込みを含む)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。項目の対応は周回 73 の記録のとおり) |
+| C108 | 必須 | プロジェクト一覧の実機目視(5 列を含む)(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C113 | 必須 | キー変更の実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C114 | 必須 | 一覧セル編集の IME の実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C115 | 必須 | ショートカット一覧の実機目視(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C116 | 必須 | 描画対象・停止/再開集合・解放・誕生時停止のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C117 | 必須 | 描画停止・解放の実機観測(top / footprint、起動直後に落ちない、行 Delete 後のフォーカス、検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す。前回の代行の計測値は記録 0085) |
+| C121 | 必須 | 停止集合に誕生した描画対象外の surface を含める(stop = (after.retained − after.drawn) ∩ (before.drawn ∪ born))(検証: C116) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C122 | 必須 | 停止・再開の適用は RenderTargetTransition のみ(生成直後の一律 set_occlusion(false) が唯一の例外)、SurfaceView.isDrawing を持たない(検証: C116 + 読み合わせ) | met | cycle 91: just swift-test exit 0 (C116 passed。周回 91 に grep -rn xghostty_surface_set_occlusion macos/Sources は 2 箇所、grep -rn isDrawing macos/Sources は 0 件) |
+| C123 | 必須 | SurfaceView の `.ghosttySelectionDidChange` 購読は `object:` を渡さず `[weak self]` の filter で絞る(検証: 読み合わせ + C90) | met | cycle 91: just swift-test exit 0 (周回 91 に SurfaceView_AppKit.swift:295 の publisher(for: .ghosttySelectionDidChange) に object: が無く、296 行の [weak self] の filter で絞ることを読み合わせた) |
+| C124 | 必須 | `XGhostty.Surface.deinit` はメインスレッドなら同期的に `xghostty_surface_free`(検証: 読み合わせ + C88〜C90 + C117) | met | cycle 91: just swift-test exit 0 (zig build・just test も周回 91 で exit 0。周回 91 に XGhostty.Surface.swift:34 の Thread.isMainThread で同期解放を読み合わせた。C117 の人間の確認は失効しており問い直しが要る) |
+| C125 | 必須 | 一覧の行選択 Delete で閉じたとき新しい focus 先へキーボードフォーカスを移す(検証: C126 + 読み合わせ + C117) | met | cycle 91: just swift-test exit 0 (C126 passed。周回 91 に performCloseProjectListRow の .switched が BaseTerminalController.swift:1892 で moveKeyboardFocus(toProjectSurface:) を呼ぶことを読み合わせた。C117 の人間の確認は失効しており問い直しが要る) |
+| C126 | 必須 | 一覧セッション中の closeProject の focus 先・保持集合・セッション継続のテスト(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C127 | 必須 | 端末を設定ファイルに登録(表示名・ホスト・色)、hostname 一致を手元、登録なしは暗黙の手元、再読み込みで反映(検証: C136 + C137) | unmet | - (C136 は cycle 91: just swift-test exit 0 で通過。C137 の観測(observed 82)が周回 91 の対象変更で失効したので次の周回で取り直す) |
+| C128 | 必須 | プロジェクトの端末(既定は手元)、一覧の端末列で候補選択・Delete で手元・登録名のみ貼り付け、永続化、欠落は手元扱い、変更は以後の新しいペインだけに効き終了済みの再開は元の端末の同じセッションへ(検証: C136 + C137) | unmet | - (C136 は cycle 91 で通過。C137 の観測が失効したので次の周回で取り直す) |
+| C129 | 必須 | 全ペインを端末上の tmux セッションへ attach するコマンドで起動、セッション名 `<ID>-<n>`、ペインごとの端末・セッション名を永続化(検証: C136 + C137) | unmet | - (C136 は cycle 91 で通過。C137 の観測が失効したので次の周回で取り直す) |
+| C130 | 必須 | 開始ディレクトリ `~/workspace/<タイトル>` → `~/workspace` → ホーム、split は `#{pane_current_path}` を引き継ぐ(検証: C136 + C137) | unmet | - (C136 は cycle 91 で通過。C137 の観測が失効したので次の周回で取り直す) |
+| C131 | 必須 | attach 時にそのセッションだけへ status-style・status-left・prefix C-s を設定、リネームで status-left を更新(検証: C136 + C137) | unmet | - (C136 は cycle 91 で通過。C137 の観測が失効したので次の周回で取り直す) |
+| C132 | 必須 | tmux / ssh の終了でペインは兄弟の有無によらず終了済み、Enter でプロジェクト内の終了済みペインそれぞれの attach を再実行(検証: C136 + C137・C142) | unmet | - (C136 は cycle 91 で通過。C137・C142 の観測が失効したので次の周回で取り直す) |
+| C133 | 必須 | 閉じたペインのセッションを undo 期限後に kill、undo で戻せば kill しない(検証: C136 + C137) | unmet | - (C136 は cycle 91 で通過。C137 の観測が失効したので次の周回で取り直す) |
+| C134 | 必須 | 手元でない端末への ssh に TERM=xterm-256color を渡す(検証: C136 + C137) | unmet | - (C136 は cycle 91 で通過。C137 の観測が失効したので次の周回で取り直す) |
+| C135 | 必須 | 端末・セッション・コマンド・候補・kill 対象の判断ロジックはモデル層(検証: C136) | met | cycle 91: just swift-test exit 0 (failed 0 件) |
+| C136 | 必須 | 端末登録と tmux セッションのテスト群(9 項目)が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。端末・tmux のテスト群は周回 79 で変えていない) |
+| C137 | 必須 | 端末登録と tmux セッションの実機観測(Mac mini、ssh ループバック、screencapture と tmux の出力)(検証: 周回の実機観測) | unmet | - (observed 82 は周回 89・91 の対象変更で失効。次の周回で 9 項目を .idd/tmp/c82/ の手順で取り直す) |
+| C138 | 必須 | 2 台の実機での目視(Mac mini の tmux・再起動後の再 attach・切断後の再 attach)(検証: 人間) | unmet | - (human 2026-11-11T12:35:08Z の確認は失効。ask で問い直す) |
+| C139 | 必須 | 種別と重み付きレイアウトの実機観測(5 列・候補・重みの幅と高さ・Core → Side の序数・種別変更で組み直し・選択肢は Wide / Tall の 2 つで縦長型の序数は列ごと・24 と 25 個目の hidden・Side に印なし)(検証: 周回の実機観測) | unmet | - (observed 81 は失効。次の周回で 7 項目を .idd/tmp/c81/ の手順で取り直す。序数の追従は Cmd+2・Cmd+5 ではなく、ラベル帯の番号と Opt+Tab の巡回で見る) |
+| C140 | 必須 | 種別 Core / Side、既定 Core、一覧の種別列(候補 Core → Side・Delete で Core・Core / Side のみ貼り付け)、永続化、大きさ以外に差を付けない(検証: C107 + C139) | unmet | - (C107 は cycle 91: just swift-test exit 0 で通過。C139 の観測が失効したので次の周回で取り直す) |
+| C141 | 必須 | 同時 visible は最大 24、24 で表示トグルを拒否、序数は visible すべてに付く(C41)(検証: C107 + C139) | unmet | - (C107 は cycle 91 で通過。C139 の観測(24 visible と 25 個目の hidden を含む)を次の周回で取り直せば met) |
+| C142 | 必須 | ペイン単位の終了済み状態の実機観測(ssh ループバックの 3 ペインを外から終了・Enter 1 回で全再 attach・終了済みのまま再起動・兄弟のシェル exit と Cmd+W・プライマリーの非昇格と Cmd+W の昇格・一部だけの再開で生きたセッションを作り直さない)(検証: 周回の実機観測) | unmet | - (observed 83 は失効。次の周回で 6 項目を .idd/tmp/c83/ の手順で取り直す) |
+| C143 | 必須 | ペインが分割木から失われるのは明示的 close(Cmd+W・close_project・一覧の行 Delete)のみ、コマンド終了では失われない(検証: C95 + C142) | unmet | - (C95 は cycle 91 で通過。C142 の観測が失効したので次の周回で取り直す) |
+| C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | unmet | - (C107 は cycle 91: just swift-test exit 0 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 91 で無出力・exit 1。実機観測の observed 90 が周回 91 の対象変更で失効したので次の周回で取り直す) |
+| C145 | 必須 | 削除した値を含む保存を読み込んでも失敗せず黙って無視し再保存で書かない、ノート・種別・端末・手動順・列順は復元、列順からは削除した列だけを除く(検証: C107) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectLedgerTests.aSaveCarryingTheRemovedValuesLoadsAndDropsThem が passed) |
+| C146 | 必須 | `Opt+Tab` / `Opt+Shift+Tab` で次・前へ、全体ビューは序数の順に visible を巡り折り返す、zoom 中は zoom 対象のペインを分割木の走査順に巡り折り返す、巡る先が無い・オーバーレイ表示中は何もしない(検証: C149 + C150) | unmet | - (C149 は cycle 91: just swift-test exit 0 で通過。C150 の observed 90 が失効したので次の周回で取り直す) |
+| C147 | 必須 | `Cmd+Opt+矢印` で方向の隣へ、全体ビューは隣の visible プロジェクト、zoom 中は隣のペイン、隣が無い・オーバーレイ中は何もしない、C21 は不変(検証: C149 + C150) | unmet | - (C149 は cycle 91 で通過。C150 の観測が失効したので次の周回で取り直す) |
+| C148 | 必須 | focus 移動は `Opt+Tab` 系と `Cmd+Opt+矢印` だけ、`Cmd+1〜9`・`Cmd+[` / `Cmd+]`・`Cmd+Ctrl+Opt+Shift+矢印` の既定割り当て廃止、`goto_project` の序数形式を削除、`goto_split` は action を残す、ショートカット一覧に廃止キーを載せない(検証: C150 + 読み合わせ + C88〜C90) | unmet | - (C88〜C90 は cycle 91 で exit 0。Config.zig の macOS 既定(6099〜6140 行)が ⌥⇥・⌥⇧⇥・⌘⌥矢印 の goto_project と ⌘⌃⇧矢印 の move_project だけで、goto_split の既定は非 macOS ブロック(5790〜5820 行)だけであることを周回 91 に読み合わせた。C150 の観測が失効したので次の周回で取り直す) |
+| C149 | 必須 | focus 移動(次・前・方向)と序数(10 番目以降を含む)のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 91: just swift-test exit 0 (failed 0 件。ProjectFocusMoveTests 23 件は passed。項目 1・2・3 は ProjectFocusMoveTests(序数順の巡回と折り返し・Core → Side の順・hidden を飛ばす・10 番目以降・visible 1 で nil・5 種のオーバーレイで nil / zoom 中のペインの走査順の巡回と折り返し・zoom 対象不変・上流の goto_split:next と同順 / 横長型・縦長型の隣のプロジェクト・zoom 中の隣のペイン・隣が無ければ nil)、項目 4 は ProjectVisibleCapTests.everyVisibleProjectInPlacementOrderHasANumber・onlyAHiddenRowGoesWithoutANumber と WorkspaceStateTests.restoringNumbersEveryCappedVisibleProject) |
+| C150 | 必須 | focus 移動のキーの統一と序数の実機観測(Opt+Tab の巡回と折り返し・zoom 中のペイン巡回・Cmd+Opt+矢印・廃止キーで移らない・10 番目以降の番号・一覧中は移らない・ショートカット一覧)(検証: 周回の実機観測) | unmet | - (observed 90 は周回 91 の対象変更(SPEC/README)で失効。コードは周回 90 の観測時と同じなので、次の周回で .idd/tmp/c90/ の s1〜s7.sh を流し直せば取り直せる) |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |
 | C120 | 望ましい | 全体ビューの非プライマリーペインのインジケータ(検証: 人間) | unmet | - |

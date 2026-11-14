@@ -25,10 +25,22 @@ its window management with a single model:
   additional windows, and no quick terminal. Closing the last project closes the
   window and quits the app.
 - **Projects.** A "project" layer sits above splits. Projects can be created,
-  zoomed, hidden, shown, renamed, reordered, and jumped to by ordinal
-  (Cmd+1-9). Up to 24 projects can be visible at once; only the first nine in
-  placement order have an ordinal, and the rest are reached from the project
-  list with `Cmd+Enter`. The project list (see below) is the ledger that holds every
+  zoomed, hidden, shown, renamed, and reordered. Up to 24 projects can be
+  visible at once, and every visible project carries a number (1 up to 24) in
+  placement order, shown before its title in the header band and in the
+  project list's number column; hidden projects have none. Keyboard focus
+  moves with just two chords, the same in the overall view and while zoomed:
+  `Opt+Tab` / `Opt+Shift+Tab` go to the next / previous one — the visible
+  projects in number order in the overall view, the zoomed project's panes in
+  split order while zoomed — wrapping around at both ends, and
+  `Cmd+Opt+arrows` go to the neighbor in that direction (the adjacent visible
+  project, or the adjacent pane while zoomed). Both do nothing while an
+  overlay is up or when there is nowhere to go, and are never passed to the
+  program in the terminal. There is no key that jumps to a project by number;
+  a distant project is reached from the project list with `Cmd+Enter`
+  (upstream's `goto_split` action stays available for user keybinds, with no
+  default chord on macOS). The project list (see below) is the ledger that
+  holds every
   project; the on-screen arrangement is derived from it. See
   [SPEC.md](SPEC.md) for the design.
 - **Notes.** Each project holds a short handwritten note (up to 100 lines),
@@ -85,8 +97,9 @@ its window management with a single model:
   columns — visibility, kind (Core or Side), title, terminal, and the note's
   first line. The rows are always in the human's own (manual) order; there is
   no sorting. This row order is the source of truth: the on-screen
-  arrangement is derived from it, and the `Cmd+1-9` ordinals count its first nine
-  visible rows, Cores first and then Sides, each kind in row order. Cell operations follow the Notion idiom. The
+  arrangement is derived from it, and the project numbers count all of its
+  visible rows, Cores first and then Sides, each kind in row order (a hidden
+  row shows `·` instead of a number). Cell operations follow the Notion idiom. The
   cell cursor moves with the arrows and Tab / Shift+Tab (row-end wrap, edge
   stop); `Cmd+arrows` jump it to the edges. Enter operates on the cell: text
   cells start an edit with the caret in the existing text (typing instead
@@ -162,13 +175,14 @@ its window management with a single model:
 - **Layout types.** The screen arrangement is a layout type — Wide or its
   transpose, Tall (the wide shape uses about √n rows and gives any remainder to
   the later rows, so the top rows hold fewer, wider slots — eight projects go
-  2+3+3; `Cmd+1`–`9` run along the rows on Wide and down the columns on Tall) —
+  2+3+3; the project numbers run along the rows on Wide and down the columns
+  on Tall) —
   remembered persistently and re-applied automatically whenever the number of
   visible projects or a visible project's kind changes (hiding, showing,
   creating, closing, changing the kind). Each project is a Core or a Side: every
   project takes one slot, but a Side is half as wide as a Core in the same row
   (half as tall in the same column, on the tall shape), and the Cores are placed
-  first. `Cmd+1`–`9` follow that placement. A saved pedestal layout from an older
+  first. The project numbers follow that placement. A saved pedestal layout from an older
   version loads as Wide, and a saved row/column direction is dropped, keeping
   the shape. `Cmd+Opt+L` lists only the distinct choices for the
   current visible projects (identical arrangements are collapsed; with a single

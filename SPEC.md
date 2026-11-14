@@ -337,7 +337,7 @@ shelf は廃止し、**hidden プロジェクトの唯一の復帰導線を `Cmd
 
 ```text
 - 一覧は hidden を含む全プロジェクトを 1 つの表に並べる(§27.1)
-- hidden 行は序数欄が空(序数は visible にしか付かない、§7.3)
+- hidden 行は序数欄に印「·」(序数は visible にしか付かない、§7.3)
 - 表示セルの Enter で hide/show を即時トグル(§27.2)
 - hidden 行の Cmd+Enter は近傍の visible なプロジェクトへの focus に
   解決される(§27.3)
@@ -348,22 +348,24 @@ shelf は廃止し、**hidden プロジェクトの唯一の復帰導線を `Cmd
 レイアウト型からの再導出(`relayout()`、§26.3)が決める。一覧の表示セル
 トグル(Enter)の show 経路も同じ(ただし focus は動かさない、§27.2)。
 
-### 7.3 プロジェクト番号（1～9）と表示上限
+### 7.3 プロジェクト番号（1～24）と表示上限
 
 visible project は種別を問わず最大 24 個まで。`WorkspaceState.maxVisibleProjects = 24`
-として実装。序数は先頭 9 つまで(`WorkspaceState.maxProjectOrdinal = 9`)。
+として実装。序数は visible なすべてのプロジェクトに付く(9 で止めない。上限は
+visible 数の上限と同じ 24)。
 
 #### 動的序数
 
 visible project は**配置順**(Core → Side、各種別内は台帳の行順。§26.3、
-`visibleProjectIDs` / `ordinal(of:)`)の先頭 9 つに 1～9 の序数を自動付与する。
+`visibleProjectIDs` / `ordinal(of:)`)に 1 から序数を自動付与する。`ordinal(of:)` は
+visible なら配置順の位置 + 1、hidden のときだけ nil を返す。
 序数は display-only で内部保持しない。配置は同じ順に導出される(§26.3)が、
 canonical tree の葉走査順とは一般に一致しない。
 
-10 番目以降の visible project は序数を持たず(`ordinal(of:)` は nil)、ラベル帯は
-名前だけ、一覧の序数欄は空欄になる(hidden の印「·」は付かない。hidden かどうかは
-序数の有無ではなく `hiddenProjectIDs` が決める)。これらには一覧の `Cmd+Enter` で
-届く(§27.3)。
+序数はラベル帯のタイトルの前と一覧の序数欄に表示し、`Opt+Tab` /
+`Opt+Shift+Tab` が全体ビューで巡る順(§11.3)にだけ使う。**序数を指定して
+飛ぶキーは持たない**(§9.1、§10.3)。離れたプロジェクトへは一覧の `Cmd+Enter`(§27.3)で移る。
+hidden の行は序数欄に印「·」を出す(`ProjectListRow.ordinalGutterText`)。
 
 枚数変化時(hide / close / show / 新規作成)や行移動(move_project・一覧の
 `Opt+↑↓`)の後、序数は自動的に再計算・再配置される。
@@ -396,15 +398,14 @@ visible project が既に 24 個のとき:
 - `new_project` ... 作成自体は拒否しない — 新規行は **hidden として**挿入される
   (§27.4。登録総数に上限は無く、同時に画面へ並ぶ数だけが 24 まで)
 - `show_project`（`show_project:<name>` action、およびプロジェクト一覧の表示セルトグル §27.2） ... quietly no-op（行は hidden のまま残る）
-- `goto_project` index form（`goto_project:1`～`goto_project:9`）... 無効な index は no-op、performability gate あり
-- `goto_project` directional form ... 変わらず動作（方向移動だけでは上限に到達しない）
+- `goto_project`(次・前・方向)... 変わらず動作（focus 移動だけでは上限に到達しない）
 
 performability gate の扱い：
 
 - `show_project` ... 上限到達時（または対象が hidden でないとき）は performable = false で
   keybind を消費しない
-- `goto_project` index form ... 対象 index が解決できない・focused と同じ
-  （zoom 中は zoomed project 自身と同じ）とき performable = false で keybind を消費しない
+- `goto_project` の既定の割り当て(§10.3)は performable を付けない。移る先が
+  無くても打鍵を消費し、端末内のプログラムへは届かない
 
 ## 8. プロジェクト名生成
 
@@ -454,15 +455,6 @@ goto_project:left
 goto_project:up
 goto_project:next
 goto_project:previous
-goto_project:1
-goto_project:2
-goto_project:3
-goto_project:4
-goto_project:5
-goto_project:6
-goto_project:7
-goto_project:8
-goto_project:9
 
 move_project:right
 move_project:down
@@ -498,7 +490,11 @@ close_project
 廃止した(§24)。いずれも parser・C ABI(`xghostty.h` の action enum)から削除済みで、
 keybind に書けば設定エラーになる(後方互換は保証しない方針、必須対応事項 58)。
 同改訂で `toggle_shortcut_list`(ショートカット一覧オーバーレイのトグル、
-§30)を追加した。
+§30)を追加した。2026-11-14 改訂で `goto_project` の序数形式
+(`goto_project:1`〜`goto_project:9`、apprt の `goto_project_index`)を削除した。
+`goto_project:<N>` は parser が InvalidFormat として退ける。`goto_project` は
+上流の `goto_split` と同じ `SplitFocusDirection`(`next` / `previous` /
+`up` / `down` / `left` / `right`)だけを取る。
 
 ### 9.2 既存actionとの対応
 
@@ -510,6 +506,9 @@ close_surface      -> close_project
 
 `new_project` は既存 action に対応物を持たない(分割ではなく台帳への行挿入、
 §27.4)。`move_project` は `goto_project` と同じ方向語彙で行を入れ替える。
+`goto_project` は場面で対象を切り替える: 全体ビューではプロジェクト、zoom 中は
+zoom 対象のペイン(上流の `goto_split` と同じ動き)へ focus を移す(§11.3)。
+`goto_split` は action として残るが、macOS の既定の割り当ては持たない(§10.3)。
 
 ## 10. デフォルトキー割り当て
 
@@ -534,25 +533,30 @@ action ごと廃止した。
 
 ### 10.3 プロジェクト移動
 
-方向 focus 移動と行の入れ替え:
+focus 移動は全体ビューでも zoom 中でも同じ 2 系統のキーだけで行う
+(2026-11-14 改訂、§11.3):
 
 ```text
-Cmd+Ctrl+Opt+Shift+Left/Right/Up/Down   -> goto_project:left/right/up/down
-Cmd+Ctrl+Shift+Left/Right/Up/Down       -> move_project:left/right/up/down
+Opt+Tab                          -> goto_project:next
+Opt+Shift+Tab                    -> goto_project:previous
+Cmd+Opt+Left/Right/Up/Down       -> goto_project:left/right/up/down
+Cmd+Ctrl+Shift+Left/Right/Up/Down -> move_project:left/right/up/down
 ```
+
+`goto_project` の既定の割り当てには performable を付けない。移る先が無いとき
+(visible 1・ペイン 1・その方向に隣が無い・オーバーレイ表示中)も打鍵を消費し、
+`Opt+Tab` / `Opt+Shift+Tab` は端末内のプログラムに届かない。既定の割り当ては
+`src/config/Config.zig` のテスト「default focus-move chords are Opt+Tab and
+Cmd+Opt+arrow only」が固定する。
+
+廃止した既定の割り当て(押しても focus は移らない):`Cmd+1〜9`(序数ジャンプ。
+action の序数形式ごと削除、§9.1)、`Cmd+[` / `Cmd+]`(上流の
+`goto_split:previous` / `next`。action は残し、macOS の既定の割り当てだけを外した)、
+`Cmd+Ctrl+Opt+Shift+矢印`(旧 `goto_project` の方向移動。`Cmd+Opt+矢印` へ統合)。
+上流の `goto_split` の既定の割り当ては非 macOS のブロックにだけ残る。
 
 `move_project` は台帳上で focused プロジェクトの行を隣の visible 行と
 入れ替える(§26.3。配置は再導出で追従)。
-
-序数ジャンプ:
-
-```text
-Cmd+1〜9              -> goto_project:1〜9
-```
-
-Cmd+1～9 は physical `digit_1`～`digit_9` と unicode `1`～`9` の両方に登録し
-（AZERTY 等のレイアウト対策）、`goto_project:1`～`goto_project:9` に performable 付きでバインドする。
-本 fork にタブは存在せず、上流の `goto_tab` / `last_tab` は core ごと削除済みなので衝突しない。
 
 ### 10.4 プロジェクトリサイズ(廃止)
 
@@ -639,82 +643,59 @@ Cmd+D:
 プロジェクトズーム中も同じ。
 ズーム中project内でpane splitされる。
 
-### 11.3 `goto_project`
+### 11.3 `goto_project`(focus 移動)
 
-#### 方向移動形式（`goto_project:right` 等）
-
-方向移動は `effectiveVisibleProjectTree` に対して行う。
-
-```swift
-func gotoProject(_ direction: FocusDirection) {
-    guard zoomedProject == nil else { return }
-    guard let visibleTree = effectiveVisibleProjectTree else { return }
-
-    let next = visibleTree.focusTarget(
-        from: focusedProject,
-        direction: direction
-    )
-
-    if let next {
-        focusedProject = next
-        focusLastPane(in: next)
-    }
-}
-```
-
-移動先projectでは、最後にfocusしていたpaneへ戻す。
+キーボードで focus を次・前・隣へ移す操作は `goto_project` だけで、全体ビューでも
+zoom 中でも同じキー(`Opt+Tab` / `Opt+Shift+Tab` と `Cmd+Opt+矢印`、§10.3)で
+行う(2026-11-14 改訂)。移る先の解決はモデル層の
+`WorkspaceModel.focusMoveTarget(_:)` が 1 箇所で行い、結果は
+`WorkspaceFocusMoveTarget`(`.project(ProjectID)` / `.pane(SurfaceID)`)または
+nil(何もしない)である。テストは `ProjectFocusMoveTests`。
 
 ```text
-goto_project:right:
-  project focus を移す
-  targetProject.focusedSurface を復元
+focusMoveTarget(direction):
+  オーバーレイ表示中(focusMovesBlocked) -> nil
+  zoom 中                                -> .pane(...)    (zoom 対象のペイン)
+  全体ビュー                              -> .project(...) (visible なプロジェクト)
 ```
 
-hidden project は focus 対象にしない。
-zoom中の `goto_project` 方向移動は no-op でよい。
+`focusMovesBlocked` はプロジェクト一覧・レイアウト選択・一望モード
+(`overlaySessionActive`)・ノート編集・ショートカット一覧のいずれかが
+表示中のとき true になる。
 
-#### 序数ジャンプ形式（`goto_project:1`～`goto_project:9`）
+#### 全体ビュー
 
-N 番目の visible project にジャンプする（配置順の序数 1～9、§7.3）。
+- `next` / `previous`(`Opt+Tab` / `Opt+Shift+Tab`)は visible なプロジェクトを
+  序数の順(`visibleProjectIDs`、§7.3)に巡り、末尾の次は先頭、先頭の前は末尾へ
+  折り返す。hidden は序数を持たないので巡らない。visible が 1 つなら nil。
+- 方向(`Cmd+Opt+矢印`)は visible なプロジェクトの木
+  (`effectiveVisibleProjectTree`)上の空間的な隣へ移る(`gotoProjectTarget`)。
+  その方向に隣が無ければ nil。
+- 移る先では、そのプロジェクトで最後に focus していたペイン(全体ビューでは
+  プライマリー、§22)へ focus を戻す(ラベルのクリックと同じ `focusProject`)。
+- ペインは対象にならない。全体ビューでペイン間の focus 移動が no-op であること
+  (§22)は変わらない。
 
-```swift
-func gotoProject(index: UInt8) {
-    // index が resolveしないか focusedProject と同じならno-op
-    guard let target = visibleProjectID(ordinal: index),
-          target != focusedProject
-    else { return }
+#### zoom 中
 
-    zoomedProject = nil  // zoom を解除してからジャンプ
-    focusedProject = target
-    focusLastPane(in: target)
-}
-```
-
-**zoom中の特別ルール**: zoom 中に index form を実行するとまず **zoom を解除してからジャンプ** する。
-ただし zoomed project 自身の序数を指定した場合（e.g. zoomed = 2. server、Cmd+2 押下）は、
-no-op で zoom は保持される。
+- zoom 対象は変えず、そのプロジェクトのペインの間で focus を移す。
+- `next` / `previous` は分割木の走査順(上流の `goto_split:next` / `previous` と
+  同じ順)に巡り、端で折り返す。ペインが 1 つなら nil。
+- 方向は空間的な隣のペインへ移る(上流の `goto_split` の方向と同じ)。隣が無ければ nil。
+- ペイン単位の split zoom の扱いは上流の `goto_split` に従う
+  (`split-preserve-zoom` の `navigation`)。
 
 ```text
-Before:
-  visible: [1. calm-river | 2. server | 3. logs]
-  focused: 2. server
-  zoomed: 2. server
+visible: [1. calm-river | 2. server | 3. logs]  (横長型 1 行)
+focused: 3. logs
 
-Cmd+3 (goto_project:3):
-  zoom解除 → focus 移動 → last pane focus
-
-  After:
-    focused: 3. logs
-    zoomed: nil
-
-Cmd+2 (goto_project:2,自 project):
-  no-op、zoom 保持
-
-  Before の状態のまま
+Opt+Tab        -> 1. calm-river   (末尾の次は先頭)
+Opt+Shift+Tab  -> 2. server
+Cmd+Opt+Right  -> 何もしない(右に隣が無い)
 ```
 
-hidden project は jump 対象にならない（序数は visible only）。
-無効な index（0、10+、目標が hidden 等）は no-op。
+nil のときも既定の割り当ては打鍵を消費する(performable を付けない、§10.3)。
+序数を指定して飛ぶ形式は存在しない(§9.1)。
 
 ### 11.4 `resize_project`(廃止)
 
@@ -986,8 +967,8 @@ var effectiveVisibleProjectTree: SplitTree<ProjectRef>? {
     confirmation に昇格する（唯一の project では通常の close_surface として
     window close → app 終了になる。§11.10, §18.5）
 19. visible project 数は常に ≤ 24（§7.3。登録総数は無制限）
-20. visible project の序数は配置順(Core → Side、各種別内は行順)の先頭 9 つに
-    1～9 で付き、台帳の変更時に自動 re-pack される
+20. visible project の序数は配置順(Core → Side、各種別内は行順)の visible
+    すべてに 1 から付き(最大 24)、台帳の変更時に自動 re-pack される
     (表示のみ、保存しない。§7.3, §27.1)
 21. restore 時は normalizeLedger が台帳を修復し(順列・生存・上限 24・
     最低 1 visible)、relayout が配置を再導出する(§12.4)
@@ -1184,11 +1165,8 @@ enum Action {
 config syntax:
 
 ```text
-keybind = cmd+opt+d=new_project_split:right
-keybind = cmd+opt+shift+d=new_project_split:down
-keybind = cmd+ctrl+opt+left=goto_project:left
-keybind = cmd+one=goto_project:1
-keybind = cmd+ctrl+opt+shift+left=resize_project:left,10
+keybind = cmd+opt+left=goto_project:left
+keybind = alt+tab=goto_project:next
 keybind = cmd+opt+enter=toggle_project_zoom
 keybind = cmd+opt+h=hide_project
 keybind = cmd+opt+r=rename_project
@@ -1307,13 +1285,14 @@ resize/equalize の廃止(§26.4)、hidden 状態の永続化と台帳復元(§1
   Cmd+Opt+D          project split right
   Cmd+Opt+Shift+D    project split down
 
-追加（プロジェクト番号・序数ジャンプ）:
-  Cmd+1～9           goto_project:1～9（visible project の序数でジャンプ）
+追加（focus 移動。2026-11-14 改訂の形）:
+  Opt+Tab / Opt+Shift+Tab   goto_project:next / previous
+  Cmd+Opt+矢印              goto_project:<方向>
   ※ 本 fork にタブはなく、goto_tab / last_tab は core から削除済み
 
 project UI:
   ヘッダー帯に "{序数}. {名前}" を表示
-  序数は表示のみ（canonical tree の葉走査順で動的）
+  序数は表示のみ（配置順で動的、§7.3）
   focus時だけ強調
   double-click rename（裸の名前を編集）
   command prompt rename
@@ -1326,17 +1305,15 @@ hidden UI:
 表示上限:
   visible project 最大 24 個
   24 個で満杯のとき show_project は no-op、新規行は hidden
-  序数は配置順の先頭 9 つに 1～9 で re-pack（hide/close/show時）
+  序数は配置順の visible すべてに 1 から re-pack（hide/close/show時）
 
 zoom:
   project単位
   zoom中 Cmd+D はproject内pane split
   zoom中 new_project_split はzoom解除して隣に作成
-  goto_project:<N> で zoom 解除してジャンプ（自 project は no-op）
 
 focus:
-  goto_project方向移動（zoom中は no-op）
-  goto_project序数ジャンプ（1～9）
+  goto_project の次・前・方向(全体ビューはプロジェクト、zoom 中はペイン、§11.3)
   移動先projectのlast focused paneに戻る
 
 resize:
@@ -1473,8 +1450,8 @@ static var maxNoteLines: Int { 100 }
 - **表示対象集合は visible プロジェクトのみ**:
   `noteOverviewProjectIDs == WorkspaceState.visibleProjectIDs`
   (canonical tree の葉 = visible。hidden プロジェクトは含まれない)。
-- **閲覧専用**: モード中は `beginNoteEditing*` と focus 移動 3 経路
-  (`gotoProjectTarget` / `gotoProjectIndexTarget` / `switchFocusedProject`)が
+- **閲覧専用**: モード中は `beginNoteEditing*` と focus 移動の経路
+  (`focusMoveTarget`(§11.3)/ `gotoProjectTarget` / `switchFocusedProject`)が
   すべて no-op。ワークスペース全面の捕捉層がマウス操作も遮断する。
 - ノート編集オーバーレイが開いている間のトグルは no-op(編集ドラフトを
   黙って破棄しない)。
@@ -1955,7 +1932,7 @@ private(set) var primaryPane: SurfaceID?   // 非空ツリーでは常にちょ�
 ### 26.3 台帳 → 配置の導出(relayout)
 
 - **配置順**:`visibleProjectIDs` は台帳(§27.1)の visible な行を **Core → Side**
-  の順(各種別内は行順)に並べたもの。序数(Cmd+1〜9)もスロットの割り当ても
+  の順(各種別内は行順)に並べたもの。序数(§7.3)もスロットの割り当ても
   これを数えるので、一覧の行順とは別に、Side は常に Core の後に来る。
 - 配置の導出は `WorkspaceState.relayout()` の 1 点:
   `canonicalProjectTree = layoutType.tree(over: visibleProjectIDs, kinds: visibleProjectKinds)` —
@@ -2043,13 +2020,13 @@ hidden を含む**全プロジェクト**を載せた一覧は、全体像を把
     締切・次トリガー)を取り除いてから `ProjectListColumn.normalizedOrder` で
     常に全列の順列へ修復する。列が無かった頃の保存では、種別列は既定どおり
     表示の直後に、端末列はタイトルの直後に入り、他の列の保存順は保たれる。
-- **序数(Cmd+1〜9)は配置順**:visible な行を Core → Side(各種別内は行順)に
-  並べた順の先頭 9 つ(`visibleProjectIDs`、`ordinal(of:)`、§26.3、§7.3)。ツリーの
+- **序数は配置順**:visible な行を Core → Side(各種別内は行順)に
+  並べた順の visible すべて(最大 24。`visibleProjectIDs`、`ordinal(of:)`、§26.3、§7.3)。ツリーの
   走査順ではなく台帳と種別が序数を定義し、配置が序数に追従する。行の並びは種別で
   変わらない。
 - `ProjectListRow` は行の純粋導出(`projectListRows`):種別・タイトル・序数
-  (hidden と、配置順で 10 番目以降の visible は nil。序数欄は
-  `ordinalGutterText` が hidden なら「·」、後者なら空欄にする)・hidden か否か・
+  (hidden だけが nil。序数欄は `ordinalGutterText` が visible なら番号、
+  hidden なら「·」にする)・hidden か否か・
   端末・種別・ノート。空のノートは空のまま運び、空欄に描くのは view の仕事。端末セルは空欄にならない
   (`terminalDisplayName(in:)` — 保存値が手元(nil)か登録から消えた名前なら
   手元の端末の表示名を描く。§29.2)。ノート列は通常 1 行目のみを表示し、
@@ -2283,9 +2260,9 @@ composing == false … Esc = .cancel / Enter = .commit(下。multiline かつ
   6 ショートカットの chord 対応と対象外 chord の素通し / 候補列挙中の
   Tab / Shift+Tab が値を変えずに閉じて横移動(ProjectListClipboardTests)
 - 端末列(候補・Delete・コピー・貼り付け)は §29.5 の ProjectTerminalColumnTests
-- 表示上限 24・種別を問わない数え方・24 でのトグルの拒否・新規行の表示状態・序数の
-  先頭 9 つ・10 番目以降の visible が hidden に見えないことは ProjectVisibleCapTests
-  10 件
+- 表示上限 24・種別を問わない数え方・24 でのトグルの拒否・新規行の表示状態・序数が
+  visible すべて(10 番目以降を含む)に付き hidden だけが番号を持たないこと・
+  10 番目以降の行への一覧の focus は ProjectVisibleCapTests 10 件
 - 種別列(候補・Delete・コピー・貼り付け)は §27.8 の ProjectKindTests
 ```
 
@@ -2581,21 +2558,25 @@ project-terminal = <name>,<host>[,<color>]    # 繰り返し可。空値でリ�
   内省ではない(本 fork は keybind の後方互換を保証せず、一覧はデフォルトを
   文書化する)。fork 固有の chord と上流由来の chord(コピー/ペースト・
   検索・スクロール等)の両方を含み、**解除済みのデフォルト(Cmd+Enter
-  fullscreen・Cmd+E search・Cmd+K clear)は載せない**。`Cmd+/` 自身は全
+  fullscreen・Cmd+E search・Cmd+K clear)と廃止した focus 移動のキー(§10.3)は
+  載せない**。focus 移動は全体ビューと zoom の両方に `⌥⇥ · ⌥⇧⇥`(次・前)と
+  `⌘⌥←→↑↓`(方向)として載る(§11.3)。`Cmd+/` 自身は全
   グループに載る(どの場面からでも呼べることの文書化)。
 - ビュー(`ShortcutListOverlay`)は中央パネル + グループ見出し + 行
   (chord / ラベル)を描くだけで、判断を持たない。収まらないときは
   スクロールする。
 
-### 30.4 テスト(ShortcutCatalogTests 7 件 / ShortcutListSessionTests 2 件)
+### 30.4 テスト(ShortcutCatalogTests 9 件 / ShortcutListSessionTests 2 件)
 
 ```text
 - グループが 5 場面を宣言順で網羅する
 - 全グループに ⌘/ が載る(どの場面からでも呼べる)
 - 上流由来の chord が載る(全体ビューのコピー/ペースト・検索、zoom の分割・
-  ペイン移動)
-- fork 固有の chord が載る(⌘L・⌘E・⌘⌥E・⌘1–9・⌘P・⌘↩ ほか)
+  ペインのリサイズ)
+- fork 固有の chord が載る(⌘L・⌘E・⌘⌥E・⌘⌥←→↑↓・⌘P・⌘↩ ほか)
 - 解除済みデフォルトは載らない(⌘K・fullscreen・clear screen)
+- focus 移動の ⌥⇥ · ⌥⇧⇥ と ⌘⌥←→↑↓ が全体ビューと zoom の両方に載る
+- 廃止した focus 移動のキーと序数ジャンプはどの場面にも載らない
 - 表示衛生: 空 chord / 空ラベル無し・グループ内 chord 重複無し・
   場面表示名が非空
 - セッション: toggle/end の遷移 / 一覧セッションの上に重ねても下の
