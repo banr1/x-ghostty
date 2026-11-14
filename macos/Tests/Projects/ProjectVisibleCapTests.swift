@@ -16,8 +16,8 @@ private typealias TestWorkspaceModel = WorkspaceModelOf<TestPane>
 
 /// Tests for the visible cap and the ordinals past it (must 141 and 68): at most
 /// 24 projects are visible whatever their kind, the list's visibility toggle is
-/// rejected at the cap, a new row comes in hidden there, and only the first nine
-/// projects in placement order have a number.
+/// rejected at the cap, a new row comes in hidden there, and every visible
+/// project has a number in placement order (only hidden ones go without).
 struct ProjectVisibleCapTests {
     private static func makeProject(
         name: String,

@@ -39,6 +39,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - 解放の確認は `heap <pid> -addresses 'XGhostty.SurfaceView' | grep -c '^0x'` で生存 `SurfaceView` を数えるのが最も直接的(スレッド・IOSurface より揺れない)。`leaks <pid> --traceTree=<addr>` は保守的走査で弱参照やスタック上の古いポインタまで並べるので、所有者の特定にはほぼ使えない。仮説は挙動の差(どの操作で解放されるか)で切り分ける。`lldb -p <pid> --batch -s cmds.txt` で自分の起動したプロセスに ObjC の式を打てる(合成イベントの送信など)。
 - 合成のマウス操作: `CGEvent(mouseEventSource:mouseType:mouseCursorPosition:mouseButton:)` を `.cghidEventTap` へ post(座標はグローバルの左上原点ポイント、ダブルクリックは `.mouseEventClickState` を 1→2)。この環境では window のスクショ 1px = 1pt で、左右 56px・上 37px が影。合成ダブルクリックでラベルの名前編集に入ると、入力欄が first responder にならないことがある(もう一度クリックすると入る)。
 - C ABI: `include/xghostty.h` の action enum は後続のタグ値を保つ(in-place 置換か末尾追加)。
+- 統一した focus 移動の解決は `WorkspaceModel.focusMoveTarget(_: XGhostty.SplitFocusDirection) -> WorkspaceFocusMoveTarget?`(`.project` / `.pane`)。全体ビューの次・前は `visibleProjectIDs`(序数順)で折り返し、方向は `gotoProjectTarget`、zoom 中は focused プロジェクトの `paneTree.focusTarget`(上流の goto_split と同じ)。オーバーレイ 5 種の判定は `focusMovesBlocked`(ショートカット一覧は `overlaySessionActive` に入っていないので別に見る)。テストは `ProjectFocusMoveTests`。モデルの `focusedSurface` は controller が `setFocusedSurface` で追従させている。
 
 ## 実装の現状
 

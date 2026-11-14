@@ -84,9 +84,9 @@ ideal_sha: 33b4a3729ce2b76ff62b3d4a2d96ed88cdcc24a83944a9f81ffef0c278a28e6b
 | C85 | 必須 | 描画対象外は生成時を含めレンダラとディスプレイリンクを停止し復帰時に再開(検証: C116 + C117) | met | cycle 79: just swift-test exit 0 (C116 passed、failed 0 件。C117 は human 2026-11-11T12:35:08Z で確認) |
 | C86 | 必須 | 閉じた surface を経路によらず undo 期限後に SurfaceView〜IOSurface まで解放(検証: C116・C126 + C123〜C125 の読み合わせ + C117) | met | cycle 79: just swift-test exit 0 (C116・C126 passed、failed 0 件。C123〜C125 は読み合わせ済み。周回 79 で復元時に旧互換の surfaceTree を decode しないようにし、「起動時の復元で置き換えられた初期 surface」はそもそも生まれなくなった。C117 は human 2026-11-11T12:35:08Z で確認) |
 | C87 | 必須 | 描画対象の判定と停止・再開集合の導出はモデル層(検証: C116) | met | cycle 79: just swift-test exit 0 (failed 0 件) |
-| C88 | 必須 | `zig build` が exit 0 | met | cycle 79: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (周回 79 の変更をすべて終えた後に実行) |
-| C89 | 必須 | `just test` が exit 0 | met | cycle 79: just test exit 0 |
-| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 79: just swift-test exit 0 (TEST SUCCEEDED、passed 742 行・failed 0 件) |
+| C88 | 必須 | `zig build` が exit 0 | met | cycle 88: PATH=/opt/homebrew/opt/zig@0.15/bin:$PATH zig build exit 0 (周回 88 の変更をすべて終えた後に実行) |
+| C89 | 必須 | `just test` が exit 0 | met | cycle 88: just test exit 0 |
+| C90 | 必須 | `just swift-test` が exit 0 | met | cycle 88: just swift-test exit 0 (TEST SUCCEEDED、passed 765 行・failed 0 件) |
 | C91 | 必須 | ノートのテスト群が macos/Tests/ に存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 79: just swift-test exit 0 (failed 0 件。ProjectNoteTests は変更なしで passed) |
 | C92 | 必須 | ノートの実機目視(検証: 人間) | met | human 2026-11-11T12:35:08Z: 周回 85 の pair で、HEAD caddb02(対象ファイルは周回 79 の a051690 と同じ)の zig-out 版の代行結果を人間が確認した(Cmd+E・Cmd+Enter の保存・Esc の破棄・fullscreen にならない・Cmd+Opt+E の一望・切り詰めとスクロール。記録 0085) |
 | C93 | 必須 | プライマリーペインのテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 79: just swift-test exit 0 (failed 0 件。ProjectPrimaryPaneTests は変更なしで passed) |
@@ -131,10 +131,10 @@ ideal_sha: 33b4a3729ce2b76ff62b3d4a2d96ed88cdcc24a83944a9f81ffef0c278a28e6b
 | C143 | 必須 | ペインが分割木から失われるのは明示的 close(Cmd+W・close_project・一覧の行 Delete)のみ、コマンド終了では失われない(検証: C95 + C142) | met | observed 83: ssh の kill(1 ペイン・3 ペインとも)と兄弟のシェルの exit でペインは閉じずに終了済みで残り、失われたのは Cmd+W で閉じたペインだけ(C142 の観測)。C95 は cycle 79 で通過 |
 | C144 | 必須 | 優先度・締切・次トリガー・ソート・毎朝リセット・日付候補が存在しない(一覧 5 列でソートバーなし・ラベル帯に印と締切なし・一望はノートだけ・ショートカット一覧に項目なし・関連コードなし)(検証: C107 + 周回の実機観測 + grep が無出力) | met | observed 81: 一覧は 5 列でソートバーなし、ラベル帯は「序数. タイトル」だけ、一望はタイトルとノートだけ、ショートカット一覧(Cmd+/ を末尾までスクロール)に優先度・締切・次トリガー・ソートの項目なし。C107 は cycle 79 で通過し、grep -rE "ProjectPriority\|ProjectDeadline\|ProjectNextTrigger\|ProjectSortState" macos/Sources macos/Tests は周回 81 で無出力・exit 1 |
 | C145 | 必須 | 削除した値を含む保存を読み込んでも失敗せず黙って無視し再保存で書かない、ノート・種別・端末・手動順・列順は復元、列順からは削除した列だけを除く(検証: C107) | met | cycle 79: just swift-test exit 0 (failed 0 件。ProjectLedgerTests.aSaveCarryingTheRemovedValuesLoadsAndDropsThem が passed) |
-| C146 | 必須 | `Opt+Tab` / `Opt+Shift+Tab` で次・前へ、全体ビューは序数の順に visible を巡り折り返す、zoom 中は zoom 対象のペインを分割木の走査順に巡り折り返す、巡る先が無い・オーバーレイ表示中は何もしない(検証: C149 + C150) | unmet | - |
-| C147 | 必須 | `Cmd+Opt+矢印` で方向の隣へ、全体ビューは隣の visible プロジェクト、zoom 中は隣のペイン、隣が無い・オーバーレイ中は何もしない、C21 は不変(検証: C149 + C150) | unmet | - |
+| C146 | 必須 | `Opt+Tab` / `Opt+Shift+Tab` で次・前へ、全体ビューは序数の順に visible を巡り折り返す、zoom 中は zoom 対象のペインを分割木の走査順に巡り折り返す、巡る先が無い・オーバーレイ表示中は何もしない(検証: C149 + C150) | unmet | - (周回 88 でモデル層の解決 WorkspaceModel.focusMoveTarget と C149 のテストを足した。キーの割り当てと controller の配線(C148)と C150 の観測が残る) |
+| C147 | 必須 | `Cmd+Opt+矢印` で方向の隣へ、全体ビューは隣の visible プロジェクト、zoom 中は隣のペイン、隣が無い・オーバーレイ中は何もしない、C21 は不変(検証: C149 + C150) | unmet | - (周回 88 でモデル層の解決を足した。配線と C150 の観測が残る) |
 | C148 | 必須 | focus 移動は `Opt+Tab` 系と `Cmd+Opt+矢印` だけ、`Cmd+1〜9`・`Cmd+[` / `Cmd+]`・`Cmd+Ctrl+Opt+Shift+矢印` の既定割り当て廃止、`goto_project` の序数形式を削除、`goto_split` は action を残す、ショートカット一覧に廃止キーを載せない(検証: C150 + 読み合わせ + C88〜C90) | unmet | - |
-| C149 | 必須 | focus 移動(次・前・方向)と序数(10 番目以降を含む)のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | unmet | - (項目 4「序数が visible すべてに配置順で付き hidden に付かない」は周回 87 の ProjectVisibleCapTests.everyVisibleProjectInPlacementOrderHasANumber・aHiddenRowFreesItsNumberForTheNextProject・onlyAHiddenRowGoesWithoutANumber と WorkspaceStateTests.restoringNumbersEveryCappedVisibleProject が passed。項目 1〜3 が無い) |
+| C149 | 必須 | focus 移動(次・前・方向)と序数(10 番目以降を含む)のテスト群が存在し成功(検証: `just swift-test` exit 0 + 項目の存在) | met | cycle 88: just swift-test exit 0 (failed 0 件。項目 1・2・3 は ProjectFocusMoveTests の 23 件(序数順の巡回と折り返し・Core → Side の順・hidden を飛ばす・10 番目以降・visible 1 で nil・5 種のオーバーレイで nil / zoom 中のペインの走査順の巡回と折り返し・zoom 対象不変・上流の goto_split:next と同順 / 横長型・縦長型の隣のプロジェクト・zoom 中の隣のペイン・隣が無ければ nil)、項目 4 は ProjectVisibleCapTests.everyVisibleProjectInPlacementOrderHasANumber・onlyAHiddenRowGoesWithoutANumber と WorkspaceStateTests.restoringNumbersEveryCappedVisibleProject。解決は WorkspaceModel.focusMoveTarget(_:)) |
 | C150 | 必須 | focus 移動のキーの統一と序数の実機観測(Opt+Tab の巡回と折り返し・zoom 中のペイン巡回・Cmd+Opt+矢印・廃止キーで移らない・10 番目以降の番号・一覧中は移らない・ショートカット一覧)(検証: 周回の実機観測) | unmet | - |
 | C118 | 望ましい | マウスからノートを開く導線(検証: 人間) | unmet | - |
 | C119 | 望ましい | ノート UI・プライマリー印の見た目の洗練(検証: 人間) | unmet | - |

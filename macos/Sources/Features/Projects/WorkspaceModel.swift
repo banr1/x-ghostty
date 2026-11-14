@@ -376,6 +376,68 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return (target, state.projects[target]?.focusedSurface)
     }
 
+    // MARK: Focus moves (Opt+Tab / Cmd+Opt+arrow)
+
+    /// Whether keyboard focus moves are refused right now: any overlay — the
+    /// project list, the note editor, the note overview, the shortcut list or
+    /// the layout selection — is up (must 146, 147).
+    var focusMovesBlocked: Bool {
+        overlaySessionActive || noteEditingProject != nil || shortcutListActive
+    }
+
+    /// Resolve where a keyboard focus move lands (must 146, 147). `.next` /
+    /// `.previous` cycle (`Opt+Tab` / `Opt+Shift+Tab`), the four directions
+    /// move to the spatial neighbor (`Cmd+Opt+arrow`).
+    ///
+    /// - Overall view: the target is a visible project. Cycling follows the
+    ///   ordinals (`visibleProjectIDs`, must 41) and wraps at both ends, so
+    ///   hidden projects are skipped; a direction resolves like the visible
+    ///   project tree's spatial neighbor (`gotoProjectTarget`). Panes are never
+    ///   a target here (must 21).
+    /// - Zoom: the target is a pane of the zoomed project, which stays zoomed.
+    ///   Cycling walks the pane tree in its traversal order (the order the
+    ///   abolished `Cmd+]` / `Cmd+[` used) and wraps; a direction resolves to
+    ///   the spatial neighbor pane.
+    ///
+    /// - Returns: `nil` when the move does nothing: an overlay is up, there is
+    ///   nothing to move to (one visible project, one pane, no neighbor in that
+    ///   direction), or there is no focused project / pane.
+    func focusMoveTarget(_ direction: XGhostty.SplitFocusDirection) -> WorkspaceFocusMoveTarget? {
+        guard !focusMovesBlocked else { return nil }
+        if state.zoomedProject != nil {
+            return paneFocusMoveTarget(direction).map { .pane($0) }
+        }
+        return projectFocusMoveTarget(direction).map { .project($0) }
+    }
+
+    /// The overall-view half of `focusMoveTarget`.
+    private func projectFocusMoveTarget(_ direction: XGhostty.SplitFocusDirection) -> ProjectID? {
+        guard let focusedID = state.focusedProject else { return nil }
+        switch direction {
+        case .next, .previous:
+            let ids = state.visibleProjectIDs
+            guard ids.count > 1, let index = ids.firstIndex(of: focusedID) else { return nil }
+            let step = direction == .next ? 1 : ids.count - 1
+            return ids[(index + step) % ids.count]
+
+        case .up, .down, .left, .right:
+            return gotoProjectTarget(direction.toSplitTreeFocusDirection())
+        }
+    }
+
+    /// The zoom half of `focusMoveTarget`: a pane of the zoomed (and focused)
+    /// project other than the focused pane.
+    private func paneFocusMoveTarget(_ direction: XGhostty.SplitFocusDirection) -> SurfaceID? {
+        guard state.paneOperationsEnabled,
+              let project = focusedProjectState,
+              let focused = project.focusedSurface,
+              let node = project.paneTree.find(id: focused.rawValue) else { return nil }
+        let treeDirection: SplitTree<Pane>.FocusDirection = direction.toSplitTreeFocusDirection()
+        guard let target = project.paneTree.focusTarget(for: treeDirection, from: node),
+              target.id != focused.rawValue else { return nil }
+        return SurfaceID(rawValue: target.id)
+    }
+
     /// Whether `move_project` in `direction` would swap anything. Shares
     /// `gotoProjectTarget`'s resolution, so the two actions always agree on what
     /// counts as a neighbor.
@@ -1424,4 +1486,12 @@ enum WorkspaceCloseProjectOutcome: Equatable {
     /// tab/window close (`SPEC.md` §18.5). The model is left unchanged so the
     /// close can be undone via the existing tab/window-close path.
     case closedLast
+}
+
+/// Where a keyboard focus move (`Opt+Tab` / `Opt+Shift+Tab` / `Cmd+Opt+arrow`,
+/// must 146, 147) lands: a visible project in the overall view, or a pane of
+/// the zoomed project while zoomed.
+enum WorkspaceFocusMoveTarget: Equatable {
+    case project(ProjectID)
+    case pane(SurfaceID)
 }
