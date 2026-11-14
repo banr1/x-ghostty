@@ -42,14 +42,15 @@ struct ShortcutGroup: Equatable {
 /// the fork guarantees no keybind backward compatibility (`SPEC.md` §2) and
 /// the overlay documents the effective defaults. Keep it in sync with the
 /// defaults in `Config.zig` and the overlay key handlers; the removed
-/// upstream defaults (Cmd+Enter fullscreen, Cmd+E search, Cmd+K clear) must
-/// not appear here.
+/// upstream defaults (Cmd+Enter fullscreen, Cmd+E search, Cmd+K clear) and
+/// the abolished focus chords (Cmd+1–9, Cmd+[ / Cmd+], Cmd+Ctrl+Opt+Shift+arrow,
+/// must 148) must not appear here.
 enum ShortcutCatalog {
     /// Every group in display order. `ShortcutScene.allCases` order.
     static let groups: [ShortcutGroup] = [
         ShortcutGroup(scene: .overallView, items: [
-            ShortcutItem(chord: "⌘1–9", label: "Focus project by ordinal"),
-            ShortcutItem(chord: "⌘⌃⌥⇧←→↑↓", label: "Focus project (directional)"),
+            ShortcutItem(chord: "⌥⇥ · ⌥⇧⇥", label: "Next · previous project (ordinal order)"),
+            ShortcutItem(chord: "⌘⌥←→↑↓", label: "Focus project (directional)"),
             ShortcutItem(chord: "⌘⌃⇧←→↑↓", label: "Move project"),
             ShortcutItem(chord: "⌘⌥↩", label: "Zoom into the focused project"),
             ShortcutItem(chord: "⌘⌥H", label: "Hide the focused project"),
@@ -71,7 +72,7 @@ enum ShortcutCatalog {
         ]),
         ShortcutGroup(scene: .zoom, items: [
             ShortcutItem(chord: "⌘D · ⌘⇧D", label: "Split right · down"),
-            ShortcutItem(chord: "⌘[ · ⌘]", label: "Previous · next pane"),
+            ShortcutItem(chord: "⌥⇥ · ⌥⇧⇥", label: "Next · previous pane"),
             ShortcutItem(chord: "⌘⌥←→↑↓", label: "Focus pane (directional)"),
             ShortcutItem(chord: "⌘⌃←→↑↓", label: "Resize pane"),
             ShortcutItem(chord: "⌘⌃=", label: "Equalize panes"),

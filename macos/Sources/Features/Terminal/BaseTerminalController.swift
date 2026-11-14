@@ -382,11 +382,6 @@ class BaseTerminalController: NSWindowController,
             object: nil)
         center.addObserver(
             self,
-            selector: #selector(ghosttyDidGotoProjectIndex(_:)),
-            name: XGhostty.Notification.ghosttyGotoProjectIndex,
-            object: nil)
-        center.addObserver(
-            self,
             selector: #selector(ghosttyDidMoveProject(_:)),
             name: XGhostty.Notification.ghosttyMoveProject,
             object: nil)
@@ -1339,24 +1334,42 @@ class BaseTerminalController: NSWindowController,
         guard let direction = notification.userInfo?[
             XGhostty.Notification.ProjectDirectionKey] as? XGhostty.SplitFocusDirection else { return }
 
-        // Resolve the visible neighbor project in that direction (`SPEC.md` §11.3)
-        // and reuse the label-click focus switch, which restores the target
-        // project's last-focused pane.
-        let treeDirection: SplitTree<ProjectRef>.FocusDirection = direction.toSplitTreeFocusDirection()
-        guard let target = workspace.gotoProjectTarget(treeDirection) else { return }
-        focusProject(target)
+        // The model resolves the move (must 146, 147): a visible project in the
+        // overall view (cycling in ordinal order, or the spatial neighbor), a
+        // pane of the zoomed project while zoomed. Nothing moves while an
+        // overlay is up or when there is nowhere to go.
+        switch workspace.focusMoveTarget(direction) {
+        case .project(let target):
+            // Reuse the label-click focus switch, which restores the target
+            // project's last-focused pane (the primary in the overall view).
+            focusProject(target)
+
+        case .pane(let target):
+            focusPane(target, from: view)
+
+        case nil:
+            return
+        }
     }
 
-    @objc private func ghosttyDidGotoProjectIndex(_ notification: Notification) {
-        // The triggering surface must be within our workspace (not just the
-        // currently focused project's tree, to survive the async focus window).
-        guard let view = notification.object as? XGhostty.SurfaceView else { return }
-        guard isInWorkspace(view) else { return }
+    /// Move keyboard focus to the pane `id` of the zoomed project (the zoom
+    /// half of `goto_project`). The zoomed project stays zoomed; a pane-level
+    /// zoom inside it follows the focus like upstream `goto_split`.
+    private func focusPane(_ id: SurfaceID, from origin: XGhostty.SurfaceView) {
+        guard let node = surfaceTree.find(id: id.rawValue),
+              case .leaf(let next) = node else { return }
 
-        guard let ordinal = notification.userInfo?[
-            XGhostty.Notification.GotoProjectIndexKey] as? Int else { return }
+        if surfaceTree.zoomed != nil {
+            if derivedConfig.splitPreserveZoom.contains(.navigation) {
+                surfaceTree = SplitTree(root: surfaceTree.root, zoomed: node)
+            } else {
+                surfaceTree = SplitTree(root: surfaceTree.root, zoomed: nil)
+            }
+        }
 
-        gotoProject(index: ordinal)
+        DispatchQueue.main.async {
+            XGhostty.moveFocus(to: next, from: origin)
+        }
     }
 
     @objc private func ghosttyDidMoveProject(_ notification: Notification) {
@@ -1739,27 +1752,6 @@ class BaseTerminalController: NSWindowController,
         surfaceTree = workspace.focusedPaneTree
 
         moveKeyboardFocus(toProjectSurface: targetFocus)
-    }
-
-    /// Jump to the `index`-th visible project in response to `goto_project:<N>`
-    /// (Cmd+1..9). Mirrors `focusProject`'s swap, with one extra twist: unlike the
-    /// directional `goto_project`, an index jump also works while zoomed — the
-    /// model clears the zoom and moves focus in a single state write, so the
-    /// un-zoomed layout and the new focused project render together.
-    ///
-    /// No-op when the number resolves to nothing, to the zoomed project, or (when
-    /// nothing is zoomed) to the already-focused project. Like `focusProject` this
-    /// registers no undo: it is a focus change, not a structural mutation.
-    func gotoProject(index: Int) {
-        guard let result = workspace.gotoProject(
-            index: index,
-            savingOutgoingPaneTree: surfaceTree) else { return }
-
-        // Swap the source-of-truth pane tree to the newly focused project. When
-        // only the zoom was cleared this is the same tree, and the workspace's
-        // own change re-renders the project layout.
-        surfaceTree = workspace.focusedPaneTree
-        moveKeyboardFocus(toProjectSurface: result.focus)
     }
 
     /// Swap the focused project with its neighbor in `direction` in response to

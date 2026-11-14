@@ -615,12 +615,13 @@ pub const Action = union(enum) {
     /// This is the only project-creation path.
     new_project,
 
-    /// Focus on a project either in the specified direction (`right`, `down`,
-    /// `left`, `up`), or in the adjacent project in the order of creation
-    /// (`previous` and `next`), or by a 1-based index (`1` through `9`)
-    /// that focuses the Nth visible project in tree traversal order. Mirrors
-    /// `goto_split` one layer up.
-    goto_project: ProjectFocusTarget,
+    /// Move keyboard focus: `next` / `previous` cycle (Opt+Tab /
+    /// Opt+Shift+Tab), `right`, `down`, `left`, `up` move to the spatial
+    /// neighbor (Cmd+Opt+arrow). In the overall view the target is a visible
+    /// project (cycling follows the project ordinals and wraps); while a
+    /// project is zoomed it is a pane of that project. There is no ordinal
+    /// form: a project is reached directly through the project list.
+    goto_project: SplitFocusDirection,
 
     /// Swap the current project with an adjacent project. Directional arguments
     /// (`right`, `down`, `left`, `up`) swap with the spatially adjacent
@@ -970,66 +971,6 @@ pub const Action = union(enum) {
 
             try testing.expectError(error.InvalidFormat, SplitFocusDirection.parse(""));
             try testing.expectError(error.InvalidFormat, SplitFocusDirection.parse("green"));
-        }
-    };
-
-    /// The target of a `goto_project` action: either a focus direction
-    /// (mirroring `SplitFocusDirection`, including its `top`/`bottom`
-    /// aliases) or a 1-based index (1 through 9) of the project to focus in
-    /// tree traversal order.
-    pub const ProjectFocusTarget = union(enum) {
-        direction: SplitFocusDirection,
-        index: u8,
-
-        pub fn parse(input: []const u8) !ProjectFocusTarget {
-            // If the input parses as an integer we only accept 1-9,
-            // matching the Cmd+1..9 project-index keybinds.
-            if (std.fmt.parseInt(u8, input, 10)) |index| {
-                if (index < 1 or index > 9) return Error.InvalidFormat;
-                return .{ .index = index };
-            } else |_| {}
-
-            return .{ .direction = try SplitFocusDirection.parse(input) };
-        }
-
-        pub fn clone(
-            self: ProjectFocusTarget,
-            alloc: Allocator,
-        ) Allocator.Error!ProjectFocusTarget {
-            _ = alloc;
-            return self;
-        }
-
-        pub fn format(
-            self: ProjectFocusTarget,
-            writer: *std.Io.Writer,
-        ) std.Io.Writer.Error!void {
-            switch (self) {
-                .direction => |v| try writer.print("{t}", .{v}),
-                .index => |v| try writer.print("{d}", .{v}),
-            }
-        }
-
-        test "parse" {
-            const testing = std.testing;
-
-            try testing.expectEqual(
-                ProjectFocusTarget{ .index = 5 },
-                try ProjectFocusTarget.parse("5"),
-            );
-            try testing.expectEqual(
-                ProjectFocusTarget{ .direction = .right },
-                try ProjectFocusTarget.parse("right"),
-            );
-            try testing.expectEqual(
-                ProjectFocusTarget{ .direction = .up },
-                try ProjectFocusTarget.parse("top"),
-            );
-
-            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse("0"));
-            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse("10"));
-            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse(""));
-            try testing.expectError(Error.InvalidFormat, ProjectFocusTarget.parse("banana"));
         }
     };
 
@@ -3388,33 +3329,24 @@ test "parse: project split actions" {
         const binding = try parseSingle("a=goto_project:next");
         try testing.expect(binding.action == .goto_project);
         try testing.expectEqual(
-            Action.ProjectFocusTarget{ .direction = .next },
+            Action.SplitFocusDirection.next,
             binding.action.goto_project,
         );
     }
-
-    // goto_project: 1-based project index
-    {
-        const binding = try parseSingle("a=goto_project:5");
-        try testing.expect(binding.action == .goto_project);
-        try testing.expectEqual(
-            Action.ProjectFocusTarget{ .index = 5 },
-            binding.action.goto_project,
-        );
-    }
-
-    // goto_project: direction argument still parses after the index change
     {
         const binding = try parseSingle("a=goto_project:right");
         try testing.expect(binding.action == .goto_project);
         try testing.expectEqual(
-            Action.ProjectFocusTarget{ .direction = .right },
+            Action.SplitFocusDirection.right,
             binding.action.goto_project,
         );
     }
 
-    // goto_project: invalid index and inputs
-    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:0"));
+    // goto_project: the ordinal form (goto_project:1..9) is removed, so a
+    // number no longer parses (must 148)
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:1"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:5"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:9"));
     try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:10"));
     try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:"));
     try testing.expectError(Error.InvalidFormat, parseSingle("a=goto_project:banana"));
@@ -3428,15 +3360,6 @@ test "parse: project split actions" {
         const binding = try parseSingle("a=goto_project:right");
         try binding.action.format(&buf.writer);
         try testing.expectEqualStrings("goto_project:right", buf.written());
-    }
-    {
-        const testing_alloc = testing.allocator;
-        var buf: std.Io.Writer.Allocating = .init(testing_alloc);
-        defer buf.deinit();
-
-        const binding = try parseSingle("a=goto_project:5");
-        try binding.action.format(&buf.writer);
-        try testing.expectEqualStrings("goto_project:5", buf.written());
     }
 
     // move_project: focus-direction enum, mirrors goto_project

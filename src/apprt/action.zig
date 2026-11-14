@@ -302,7 +302,10 @@ pub const Action = union(Key) {
     /// entry).
     new_project,
 
-    /// Focus a project in the given direction or creation order.
+    /// Move keyboard focus: `previous` / `next` cycle, the four directions
+    /// move to the spatial neighbor. The target is a visible project in the
+    /// overall view and a pane of the zoomed project while zoomed; it is up
+    /// to the apprt to resolve it.
     goto_project: GotoSplit,
 
     /// Toggle whether the current project is zoomed. A zoomed project is resized
@@ -329,12 +332,6 @@ pub const Action = union(Key) {
     /// Appended last (rather than next to `goto_project`) to preserve C ABI
     /// compatibility; see the note above.
     move_project: GotoSplit,
-
-    /// Focus the Nth visible project (1-indexed) in tree traversal order.
-    /// Uses `GotoProject` (only its non-negative index values are used here).
-    /// Appended last (rather than next to `goto_project`) to preserve C ABI
-    /// compatibility; see the note above.
-    goto_project_index: GotoProject,
 
     /// Open the note editor overlay for the current project. It is up to the
     /// apprt to present the editor. Appended last (rather than next to
@@ -427,7 +424,8 @@ pub const Action = union(Key) {
         // in place, keeping every later tag value stable; the retired sort
         // actions were removed outright — the sort is a persisted state now,
         // not an action — shifting the two tags after them, with the header
-        // updated in lockstep.)
+        // updated in lockstep; the retired `goto_project_index` (the ordinal
+        // jump) was removed the same way.)
         new_project,
         goto_project,
         toggle_project_zoom,
@@ -437,7 +435,6 @@ pub const Action = union(Key) {
         set_project_title,
         close_project,
         move_project,
-        goto_project_index,
         edit_project_note,
         toggle_note_overview,
         set_primary,
@@ -566,21 +563,6 @@ pub const ResizeSplit = extern struct {
             try lib.checkXGhosttyHEnum(Direction, "XGHOSTTY_RESIZE_SPLIT_");
         }
     };
-};
-
-/// The project to jump to. This is non-exhaustive so that integer values
-/// represent the index (zero-based) of the project to jump to. Negative values
-/// are special values.
-pub const GotoProject = enum(c_int) {
-    previous = -1,
-    next = -2,
-    last = -3,
-    _,
-
-    // TODO: check non-exhaustive enums
-    // test "xghostty.h GotoProject" {
-    //     try lib.checkXGhosttyHEnum(GotoProject, "XGHOSTTY_GOTO_PROJECT_");
-    // }
 };
 
 /// The fullscreen mode to toggle to if we're moving to fullscreen.

@@ -387,18 +387,11 @@ extension XGhostty.Notification {
     static let ghosttySetProjectTitle = Notification.Name("com.mitchellh.xghostty.setProjectTitle")
 
     /// Posted when `goto_project` is requested. The sending object is the surface that had focus;
-    /// the userinfo carries a `ProjectDirectionKey` (a `SplitFocusDirection`). Focus moves to the
-    /// visible neighbor project in that direction (`SPEC.md` §11.3).
+    /// the userinfo carries a `ProjectDirectionKey` (a `SplitFocusDirection`). Focus moves to where
+    /// `WorkspaceModel.focusMoveTarget` resolves: a visible project in the overall view, a pane of
+    /// the zoomed project while zoomed (must 146, 147).
     static let ghosttyGotoProject = Notification.Name("com.mitchellh.xghostty.gotoProject")
     static let ProjectDirectionKey = ghosttyGotoProject.rawValue + ".direction"
-
-    /// Posted when `goto_project:<1-9>` is requested. The sending object is the surface that had
-    /// focus; the userinfo carries a `GotoProjectIndexKey` with the 1-based project number (an `Int`).
-    /// Focus moves to that numbered visible project, clearing any project zoom on the way
-    /// (`SPEC.md` §11.3). Kept separate from `ghosttyGotoProject` because the semantics differ:
-    /// the directional form is a no-op while zoomed, the indexed form un-zooms and jumps.
-    static let ghosttyGotoProjectIndex = Notification.Name("com.mitchellh.xghostty.gotoProjectIndex")
-    static let GotoProjectIndexKey = ghosttyGotoProjectIndex.rawValue + ".index"
 
     /// Posted when `move_project` is requested. The sending object is the surface that had focus;
     /// the userinfo carries a `MoveProjectDirectionKey` (a `SplitFocusDirection`). The focused project

@@ -220,7 +220,13 @@ struct ConfigTests {
         let config = try TemporaryConfig("")
         let closeSurface = try #require(config.keyboardShortcut(for: "close_surface"))
         #expect(closeSurface == .init("w", modifiers: [.command]))
-        let gotoToNextSplit = try #require(config.keyboardShortcut(for: "goto_split:next"))
-        #expect(gotoToNextSplit == .init("]", modifiers: [.command]))
+        // The fork unbinds Cmd+] (`goto_split:next`): the focus moves are
+        // Opt+Tab / Opt+Shift+Tab and Cmd+Opt+arrow on `goto_project`
+        // (must 148). The `goto_split` action itself stays bindable.
+        #expect(config.keyboardShortcut(for: "goto_split:next") == nil)
+        let focusNext = try #require(config.keyboardShortcut(for: "goto_project:next"))
+        #expect(focusNext.modifiers == [.option])
+        let focusLeft = try #require(config.keyboardShortcut(for: "goto_project:left"))
+        #expect(focusLeft.modifiers == [.command, .option])
     }
 }

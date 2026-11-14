@@ -38,7 +38,7 @@ struct ShortcutCatalogTests {
 
         let zoom = ShortcutCatalog.groups[1].items.map(\.chord)
         #expect(zoom.contains("⌘D · ⌘⇧D"))
-        #expect(zoom.contains("⌘[ · ⌘]"))
+        #expect(zoom.contains("⌘⌃←→↑↓"))
     }
 
     /// The fork's project-layer chords appear in their scenes.
@@ -47,7 +47,7 @@ struct ShortcutCatalogTests {
         #expect(overall.contains("⌘L"))
         #expect(overall.contains("⌘E"))
         #expect(overall.contains("⌘⌥E"))
-        #expect(overall.contains("⌘1–9"))
+        #expect(overall.contains("⌘⌥←→↑↓"))
 
         let zoom = ShortcutCatalog.groups[1].items.map(\.chord)
         #expect(zoom.contains("⌘P"))
@@ -70,6 +70,33 @@ struct ShortcutCatalogTests {
                 #expect(
                     !item.label.lowercased().contains("clear screen"),
                     "clear-screen listed in \(group.scene)")
+            }
+        }
+    }
+
+    /// The focus moves are the same two chords in the overall view and the
+    /// zoom (must 146–148): Opt+Tab / Opt+Shift+Tab cycle and Cmd+Opt+arrow
+    /// moves by direction.
+    @Test func unifiedFocusChordsAreListedInBothViews() {
+        for group in ShortcutCatalog.groups[0...1] {
+            let chords = group.items.map(\.chord)
+            #expect(chords.contains("⌥⇥ · ⌥⇧⇥"), "missing Opt+Tab in \(group.scene)")
+            #expect(chords.contains("⌘⌥←→↑↓"), "missing Cmd+Opt+arrow in \(group.scene)")
+        }
+    }
+
+    /// The abolished focus chords are listed nowhere (must 148): no ordinal
+    /// jump (Cmd+1–9), no Cmd+[ / Cmd+], no Cmd+Ctrl+Opt+Shift+arrow.
+    @Test func abolishedFocusChordsAreAbsent() {
+        for group in ShortcutCatalog.groups {
+            for item in group.items {
+                #expect(!item.chord.contains("⌘1"), "⌘1–9 listed in \(group.scene)")
+                #expect(!item.chord.contains("⌘["), "⌘[ listed in \(group.scene)")
+                #expect(!item.chord.contains("⌘]"), "⌘] listed in \(group.scene)")
+                #expect(!item.chord.contains("⌘⌃⌥⇧"), "⌘⌃⌥⇧ listed in \(group.scene)")
+                #expect(
+                    !item.label.lowercased().contains("ordinal") || item.chord == "⌥⇥ · ⌥⇧⇥",
+                    "ordinal jump listed in \(group.scene)")
             }
         }
     }

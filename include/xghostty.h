@@ -575,13 +575,6 @@ typedef struct {
   xghostty_action_resize_split_direction_e direction;
 } xghostty_action_resize_split_s;
 
-// apprt.action.GotoProject
-typedef enum {
-  XGHOSTTY_GOTO_PROJECT_PREVIOUS = -1,
-  XGHOSTTY_GOTO_PROJECT_NEXT = -2,
-  XGHOSTTY_GOTO_PROJECT_LAST = -3,
-} xghostty_action_goto_project_e;
-
 // apprt.action.Fullscreen
 typedef enum {
   XGHOSTTY_FULLSCREEN_NATIVE,
@@ -896,7 +889,6 @@ typedef enum {
   XGHOSTTY_ACTION_SET_PROJECT_TITLE,
   XGHOSTTY_ACTION_CLOSE_PROJECT,
   XGHOSTTY_ACTION_MOVE_PROJECT,
-  XGHOSTTY_ACTION_GOTO_PROJECT_INDEX,
   XGHOSTTY_ACTION_EDIT_PROJECT_NOTE,
   XGHOSTTY_ACTION_TOGGLE_NOTE_OVERVIEW,
   XGHOSTTY_ACTION_SET_PRIMARY,
@@ -942,7 +934,6 @@ typedef union {
   xghostty_action_set_title_s show_project;
   xghostty_action_set_title_s set_project_title;
   xghostty_action_goto_split_e move_project;
-  xghostty_action_goto_project_e goto_project_index;
 } xghostty_action_u;
 
 typedef struct {

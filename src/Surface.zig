@@ -5280,24 +5280,16 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
-        .goto_project => |target| switch (target) {
-            .direction => |direction| return try self.rt_app.performAction(
-                .{ .surface = self },
-                .goto_project,
-                switch (direction) {
-                    inline else => |tag| @field(
-                        apprt.action.GotoSplit,
-                        @tagName(tag),
-                    ),
-                },
-            ),
-
-            .index => |index| return try self.rt_app.performAction(
-                .{ .surface = self },
-                .goto_project_index,
-                @enumFromInt(index),
-            ),
-        },
+        .goto_project => |direction| return try self.rt_app.performAction(
+            .{ .surface = self },
+            .goto_project,
+            switch (direction) {
+                inline else => |tag| @field(
+                    apprt.action.GotoSplit,
+                    @tagName(tag),
+                ),
+            },
+        ),
 
         .move_project => |direction| return try self.rt_app.performAction(
             .{ .surface = self },

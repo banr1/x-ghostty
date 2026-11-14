@@ -316,66 +316,6 @@ final class WorkspaceModelOf<Pane: Codable & Identifiable & Equatable>: Observab
         return target.id
     }
 
-    /// Resolve the project that `goto_project:<N>` should focus: the `index`-th
-    /// visible project in canonical traversal order (1-based), or `nil` when the
-    /// jump would do nothing.
-    ///
-    /// Unlike the directional `goto_project`, an index jump is *not* a no-op while
-    /// zoomed (`SPEC.md` §11.3 only pins the directional form): jumping to a
-    /// different project clears the zoom and lands there, so Cmd+1..9 always gets
-    /// you to the project you asked for. Jumping to the zoomed project itself keeps
-    /// the zoom.
-    ///
-    /// - Returns: `nil` when there is no `index`-th visible project, when it is
-    ///   already the zoomed project, or — when nothing is zoomed — when it is
-    ///   already the focused project. Callers use this both to perform the jump
-    ///   and to answer the keybind's performability check, so the two always
-    ///   agree on what counts as a no-op.
-    func gotoProjectIndexTarget(_ index: Int) -> ProjectID? {
-        // No focus moves while an overlay session (note overview,
-        // hide-selection, layout screens) owns the interaction.
-        guard !overlaySessionActive else { return nil }
-        guard let target = state.visibleProjectID(ordinal: index) else { return nil }
-
-        if let zoomedProject = state.zoomedProject {
-            return target == zoomedProject ? nil : target
-        }
-        return target == state.focusedProject ? nil : target
-    }
-
-    /// Jump to the `index`-th visible project (`goto_project:<N>`, 1-based).
-    ///
-    /// Un-zoom and switch are applied together in one state write so the
-    /// un-zoomed multi-project layout and the new focused project land in the same
-    /// render pass. The outgoing focused project's live panes are persisted first,
-    /// exactly like `switchFocusedProject`.
-    ///
-    /// - Returns: the target project and its stored last-focused surface so the
-    ///   caller can swap `surfaceTree` and move keyboard focus, or `nil` when the
-    ///   jump is a no-op (see `gotoProjectIndexTarget`).
-    @discardableResult
-    func gotoProject(
-        index: Int,
-        savingOutgoingPaneTree outgoing: SplitTree<Pane>
-    ) -> (target: ProjectID, focus: SurfaceID?)? {
-        guard let target = gotoProjectIndexTarget(index) else { return nil }
-
-        var next = state
-        // Any zoom is cleared: the target is (usually) a different project, and a
-        // zoomed project is the only one rendered.
-        next.zoomedProject = nil
-        if target != next.focusedProject {
-            next.saveOutgoingPaneTree(outgoing)
-            next.focusedProject = target
-        }
-        // The jump lands in the overall view, where focus goes to the primary
-        // pane (SPEC §22.4).
-        next.snapFocusToPrimaryInOverallView()
-        state = next
-
-        return (target, state.projects[target]?.focusedSurface)
-    }
-
     // MARK: Focus moves (Opt+Tab / Cmd+Opt+arrow)
 
     /// Whether keyboard focus moves are refused right now: any overlay — the

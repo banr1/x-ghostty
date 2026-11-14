@@ -171,7 +171,7 @@ struct ProjectLayoutSelectionTests {
         // No focus moves, no note editing, no hide, no other overlay while
         // the selector is up.
         #expect(model.switchFocusedProject(to: ids[1], savingOutgoingPaneTree: .init()) == nil)
-        #expect(model.gotoProjectIndexTarget(2) == nil)
+        #expect(model.focusMoveTarget(.next) == nil)
         model.beginNoteEditing(ids[0])
         #expect(model.noteEditingProject == nil)
         #expect(!model.canHideFocusedProject)
@@ -180,7 +180,7 @@ struct ProjectLayoutSelectionTests {
 
         // Everything works again once the selector closes.
         model.cancelLayoutSelection()
-        #expect(model.gotoProjectIndexTarget(2) == ids[1])
+        #expect(model.focusMoveTarget(.next) == .project(ids[1]))
     }
 
     @Test func restoreStateAndTeardownEndTheSession() {

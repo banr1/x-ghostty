@@ -5916,48 +5916,10 @@ pub const Keybinds = struct {
                 .{ .paste_from_selection = {} },
             );
         }
-        if (comptime builtin.target.os.tag.isDarwin()) {
-            // Cmd+1..9 focus the Nth visible project in tree traversal order.
-            const mods: inputpkg.Mods = .{ .super = true };
-
-            const start: u21 = '1';
-            const end: u21 = '9';
-            comptime var i: u21 = start;
-            inline while (i <= end) : (i += 1) {
-                // We register BOTH the physical `digit_N` key and the unicode
-                // `N` key. This allows most keyboard layouts to work with
-                // this shortcut. Namely, AZERTY doesn't produce unicode `N`
-                // for their digit keys (they're on shifted keys on the same
-                // physical keys).
-
-                try self.set.putFlags(
-                    alloc,
-                    .{
-                        .key = .{ .physical = @field(
-                            inputpkg.Key,
-                            std.fmt.comptimePrint("digit_{u}", .{i}),
-                        ) },
-                        .mods = mods,
-                    },
-                    .{ .goto_project = .{ .index = (i - start) + 1 } },
-                    .{ .performable = true },
-                );
-
-                // Important: this must be the LAST binding set so that the
-                // libghostty trigger API returns this one for the action,
-                // so that things like menu item key equivalent labels work
-                // properly.
-                try self.set.putFlags(
-                    alloc,
-                    .{
-                        .key = .{ .unicode = i },
-                        .mods = mods,
-                    },
-                    .{ .goto_project = .{ .index = (i - start) + 1 } },
-                    .{ .performable = true },
-                );
-            }
-        }
+        // This fork has no ordinal jump: Cmd+1..9 is deliberately unbound
+        // (must 148). Focus moves by Opt+Tab / Opt+Shift+Tab and
+        // Cmd+Opt+arrow (`goto_project`, below), and a distant project is
+        // reached through the project list (Cmd+L, then Cmd+Enter).
 
         // This fork deliberately leaves ctrl/cmd+enter unbound: cmd+enter
         // confirms the project-note editor overlay (SPEC.md §21.2), so the
@@ -6131,25 +6093,44 @@ pub const Keybinds = struct {
                 .{ .key = .{ .unicode = '/' }, .mods = .{ .super = true } },
                 .{ .toggle_shortcut_list = {} },
             );
+            // Focus moves (must 146-148): the same two chords in the overall
+            // view and in the zoom. Opt+Tab / Opt+Shift+Tab cycle (projects
+            // in ordinal order, or the zoomed project's panes) and
+            // Cmd+Opt+arrow moves to the spatial neighbor. `goto_project`
+            // resolves the scene, so the former Cmd+[ / Cmd+] (`goto_split`
+            // previous / next) and Cmd+Ctrl+Opt+Shift+arrow defaults are
+            // gone; `goto_split` itself stays bindable. Not `performable`:
+            // the chord is consumed even when there is nowhere to move, so
+            // Opt+Tab never reaches the program in the terminal.
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_project = .{ .direction = .left } },
+                .{ .key = .{ .physical = .tab }, .mods = .{ .alt = true } },
+                .{ .goto_project = .next },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_project = .{ .direction = .right } },
+                .{ .key = .{ .physical = .tab }, .mods = .{ .alt = true, .shift = true } },
+                .{ .goto_project = .previous },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_project = .{ .direction = .up } },
+                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .alt = true } },
+                .{ .goto_project = .up },
             );
             try self.set.put(
                 alloc,
-                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true } },
-                .{ .goto_project = .{ .direction = .down } },
+                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .alt = true } },
+                .{ .goto_project = .down },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .alt = true } },
+                .{ .goto_project = .left },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .alt = true } },
+                .{ .goto_project = .right },
             );
             try self.set.put(
                 alloc,
@@ -6180,36 +6161,6 @@ pub const Keybinds = struct {
                 alloc,
                 .{ .key = .{ .unicode = 'h' }, .mods = .{ .super = true, .alt = true } },
                 .{ .hide_project = {} },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = '[' }, .mods = .{ .super = true } },
-                .{ .goto_split = .previous },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .unicode = ']' }, .mods = .{ .super = true } },
-                .{ .goto_split = .next },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_up }, .mods = .{ .super = true, .alt = true } },
-                .{ .goto_split = .up },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .alt = true } },
-                .{ .goto_split = .down },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .alt = true } },
-                .{ .goto_split = .left },
-            );
-            try self.set.put(
-                alloc,
-                .{ .key = .{ .physical = .arrow_right }, .mods = .{ .super = true, .alt = true } },
-                .{ .goto_split = .right },
             );
             try self.set.put(
                 alloc,
@@ -6634,15 +6585,15 @@ pub const Keybinds = struct {
         const alloc = arena.allocator();
 
         var list: Keybinds = .{};
-        try list.parseCLI(alloc, "ctrl+z>1=goto_project:1");
-        try list.parseCLI(alloc, "ctrl+z>2=goto_project:2");
+        try list.parseCLI(alloc, "ctrl+z>1=goto_project:next");
+        try list.parseCLI(alloc, "ctrl+z>2=goto_project:previous");
         try list.formatEntry(formatterpkg.entryFormatter("keybind", &buf.writer));
 
         // Note they turn into translated keys because they match
         // their ASCII mapping.
         const want =
-            \\keybind = ctrl+z>1=goto_project:1
-            \\keybind = ctrl+z>2=goto_project:2
+            \\keybind = ctrl+z>1=goto_project:next
+            \\keybind = ctrl+z>2=goto_project:previous
             \\
         ;
         try std.testing.expectEqualStrings(want, buf.written());
@@ -6910,6 +6861,59 @@ pub const Keybinds = struct {
             error.InvalidFormat,
             keybinds.parseCLI(alloc, "foo/chain=deactivate_key_table"),
         );
+    }
+
+    test "default focus-move chords are Opt+Tab and Cmd+Opt+arrow only" {
+        // must 146-148: on macOS the focus moves are Opt+Tab / Opt+Shift+Tab
+        // and Cmd+Opt+arrow (`goto_project`); Cmd+1..9, Cmd+[ / Cmd+] and
+        // Cmd+Ctrl+Opt+Shift+arrow have no default binding.
+        if (comptime !builtin.target.os.tag.isDarwin()) return error.SkipZigTest;
+
+        const testing = std.testing;
+        var arena = ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var keybinds: Keybinds = .{};
+        try keybinds.init(alloc);
+
+        const Expect = struct {
+            fn action(set: inputpkg.Binding.Set, t: inputpkg.Binding.Trigger) ?inputpkg.Binding.Action {
+                const entry = set.get(t) orelse return null;
+                return switch (entry.value_ptr.*) {
+                    .leaf => |leaf| leaf.action,
+                    else => null,
+                };
+            }
+        };
+
+        const next = Expect.action(keybinds.set, .{ .key = .{ .physical = .tab }, .mods = .{ .alt = true } }).?;
+        try testing.expectEqual(inputpkg.Binding.Action{ .goto_project = .next }, next);
+        const previous = Expect.action(keybinds.set, .{ .key = .{ .physical = .tab }, .mods = .{ .alt = true, .shift = true } }).?;
+        try testing.expectEqual(inputpkg.Binding.Action{ .goto_project = .previous }, previous);
+        const left = Expect.action(keybinds.set, .{ .key = .{ .physical = .arrow_left }, .mods = .{ .super = true, .alt = true } }).?;
+        try testing.expectEqual(inputpkg.Binding.Action{ .goto_project = .left }, left);
+        const down = Expect.action(keybinds.set, .{ .key = .{ .physical = .arrow_down }, .mods = .{ .super = true, .alt = true } }).?;
+        try testing.expectEqual(inputpkg.Binding.Action{ .goto_project = .down }, down);
+
+        // The abolished chords are unbound.
+        inline for ("123456789") |digit| {
+            try testing.expect(keybinds.set.get(.{ .key = .{ .unicode = digit }, .mods = .{ .super = true } }) == null);
+            try testing.expect(keybinds.set.get(.{
+                .key = .{ .physical = @field(inputpkg.Key, "digit_" ++ [_]u8{digit}) },
+                .mods = .{ .super = true },
+            }) == null);
+        }
+        try testing.expect(keybinds.set.get(.{ .key = .{ .unicode = '[' }, .mods = .{ .super = true } }) == null);
+        try testing.expect(keybinds.set.get(.{ .key = .{ .unicode = ']' }, .mods = .{ .super = true } }) == null);
+        try testing.expect(keybinds.set.get(.{
+            .key = .{ .physical = .arrow_left },
+            .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true },
+        }) == null);
+        try testing.expect(keybinds.set.get(.{
+            .key = .{ .physical = .arrow_up },
+            .mods = .{ .super = true, .ctrl = true, .alt = true, .shift = true },
+        }) == null);
     }
 
     test "parseCLI chain applies to most recent table binding" {

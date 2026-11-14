@@ -435,15 +435,15 @@ struct ProjectNoteTests {
         #expect(model.gotoProjectTarget(.spatial(.right)) == nil)
     }
 
-    @Test func overviewBlocksIndexFocusMoves() throws {
+    @Test func overviewBlocksCyclingFocusMoves() throws {
         let (state, _) = try WorkspaceStateTests.makeTwoProjectState()
         let model = WorkspaceModel(state)
-        // Sanity: the jump resolves while the overview is inactive.
-        #expect(model.gotoProjectIndexTarget(2) != nil)
+        // Sanity: the cycle resolves while the overview is inactive.
+        #expect(model.focusMoveTarget(.next) != nil)
 
         model.toggleNoteOverview()
 
-        #expect(model.gotoProjectIndexTarget(2) == nil)
+        #expect(model.focusMoveTarget(.next) == nil)
     }
 
     @Test func overviewBlocksFocusSwitch() throws {

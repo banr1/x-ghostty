@@ -513,8 +513,6 @@ extension XGhostty {
             case XGHOSTTY_ACTION_GOTO_PROJECT:
                 return gotoProject(app, target: target, direction: action.action.goto_project)
 
-            case XGHOSTTY_ACTION_GOTO_PROJECT_INDEX:
-                return gotoProjectIndex(app, target: target, index: action.action.goto_project_index)
 
             case XGHOSTTY_ACTION_MOVE_PROJECT:
                 return moveProject(app, target: target, direction: action.action.move_project)
@@ -1081,54 +1079,17 @@ extension XGhostty {
                 // Convert the C API direction to our Swift type.
                 guard let focusDirection = SplitFocusDirection.from(direction: direction) else { return false }
 
-                // Only performable when there is actually a visible neighbor project
-                // to move to; this keeps the keybind from consuming the key event
-                // when nothing would happen.
-                let treeDirection: SplitTree<ProjectRef>.FocusDirection =
-                    focusDirection.toSplitTreeFocusDirection()
-                guard controller.workspace.gotoProjectTarget(treeDirection) != nil else { return false }
+                // Resolve the move in the model (must 146, 147): a visible project in
+                // the overall view, a pane of the zoomed project while zoomed. When
+                // nothing would move (one project / pane, no neighbor, an overlay is
+                // up) report "not performed"; the default chords are not
+                // `performable`, so the key is consumed either way.
+                guard controller.workspace.focusMoveTarget(focusDirection) != nil else { return false }
 
                 NotificationCenter.default.post(
                     name: Notification.ghosttyGotoProject,
                     object: surfaceView,
                     userInfo: [Notification.ProjectDirectionKey: focusDirection])
-                return true
-
-            default:
-                assertionFailure()
-                return false
-            }
-        }
-
-        private static func gotoProjectIndex(
-            _ app: xghostty_app_t,
-            target: xghostty_target_s,
-            index: xghostty_action_goto_project_e) -> Bool {
-            switch target.tag {
-            case XGHOSTTY_TARGET_APP:
-                XGhostty.logger.warning("goto project index does nothing with an app target")
-                return false
-
-            case XGHOSTTY_TARGET_SURFACE:
-                guard let surface = target.target.surface else { return false }
-                guard let surfaceView = self.surfaceView(from: surface) else { return false }
-                guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
-
-                // The value is always a 1-based project number (libghostty rejects
-                // anything outside 1..9 at parse time), so the enum's negative
-                // sentinels never apply here.
-                let ordinal = Int(index.rawValue)
-
-                // The Cmd+1..9 binding is `performable`, so only consume the key
-                // when the jump would actually change something: the number must
-                // resolve to a visible project that isn't already the zoomed one
-                // (or, when nothing is zoomed, the focused one).
-                guard controller.workspace.gotoProjectIndexTarget(ordinal) != nil else { return false }
-
-                NotificationCenter.default.post(
-                    name: Notification.ghosttyGotoProjectIndex,
-                    object: surfaceView,
-                    userInfo: [Notification.GotoProjectIndexKey: ordinal])
                 return true
 
             default:
