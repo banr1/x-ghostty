@@ -349,13 +349,14 @@ struct WorkspaceStateTests {
         Self.expectInvariants(restored)
     }
 
-    @Test func restoringNumbersTheCappedVisibleProjectsOneThroughNine() throws {
-        let (state, ids) = try Self.makeRowState(WorkspaceState.maxVisibleProjects + 3)
+    @Test func restoringNumbersEveryCappedVisibleProject() throws {
+        let cap = WorkspaceState.maxVisibleProjects
+        let (state, ids) = try Self.makeRowState(cap + 3)
         let restored = WorkspaceState.restoring(state)
 
-        #expect(ids.prefix(9).compactMap { restored.ordinal(of: $0) } == Array(1...9))
-        // Past the ninth there is no number, visible or hidden.
-        #expect(ids.dropFirst(9).allSatisfy { restored.ordinal(of: $0) == nil })
+        #expect(ids.prefix(cap).compactMap { restored.ordinal(of: $0) } == Array(1...cap))
+        // The extras come back hidden, and a hidden project has no number.
+        #expect(ids.dropFirst(cap).allSatisfy { restored.ordinal(of: $0) == nil })
     }
 
     @Test func restoringFallsBackToFirstLeafWhenFocusIsCappedOut() throws {

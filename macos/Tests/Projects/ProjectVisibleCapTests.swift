@@ -60,9 +60,8 @@ struct ProjectVisibleCapTests {
         return model
     }
 
-    @Test func theCapsAreTwentyFourVisibleAndNineOrdinals() {
+    @Test func theVisibleCapIsTwentyFour() {
         #expect(TestWorkspaceState.maxVisibleProjects == 24)
-        #expect(TestWorkspaceState.maxProjectOrdinal == 9)
     }
 
     @Test func aSideCountsAsOneTowardTheCap() {
@@ -131,22 +130,21 @@ struct ProjectVisibleCapTests {
 
     // MARK: Ordinals
 
-    @Test func onlyTheFirstNineInPlacementOrderHaveANumber() {
+    @Test func everyVisibleProjectInPlacementOrderHasANumber() {
         // Every other row is a Side, so the placement order differs from the
-        // row order: the numbers follow the placement.
+        // row order: the numbers follow the placement, through the 24th.
         let projects = Self.makeProjects(24) { $0.isMultiple(of: 2) ? .side : .core }
         let state = Self.makeState(projects)
         let placement = state.visibleProjectIDs
         #expect(placement.count == 24)
         #expect(placement.prefix(12).allSatisfy { state.projects[$0]?.kind == .core })
 
-        #expect(placement.prefix(9).map { state.ordinal(of: $0) } == (1...9).map(Optional.some))
-        #expect(placement.dropFirst(9).allSatisfy { state.ordinal(of: $0) == nil })
-        #expect((1...9).map { state.visibleProjectID(ordinal: $0) } == placement.prefix(9).map(Optional.some))
-        #expect(state.visibleProjectID(ordinal: 10) == nil)
+        #expect(placement.map { state.ordinal(of: $0) } == (1...24).map(Optional.some))
+        #expect((1...24).map { state.visibleProjectID(ordinal: $0) } == placement.map(Optional.some))
+        #expect(state.visibleProjectID(ordinal: 25) == nil)
         #expect(state.visibleProjectID(ordinal: 0) == nil)
         #expect(state.projectOrdinals == Dictionary(
-            uniqueKeysWithValues: placement.prefix(9).enumerated().map { ($0.element, $0.offset + 1) }))
+            uniqueKeysWithValues: placement.enumerated().map { ($0.element, $0.offset + 1) }))
     }
 
     @Test func aHiddenRowFreesItsNumberForTheNextProject() {
@@ -156,11 +154,13 @@ struct ProjectVisibleCapTests {
         #expect(state.ordinal(of: projects[0].id) == nil)
         #expect(state.ordinal(of: projects[1].id) == 1)
         #expect(state.ordinal(of: projects[9].id) == 9)
-        #expect(state.ordinal(of: projects[10].id) == nil)
+        #expect(state.ordinal(of: projects[10].id) == 10)
+        #expect(state.ordinal(of: projects[11].id) == 11)
+        #expect(state.projectOrdinals.count == 11)
     }
 
-    @Test func aVisibleRowPastTheNinthIsNotHidden() {
-        let projects = Self.makeProjects(11)
+    @Test func onlyAHiddenRowGoesWithoutANumber() {
+        let projects = Self.makeProjects(12)
         let state = Self.makeState(projects, hidden: [projects[10].id])
 
         let rows = state.projectListRows
@@ -168,22 +168,22 @@ struct ProjectVisibleCapTests {
         #expect(rows[8].isHidden == false)
         #expect(rows[8].ordinalGutterText == "9")
 
-        // No number, still visible: the row must not read as hidden.
-        #expect(rows[9].ordinal == nil)
+        // Past the ninth the visible rows keep counting.
+        #expect(rows[9].ordinal == 10)
         #expect(rows[9].isHidden == false)
-        #expect(rows[9].ordinalGutterText == "")
+        #expect(rows[9].ordinalGutterText == "10")
 
         #expect(rows[10].ordinal == nil)
         #expect(rows[10].isHidden == true)
         #expect(rows[10].ordinalGutterText == "·")
+
+        #expect(rows[11].ordinal == 11)
+        #expect(rows[11].ordinalGutterText == "11")
     }
 
-    @Test func gotoStopsAtTheNinthWhileTheListFocusReachesPastIt() {
+    @Test func theListFocusReachesPastTheNinth() {
         let projects = Self.makeProjects(12)
         let model = TestWorkspaceModel(Self.makeState(projects))
-
-        #expect(model.gotoProjectIndexTarget(9) == projects[8].id)
-        #expect(model.gotoProjectIndexTarget(10) == nil)
 
         // A row past the ninth is visible, so a list focus lands on it.
         #expect(model.state.resolvedListFocusTarget(for: projects[11].id) == projects[11].id)

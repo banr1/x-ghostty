@@ -24,7 +24,7 @@ Atlas Builder の `lessons.jsonl`(2026-08-18〜09-07)から移した事実。
 - 種別は `ProjectState.kind`(`ProjectKind`、保存キー `kind`、既定の Core はキーを書かない)。列を足すときの修正箇所は端末列と同じで、コンパイラの網羅性エラーが overlay の switch を教えてくれる。既定列順の期待値はテスト 3 ファイル(ProjectLedgerTests / ProjectListCellTests / ProjectTerminalColumnTests)にある。
 - 周回 73 以降、`ProjectLayoutType` は `wide` / `tall` の 2 値の enum(向きは無く、序数は横長型が行ごと・縦長型が列ごと)。保存は `{"shape": …}` だけで、旧保存の `orientation` キーは decode が無視し、`pedestal` は wide へ読む。畳まれるのは n=1 だけ。
 - 配置順は `WorkspaceState.visibleProjectIDs`(Core → Side、各種別内は行順)の 1 点が決め、序数・一覧の行の序数・スロットの割り当てはこれを数える。一覧の行順(`projectOrder`)は種別で動かない。寸法は `ProjectLayoutType.slotFrames(forKinds:)` と `tree(over:kinds:)` が同じ `tiers` から作る。全 Core の期待値は `kinds` を省略した形で書ける。
-- visible の上限は `WorkspaceState.maxVisibleProjects`(24)、序数の上限は `maxProjectOrdinal`(9)で、別の数である。序数が nil でも hidden とは限らない(配置順で 10 番目以降の visible も nil)。hidden の判定は `hiddenProjectIDs` で行う。
+- visible の上限は `WorkspaceState.maxVisibleProjects`(24)。周回 87 で序数の上限 `maxProjectOrdinal`(9)を撤去し、`ordinal(of:)` は visible なら配置順の位置 + 1、hidden のときだけ nil。`goto_project:<N>`(`gotoProjectIndexTarget`)は `visibleProjectID(ordinal:)` を引くので、序数形式を削除するまでは 10 以降も解決できる(既定のキーは Cmd+1〜9 だけ)。
 - テストの削除・無効化の検査(C14)の基準は Atlas Builder 移行時点の commit `9cb808d`。当時は `x-ghostty/` 配下にあったため、`git diff -M 9cb808d HEAD` とリネーム検出を付けて比べる。fork 開始時点(`5307c05`)からは、`f93d9b1`(タブ・複数ウィンドウ・非 macOS の撤去)でタブ・ウィンドウ・quick terminal・update 系のテストが消えており、Zig の `test "ghostty.h ..."` は `xghostty.h` へ改名されている。
 - `.idd/` の台帳・記録はシェルコマンド(grep 等)からは読めない(hook が拒否する)。ファイルとして直接読む。
 - 完了の検算では IDEAL.md の編集も「対象の変更」に数える。pair が IDEAL を編集した周回 C の後は、`cycle N:`(N < C)と `observed N:`(N ≤ C)が実装ファイルの差分の有無によらず失効し、3 ゲート・読み合わせ・C137・C139 の実機観測の取り直しが要る(周回 57)。`sips` は `screencapture` の画像の加工で固まることがあった。画像はそのまま読む。

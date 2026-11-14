@@ -25,8 +25,8 @@ import SwiftUI
 /// one editing UI. The text field commits on Return or when it loses focus, and
 /// cancels on Escape. To keep Escape unambiguous, Escape reverts the draft to
 /// the current title first, so the trailing focus-loss commit becomes a no-op.
-/// The header shows `"{ordinal}. {name}"` (e.g. `3. calm-river`) so the project's
-/// `goto_project:<N>` / Cmd+N number is visible where the project is. The ordinal is
+/// The header shows `"{ordinal}. {name}"` (e.g. `3. calm-river`, up to `24.`) so the
+/// project's place in placement order is visible where the project is. The ordinal is
 /// a display prefix only: it is never stored in the name, and the inline editor
 /// below edits `name` alone.
 struct ProjectLabel: View {

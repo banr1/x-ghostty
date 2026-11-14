@@ -8,7 +8,7 @@ import Foundation
 ///   rows as evenly as possible, the leftover attaching to the trailing rows
 ///   (n=8 is 2+3+3 from the top — the top rows hold fewer, wider slots). Row
 ///   heights are equal; a row's width is shared by kind weight (a Side is half
-///   as wide as a Core in the same row). The ordinals (Cmd+1–9) run along the
+///   as wide as a Core in the same row). The ordinals run along the
 ///   rows: top row first, left to right.
 /// - **tall** — the transpose: columns = nearest √n, the leftover attaching
 ///   to the trailing columns (the left columns hold fewer slots). Column
